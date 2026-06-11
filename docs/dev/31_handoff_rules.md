@@ -15,6 +15,18 @@ Family Garden 是三人线上合作项目。线上合作最容易出问题的地
 
 ---
 
+## 1.5 角色默认负责人（软边界）
+
+| 角色 | 职责范围 | 默认负责人 | 仓库目录 |
+|---|---|---|---|
+| A | 产品统筹 + 美术体验 | peilinpeng | `docs/`、`game/assets/` |
+| B | AI 模块 + 内容安全 | 待定 | `backend/ai/`、`backend/mocks/` |
+| C | 游戏系统 + 后端稳定 | 待定 | `game/scripts/`、`game/scenes/` |
+
+说明：这是**默认分工，不是硬权限边界**。后期允许交叉救火；仓库暂不启用强制 CODEOWNERS 审查（模板见根目录 `CODEOWNERS` 注释）。GitHub issue 用 `P0/P1/P2`、`scene`、`ai`、`art`、`backend` 等标签管理，不强制指派到人。跨模块修改需在 PR 描述中说明原因。
+
+---
+
 ## 2. 总规则
 
 1. 不随意回退 main；

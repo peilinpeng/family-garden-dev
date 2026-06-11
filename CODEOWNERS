@@ -1,0 +1,14 @@
+# CODEOWNERS —— 暂不启用强制审查（注释模板）
+#
+# 团队约定为"软边界 + 允许交叉救火"，因此暂不写死账号、不在分支保护中
+# 启用 "Require review from Code Owners"。
+# 角色默认负责人见 CLAUDE.md 与 docs/dev/31_handoff_rules.md。
+#
+# 后续如需启用，取消注释并填入账号：
+# /docs/                       @peilinpeng
+# /game/assets/                @peilinpeng
+# /backend/ai/                 @<B同学GitHub账号>
+# /backend/mocks/              @<B同学GitHub账号>
+# /game/scripts/               @<C同学GitHub账号>
+# /game/scenes/                @<C同学GitHub账号>
+# /docs/04_ai_interfaces.md    @peilinpeng @<B同学> @<C同学>

@@ -1,0 +1,7 @@
+{
+  "question": "你们上一次一起出去玩是什么时候？",
+  "target_memory_type": "shared_memory",
+  "suggested_scene": "fishpond",
+  "prompt_type": "shared_memory",
+  "tone": "warm"
+}

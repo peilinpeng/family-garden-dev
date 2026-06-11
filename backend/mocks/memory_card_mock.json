@@ -1,0 +1,9 @@
+{
+  "title": "一次家庭旅行",
+  "description": "这是一段温暖的家庭旅行记忆。画面中有户外空间和轻松的氛围。",
+  "memory_type": "travel",
+  "suggested_scene": "garden",
+  "question": "你还记得这次旅行中最开心的一件事吗？",
+  "node_type": "memory_flower",
+  "confidence": 1.0
+}

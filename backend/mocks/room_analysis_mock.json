@@ -1,0 +1,12 @@
+{
+  "room_type": "bedroom",
+  "style": "warm_cozy",
+  "suggested_room_theme": "study_corner",
+  "description": "这个房间适合生成一个温暖的学习角落。",
+  "objects": [
+    { "object_type": "desk", "zone": "back_left" },
+    { "object_type": "lamp", "zone": "back_left" },
+    { "object_type": "plant", "zone": "right_side" },
+    { "object_type": "photo_wall", "zone": "back_wall" }
+  ]
+}

@@ -1,0 +1,18 @@
+# 统一换行符，防 Mac/Windows 混行尾
+* text=auto eol=lf
+
+# Godot 文本资源
+*.gd text eol=lf
+*.tscn text eol=lf
+*.tres text eol=lf
+*.cfg text eol=lf
+*.import text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.webp binary
+*.svg text eol=lf
