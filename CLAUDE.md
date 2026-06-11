@@ -30,8 +30,7 @@
 
 | 角色 | 职责 | 默认负责人 |
 |---|---|---|
-| A | 产品统筹（docs/） | peilinpeng |
-| A | 美术资产（game/assets/） | peilinpeng + Beluga |
+| A | 产品策划 + 美术资产（docs/、game/assets/） | 待定 |
 | B | AI 模块 + 内容安全（backend/ai/、backend/mocks/） | 待定 |
 | C | 游戏系统 + 后端稳定（game/scripts/、game/scenes/） | 待定 |
 
