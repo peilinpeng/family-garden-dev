@@ -19,7 +19,8 @@ Family Garden 是三人线上合作项目。线上合作最容易出问题的地
 
 | 角色 | 职责范围 | 默认负责人 | 仓库目录 |
 |---|---|---|---|
-| A | 产品统筹 + 美术体验 | peilinpeng | `docs/`、`game/assets/` |
+| A | 产品统筹 | peilinpeng | `docs/` |
+| A | 美术资产 | peilinpeng + Beluga | `game/assets/` |
 | B | AI 模块 + 内容安全 | 待定 | `backend/ai/`、`backend/mocks/` |
 | C | 游戏系统 + 后端稳定 | 待定 | `game/scripts/`、`game/scenes/` |
 
