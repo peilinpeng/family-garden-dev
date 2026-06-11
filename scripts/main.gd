@@ -1,0 +1,2583 @@
+extends Node2D
+
+const CLOUD_SERVICE_SCRIPT := preload("res://scripts/cloud_service.gd")
+
+const GAME_SIZE := Vector2(1280, 720)
+const SAVE_PATH := "user://family_garden_save_v2.json"
+
+const MAILBOX_ALERT_NONE := "none"
+const MAILBOX_ALERT_DOT := "dot"
+const MAILBOX_ALERT_LETTER := "letter"
+
+const ASSETS := {
+	"background": "res://assets/backgrounds/shared_garden.png",
+	"travel_map": "res://assets/maps/travel_map.png",
+	"tree": "res://assets/garden/family_tree.png",
+	"mailbox": "res://assets/garden/mailbox.png",
+	"bench": "res://assets/garden/bench.png",
+	"flower": "res://assets/garden/flower.png",
+	"house_father": "res://assets/houses/house_father.png",
+	"house_mother": "res://assets/houses/house_mother.png",
+	"house_player": "res://assets/houses/house_player.png",
+	"house_partner": "res://assets/houses/house_partner.png",
+	"player": "res://assets/characters/girl.png",
+	"father": "res://assets/characters/papa.png",
+	"mother": "res://assets/characters/mama.png",
+	"partner": "res://assets/characters/boy.png",
+	"girl": "res://assets/characters/girl.png",
+	"boy": "res://assets/characters/boy.png",
+	"papa": "res://assets/characters/papa.png",
+	"mama": "res://assets/characters/mama.png",
+	"button_normal": "res://assets/ui/buttons/button_normal.png",
+	"button_hover": "res://assets/ui/buttons/button_hover.png",
+	"button_selected": "res://assets/ui/buttons/button_selected.png",
+	"icon_map": "res://assets/ui/icons/icon_map.png",
+	"icon_postcard": "res://assets/ui/icons/icon_postcard.png",
+	"icon_mailbox": "res://assets/ui/icons/icon_mailbox.png",
+	"icon_home": "res://assets/ui/icons/icon_home.png",
+	"icon_tree": "res://assets/ui/icons/icon_tree.png",
+	"icon_sign": "res://assets/ui/icons/icon_sign.png",
+	"icon_save": "res://assets/ui/icons/icon_save.png",
+	"icon_add": "res://assets/ui/icons/icon_add.png",
+	"icon_delete": "res://assets/ui/icons/icon_delete.png",
+	"icon_back": "res://assets/ui/icons/icon_back.png",
+	"icon_close": "res://assets/ui/icons/icon_close.png",
+	"icon_camera": "res://assets/ui/icons/icon_camera.png",
+	"icon_letter": "res://assets/ui/icons/icon_letter.png",
+	"icon_travel": "res://assets/ui/icons/icon_travel.png",
+	"icon_pin": "res://assets/ui/icons/icon_pin.png",
+	"mailbox_badge_dot": "res://assets/ui/badges/mailbox_badge_dot.png",
+	"mailbox_badge_letter": "res://assets/ui/badges/mailbox_badge_letter.png",
+	"pin_default": "res://assets/ui/pins/pin_default.png",
+	"pin_saved": "res://assets/ui/pins/pin_saved.png",
+	"pin_selected": "res://assets/ui/pins/pin_selected.png",
+	"pin_new": "res://assets/ui/pins/pin_new.png",
+	"pin_postcard": "res://assets/ui/pins/pin_postcard.png",
+	"cat_sheet": "res://assets/animals/cat/cat_walk_sleep_sheet.png",
+	"bird_sheet": "res://assets/animals/bird/bird_states_sheet.png",
+	"dog_sheet": "res://assets/animals/dog/dog_states_sheet.png",
+	"room_papa": "res://assets/rooms/papa_room.png",
+	"room_mama": "res://assets/rooms/mama_room.png",
+	"room_louis": "res://assets/rooms/louis_room.png",
+	"room_anna": "res://assets/rooms/anna_room.png",
+	"room_papa_fg": "res://assets/rooms/papa_room_fg.png",
+	"room_mama_fg": "res://assets/rooms/mama_room_fg.png",
+	"room_louis_fg": "res://assets/rooms/louis_room_fg.png",
+	"room_anna_fg": "res://assets/rooms/anna_room_fg.png",
+}
+
+const HOUSE_DATA := [
+	{"id": "father", "label": "Papa's Cottage", "asset": "house_father", "pos": Vector2(155, 124), "height": 180.0},
+	{"id": "mother", "label": "Mama's Cottage", "asset": "house_mother", "pos": Vector2(1153, 145), "height": 230.0},
+	{"id": "player", "label": "Peilin's Cottage", "asset": "house_player", "pos": Vector2(125, 600), "height": 180.0},
+	{"id": "partner", "label": "Louis's Cottage", "asset": "house_partner", "pos": Vector2(126, 438), "height": 180.0},
+]
+
+const ROOM_DATA := {
+	"father": {
+		"label": "Papa's Room",
+		"asset": "room_papa",
+		"foreground": "room_papa_fg",
+		"spawn": Vector2(640, 575),
+	},
+	"mother": {
+		"label": "Mama's Room",
+		"asset": "room_mama",
+		"foreground": "room_mama_fg",
+		"spawn": Vector2(640, 565),
+	},
+	"partner": {
+		"label": "Louis's Room",
+		"asset": "room_louis",
+		"foreground": "room_louis_fg",
+		"spawn": Vector2(640, 560),
+	},
+	"player": {
+		"label": "Anna's Room",
+		"asset": "room_anna",
+		"foreground": "room_anna_fg",
+		"spawn": Vector2(640, 560),
+	},
+}
+
+const CHARACTER_DATA := [
+	{"role": "girl", "label": "Girl", "default_name": "Peilin", "asset": "girl", "house_id": "player", "house_label": "Peilin's Cottage", "npc_pos": Vector2(700, 405), "wander_radius": 90.0},
+	{"role": "boy", "label": "Boy", "default_name": "Louis", "asset": "boy", "house_id": "partner", "house_label": "Louis's Cottage", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
+	{"role": "papa", "label": "Papa", "default_name": "Papa", "asset": "papa", "house_id": "father", "house_label": "Papa's Cottage", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
+	{"role": "mama", "label": "Mama", "default_name": "Mama", "asset": "mama", "house_id": "mother", "house_label": "Mama's Cottage", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
+]
+
+const ANIMAL_DATA := [
+	{
+		"id": "cat",
+		"name": "Mimi",
+		"asset": "cat_sheet",
+		"pos": Vector2(250, 545),
+		"height": 50.0,
+		"hframes": 4,
+		"vframes": 2,
+		"wander_radius": 120.0,
+		"move_speed": 15.0,
+		"frames": {
+			"idle": [0, 1],
+			"walk": [0, 1, 2, 3],
+			"sleep": [6, 7]
+		}
+	},
+	{
+		"id": "bird",
+		"name": "Bluebird",
+		"asset": "bird_sheet",
+		"pos": Vector2(392, 142),
+		"height": 42.0,
+		"hframes": 3,
+		"vframes": 2,
+		"wander_radius": 75.0,
+		"move_speed": 11.0,
+		"frames": {
+			"idle": [0, 1, 2],
+			"walk": [0, 2, 5],
+			"sleep": [3, 4]
+		}
+	},
+	{
+		"id": "dog",
+		"name": "Biscuit",
+		"asset": "dog_sheet",
+		"pos": Vector2(330, 575),
+		"height": 60.0,
+		"hframes": 4,
+		"vframes": 3,
+		"wander_radius": 145.0,
+		"move_speed": 17.0,
+		"frames": {
+			"idle": [0, 1],
+			"walk": [2, 3, 4, 5],
+			"sleep": [6, 7],
+			"play": [8, 9, 10, 11]
+		}
+	},
+]
+
+var world: Node2D
+var ui_layer: CanvasLayer
+var info_label: Label
+var plant_button: Button
+var plant_mode := false
+var selected_plant_type := "tree"
+var mode := "garden"
+var player: CharacterBody2D
+var plants: Array = []
+var plant_nodes: Dictionary = {}
+var room_card: Panel = null
+var mailbox_badge: Sprite2D = null
+var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_state != none
+var mailbox_alert_state: String = MAILBOX_ALERT_DOT
+var active_modal: Control = null
+var map_ui: Control = null
+var adding_place := false
+var pending_place_position := Vector2.ZERO
+var travel_places: Array = []
+var postcards: Array = []
+var garden_messages: Array = []
+var animal_nodes: Dictionary = {}
+var selected_role_key: String = ""
+var player_display_name: String = ""
+var cloud: Variant = null
+var cloud_load_finished: bool = false
+var selected_photo_path: String = ""
+var selected_photo_label: Label = null
+var photo_file_dialog: FileDialog = null
+var selected_photo_bytes: PackedByteArray = PackedByteArray()
+var selected_photo_filename: String = ""
+var selected_photo_content_type: String = ""
+var selected_photo_from_web: bool = false
+var web_photo_callback: Variant = null
+var photo_texture_cache: Dictionary = {}
+
+func _ready() -> void:
+	_setup_root()
+	_setup_web_photo_bridge()
+	cloud = CLOUD_SERVICE_SCRIPT.new()
+	add_child(cloud)
+	_load_save()
+	await _load_cloud_data()
+	if selected_role_key == "":
+		_show_role_select()
+	else:
+		_show_garden()
+
+func _load_cloud_data() -> void:
+	if cloud == null:
+		return
+
+	_show_toast("Loading family garden...")
+	var data: Dictionary = await cloud.load_family_data()
+	_apply_cloud_data(data)
+	cloud_load_finished = true
+	_save_game()
+
+
+func _apply_cloud_data(data: Dictionary) -> void:
+	var remote_places: Array = data.get("travel_places", [])
+	var remote_postcards: Array = data.get("postcards", [])
+	var remote_messages: Array = data.get("messages", [])
+	var remote_events: Array = data.get("mailbox_events", [])
+
+	var has_remote_content: bool = remote_places.size() > 0 or remote_postcards.size() > 0 or remote_messages.size() > 0
+
+	if has_remote_content:
+		travel_places = []
+		for raw_place in remote_places:
+			if raw_place is Dictionary:
+				var row: Dictionary = raw_place
+				var place_id: String = str(row.get("id", ""))
+				travel_places.append({
+					"id": place_id,
+					"title": str(row.get("title", "Untitled Place")),
+					"note": str(row.get("note", "")),
+					"x": float(row.get("map_x", 0.0)),
+					"y": float(row.get("map_y", 0.0)),
+					"postcard_id": "",
+					"created_by": "",
+					"role": "",
+					"photo_path": str(row.get("photo_path", ""))
+				})
+
+		postcards = []
+		for raw_postcard in remote_postcards:
+			if raw_postcard is Dictionary:
+				var row: Dictionary = raw_postcard
+				var postcard_id: String = str(row.get("id", ""))
+				var place_id: String = str(row.get("place_id", ""))
+				postcards.append({
+					"id": postcard_id,
+					"place_id": place_id,
+					"title": str(row.get("title", "New postcard")),
+					"message": str(row.get("message", "")),
+					"is_new": bool(row.get("is_new", false)),
+					"created_by": "",
+					"role": "",
+					"photo_path": str(row.get("photo_path", ""))
+				})
+
+		for place in travel_places:
+			var local_place_id: String = str(place.get("id", ""))
+			var linked_postcard: Dictionary = _find_postcard_by_place(local_place_id)
+			if not linked_postcard.is_empty():
+				place["postcard_id"] = str(linked_postcard.get("id", ""))
+
+		garden_messages = []
+		for raw_message in remote_messages:
+			if raw_message is Dictionary:
+				var row: Dictionary = raw_message
+				garden_messages.append({
+					"id": str(row.get("id", "")),
+					"author": str(row.get("author_name", "Family")),
+					"text": str(row.get("body", "")),
+					"created_at": str(row.get("created_at", "")),
+					"role": ""
+				})
+
+	var has_unread_letter: bool = false
+	var has_unread_dot: bool = false
+	for raw_event in remote_events:
+		if raw_event is Dictionary:
+			var event_row: Dictionary = raw_event
+			if not bool(event_row.get("is_read", true)):
+				if str(event_row.get("type", "")) == "postcard":
+					has_unread_letter = true
+				else:
+					has_unread_dot = true
+
+	if has_unread_letter or _count_unread_postcards() > 0:
+		_set_mailbox_alert(MAILBOX_ALERT_LETTER)
+	elif has_unread_dot:
+		_set_mailbox_alert(MAILBOX_ALERT_DOT)
+	else:
+		_clear_mailbox_alert()
+
+func _setup_root() -> void:
+	world = Node2D.new()
+	world.name = "World"
+	add_child(world)
+
+	ui_layer = CanvasLayer.new()
+	ui_layer.name = "UI"
+	add_child(ui_layer)
+	_build_ui()
+
+func _build_ui() -> void:
+	var root := Control.new()
+	root.name = "UIRoot"
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(root)
+
+	info_label = Label.new()
+	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_label.text = "Family Garden"
+	info_label.position = Vector2(18, 14)
+	info_label.size = Vector2(760, 32)
+	info_label.add_theme_font_size_override("font_size", 20)
+	info_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
+	root.add_child(info_label)
+
+	var help := Label.new()
+	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	help.text = "WASD / Arrow keys: move   |   Click objects: interact"
+	help.position = Vector2(18, 45)
+	help.size = Vector2(920, 24)
+	help.add_theme_font_size_override("font_size", 13)
+	help.modulate = Color(0.25, 0.22, 0.18, 0.85)
+	root.add_child(help)
+
+	# Bottom navigation. Kept compact and centered under the garden.
+	_add_button(root, "Tree", Vector2(250, 672), Vector2(82, 32), "family_tree")
+	_add_button(root, "Sign", Vector2(342, 672), Vector2(90, 32), "message_board")
+	_add_button(root, "Map", Vector2(442, 672), Vector2(76, 32), "travel_map")
+	_add_button(root, "Postcards", Vector2(528, 672), Vector2(120, 32), "postcards")
+	_add_button(root, "Save", Vector2(658, 672), Vector2(78, 32), "save")
+	_add_button(root, "Role", Vector2(746, 672), Vector2(82, 32), "role_select")
+	_add_button(root, "Back Garden", Vector2(838, 672), Vector2(126, 32), "back_garden")
+
+func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
+	var button := Button.new()
+	button.text = button_text
+	button.position = pos
+	button.size = button_size
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.pressed.connect(_on_ui_button.bind(action))
+	_apply_button_style(button, action == "toggle_plant" and plant_mode)
+	_set_button_icon(button, _icon_key_for_action(action))
+	root.add_child(button)
+	return button
+
+func _on_ui_button(action: String) -> void:
+	match action:
+		"family_tree":
+			_open_family_tree_panel()
+		"message_board":
+			_open_message_board_panel()
+		"role_select":
+			_show_role_select()
+		"toggle_plant":
+			plant_mode = not plant_mode
+			_update_plant_button()
+		"travel_map":
+			_show_travel_map()
+		"postcards":
+			_open_postcards_panel()
+		"save":
+			_save_game()
+			_show_toast("Saved.")
+		"back_garden":
+			_show_garden()
+		"reset":
+			_show_toast("Reset is disabled in the online version.")
+
+func _show_role_select() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	_clear_world()
+	mode = "role_select"
+	info_label.text = "Choose your character"
+	_add_background()
+
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(150, 82)
+	panel.size = Vector2(980, 550)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "Who are you in the garden?"
+	title.position = Vector2(40, 28)
+	title.size = Vector2(900, 40)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Choose one family member as yourself. The others will stay in the garden as visitors."
+	subtitle.position = Vector2(70, 72)
+	subtitle.size = Vector2(840, 28)
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 15)
+	subtitle.add_theme_color_override("font_color", Color(0.35, 0.29, 0.22, 0.88))
+	panel.add_child(subtitle)
+
+	var name_label := Label.new()
+	name_label.text = "Display name"
+	name_label.position = Vector2(360, 112)
+	name_label.size = Vector2(260, 22)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 15)
+	name_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(name_label)
+
+	var name_input := LineEdit.new()
+	name_input.placeholder_text = "Your name"
+	name_input.text = player_display_name if player_display_name != "" else "Peilin"
+	name_input.position = Vector2(350, 140)
+	name_input.size = Vector2(280, 38)
+	panel.add_child(name_input)
+
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.position = Vector2(75, 205)
+	grid.size = Vector2(830, 300)
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 18)
+	panel.add_child(grid)
+
+	for i in range(CHARACTER_DATA.size()):
+		var role_data: Dictionary = CHARACTER_DATA[i]
+		_add_role_card(grid, role_data, Vector2.ZERO, Vector2(185, 260), name_input)
+
+func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_size: Vector2, name_input: LineEdit) -> void:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = card_size
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# If parent is an absolute-positioned panel, keep compatibility with the old pos argument.
+	# If parent is a GridContainer, the container will ignore position and lay the card out cleanly.
+	if parent is GridContainer:
+		pass
+	else:
+		card.position = pos
+		card.size = card_size
+
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = Color(1.0, 0.94, 0.80, 0.96)
+	card_style.border_color = Color(0.62, 0.44, 0.25, 1.0)
+	card_style.set_border_width_all(2)
+	card_style.set_corner_radius_all(14)
+	card_style.shadow_color = Color(0.20, 0.12, 0.06, 0.20)
+	card_style.shadow_size = 7
+	card.add_theme_stylebox_override("panel", card_style)
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	card.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 7)
+	margin.add_child(vbox)
+
+	var texture := _safe_texture(str(ASSETS.get(str(role_data.get("asset", "girl")), "")))
+	var preview := TextureRect.new()
+	preview.custom_minimum_size = Vector2(112, 118)
+	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if texture:
+		preview.texture = _make_character_preview_texture(texture)
+	vbox.add_child(preview)
+
+	var label := Label.new()
+	label.text = str(role_data.get("label", "Family"))
+	label.custom_minimum_size = Vector2(card_size.x - 34, 24)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", Color(0.25, 0.20, 0.15, 1.0))
+	vbox.add_child(label)
+
+	var default_name := Label.new()
+	default_name.text = str(role_data.get("default_name", "Family"))
+	default_name.custom_minimum_size = Vector2(card_size.x - 34, 20)
+	default_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	default_name.add_theme_font_size_override("font_size", 13)
+	default_name.add_theme_color_override("font_color", Color(0.42, 0.34, 0.25, 0.86))
+	vbox.add_child(default_name)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(1, 4)
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(spacer)
+
+	var choose_btn := Button.new()
+	choose_btn.text = "Choose"
+	choose_btn.custom_minimum_size = Vector2(112, 32)
+	choose_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	choose_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(choose_btn, false)
+	choose_btn.pressed.connect(_confirm_role_selection.bind(str(role_data.get("role", "girl")), name_input))
+	vbox.add_child(choose_btn)
+
+func _make_character_preview_texture(source: Texture2D) -> Texture2D:
+	var atlas := AtlasTexture.new()
+	var frame_w: float = float(source.get_width()) / 3.0
+	var frame_h: float = float(source.get_height()) / 4.0
+	atlas.atlas = source
+	atlas.region = Rect2(Vector2(frame_w, 0.0), Vector2(frame_w, frame_h))
+	return atlas
+
+
+func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
+	selected_role_key = role_key
+	player_display_name = name_input.text.strip_edges()
+	if player_display_name == "":
+		player_display_name = _default_name_for_role(role_key)
+	_save_game()
+	_close_active_panel()
+	_show_garden()
+
+
+func _default_name_for_role(role_key: String) -> String:
+	var role_data := _get_role_data(role_key)
+	if role_data.is_empty():
+		return "Family"
+	return str(role_data.get("default_name", "Family"))
+
+
+func _get_role_data(role_key: String) -> Dictionary:
+	for role_data in CHARACTER_DATA:
+		if str(role_data.get("role", "")) == role_key:
+			return role_data
+	return {}
+
+
+func _current_player_asset_key() -> String:
+	var role_data := _get_role_data(selected_role_key)
+	if role_data.is_empty():
+		return "girl"
+	return str(role_data.get("asset", "girl"))
+
+
+func _update_plant_button() -> void:
+	if plant_button:
+		plant_button.text = "Plant: ON" if plant_mode else "Plant: OFF"
+		_apply_button_style(plant_button, plant_mode)
+
+func _show_garden() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "garden"
+	adding_place = false
+	_clear_world()
+	info_label.text = "Family Garden"
+	_add_background()
+	_add_collision_zones()
+	_add_houses()
+	_add_core_objects()
+	_add_npcs()
+	_add_animals()
+	_add_player(Vector2(650, 405))
+	_rebuild_plants()
+
+func _clear_world() -> void:
+	for child in world.get_children():
+		child.queue_free()
+	plant_nodes.clear()
+
+func _clear_map_ui() -> void:
+	adding_place = false
+	if map_ui != null and is_instance_valid(map_ui):
+		map_ui.queue_free()
+	map_ui = null
+
+func _add_background() -> void:
+	var texture := _safe_texture(ASSETS["background"])
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.name = "SharedGardenBackground"
+	sprite.centered = true
+	sprite.position = GAME_SIZE / 2.0
+	if texture:
+		sprite.texture = texture
+		var scale_factor = max(GAME_SIZE.x / float(texture.get_width()), GAME_SIZE.y / float(texture.get_height()))
+		sprite.scale = Vector2.ONE * scale_factor
+	else:
+		sprite.texture = _solid_texture(1280, 720, Color(0.72, 0.86, 0.62, 1.0))
+	world.add_child(sprite)
+
+func _add_core_objects() -> void:
+	_add_interactable_sprite(
+		"family_tree",
+		ASSETS["tree"],
+		Vector2(645, 280),
+		390.0,
+		"tree",
+		"Family Tree",
+		Vector2(190, 170),
+		Vector2(0, 95)
+	)
+	# The mailbox is painted in the garden background. This invisible hotspot makes it interactive.
+	_add_mailbox_hotspot(Vector2(402, 104), Vector2(120, 120))
+	# The wooden board in the lower-right background acts as an invisible message-board button.
+	_add_message_board_hotspot(Vector2(1162, 584), Vector2(190, 120))
+
+func _add_mailbox_hotspot(pos: Vector2, hotspot_size: Vector2) -> void:
+	var area := Area2D.new()
+	area.name = "MailboxHotspot"
+	area.position = pos
+	area.z_index = 120
+	area.input_pickable = true
+	area.monitoring = true
+	area.monitorable = true
+
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = hotspot_size
+	shape.shape = rect
+	area.add_child(shape)
+	area.input_event.connect(_on_mailbox_hotspot_input)
+	world.add_child(area)
+
+	mailbox_badge = Sprite2D.new()
+	mailbox_badge.name = "MailboxBadge"
+	mailbox_badge.centered = true
+	mailbox_badge.position = pos + Vector2(5, -10)
+	mailbox_badge.z_index = 220
+	mailbox_badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	world.add_child(mailbox_badge)
+	_render_mailbox_badge()
+
+func _normalize_mailbox_alert(state: String) -> String:
+	if state == MAILBOX_ALERT_LETTER or state == MAILBOX_ALERT_DOT or state == MAILBOX_ALERT_NONE:
+		return state
+	return MAILBOX_ALERT_NONE
+
+func _set_mailbox_alert(state: String) -> void:
+	mailbox_alert_state = _normalize_mailbox_alert(state)
+	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+	_render_mailbox_badge()
+
+func _notify_new_postcard() -> void:
+	# Letter alerts have the highest priority because they mean a concrete postcard/mail item arrived.
+	_set_mailbox_alert(MAILBOX_ALERT_LETTER)
+
+func _notify_family_activity() -> void:
+	# Ordinary family activity uses a subtle red dot, unless a stronger letter alert is already present.
+	if mailbox_alert_state != MAILBOX_ALERT_LETTER:
+		_set_mailbox_alert(MAILBOX_ALERT_DOT)
+
+func _clear_mailbox_alert() -> void:
+	_set_mailbox_alert(MAILBOX_ALERT_NONE)
+
+func _render_mailbox_badge() -> void:
+	if not is_instance_valid(mailbox_badge):
+		return
+	if mailbox_alert_state == MAILBOX_ALERT_NONE:
+		mailbox_badge.visible = false
+		return
+
+	mailbox_badge.visible = true
+	var badge_path: String = str(ASSETS["mailbox_badge_letter"] if mailbox_alert_state == MAILBOX_ALERT_LETTER else ASSETS["mailbox_badge_dot"])
+	var badge_texture: Texture2D = _safe_texture(badge_path)
+	if badge_texture:
+		mailbox_badge.texture = badge_texture
+		var target_height: float = 42.0 if mailbox_alert_state == MAILBOX_ALERT_LETTER else 28.0
+		mailbox_badge.scale = Vector2.ONE * (target_height / float(badge_texture.get_height()))
+	else:
+		mailbox_badge.texture = _solid_texture(28, 28, Color(0.95, 0.10, 0.08, 1.0))
+		mailbox_badge.scale = Vector2.ONE
+
+func _on_mailbox_hotspot_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_open_mailbox_panel()
+
+func _add_message_board_hotspot(pos: Vector2, hotspot_size: Vector2) -> void:
+	var area := Area2D.new()
+	area.name = "MessageBoardHotspot"
+	area.position = pos
+	area.z_index = 120
+	area.input_pickable = true
+	area.monitoring = true
+	area.monitorable = true
+
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = hotspot_size
+	shape.shape = rect
+	area.add_child(shape)
+	area.input_event.connect(_on_message_board_hotspot_input)
+	world.add_child(area)
+
+func _on_message_board_hotspot_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_open_message_board_panel()
+
+func _add_houses() -> void:
+	for house in HOUSE_DATA:
+		_add_interactable_sprite(
+			"house_" + str(house["id"]),
+			ASSETS[str(house["asset"])],
+			house["pos"],
+			house["height"],
+			"house:" + str(house["id"]),
+			str(house["label"])
+		)
+
+func _add_npcs() -> void:
+	for role_data in CHARACTER_DATA:
+		var role_key := str(role_data.get("role", ""))
+		if role_key == selected_role_key:
+			continue
+		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
+		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
+		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false)
+		npc_body.name = "NPC_" + role_key
+		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
+		npc_body.set("home_position", npc_pos)
+		npc_body.set("wander_radius", float(role_data.get("wander_radius", 80.0)))
+		npc_body.set("move_speed", 34.0)
+		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
+		npc_body.call_deferred("set_blocked_rects", _get_character_blocked_rects())
+		world.add_child(npc_body)
+		_add_online_status_badge(npc_body, false)
+		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
+
+func _add_animals() -> void:
+	animal_nodes.clear()
+	for animal_data in ANIMAL_DATA:
+		var animal := preload("res://scripts/animal.gd").new()
+		animal.setup({
+			"id": str(animal_data.get("id", "animal")),
+			"name": str(animal_data.get("name", "Animal")),
+			"texture_path": ASSETS[str(animal_data.get("asset", ""))],
+			"home_position": animal_data.get("pos", Vector2(640, 360)),
+			"target_height": float(animal_data.get("height", 48.0)),
+			"hframes": int(animal_data.get("hframes", 1)),
+			"vframes": int(animal_data.get("vframes", 1)),
+			"wander_radius": float(animal_data.get("wander_radius", 40.0)),
+			"move_speed": float(animal_data.get("move_speed", 18.0)),
+			"frames": animal_data.get("frames", {}),
+			"bounds": _get_animal_bounds(),
+			"blocked_rects": _get_animal_blocked_rects()
+		})
+		world.add_child(animal)
+		animal_nodes[str(animal_data.get("id", "animal"))] = animal
+		_add_click_area(
+			animal,
+			Vector2(float(animal_data.get("height", 48.0)) * 1.15, float(animal_data.get("height", 48.0)) * 0.9),
+			"animal:" + str(animal_data.get("id", "animal")),
+			str(animal_data.get("name", "Animal")),
+			Vector2(0, -float(animal_data.get("height", 48.0)) * 0.18)
+		)
+
+func _get_animal_bounds() -> Rect2:
+	# Animals may wander more naturally, but stay inside the garden play area.
+	return Rect2(Vector2(45, 105), Vector2(1185, 545))
+
+func _get_animal_blocked_rects() -> Array:
+	# Approximate no-walk zones for animals: water, buildings, fences, tree trunk, dense flowerbeds.
+	# These are deliberately a little larger than player collision, so animals avoid visually awkward areas.
+	return [
+		Rect2(Vector2(350, 420), Vector2(205, 115)), # left river curve
+		Rect2(Vector2(500, 500), Vector2(145, 80)), # river lower left
+		Rect2(Vector2(735, 500), Vector2(205, 85)), # river lower right
+		Rect2(Vector2(845, 460), Vector2(145, 105)), # right river curve
+		Rect2(Vector2(575, 305), Vector2(165, 165)), # family tree trunk/root
+		Rect2(Vector2(230, 280), Vector2(210, 220)), # gazebo
+		Rect2(Vector2(55, 35), Vector2(210, 190)), # upper-left house
+		Rect2(Vector2(1040, 50), Vector2(210, 190)), # upper-right house
+		Rect2(Vector2(35, 355), Vector2(205, 140)), # left middle house
+		Rect2(Vector2(35, 515), Vector2(210, 170)), # left lower house
+		Rect2(Vector2(900, 640), Vector2(350, 95)), # bottom fence / edge
+		Rect2(Vector2(1085, 360), Vector2(95, 205)), # right fence area
+		Rect2(Vector2(660, 80), Vector2(540, 70)), # upper fence
+		Rect2(Vector2(430, 250), Vector2(135, 120)), # central flowerbed left
+		Rect2(Vector2(765, 215), Vector2(290, 125)), # flowerbed / bench area
+		Rect2(Vector2(910, 390), Vector2(210, 165)), # right flower garden
+		Rect2(Vector2(375, 535), Vector2(155, 130)) # lower-left flower strip
+	]
+
+func _get_character_blocked_rects() -> Array:
+	return [
+		Rect2(Vector2(350, 420), Vector2(205, 115)),
+		Rect2(Vector2(500, 500), Vector2(145, 80)),
+		Rect2(Vector2(735, 500), Vector2(205, 85)),
+		Rect2(Vector2(845, 460), Vector2(145, 105)),
+		Rect2(Vector2(575, 305), Vector2(165, 165)),
+		Rect2(Vector2(230, 280), Vector2(210, 220)),
+		Rect2(Vector2(55, 35), Vector2(210, 190)),
+		Rect2(Vector2(1040, 50), Vector2(210, 190)),
+		Rect2(Vector2(35, 355), Vector2(205, 140)),
+		Rect2(Vector2(35, 515), Vector2(210, 170)),
+		Rect2(Vector2(900, 640), Vector2(350, 95)),
+		Rect2(Vector2(1085, 360), Vector2(95, 205)),
+		Rect2(Vector2(660, 80), Vector2(540, 70)),
+	]
+
+func _add_collision_zones() -> void:
+	# MVP collision zones. They are intentionally approximate rectangles.
+	# If a zone feels too restrictive, adjust its center/size here.
+	_add_collision_rect("border_top", Vector2(640, -18), Vector2(1320, 36))
+	_add_collision_rect("border_bottom", Vector2(640, 738), Vector2(1320, 36))
+	_add_collision_rect("border_left", Vector2(-18, 360), Vector2(36, 760))
+	_add_collision_rect("border_right", Vector2(1298, 360), Vector2(36, 760))
+
+	# Water / bridge area: leave the bridge passable, block the main river curves.
+	_add_collision_rect("water_left", Vector2(428, 470), Vector2(150, 110))
+	_add_collision_rect("water_mid_left", Vector2(520, 530), Vector2(125, 58))
+	_add_collision_rect("water_mid_right", Vector2(770, 530), Vector2(150, 60))
+	_add_collision_rect("water_right", Vector2(895, 515), Vector2(120, 88))
+
+	# Large objects. Character collision is only around feet, so these feel soft.
+	_add_collision_rect("family_tree_trunk", Vector2(645, 375), Vector2(135, 120))
+	_add_collision_rect("gazebo", Vector2(320, 395), Vector2(170, 175))
+
+	# Houses. The visual sprites remain clickable; these bodies prevent walking through them.
+	for house in HOUSE_DATA:
+		var pos: Vector2 = house.get("pos", Vector2.ZERO)
+		var height: float = float(house.get("height", 160.0))
+		_add_collision_rect("house_collision_" + str(house.get("id", "house")), pos + Vector2(0, height * 0.10), Vector2(height * 0.86, height * 0.50))
+
+	# A few fence / edge blocks. These are approximate and can be tuned later.
+	_add_collision_rect("bottom_fence", Vector2(920, 655), Vector2(360, 70))
+	_add_collision_rect("right_fence", Vector2(1122, 438), Vector2(52, 170))
+	_add_collision_rect("upper_fence", Vector2(777, 97), Vector2(500, 50))
+
+func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> StaticBody2D:
+	var body := StaticBody2D.new()
+	body.name = body_name
+	body.position = center
+	body.z_index = -20
+
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = size
+	shape.shape = rect
+	body.add_child(shape)
+	world.add_child(body)
+	return body
+
+func _add_player(pos: Vector2) -> void:
+	var asset_key := _current_player_asset_key()
+	var display_name := player_display_name if player_display_name != "" else _default_name_for_role(selected_role_key)
+	player = _create_character(display_name, ASSETS[asset_key], pos, true)
+	player.name = "Player_" + selected_role_key
+	world.add_child(player)
+	_add_online_status_badge(player, true)
+
+
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool) -> CharacterBody2D:
+	var body := CharacterBody2D.new()
+	body.position = pos
+	body.z_index = int(pos.y)
+	body.collision_layer = 1
+	body.collision_mask = 1
+
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.name = "Sprite2D"
+	var texture := _safe_texture(path)
+	if texture:
+		sprite.texture = texture
+		sprite.hframes = 3
+		sprite.vframes = 4
+		sprite.frame = 1
+		var frame_height := float(texture.get_height()) / 4.0
+		if frame_height > 0.0:
+			sprite.scale = Vector2.ONE * (82.0 / frame_height)
+	else:
+		sprite.texture = _solid_texture(32, 48, Color(0.92, 0.80, 0.62, 1.0))
+		sprite.scale = Vector2(1.6, 1.6)
+	body.add_child(sprite)
+
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(28, 22)
+	shape.shape = rect
+	shape.position = Vector2(0, 18)
+	body.add_child(shape)
+
+	if controllable:
+		body.set_script(preload("res://scripts/player.gd"))
+
+	var name_label := Label.new()
+	name_label.text = label_text
+	name_label.position = Vector2(-52, -78)
+	name_label.size = Vector2(104, 18)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
+	body.add_child(name_label)
+
+	return body
+
+
+func _add_online_status_badge(parent: Node2D, online: bool) -> void:
+	var dot := Label.new()
+	dot.name = "OnlineStatus"
+	dot.text = "●"
+	dot.position = Vector2(34, -79)
+	dot.size = Vector2(20, 18)
+	dot.add_theme_font_size_override("font_size", 14)
+	dot.add_theme_color_override("font_color", Color(0.22, 0.78, 0.36, 1.0) if online else Color(0.55, 0.52, 0.48, 0.88))
+	parent.add_child(dot)
+
+func _add_static_sprite(node_name: String, path: String, pos: Vector2, target_height: float) -> Sprite2D:
+	var texture := _safe_texture(path)
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.name = node_name
+	sprite.centered = true
+	sprite.position = pos
+	sprite.z_index = int(pos.y + target_height * 0.35)
+	if texture:
+		sprite.texture = texture
+		var scale_factor := target_height / float(texture.get_height())
+		sprite.scale = Vector2.ONE * scale_factor
+	else:
+		sprite.texture = _solid_texture(96, 64, Color(0.95, 0.83, 0.58, 1.0))
+	world.add_child(sprite)
+	return sprite
+
+func _add_interactable_sprite(
+	node_name: String,
+	path: String,
+	pos: Vector2,
+	target_height: float,
+	action: String,
+	label_text: String,
+	click_size: Vector2 = Vector2.ZERO,
+	click_offset: Vector2 = Vector2.ZERO
+) -> Node2D:
+	var root := Node2D.new()
+	root.name = node_name
+	root.position = pos
+	# Draw order is based on the object base: lower objects appear in front.
+	root.z_index = int(pos.y + target_height * 0.35)
+	world.add_child(root)
+
+	var texture := _safe_texture(path)
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	var sprite_size := Vector2(80, 80)
+	if texture:
+		sprite.texture = texture
+		var scale_factor := target_height / float(texture.get_height())
+		sprite.scale = Vector2.ONE * scale_factor
+		sprite_size = Vector2(texture.get_width() * scale_factor, texture.get_height() * scale_factor)
+	else:
+		sprite.texture = _solid_texture(120, 90, Color(0.94, 0.84, 0.64, 1.0))
+		sprite_size = Vector2(120, 90)
+	root.add_child(sprite)
+
+	var final_click_size := click_size
+	if final_click_size == Vector2.ZERO:
+		final_click_size = sprite_size
+	_add_click_area(root, final_click_size, action, label_text, click_offset)
+	return root
+
+func _add_click_area(parent: Node2D, area_size: Vector2, action: String, label_text: String, offset: Vector2 = Vector2.ZERO) -> void:
+	var area := Area2D.new()
+	area.name = "ClickArea"
+	area.position = offset
+	area.input_pickable = true
+	area.monitoring = true
+	area.monitorable = true
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = area_size
+	shape.shape = rect
+	area.add_child(shape)
+	area.input_event.connect(_on_interactable_input.bind(action, label_text))
+	parent.add_child(area)
+
+func _on_interactable_input(_viewport: Node, event: InputEvent, _shape_idx: int, action: String, label_text: String) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_handle_action(action, label_text)
+
+func _handle_action(action: String, label_text: String) -> void:
+	if action == "tree":
+		_open_family_tree_panel()
+	elif action.begins_with("house:"):
+		var house_id := action.split(":")[1]
+		_enter_house(house_id, label_text)
+	elif action.begins_with("npc:"):
+		var npc_id := action.split(":")[1]
+		_open_npc_dialog(npc_id, label_text)
+	elif action.begins_with("place:"):
+		var place_id := action.split(":")[1]
+		_open_postcard_for_place(place_id)
+	elif action.begins_with("animal:"):
+		var animal_id := action.split(":")[1]
+		_open_animal_dialog(animal_id, label_text)
+
+func _enter_house(id: String, label_text: String) -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+
+	mode = "room"
+	adding_place = false
+	_clear_world()
+	plant_mode = false
+	_update_plant_button()
+
+	var room_info: Dictionary = _get_room_data(id)
+	var room_label: String = str(room_info.get("label", label_text))
+	info_label.text = room_label
+
+	var room_rect: Rect2 = _add_room_background(str(room_info.get("asset", "")))
+	_add_room_collision_zones(id, room_rect)
+
+	var spawn: Vector2 = room_info.get("spawn", Vector2(640, 560))
+	_add_player(spawn)
+
+	# Optional true occlusion layer:
+	# If you later add assets/rooms/papa_room_fg.png etc., it will be drawn above the player.
+	_add_room_foreground_if_exists(str(room_info.get("foreground", "")), room_rect)
+	_add_room_hint_panel(room_label, id)
+
+
+func _get_room_data(house_id: String) -> Dictionary:
+	if ROOM_DATA.has(house_id):
+		return ROOM_DATA[house_id]
+
+	return {
+		"label": "Family Room",
+		"asset": "",
+		"foreground": "",
+		"spawn": Vector2(640, 560),
+	}
+
+
+func _add_room_background(asset_key: String) -> Rect2:
+	var backdrop := Sprite2D.new()
+	backdrop.name = "RoomBackdrop"
+	backdrop.texture = _solid_texture(int(GAME_SIZE.x), int(GAME_SIZE.y), Color(0.72, 0.66, 0.54, 1.0))
+	backdrop.centered = true
+	backdrop.position = GAME_SIZE / 2.0
+	backdrop.z_index = -100
+	world.add_child(backdrop)
+
+	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
+	var room_sprite := Sprite2D.new()
+	room_sprite.name = "RoomBackground"
+	room_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	room_sprite.centered = true
+	room_sprite.position = GAME_SIZE / 2.0
+	room_sprite.z_index = -80
+
+	var room_rect := Rect2(Vector2.ZERO, GAME_SIZE)
+	if texture:
+		room_sprite.texture = texture
+		var scale_factor: float = minf(GAME_SIZE.x / float(texture.get_width()), GAME_SIZE.y / float(texture.get_height()))
+		room_sprite.scale = Vector2.ONE * scale_factor
+		var displayed_size := Vector2(float(texture.get_width()), float(texture.get_height())) * scale_factor
+		room_rect = Rect2((GAME_SIZE - displayed_size) * 0.5, displayed_size)
+	else:
+		room_sprite.texture = _solid_texture(1280, 720, Color(0.95, 0.89, 0.78, 1.0))
+
+	world.add_child(room_sprite)
+	return room_rect
+
+
+func _add_room_foreground_if_exists(foreground_asset_key: String, room_rect: Rect2) -> void:
+	var foreground_path := str(ASSETS.get(foreground_asset_key, ""))
+	if foreground_path == "" or not ResourceLoader.exists(foreground_path):
+		return
+
+	var texture := _safe_texture(foreground_path)
+	if texture == null:
+		return
+
+	var sprite := Sprite2D.new()
+	sprite.name = "RoomForeground"
+	sprite.texture = texture
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.position = room_rect.position + room_rect.size * 0.5
+	sprite.z_index = 10000
+	var scale_factor: float = minf(room_rect.size.x / float(texture.get_width()), room_rect.size.y / float(texture.get_height()))
+	sprite.scale = Vector2.ONE * scale_factor
+	world.add_child(sprite)
+
+
+func _add_room_hint_panel(room_label: String, house_id: String) -> void:
+	var panel := Panel.new()
+	room_card = panel
+	panel.position = Vector2(22, 86)
+	panel.size = Vector2(292, 156)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	ui_layer.add_child(panel)
+
+	var title := Label.new()
+	title.text = room_label
+	title.position = Vector2(18, 14)
+	title.size = Vector2(250, 28)
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var body := Label.new()
+	body.text = "Walk around the room.
+Use Back Garden to return."
+	body.position = Vector2(18, 48)
+	body.size = Vector2(250, 42)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_size_override("font_size", 13)
+	body.add_theme_color_override("font_color", Color(0.36, 0.30, 0.23, 0.90))
+	panel.add_child(body)
+
+	_add_panel_button(panel, "Note", Vector2(18, 104), Vector2(78, 34), "house_note:" + house_id)
+	_add_panel_button(panel, "Cards", Vector2(106, 104), Vector2(82, 34), "postcards")
+	_add_panel_button(panel, "Back", Vector2(198, 104), Vector2(76, 34), "back_garden")
+
+
+func _add_room_collision_zones(room_id: String, room_rect: Rect2) -> void:
+	# Block the empty area outside the visible room image.
+	_add_room_outer_boundaries(room_rect)
+
+	# Common wall strips inside the room.
+	_add_room_block(room_rect, "room_top_wall", Rect2(Vector2(0.00, 0.00), Vector2(1.00, 0.08)))
+	_add_room_block(room_rect, "room_bottom_wall", Rect2(Vector2(0.00, 0.965), Vector2(1.00, 0.04)))
+	_add_room_block(room_rect, "room_left_wall", Rect2(Vector2(0.00, 0.00), Vector2(0.025, 1.00)))
+	_add_room_block(room_rect, "room_right_wall", Rect2(Vector2(0.975, 0.00), Vector2(0.025, 1.00)))
+
+	match room_id:
+		"father":
+			_add_room_block(room_rect, "papa_bed", Rect2(Vector2(0.05, 0.06), Vector2(0.35, 0.24)))
+			_add_room_block(room_rect, "papa_shelf", Rect2(Vector2(0.45, 0.07), Vector2(0.38, 0.13)))
+			_add_room_block(room_rect, "papa_bath", Rect2(Vector2(0.05, 0.70), Vector2(0.32, 0.22)))
+			_add_room_block(room_rect, "papa_lower_furniture", Rect2(Vector2(0.55, 0.70), Vector2(0.35, 0.22)))
+			_add_room_block(room_rect, "papa_side_stairs", Rect2(Vector2(0.44, 0.38), Vector2(0.12, 0.24)))
+		"mother":
+			_add_room_block(room_rect, "mama_bed", Rect2(Vector2(0.05, 0.05), Vector2(0.28, 0.25)))
+			_add_room_block(room_rect, "mama_greenhouse", Rect2(Vector2(0.58, 0.04), Vector2(0.34, 0.28)))
+			_add_room_block(room_rect, "mama_lower_bath", Rect2(Vector2(0.05, 0.70), Vector2(0.28, 0.22)))
+			_add_room_block(room_rect, "mama_wardrobe", Rect2(Vector2(0.65, 0.45), Vector2(0.28, 0.22)))
+		"partner":
+			_add_room_block(room_rect, "louis_camera_wall", Rect2(Vector2(0.04, 0.06), Vector2(0.44, 0.22)))
+			_add_room_block(room_rect, "louis_greenhouse", Rect2(Vector2(0.56, 0.05), Vector2(0.38, 0.24)))
+			_add_room_block(room_rect, "louis_bed", Rect2(Vector2(0.04, 0.62), Vector2(0.30, 0.23)))
+			_add_room_block(room_rect, "louis_bath", Rect2(Vector2(0.76, 0.62), Vector2(0.20, 0.25)))
+		"player":
+			_add_room_block(room_rect, "anna_study", Rect2(Vector2(0.04, 0.05), Vector2(0.38, 0.25)))
+			_add_room_block(room_rect, "anna_bed", Rect2(Vector2(0.72, 0.06), Vector2(0.24, 0.25)))
+			_add_room_block(room_rect, "anna_kitchen", Rect2(Vector2(0.04, 0.62), Vector2(0.32, 0.26)))
+			_add_room_block(room_rect, "anna_sofa", Rect2(Vector2(0.68, 0.54), Vector2(0.27, 0.25)))
+			_add_room_block(room_rect, "anna_stairs", Rect2(Vector2(0.42, 0.34), Vector2(0.17, 0.24)))
+		_:
+			pass
+
+
+func _add_room_outer_boundaries(room_rect: Rect2) -> void:
+	var margin: float = 80.0
+
+	if room_rect.position.y > 0.0:
+		_add_collision_rect("room_outside_top", Vector2(GAME_SIZE.x * 0.5, room_rect.position.y * 0.5), Vector2(GAME_SIZE.x + margin, room_rect.position.y + margin))
+
+	var bottom_h: float = GAME_SIZE.y - room_rect.end.y
+	if bottom_h > 0.0:
+		_add_collision_rect("room_outside_bottom", Vector2(GAME_SIZE.x * 0.5, room_rect.end.y + bottom_h * 0.5), Vector2(GAME_SIZE.x + margin, bottom_h + margin))
+
+	if room_rect.position.x > 0.0:
+		_add_collision_rect("room_outside_left", Vector2(room_rect.position.x * 0.5, GAME_SIZE.y * 0.5), Vector2(room_rect.position.x + margin, GAME_SIZE.y + margin))
+
+	var right_w: float = GAME_SIZE.x - room_rect.end.x
+	if right_w > 0.0:
+		_add_collision_rect("room_outside_right", Vector2(room_rect.end.x + right_w * 0.5, GAME_SIZE.y * 0.5), Vector2(right_w + margin, GAME_SIZE.y + margin))
+
+
+func _add_room_block(room_rect: Rect2, block_name: String, normalized_rect: Rect2) -> void:
+	var center := room_rect.position + Vector2(
+		(normalized_rect.position.x + normalized_rect.size.x * 0.5) * room_rect.size.x,
+		(normalized_rect.position.y + normalized_rect.size.y * 0.5) * room_rect.size.y
+	)
+	var size := Vector2(
+		normalized_rect.size.x * room_rect.size.x,
+		normalized_rect.size.y * room_rect.size.y
+	)
+	_add_collision_rect(block_name, center, size)
+
+
+func _remove_room_card_and_back(card: Panel) -> void:
+	if card != null and is_instance_valid(card):
+		card.queue_free()
+	room_card = null
+	_show_garden()
+
+func _show_travel_map() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "map"
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = "Travel Map"
+	_add_travel_map_background()
+	_rebuild_travel_pins()
+	_build_map_ui()
+
+func _add_travel_map_background() -> void:
+	var texture := _safe_texture(ASSETS["travel_map"])
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.name = "TravelMapBackground"
+	sprite.position = GAME_SIZE / 2.0
+	if texture:
+		sprite.texture = texture
+		var scale_factor = max(GAME_SIZE.x / float(texture.get_width()), GAME_SIZE.y / float(texture.get_height()))
+		sprite.scale = Vector2.ONE * scale_factor
+	else:
+		sprite.texture = _solid_texture(1280, 720, Color(0.80, 0.92, 0.92, 1.0))
+	world.add_child(sprite)
+
+func _build_map_ui() -> void:
+	map_ui = Control.new()
+	map_ui.name = "TravelMapUI"
+	map_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	map_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(map_ui)
+
+	var add_btn := Button.new()
+	add_btn.text = "Add Place"
+	add_btn.position = Vector2(1086, 24)
+	add_btn.size = Vector2(130, 38)
+	add_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(add_btn, false)
+	_set_button_icon(add_btn, "icon_add")
+	add_btn.pressed.connect(_start_add_place)
+	map_ui.add_child(add_btn)
+
+	var hint := Label.new()
+	hint.text = "Add memories by placing a pin on the map."
+	hint.position = Vector2(850, 68)
+	hint.size = Vector2(390, 24)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_color_override("font_color", Color(0.25, 0.22, 0.18, 0.85))
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_ui.add_child(hint)
+
+func _start_add_place() -> void:
+	_close_active_panel()
+	adding_place = true
+	_show_toast("Click a location on the travel map.")
+
+func _open_add_place_form(pos: Vector2) -> void:
+	adding_place = false
+	pending_place_position = pos
+	_reset_selected_photo_state()
+	_close_active_panel()
+
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(360, 125)
+	panel.size = Vector2(560, 470)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "Add a Place"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(492, 34)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var name_label := Label.new()
+	name_label.text = "City / place name"
+	name_label.position = Vector2(34, 76)
+	name_label.size = Vector2(492, 22)
+	name_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(name_label)
+
+	var title_input := LineEdit.new()
+	title_input.placeholder_text = "Zurich, Paris, Shanghai..."
+	title_input.position = Vector2(34, 102)
+	title_input.size = Vector2(492, 36)
+	panel.add_child(title_input)
+
+	var note_label := Label.new()
+	note_label.text = "Memory note"
+	note_label.position = Vector2(34, 150)
+	note_label.size = Vector2(492, 22)
+	note_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(note_label)
+
+	var note_input := TextEdit.new()
+	note_input.placeholder_text = "A quiet memory from this place..."
+	note_input.position = Vector2(34, 176)
+	note_input.size = Vector2(492, 92)
+	panel.add_child(note_input)
+
+	var photo_label_title := Label.new()
+	photo_label_title.text = "Photo"
+	photo_label_title.position = Vector2(34, 286)
+	photo_label_title.size = Vector2(492, 22)
+	photo_label_title.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(photo_label_title)
+
+	var choose_photo_button := Button.new()
+	choose_photo_button.text = "Choose Photo"
+	choose_photo_button.position = Vector2(34, 314)
+	choose_photo_button.size = Vector2(150, 38)
+	choose_photo_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(choose_photo_button, false)
+	_set_button_icon(choose_photo_button, "icon_camera")
+	choose_photo_button.pressed.connect(_choose_photo_for_place)
+	panel.add_child(choose_photo_button)
+
+	selected_photo_label = Label.new()
+	selected_photo_label.text = "No photo selected"
+	selected_photo_label.position = Vector2(198, 320)
+	selected_photo_label.size = Vector2(328, 28)
+	selected_photo_label.add_theme_font_size_override("font_size", 13)
+	selected_photo_label.add_theme_color_override("font_color", Color(0.43, 0.35, 0.27, 0.95))
+	panel.add_child(selected_photo_label)
+
+	var hint := Label.new()
+	hint.text = "Desktop uses FileDialog. Web uses browser photo picker."
+	hint.position = Vector2(34, 360)
+	hint.size = Vector2(492, 24)
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(0.45, 0.38, 0.30, 0.75))
+	panel.add_child(hint)
+
+	_add_panel_button(panel, "Save Place", Vector2(126, 404), Vector2(140, 40), "save_new_place", [title_input, note_input])
+	_add_panel_button(panel, "Cancel", Vector2(300, 404), Vector2(120, 40), "close")
+
+func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
+	var place_title: String = title_input.text.strip_edges()
+	if place_title == "":
+		place_title = "Untitled Place"
+	var place_note: String = note_input.text.strip_edges()
+	if place_note == "":
+		place_note = "A small memory arrived from this place."
+
+	var place_id: String = "place_" + str(Time.get_ticks_msec())
+	var postcard_id: String = "postcard_" + str(Time.get_ticks_msec())
+	var uploaded_photo_path: String = ""
+	print("[FamilyGarden] Save place photo state: from_web=", selected_photo_from_web, " bytes=", selected_photo_bytes.size(), " path=", selected_photo_path, " name=", selected_photo_filename, " type=", selected_photo_content_type)
+
+	if selected_photo_from_web and selected_photo_bytes.size() > 0:
+		if cloud != null:
+			_show_toast("Uploading photo...")
+			uploaded_photo_path = await cloud.upload_photo_bytes_with_name(
+				selected_photo_bytes,
+				selected_photo_filename,
+				place_title,
+				selected_photo_content_type
+			)
+			if uploaded_photo_path == "":
+				_show_toast("Photo upload failed. Saving without photo.")
+			else:
+				_show_toast("Photo uploaded.")
+		else:
+			_show_toast("Cloud is not ready. Saving without photo.")
+	elif selected_photo_path != "":
+		if cloud != null:
+			_show_toast("Uploading photo...")
+			uploaded_photo_path = await cloud.upload_photo_from_path(selected_photo_path, place_title)
+			if uploaded_photo_path == "":
+				_show_toast("Photo upload failed. Saving without photo.")
+			else:
+				_show_toast("Photo uploaded.")
+		else:
+			_show_toast("Cloud is not ready. Saving without photo.")
+
+	if cloud != null:
+		_show_toast("Saving to family cloud...")
+		var created: Dictionary = await cloud.create_place_with_postcard(
+			place_title,
+			place_note,
+			pending_place_position.x,
+			pending_place_position.y,
+			"",
+			uploaded_photo_path
+		)
+		if created.has("place") and created["place"] is Dictionary:
+			var cloud_place: Dictionary = created["place"]
+			if str(cloud_place.get("id", "")) != "":
+				place_id = str(cloud_place.get("id", ""))
+			if str(cloud_place.get("photo_path", "")) != "":
+				uploaded_photo_path = str(cloud_place.get("photo_path", ""))
+		if created.has("postcard") and created["postcard"] is Dictionary:
+			var cloud_postcard: Dictionary = created["postcard"]
+			if str(cloud_postcard.get("id", "")) != "":
+				postcard_id = str(cloud_postcard.get("id", ""))
+
+	var place := {
+		"id": place_id,
+		"title": place_title,
+		"note": place_note,
+		"x": pending_place_position.x,
+		"y": pending_place_position.y,
+		"postcard_id": postcard_id,
+		"created_by": player_display_name,
+		"role": selected_role_key,
+		"photo_path": uploaded_photo_path
+	}
+	travel_places.append(place)
+
+	var postcard := {
+		"id": postcard_id,
+		"place_id": place_id,
+		"title": "Postcard from " + place_title,
+		"message": place_note,
+		"is_new": true,
+		"created_by": player_display_name,
+		"role": selected_role_key,
+		"photo_path": uploaded_photo_path
+	}
+	postcards.append(postcard)
+	_notify_new_postcard()
+	_save_game()
+	_reset_selected_photo_state()
+	_close_active_panel()
+	_show_travel_map()
+	_show_toast("New postcard from " + place_title + ".")
+
+func _rebuild_travel_pins() -> void:
+	for place in travel_places:
+		_add_travel_pin(place)
+
+func _add_travel_pin(place: Dictionary) -> void:
+	var marker := Node2D.new()
+	marker.name = "Pin_" + str(place.get("id", ""))
+	marker.position = Vector2(float(place.get("x", 640)), float(place.get("y", 360)))
+	marker.z_index = 50
+	world.add_child(marker)
+
+	var pin_texture := _safe_texture(_pin_asset_for_place(place))
+	if pin_texture:
+		var pin_sprite := Sprite2D.new()
+		pin_sprite.texture = pin_texture
+		pin_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pin_sprite.centered = true
+		pin_sprite.position = Vector2(0, -16)
+		var pin_scale := 44.0 / float(pin_texture.get_height())
+		pin_sprite.scale = Vector2.ONE * pin_scale
+		marker.add_child(pin_sprite)
+	else:
+		var pin := Label.new()
+		pin.text = "●"
+		pin.position = Vector2(-10, -22)
+		pin.size = Vector2(28, 28)
+		pin.add_theme_font_size_override("font_size", 26)
+		pin.add_theme_color_override("font_color", Color(0.88, 0.22, 0.18, 1.0))
+		pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marker.add_child(pin)
+
+	var name_label := Label.new()
+	name_label.text = str(place.get("title", "Place"))
+	name_label.position = Vector2(-50, 6)
+	name_label.size = Vector2(100, 22)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_color", Color(0.16, 0.25, 0.22, 1.0))
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marker.add_child(name_label)
+
+	_add_click_area(marker, Vector2(44, 54), "place:" + str(place.get("id", "")), str(place.get("title", "Place")), Vector2(0, 0))
+
+func _open_postcard_for_place(place_id: String) -> void:
+	var place := _find_place(place_id)
+	if place.is_empty():
+		return
+	var postcard := _find_postcard_by_place(place_id)
+	var title_text := str(postcard.get("title", "Postcard from " + str(place.get("title", "Place"))))
+	var message := str(postcard.get("message", place.get("note", "A small memory.")))
+	var photo_path := str(postcard.get("photo_path", ""))
+	if photo_path == "":
+		photo_path = str(place.get("photo_path", ""))
+	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+
+func _choose_photo_for_place() -> void:
+	if OS.has_feature("web"):
+		_choose_photo_for_place_web()
+		return
+
+	if photo_file_dialog != null and is_instance_valid(photo_file_dialog):
+		photo_file_dialog.queue_free()
+
+	photo_file_dialog = FileDialog.new()
+	photo_file_dialog.title = "Choose a photo"
+	photo_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	photo_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	photo_file_dialog.filters = PackedStringArray([
+		"*.png, *.jpg, *.jpeg, *.webp ; Image Files"
+	])
+	photo_file_dialog.file_selected.connect(_on_place_photo_selected)
+	ui_layer.add_child(photo_file_dialog)
+	photo_file_dialog.popup_centered(Vector2i(900, 620))
+
+
+func _on_place_photo_selected(path: String) -> void:
+	selected_photo_path = path
+	selected_photo_bytes = PackedByteArray()
+	selected_photo_filename = path.get_file()
+	selected_photo_content_type = _content_type_for_filename(selected_photo_filename)
+	selected_photo_from_web = false
+
+	if selected_photo_label != null and is_instance_valid(selected_photo_label):
+		selected_photo_label.text = "Selected: " + selected_photo_filename
+
+	_show_toast("Photo selected: " + selected_photo_filename)
+
+
+func _setup_web_photo_bridge() -> void:
+	if not OS.has_feature("web"):
+		return
+
+	var photo_picker_js := """
+(function () {
+	if (window.__familyGardenPhotoBridgeReady) {
+		return;
+	}
+
+	window.__familyGardenPhotoBridgeReady = true;
+	window.__familyGardenPhotoOverlayInput = null;
+
+	window.__familyGardenRemovePhotoInput = function () {
+		var oldInput = window.__familyGardenPhotoOverlayInput || document.getElementById("family-garden-photo-input");
+		if (oldInput && oldInput.parentNode) {
+			oldInput.parentNode.removeChild(oldInput);
+		}
+		window.__familyGardenPhotoOverlayInput = null;
+	};
+
+	window.__familyGardenCreatePhotoInput = function () {
+		window.__familyGardenRemovePhotoInput();
+
+		var input = document.createElement("input");
+		input.id = "family-garden-photo-input";
+		input.type = "file";
+		input.accept = "image/png,image/jpeg,image/webp";
+
+		/*
+			The full-window invisible input is a fallback for browsers that block
+			programmatic input.click() from a WebAssembly/Godot event. If click() works,
+			the picker opens immediately. If it is blocked, the next user tap/click will
+			hit this native input.
+		*/
+		input.style.position = "fixed";
+		input.style.left = "0";
+		input.style.top = "0";
+		input.style.width = "100vw";
+		input.style.height = "100vh";
+		input.style.opacity = "0.001";
+		input.style.zIndex = "2147483647";
+		input.style.cursor = "pointer";
+		input.style.pointerEvents = "auto";
+
+			input.addEventListener("change", function () {
+				var file = input.files && input.files.length > 0 ? input.files[0] : null;
+				if (!file) {
+					window.__familyGardenRemovePhotoInput();
+					return;
+			}
+
+			console.log("[FamilyGarden] Photo chosen:", file.name, file.type, file.size);
+
+			var reader = new FileReader();
+
+			reader.onload = function () {
+				var bytes = new Uint8Array(reader.result);
+				var chunkSize = 0x8000;
+				var binary = "";
+
+				for (var i = 0; i < bytes.length; i += chunkSize) {
+					var chunk = bytes.subarray(i, i + chunkSize);
+					binary += String.fromCharCode.apply(null, chunk);
+				}
+
+				var base64 = btoa(binary);
+
+				if (window.__familyGardenPhotoPicked) {
+					console.log("[FamilyGarden] Sending photo to Godot callback");
+					window.__familyGardenPhotoPicked(
+						base64,
+						file.name || "photo.jpg",
+						file.type || "image/jpeg"
+					);
+				} else {
+					console.error("[FamilyGarden] Godot photo callback is missing");
+				}
+
+				window.__familyGardenRemovePhotoInput();
+			};
+
+			reader.onerror = function () {
+				console.error("[FamilyGarden] Photo read failed", reader.error);
+				window.__familyGardenRemovePhotoInput();
+			};
+
+				reader.readAsArrayBuffer(file);
+			});
+
+			input.addEventListener("cancel", function () {
+				window.__familyGardenRemovePhotoInput();
+			});
+
+			document.body.appendChild(input);
+			window.__familyGardenPhotoOverlayInput = input;
+		return input;
+	};
+
+	window.familyGardenChoosePhoto = function () {
+		if (!window.__familyGardenPhotoPicked) {
+			console.error("[FamilyGarden] Photo callback is not ready");
+			return false;
+		}
+
+		var input = window.__familyGardenCreatePhotoInput();
+		try {
+			input.click();
+		} catch (e) {
+			console.warn("[FamilyGarden] input.click() was blocked; click once more to open picker", e);
+		}
+		return true;
+	};
+})();
+"""
+	JavaScriptBridge.eval(photo_picker_js, true)
+
+	if web_photo_callback == null:
+		web_photo_callback = JavaScriptBridge.create_callback(_on_web_photo_selected)
+
+	var js_window = JavaScriptBridge.get_interface("window")
+	if js_window != null:
+		js_window["__familyGardenPhotoPicked"] = web_photo_callback
+
+
+func _choose_photo_for_place_web() -> void:
+	if web_photo_callback == null:
+		_setup_web_photo_bridge()
+
+	_show_toast("Choose a photo from your device...")
+
+	if selected_photo_label != null and is_instance_valid(selected_photo_label):
+		selected_photo_label.text = "Choose a photo from your device..."
+
+	var js_result = JavaScriptBridge.eval("""
+		window.familyGardenChoosePhoto ? window.familyGardenChoosePhoto() : false;
+	""", true)
+	if not bool(js_result):
+		_show_toast("Photo picker is not ready. Please try again.")
+
+
+func _on_web_photo_selected(args: Array) -> void:
+	if args.size() < 3:
+		_show_toast("Photo selection failed.")
+		return
+
+	var base64_text: String = str(args[0])
+	var file_name: String = str(args[1])
+	var content_type: String = str(args[2])
+
+	var bytes: PackedByteArray = Marshalls.base64_to_raw(base64_text)
+	if bytes.is_empty():
+		_show_toast("Could not read selected photo.")
+		return
+
+	selected_photo_bytes = bytes
+	selected_photo_filename = file_name
+	selected_photo_content_type = content_type
+	selected_photo_path = ""
+	selected_photo_from_web = true
+	print("[FamilyGarden] Web photo received by Godot: ", selected_photo_filename, " bytes=", selected_photo_bytes.size(), " type=", selected_photo_content_type)
+
+	if selected_photo_label != null and is_instance_valid(selected_photo_label):
+		selected_photo_label.text = "Selected: " + selected_photo_filename
+
+	_show_toast("Photo selected: " + selected_photo_filename)
+
+func _reset_selected_photo_state() -> void:
+	selected_photo_path = ""
+	selected_photo_bytes = PackedByteArray()
+	selected_photo_filename = ""
+	selected_photo_content_type = ""
+	selected_photo_from_web = false
+	selected_photo_label = null
+
+
+func _content_type_for_filename(file_name: String) -> String:
+	var ext: String = file_name.get_extension().to_lower()
+	match ext:
+		"png":
+			return "image/png"
+		"webp":
+			return "image/webp"
+		"jpg", "jpeg":
+			return "image/jpeg"
+		_:
+			return "application/octet-stream"
+
+
+func _open_postcard_detail_panel(title_text: String, message: String, photo_path: String, place_id: String) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(320, 80)
+	panel.size = Vector2(640, 560)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = title_text
+	title.position = Vector2(36, 26)
+	title.size = Vector2(520, 34)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var photo_frame := Panel.new()
+	photo_frame.position = Vector2(36, 78)
+	photo_frame.size = Vector2(568, 250)
+	photo_frame.clip_contents = true
+	_apply_small_card_style(photo_frame)
+	panel.add_child(photo_frame)
+
+	var photo_rect := TextureRect.new()
+	photo_rect.position = Vector2(12, 12)
+	photo_rect.size = Vector2(544, 226)
+	photo_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	photo_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	photo_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	photo_frame.add_child(photo_rect)
+
+	var photo_status := Label.new()
+	photo_status.text = "No photo attached"
+	photo_status.position = Vector2(20, 108)
+	photo_status.size = Vector2(528, 28)
+	photo_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	photo_status.add_theme_color_override("font_color", Color(0.45, 0.37, 0.28, 0.78))
+	photo_frame.add_child(photo_status)
+
+	var body := RichTextLabel.new()
+	body.text = message
+	body.position = Vector2(36, 350)
+	body.size = Vector2(568, 110)
+	body.fit_content = false
+	body.scroll_active = true
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.fit_content = false
+	body.scroll_active = true
+	body.add_theme_font_size_override("font_size", 16)
+	body.add_theme_color_override("default_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(body)
+
+	# Add all controls before loading the photo, so the user can close the panel while the image is loading.
+	_add_panel_button(panel, "Delete", Vector2(96, 490), Vector2(120, 40), "delete_place:" + place_id)
+	_add_panel_button(panel, "Back to Map", Vector2(246, 490), Vector2(150, 40), "close")
+	_add_panel_button(panel, "Postcards", Vector2(426, 490), Vector2(130, 40), "postcards")
+
+	var clean_photo_path: String = photo_path.strip_edges()
+	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
+		photo_status.text = "No photo attached."
+	else:
+		photo_status.text = "Loading photo..."
+		_load_photo_into_rect(clean_photo_path, photo_rect, photo_status)
+
+func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_status: Label) -> void:
+	var clean_photo_path: String = photo_path.strip_edges()
+	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
+		if is_instance_valid(photo_status):
+			photo_status.text = "No photo attached."
+		return
+
+	if is_instance_valid(photo_rect):
+		photo_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		photo_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+
+	var photo_url: String = _photo_public_url(clean_photo_path)
+
+	if photo_texture_cache.has(photo_url):
+		var cached_texture: Texture2D = photo_texture_cache[photo_url]
+		if is_instance_valid(photo_rect):
+			photo_rect.texture = cached_texture
+		if is_instance_valid(photo_status):
+			photo_status.visible = false
+		return
+
+	if is_instance_valid(photo_status):
+		photo_status.text = "Loading photo..."
+
+	var texture: Texture2D = await _download_photo_texture(photo_url)
+	if texture != null:
+		photo_texture_cache[photo_url] = texture
+		if is_instance_valid(photo_rect):
+			photo_rect.texture = texture
+		if is_instance_valid(photo_status):
+			photo_status.visible = false
+	else:
+		if is_instance_valid(photo_status):
+			photo_status.text = "Could not load photo."
+
+
+func _photo_public_url(photo_path: String) -> String:
+	if photo_path.begins_with("http://") or photo_path.begins_with("https://"):
+		return photo_path
+
+	if cloud != null:
+		return cloud.public_url_from_photo_path(photo_path)
+
+	return photo_path
+
+
+func _download_photo_texture(url: String) -> Texture2D:
+	if url == "":
+		return null
+
+	if photo_texture_cache.has(url):
+		return photo_texture_cache[url]
+
+	var request := HTTPRequest.new()
+	add_child(request)
+
+	var err := request.request(url)
+	if err != OK:
+		request.queue_free()
+		return null
+
+	var response: Array = await request.request_completed
+	request.queue_free()
+
+	var result_code: int = int(response[0])
+	var status_code: int = int(response[1])
+	if result_code != HTTPRequest.RESULT_SUCCESS or status_code < 200 or status_code >= 300:
+		return null
+
+	var bytes: PackedByteArray = response[3]
+	var image := Image.new()
+	var load_err: int = image.load_png_from_buffer(bytes)
+
+	if load_err != OK:
+		load_err = image.load_jpg_from_buffer(bytes)
+
+	if load_err != OK:
+		load_err = image.load_webp_from_buffer(bytes)
+
+	if load_err != OK:
+		return null
+
+	var texture := ImageTexture.create_from_image(image)
+	photo_texture_cache[url] = texture
+	return texture
+
+
+func _pin_asset_for_place(place: Dictionary) -> String:
+	var postcard := _find_postcard_by_place(str(place.get("id", "")))
+	if not postcard.is_empty() and bool(postcard.get("is_new", false)):
+		return ASSETS["pin_postcard"]
+	return ASSETS["pin_saved"] if ResourceLoader.exists(ASSETS["pin_saved"]) else ASSETS["pin_default"]
+
+func _delete_place(place_id: String) -> void:
+	if cloud != null and not place_id.begins_with("place_"):
+		await cloud.delete_place_and_postcards(place_id)
+
+	travel_places = travel_places.filter(func(place): return str(place.get("id", "")) != place_id)
+	postcards = postcards.filter(func(postcard): return str(postcard.get("place_id", "")) != place_id)
+	if _count_unread_postcards() > 0:
+		_set_mailbox_alert(MAILBOX_ALERT_LETTER)
+	elif mailbox_alert_state == MAILBOX_ALERT_LETTER:
+		_clear_mailbox_alert()
+	_save_game()
+	_close_active_panel()
+	if mode == "map":
+		_show_travel_map()
+	else:
+		_show_toast("Place deleted.")
+
+func _open_animal_dialog(animal_id: String, display_name: String) -> void:
+	var line := "A tiny garden friend is resting here."
+	match animal_id:
+		"cat":
+			line = "Mimi blinks slowly. She may walk a little, then curl up for a nap."
+		"bird":
+			line = "The bluebird hops softly near the garden and watches the family tree."
+		"dog":
+			line = "Biscuit wiggles happily, then flops down for a tiny nap."
+	_show_cozy_panel(display_name, line, [{"text": "Close", "action": "close"}])
+
+func _open_message_board_panel() -> void:
+	var body := "Family notes are pinned here.\n\n"
+	if garden_messages.is_empty():
+		body += "No notes yet. Add the first small message for the family."
+	else:
+		for message in garden_messages:
+			body += "• " + str(message.get("author", "Family")) + ": " + str(message.get("text", "")) + "\n\n"
+	_show_cozy_panel(
+		"Message Board",
+		body,
+		[
+			{"text": "+ Note", "action": "add_message"},
+			{"text": "Close", "action": "close"}
+		]
+	)
+
+func _open_add_message_form() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(390, 170)
+	panel.size = Vector2(500, 360)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "Add a Note"
+	title.position = Vector2(30, 24)
+	title.size = Vector2(440, 34)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var author_label := Label.new()
+	author_label.text = "From"
+	author_label.position = Vector2(32, 78)
+	author_label.size = Vector2(420, 22)
+	author_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(author_label)
+
+	var author_input := LineEdit.new()
+	author_input.placeholder_text = "Peilin, Papa, Mama..."
+	author_input.text = player_display_name if player_display_name != "" else _default_name_for_role(selected_role_key)
+	author_input.position = Vector2(32, 104)
+	author_input.size = Vector2(430, 36)
+	panel.add_child(author_input)
+
+	var message_label := Label.new()
+	message_label.text = "Message"
+	message_label.position = Vector2(32, 154)
+	message_label.size = Vector2(420, 22)
+	message_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(message_label)
+
+	var message_input := TextEdit.new()
+	message_input.placeholder_text = "Leave a small note for the family..."
+	message_input.position = Vector2(32, 180)
+	message_input.size = Vector2(430, 90)
+	panel.add_child(message_input)
+
+	_add_panel_button(panel, "Save Note", Vector2(96, 296), Vector2(130, 40), "save_new_message", [author_input, message_input])
+	_add_panel_button(panel, "Cancel", Vector2(274, 296), Vector2(120, 40), "message_board")
+
+func _save_new_message(author_input: LineEdit, message_input: TextEdit) -> void:
+	var author: String = author_input.text.strip_edges()
+	if author == "":
+		author = "Family"
+	var text: String = message_input.text.strip_edges()
+	if text == "":
+		text = "A small note was left in the garden."
+
+	var message_id: String = "message_" + str(Time.get_ticks_msec())
+	if cloud != null:
+		var cloud_message: Dictionary = await cloud.create_message(author, text, "")
+		if not cloud_message.is_empty() and str(cloud_message.get("id", "")) != "":
+			message_id = str(cloud_message.get("id", ""))
+
+	var message := {
+		"id": message_id,
+		"author": author,
+		"text": text,
+		"created_at": Time.get_datetime_string_from_system(),
+		"role": selected_role_key
+	}
+	garden_messages.append(message)
+	_notify_family_activity()
+	_save_game()
+	_open_message_board_panel()
+	_show_toast("New note added.")
+
+func _open_postcards_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(300, 72)
+	panel.size = Vector2(680, 590)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "Postcards"
+	title.position = Vector2(36, 26)
+	title.size = Vector2(608, 34)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Open a postcard to view its memory photo."
+	subtitle.position = Vector2(36, 62)
+	subtitle.size = Vector2(608, 24)
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", Color(0.43, 0.35, 0.27, 0.88))
+	panel.add_child(subtitle)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(36, 98)
+	scroll.size = Vector2(608, 390)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 12)
+	scroll.add_child(list)
+
+	if postcards.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No postcards yet. Open the Travel Map and add a place to create the first one."
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.custom_minimum_size = Vector2(570, 90)
+		empty_label.add_theme_font_size_override("font_size", 16)
+		empty_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+		list.add_child(empty_label)
+	else:
+		for postcard in postcards:
+			if not (postcard is Dictionary):
+				continue
+
+			var postcard_id: String = str(postcard.get("id", ""))
+			var card := Panel.new()
+			card.custom_minimum_size = Vector2(570, 96)
+			card.mouse_filter = Control.MOUSE_FILTER_STOP
+			_apply_small_card_style(card)
+			list.add_child(card)
+
+			var card_title := Label.new()
+			var badge := "NEW · " if bool(postcard.get("is_new", false)) else ""
+			var has_photo := str(postcard.get("photo_path", "")) != ""
+			var photo_label := "Photo attached · " if has_photo else "No photo · "
+			card_title.text = badge + photo_label + str(postcard.get("title", "Postcard"))
+			card_title.position = Vector2(18, 12)
+			card_title.size = Vector2(420, 26)
+			card_title.add_theme_font_size_override("font_size", 16)
+			card_title.add_theme_color_override("font_color", Color(0.24, 0.20, 0.15, 1.0))
+			card.add_child(card_title)
+
+			var card_body := Label.new()
+			card_body.text = str(postcard.get("message", ""))
+			card_body.position = Vector2(18, 40)
+			card_body.size = Vector2(420, 42)
+			card_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			card_body.add_theme_font_size_override("font_size", 13)
+			card_body.add_theme_color_override("font_color", Color(0.43, 0.35, 0.27, 0.92))
+			card.add_child(card_body)
+
+			var open_button := Button.new()
+			open_button.text = "Open"
+			open_button.position = Vector2(462, 29)
+			open_button.size = Vector2(86, 36)
+			open_button.mouse_filter = Control.MOUSE_FILTER_STOP
+			_apply_button_style(open_button, false)
+			_set_button_icon(open_button, "icon_postcard")
+			open_button.pressed.connect(_open_postcard_detail_from_id.bind(postcard_id))
+			card.add_child(open_button)
+
+	_add_panel_button(panel, "Travel Map", Vector2(96, 520), Vector2(150, 40), "travel_map")
+	_add_panel_button(panel, "Close", Vector2(432, 520), Vector2(150, 40), "close")
+	_mark_postcards_read()
+	_save_game()
+
+
+func _open_postcard_detail_from_id(postcard_id: String) -> void:
+	var postcard := _find_postcard(postcard_id)
+	if postcard.is_empty():
+		_show_toast("Postcard not found.")
+		return
+
+	var place_id: String = str(postcard.get("place_id", ""))
+	var place := _find_place(place_id)
+	var title_text := str(postcard.get("title", "Postcard"))
+	var message := str(postcard.get("message", "A small memory."))
+	var photo_path := str(postcard.get("photo_path", ""))
+
+	if photo_path == "" and not place.is_empty():
+		photo_path = str(place.get("photo_path", ""))
+
+	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+
+
+func _find_postcard(postcard_id: String) -> Dictionary:
+	for postcard in postcards:
+		if postcard is Dictionary and str(postcard.get("id", "")) == postcard_id:
+			return postcard
+	return {}
+
+func _open_family_tree_panel() -> void:
+	var body := "This tree grows with family memories.\n\nFamily members:\n"
+	for role_data in CHARACTER_DATA:
+		var role_key := str(role_data.get("role", ""))
+		var member_name := player_display_name if role_key == selected_role_key else str(role_data.get("default_name", role_data.get("label", "Family")))
+		var status := "online" if role_key == selected_role_key else "offline"
+		body += "• " + member_name + " — " + status + "\n"
+	body += "\nPostcards on the tree:\n"
+	if postcards.is_empty():
+		body += "• No postcards yet. Open the Travel Map to send one.\n"
+	else:
+		for postcard in postcards:
+			body += "• " + str(postcard.get("title", "Postcard")) + "\n"
+	_show_cozy_panel(
+		"Family Tree",
+		body,
+		[
+			{"text": "Postcards", "action": "postcards"},
+			{"text": "Board", "action": "message_board"},
+			{"text": "Close", "action": "close"}
+		]
+	)
+
+func _open_mailbox_panel() -> void:
+	var unread_count: int = _count_unread_postcards()
+	var body := ""
+	if unread_count > 0:
+		body = "New mail has arrived.\n\n"
+		for postcard in postcards:
+			if bool(postcard.get("is_new", false)):
+				body += "• " + str(postcard.get("title", "New postcard")) + "\n"
+	else:
+		body = "No new mail right now.\n\nAdd a place on the Travel Map to send a new postcard to the garden."
+	_mark_postcards_read(false)
+	_clear_mailbox_alert()
+	if cloud != null:
+		await cloud.mark_mailbox_read()
+	_save_game()
+	_show_cozy_panel(
+		"Mailbox",
+		body,
+		[
+			{"text": "View Postcards", "action": "postcards"},
+			{"text": "Travel Map", "action": "travel_map"},
+			{"text": "Close", "action": "close"}
+		]
+	)
+
+func _open_npc_dialog(npc_id: String, display_name: String) -> void:
+	var line := "It's peaceful in the garden today."
+	match npc_id:
+		"papa":
+			line = "The garden looks peaceful today. It feels good to see everyone here."
+		"mama":
+			line = "The flowers are growing beautifully. This place feels like a small home."
+		"boy":
+			line = "I found a quiet corner here. Maybe we can leave a postcard together."
+		"girl":
+			line = "I brought a small memory back to the garden."
+	_show_cozy_panel(display_name, line, [{"text": "Close", "action": "close"}])
+
+func _show_cozy_panel(panel_title: String, body_text: String, buttons: Array) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(380, 150)
+	panel.size = Vector2(520, 380)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = panel_title
+	title.position = Vector2(34, 28)
+	title.size = Vector2(450, 36)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var body := RichTextLabel.new()
+	body.text = body_text
+	body.position = Vector2(34, 82)
+	body.size = Vector2(452, 200)
+	body.fit_content = false
+	body.scroll_active = true
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.bbcode_enabled = false
+	body.add_theme_font_size_override("normal_font_size", 16)
+	body.add_theme_color_override("default_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(body)
+
+	var button_count: int = buttons.size()
+	var gap: int = 14
+	var button_width: int = 128
+	var total_width: float = float(button_count * button_width + max(0, button_count - 1) * gap)
+	var start_x: float = (520.0 - total_width) / 2.0
+	for i in range(button_count):
+		var button_data: Dictionary = buttons[i]
+		_add_panel_button(panel, str(button_data.get("text", "OK")), Vector2(start_x + i * 142, 310), Vector2(128, 40), str(button_data.get("action", "close")))
+
+func _add_panel_close_button(panel: Panel) -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	if panel.has_node("PanelCloseButton"):
+		return
+
+	var close_btn := Button.new()
+	close_btn.name = "PanelCloseButton"
+	close_btn.text = "×"
+	close_btn.size = Vector2(34, 30)
+	close_btn.position = Vector2(maxf(8.0, panel.size.x - 46.0), 12)
+	close_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	close_btn.focus_mode = Control.FOCUS_NONE
+	_apply_button_style(close_btn, false)
+	close_btn.pressed.connect(_close_active_panel)
+	panel.add_child(close_btn)
+
+func _create_modal_overlay() -> Control:
+	var overlay := Control.new()
+	overlay.name = "CozyModalOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_layer.add_child(overlay)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.10, 0.08, 0.06, 0.20)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(shade)
+	return overlay
+
+func _apply_small_card_style(panel: Panel) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.86, 0.92)
+	style.border_color = Color(0.64, 0.48, 0.30, 0.72)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(14)
+	style.shadow_color = Color(0.20, 0.14, 0.08, 0.16)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 3)
+	panel.add_theme_stylebox_override("panel", style)
+
+
+func _apply_panel_style(panel: Panel) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.95, 0.82, 0.96)
+	style.border_color = Color(0.60, 0.43, 0.25, 1.0)
+	style.set_border_width_all(2)
+	style.corner_radius_top_left = 14
+	style.corner_radius_top_right = 14
+	style.corner_radius_bottom_left = 14
+	style.corner_radius_bottom_right = 14
+	style.shadow_color = Color(0.20, 0.12, 0.06, 0.22)
+	style.shadow_size = 10
+	panel.add_theme_stylebox_override("panel", style)
+
+func _add_panel_button(parent: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String, args: Array = []) -> Button:
+	var button := Button.new()
+	button.text = button_text
+	button.position = pos
+	button.size = button_size
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(button, false)
+	_set_button_icon(button, _icon_key_for_action(action))
+	if action == "save_new_place" and args.size() >= 2:
+		button.pressed.connect(_save_new_place.bind(args[0], args[1]))
+	elif action == "save_new_message" and args.size() >= 2:
+		button.pressed.connect(_save_new_message.bind(args[0], args[1]))
+	else:
+		button.pressed.connect(_on_panel_button.bind(action))
+	parent.add_child(button)
+	return button
+
+func _set_button_icon(button: Button, asset_key: String) -> void:
+	if asset_key == "":
+		return
+	var path := str(ASSETS.get(asset_key, ""))
+	var texture := _safe_texture(path)
+	if texture:
+		button.icon = texture
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+func _icon_key_for_action(action: String) -> String:
+	if action.begins_with("open_postcard"):
+		return "icon_postcard"
+	if action.begins_with("delete_place"):
+		return "icon_delete"
+	if action.begins_with("house_note"):
+		return "icon_letter"
+	match action:
+		"family_tree", "plant_tree":
+			return "icon_tree"
+		"message_board", "add_message", "plant_sign":
+			return "icon_sign"
+		"toggle_plant":
+			return "icon_add"
+		"travel_map":
+			return "icon_map"
+		"postcards":
+			return "icon_postcard"
+		"role_select":
+			return "icon_home"
+		"save", "save_new_place", "save_new_message":
+			return "icon_save"
+		"back_garden":
+			return "icon_back"
+		"close":
+			return "icon_close"
+		_: return ""
+
+func _apply_button_style(button: Button, selected: bool = false) -> void:
+	var normal_style := _button_style("button_selected" if selected else "button_normal", Color(1.0, 0.92, 0.74, 0.92), Color(0.58, 0.45, 0.30, 1.0))
+	var hover_style := _button_style("button_hover", Color(1.0, 0.96, 0.82, 0.96), Color(0.60, 0.48, 0.32, 1.0))
+	var pressed_style := _button_style("button_selected", Color(0.86, 0.92, 0.72, 0.98), Color(0.45, 0.58, 0.40, 1.0))
+	button.add_theme_stylebox_override("normal", normal_style)
+	button.add_theme_stylebox_override("hover", hover_style)
+	button.add_theme_stylebox_override("pressed", pressed_style)
+	button.add_theme_stylebox_override("focus", hover_style)
+	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(0.22, 0.17, 0.12, 1.0))
+
+func _button_style(asset_key: String, fallback_color: Color, border_color: Color) -> StyleBox:
+	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
+	if texture:
+		var tex_style := StyleBoxTexture.new()
+		tex_style.texture = texture
+		return tex_style
+	var style := StyleBoxFlat.new()
+	style.bg_color = fallback_color
+	style.border_color = border_color
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	return style
+
+func _on_panel_button(action: String) -> void:
+	if action == "close":
+		_close_active_panel()
+	elif action == "travel_map":
+		_show_travel_map()
+	elif action == "postcards":
+		_open_postcards_panel()
+	elif action == "message_board":
+		_open_message_board_panel()
+	elif action == "add_message":
+		_open_add_message_form()
+	elif action == "back_garden":
+		_show_garden()
+	elif action.begins_with("open_postcard:"):
+		_open_postcard_detail_from_id(action.split(":")[1])
+	elif action.begins_with("delete_place:"):
+		_delete_place(action.split(":")[1])
+	elif action.begins_with("house_note:"):
+		_open_add_message_form()
+	elif action.begins_with("house_photos:"):
+		_open_postcards_panel()
+
+func _close_active_panel() -> void:
+	if active_modal != null and is_instance_valid(active_modal):
+		active_modal.queue_free()
+	active_modal = null
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_close_active_panel()
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
+		if adding_place:
+			adding_place = false
+			_show_toast("Add place cancelled.")
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SHIFT):
+		print("Mouse position: ", get_global_mouse_position())
+		return
+	if mode == "map" and adding_place and active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var pos := get_global_mouse_position()
+		if pos.y < 650:
+			_open_add_place_form(pos)
+		return
+	if mode == "garden" and plant_mode and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_add_plant(get_global_mouse_position(), selected_plant_type)
+		_save_game()
+
+func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
+	var item_id := existing_id if existing_id != "" else "plant_" + str(Time.get_ticks_msec())
+	var item_data := {"id": item_id, "type": plant_type, "position": pos}
+	var texture := _safe_texture("res://assets/garden/" + plant_type + ".png")
+	var item := preload("res://scripts/placeable_item.gd").new()
+	item.setup(item_data, texture)
+	item.item_deleted.connect(_on_plant_deleted)
+	item.item_moved.connect(_on_plant_moved)
+	world.add_child(item)
+	plant_nodes[item_id] = item
+
+	if existing_id == "":
+		plants.append({"id": item_id, "type": plant_type, "x": pos.x, "y": pos.y})
+
+func _rebuild_plants() -> void:
+	for plant in plants:
+		_add_plant(Vector2(float(plant.get("x", 640)), float(plant.get("y", 360))), str(plant.get("type", "flower")), str(plant.get("id", "")))
+
+func _on_plant_deleted(item_id: String) -> void:
+	if plant_nodes.has(item_id):
+		plant_nodes[item_id].queue_free()
+		plant_nodes.erase(item_id)
+	plants = plants.filter(func(p): return str(p.get("id", "")) != item_id)
+	_save_game()
+	_show_toast("Removed.")
+
+func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
+	for p in plants:
+		if str(p.get("id", "")) == item_id:
+			p["x"] = new_position.x
+			p["y"] = new_position.y
+			break
+	_save_game()
+
+func _save_game() -> void:
+	var data := {
+		"plants": plants,
+		"travel_places": travel_places,
+		"postcards": postcards,
+		"garden_messages": garden_messages,
+		"mailbox_has_unread": mailbox_has_unread,
+		"mailbox_alert_state": mailbox_alert_state,
+		"selected_role_key": selected_role_key,
+		"player_display_name": player_display_name
+	}
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(data))
+
+func _load_save() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		plants = []
+		travel_places = []
+		postcards = []
+		garden_messages = []
+		mailbox_alert_state = MAILBOX_ALERT_DOT
+		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+		selected_role_key = ""
+		player_display_name = ""
+		return
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not file:
+		plants = []
+		travel_places = []
+		postcards = []
+		garden_messages = []
+		mailbox_alert_state = MAILBOX_ALERT_DOT
+		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+		selected_role_key = ""
+		player_display_name = ""
+		return
+	var text := file.get_as_text()
+	var parsed = JSON.parse_string(text)
+	if parsed is Dictionary:
+		plants = parsed.get("plants", [])
+		travel_places = parsed.get("travel_places", [])
+		postcards = parsed.get("postcards", [])
+		garden_messages = parsed.get("garden_messages", [])
+		if parsed.has("mailbox_alert_state"):
+			mailbox_alert_state = _normalize_mailbox_alert(str(parsed.get("mailbox_alert_state", MAILBOX_ALERT_NONE)))
+		else:
+			var legacy_unread := bool(parsed.get("mailbox_has_unread", true))
+			mailbox_alert_state = MAILBOX_ALERT_LETTER if legacy_unread and _count_unread_postcards() > 0 else (MAILBOX_ALERT_DOT if legacy_unread else MAILBOX_ALERT_NONE)
+		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+		selected_role_key = str(parsed.get("selected_role_key", ""))
+		player_display_name = str(parsed.get("player_display_name", ""))
+	else:
+		plants = []
+		travel_places = []
+		postcards = []
+		garden_messages = []
+		mailbox_alert_state = MAILBOX_ALERT_DOT
+		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+		selected_role_key = ""
+		player_display_name = ""
+
+func _reset_save() -> void:
+	_show_toast("Reset is disabled in the online version.")
+
+func _find_place(place_id: String) -> Dictionary:
+	for place in travel_places:
+		if str(place.get("id", "")) == place_id:
+			return place
+	return {}
+
+func _find_postcard_by_place(place_id: String) -> Dictionary:
+	for postcard in postcards:
+		if str(postcard.get("place_id", "")) == place_id:
+			return postcard
+	return {}
+
+func _count_unread_postcards() -> int:
+	var count := 0
+	for postcard in postcards:
+		if bool(postcard.get("is_new", false)):
+			count += 1
+	return count
+
+func _mark_postcards_read(save_after_change: bool = true) -> void:
+	var changed := false
+	for postcard in postcards:
+		if bool(postcard.get("is_new", false)):
+			postcard["is_new"] = false
+			changed = true
+	if changed:
+		_clear_mailbox_alert()
+		if save_after_change:
+			_save_game()
+
+func _get_house_intro(id: String) -> String:
+	match id:
+		"father":
+			return "A warm little room for Papa. Books, coffee, and family postcards will live here."
+		"mother":
+			return "A gentle cottage for flowers, notes, and quiet family memories."
+		"player":
+			return "Peilin's cottage keeps travel notes, photos, and small discoveries from the road."
+		"partner":
+			return "Louis's cottage is waiting for shared postcards and soft garden visits."
+	return "A small family cottage."
+
+func _show_toast(toast_text: String) -> void:
+	info_label.text = "Family Garden   —   " + toast_text
+
+func _safe_texture(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path)
+	return null
+
+func _solid_texture(width: int, height: int, color: Color) -> Texture2D:
+	var img := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	img.fill(color)
+	return ImageTexture.create_from_image(img)

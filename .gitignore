@@ -1,0 +1,21 @@
+# Godot 缓存与导入产物（任意层级）
+.godot/
+*.tmp
+
+# 系统文件
+.DS_Store
+
+# Web 导出产物（导出到仓库外或本目录，均不入库）
+export_web/
+*.zip
+
+# AI 工具会话目录
+.claude/
+
+# 密钥与凭证：任何 service role key、腾讯云 SecretId/SecretKey、AI API key 一律不得入库
+.env
+.env.*
+*.local
+secrets/
+*.pem
+*.key
