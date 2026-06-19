@@ -20,7 +20,7 @@
 
 ## 项目速览
 
-- 引擎：Godot 4.6，工程在 `game/`（打开 `game/project.godot`）；
+- 引擎：Godot 4.7，工程在 `game/`（打开 `game/project.godot`）；
 - 画布与美术规范：1280×720 逻辑画布 + soft pixel art 2x 显示，见 `docs/09_godot_coordinate_art_spec.md`（方案 C′）；
 - AI 接口契约：`docs/04_ai_interfaces.md`（AI 不输出坐标；每个 AI 功能必须有 mock，mock 在 `backend/mocks/`）；
 - 后端：Supabase（暂）+ 计划中的腾讯云 COS/CDN 与云函数，见 `docs/05_backend_data_model.md`；

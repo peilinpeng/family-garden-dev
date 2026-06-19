@@ -11,7 +11,7 @@ Family Garden 是一个 AI 驱动的数字家庭第三空间：用户上传家�
 ## 仓库结构
 
 ```text
-game/      Godot 4.6 工程（打开 game/project.godot）
+game/      Godot 4.7 工程（打开 game/project.godot）
 docs/      全部策划/规范/场景/协作文档（从 00_project_overview.md 开始读）
 backend/   supabase/ 数据库 schema；ai/ 云函数与 prompt；mocks/ AI mock JSON
 tools/     导出与资产处理脚本
@@ -19,7 +19,7 @@ tools/     导出与资产处理脚本
 
 ## 如何运行
 
-1. 安装 [Godot 4.6](https://godotengine.org/)；
+1. 安装 [Godot 4.7](https://godotengine.org/)；
 2. Godot → Import → 选择 `game/project.godot` → 运行；
 3. 桌面控制：WASD/方向键移动，鼠标点击交互（完整说明见 `game/README.md`）。
 
