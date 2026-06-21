@@ -1,0 +1,21 @@
+{
+  "scene": "garden",
+  "doc": "docs/09_godot_coordinate_art_spec.md §7",
+  "_status": "draft — 取自 docs/09 §7 示例；花园背景定稿后由 A+C 核对坐标并冻结",
+  "canvas": [1280, 720],
+  "grid": 16,
+  "slots": [
+    { "slot_id": "garden_slot_flowerbed_01", "pos": [432, 448], "allow": ["memory_flower", "memory_seed"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_flowerbed_02", "pos": [512, 480], "allow": ["memory_flower", "memory_seed"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_flowerbed_03", "pos": [592, 448], "allow": ["memory_flower"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_flowerbed_04", "pos": [368, 480], "allow": ["memory_flower"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_flowerbed_05", "pos": [656, 480], "allow": ["memory_flower"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_flowerbed_06", "pos": [480, 416], "allow": ["memory_flower"], "size_hint": "2x2" },
+    { "slot_id": "garden_slot_board_01",     "pos": [816, 416], "allow": ["photo_board", "postcard"], "size_hint": "3x3" },
+    { "slot_id": "garden_slot_board_02",     "pos": [912, 448], "allow": ["photo_board", "postcard"], "size_hint": "3x3" },
+    { "slot_id": "garden_slot_board_03",     "pos": [720, 416], "allow": ["photo_board"], "size_hint": "3x3" },
+    { "slot_id": "garden_slot_water_01",     "pos": [688, 560], "allow": ["bottle"], "size_hint": "3x2" },
+    { "slot_id": "garden_slot_water_02",     "pos": [592, 576], "allow": ["bottle"], "size_hint": "3x2" },
+    { "slot_id": "garden_slot_overflow_01",  "pos": [352, 560], "allow": ["memory_flower", "photo_board"], "size_hint": "3x3" }
+  ]
+}

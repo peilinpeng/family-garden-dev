@@ -1,0 +1,18 @@
+{
+  "scene": "fishpond",
+  "doc": "docs/09_godot_coordinate_art_spec.md §7（配额 3 漂浮 + 4 涟漪 + 2 岸边）",
+  "_status": "draft — 占位坐标，鱼塘背景定稿后由 A+C 核对并冻结",
+  "canvas": [1280, 720],
+  "grid": 16,
+  "slots": [
+    { "slot_id": "fishpond_slot_floating_01", "pos": [528, 432], "allow": ["bottle"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_floating_02", "pos": [688, 464], "allow": ["bottle"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_floating_03", "pos": [832, 432], "allow": ["bottle"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_ripple_01", "pos": [592, 496], "allow": ["ripple"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_ripple_02", "pos": [752, 512], "allow": ["ripple"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_ripple_03", "pos": [480, 528], "allow": ["ripple"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_ripple_04", "pos": [896, 496], "allow": ["ripple"], "size_hint": "2x2" },
+    { "slot_id": "fishpond_slot_shore_01", "pos": [320, 592], "allow": ["memory_flower", "photo_board"], "size_hint": "3x3" },
+    { "slot_id": "fishpond_slot_shore_02", "pos": [992, 592], "allow": ["memory_flower", "photo_board"], "size_hint": "3x3" }
+  ]
+}
