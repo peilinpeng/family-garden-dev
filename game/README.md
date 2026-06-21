@@ -2,7 +2,7 @@
 
 This is the first asset-ready Godot implementation for Family Garden.
 
-It is designed for Godot 4.6.x.
+It is designed for Godot 4.7.x.
 
 ## MVP features
 
