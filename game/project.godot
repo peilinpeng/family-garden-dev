@@ -15,6 +15,12 @@ run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+CloudManager="*res://scripts/cloud_service.gd"
+MemoryManager="*res://scripts/managers/memory_manager.gd"
+SceneManager="*res://scripts/managers/scene_manager.gd"
+
 [display]
 
 window/size/viewport_width=1280
