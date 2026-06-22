@@ -1,0 +1,17 @@
+{
+  "scene": "room",
+  "doc": "docs/09_godot_coordinate_art_spec.md §8.2",
+  "_status": "draft — 取自 docs/09 §8.2 示例；房间背景定稿后由 A+C 校准一次并冻结。kind=wall 的 zone 只接受 footprint=wall_object 的物件。",
+  "zones": {
+    "back_wall":    { "rect": [192, 168, 896, 64],  "kind": "wall",  "slots": 3 },
+    "back_left":    { "rect": [160, 280, 288, 96],  "kind": "floor", "slots": 2 },
+    "back_center":  { "rect": [496, 280, 288, 96],  "kind": "floor", "slots": 2 },
+    "back_right":   { "rect": [832, 280, 288, 96],  "kind": "floor", "slots": 2 },
+    "left_side":    { "rect": [128, 400, 224, 128], "kind": "floor", "slots": 2 },
+    "right_side":   { "rect": [928, 400, 224, 128], "kind": "floor", "slots": 2 },
+    "front_left":   { "rect": [224, 544, 256, 96],  "kind": "floor", "slots": 1 },
+    "front_center": { "rect": [512, 544, 256, 96],  "kind": "floor", "slots": 1 },
+    "front_right":  { "rect": [800, 544, 256, 96],  "kind": "floor", "slots": 1 },
+    "floor_center": { "rect": [448, 416, 384, 112], "kind": "floor", "slots": 1 }
+  }
+}
