@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 
 CloudManager="*res://scripts/cloud_service.gd"
 MemoryManager="*res://scripts/managers/memory_manager.gd"
+SlotManager="*res://scripts/managers/slot_manager.gd"
+NodeFactory="*res://scripts/managers/node_factory.gd"
 SceneManager="*res://scripts/managers/scene_manager.gd"
 
 [display]

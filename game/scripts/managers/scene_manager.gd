@@ -476,6 +476,50 @@ func _show_garden() -> void:
 	_add_animals()
 	_add_player(Vector2(650, 405))
 	_rebuild_plants()
+	_spawn_demo_memory_nodes()
+
+# 阶段 1（mock-first）：用一张演示记忆卡片，在花园 slot 上生成 3 朵可点击记忆花。
+# 走 SlotManager 分配（不重叠）+ NodeFactory 生成（bottom_center + 点击区）。
+# 卡片 UI / 回答 / 生长动画为后续增量；现在点击先弹 toast 验证链路。
+const DEMO_MEMORY_CARD := {
+	"title": "一次家庭旅行",
+	"description": "这是一段温暖的家庭旅行记忆。画面中有户外空间和轻松的氛围。",
+	"memory_type": "travel",
+	"suggested_scene": "garden",
+	"question": "你还记得这次旅行中最开心的一件事吗？",
+	"node_type": "memory_flower",
+	"confidence": 1.0
+}
+
+func _spawn_demo_memory_nodes() -> void:
+	SlotManager.load_scene("garden")
+	var spawned := 0
+	for i in range(3):
+		var slot: Variant = SlotManager.allocate("garden", "memory_flower", "demo_%d" % i)
+		if slot == null:
+			break
+		var node := NodeFactory.make_memory_node(DEMO_MEMORY_CARD, slot, _on_demo_memory_clicked)
+		# 里程碑1 辨识用：占位贴图与背景花糊在一起，临时放大 + 洋红 tint + 标签，方便确认生成/点击。
+		node.scale = Vector2(1.5, 1.5)
+		node.modulate = Color(1.0, 0.30, 0.85)
+		var tag := Label.new()
+		tag.text = "记忆?"
+		tag.position = Vector2(-30, -150)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_theme_font_size_override("font_size", 18)
+		tag.add_theme_color_override("font_color", Color(0.78, 0.0, 0.5, 1.0))
+		node.add_child(tag)
+		world.add_child(node)
+		spawned += 1
+	print("[Stage1] demo 记忆花 spawned=", spawned, " slot 用量=", SlotManager.usage("garden"))
+
+func _on_demo_memory_clicked() -> void:
+	# 点击 → 弹出明显的卡片面板（里程碑2 会换成带"可见的诚实"样式的专用记忆卡片 UI）。
+	_show_cozy_panel(
+		String(DEMO_MEMORY_CARD.get("title", "记忆")),
+		String(DEMO_MEMORY_CARD.get("description", "")) + "\n\n" + String(DEMO_MEMORY_CARD.get("question", "")),
+		[{"text": "关闭", "action": "close"}]
+	)
 
 func _clear_world() -> void:
 	for child in world.get_children():
