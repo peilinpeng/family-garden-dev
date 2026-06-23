@@ -488,38 +488,158 @@ const DEMO_MEMORY_CARD := {
 	"suggested_scene": "garden",
 	"question": "你还记得这次旅行中最开心的一件事吗？",
 	"node_type": "memory_flower",
-	"confidence": 1.0
+	"confidence": 1.0,
+	"guess": "可能是 1990 年代的旅行"
 }
 
+# 阶段1 mock 演示用的记忆列表。真实流程将由 MemoryManager + AI 客户端填充并持久化。
+# 每项：{ id, card, state(new/grown), answer, node }。当前不落库，离开花园后重置。
+var _demo_memories: Array = []
+
 func _spawn_demo_memory_nodes() -> void:
+	_demo_memories.clear()
 	SlotManager.load_scene("garden")
 	var spawned := 0
 	for i in range(3):
 		var slot: Variant = SlotManager.allocate("garden", "memory_flower", "demo_%d" % i)
 		if slot == null:
 			break
-		var node := NodeFactory.make_memory_node(DEMO_MEMORY_CARD, slot, _on_demo_memory_clicked)
-		# 里程碑1 辨识用：占位贴图与背景花糊在一起，临时放大 + 洋红 tint + 标签，方便确认生成/点击。
-		node.scale = Vector2(1.5, 1.5)
-		node.modulate = Color(1.0, 0.30, 0.85)
+		var mem_id := "demo_%d" % i
+		var node := NodeFactory.make_memory_node(DEMO_MEMORY_CARD, slot, _on_memory_clicked.bind(mem_id))
+		# 占位美术与背景花相近，加一个轻量"记忆"标签便于辨认（真 3 态美术到位后移除）。
 		var tag := Label.new()
-		tag.text = "记忆?"
-		tag.position = Vector2(-30, -150)
+		tag.name = "DemoTag"
+		tag.text = "记忆"
+		tag.position = Vector2(-22, -126)
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.add_theme_font_size_override("font_size", 18)
-		tag.add_theme_color_override("font_color", Color(0.78, 0.0, 0.5, 1.0))
+		tag.add_theme_font_size_override("font_size", 13)
+		tag.add_theme_color_override("font_color", Color(0.55, 0.20, 0.35, 0.95))
 		node.add_child(tag)
+		node.scale = Vector2(0.55, 0.55)  # "new" = 花苞，待回答后生长
 		world.add_child(node)
+		_demo_memories.append({"id": mem_id, "card": DEMO_MEMORY_CARD, "state": "new", "answer": "", "node": node})
 		spawned += 1
 	print("[Stage1] demo 记忆花 spawned=", spawned, " slot 用量=", SlotManager.usage("garden"))
 
-func _on_demo_memory_clicked() -> void:
-	# 点击 → 弹出明显的卡片面板（里程碑2 会换成带"可见的诚实"样式的专用记忆卡片 UI）。
-	_show_cozy_panel(
-		String(DEMO_MEMORY_CARD.get("title", "记忆")),
-		String(DEMO_MEMORY_CARD.get("description", "")) + "\n\n" + String(DEMO_MEMORY_CARD.get("question", "")),
-		[{"text": "关闭", "action": "close"}]
-	)
+func _find_demo_memory(mem_id: String) -> Dictionary:
+	for m in _demo_memories:
+		if String(m.get("id", "")) == mem_id:
+			return m
+	return {}
+
+func _on_memory_clicked(mem_id: String) -> void:
+	var mem := _find_demo_memory(mem_id)
+	if not mem.is_empty():
+		_open_memory_card(mem)
+
+# 记忆卡片 UI —— "可见的诚实"：AI 推测=浅灰+问号；家人确认=正常深色。
+func _open_memory_card(mem: Dictionary) -> void:
+	_close_active_panel()
+	var card: Dictionary = mem.get("card", {})
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 120)
+	panel.size = Vector2(560, 484)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = String(card.get("title", "记忆"))
+	title.position = Vector2(34, 24)
+	title.size = Vector2(490, 34)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var desc := Label.new()
+	desc.text = String(card.get("description", ""))
+	desc.position = Vector2(34, 68)
+	desc.size = Vector2(492, 70)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 15)
+	desc.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(desc)
+
+	# AI 推测：浅灰 + ✎ + 问号，明确区别于家人确认的事实（可见的诚实）。
+	var guess := Label.new()
+	guess.text = "✎ AI 推测：" + String(card.get("guess", "")) + "  ？（待家人确认）"
+	guess.position = Vector2(34, 144)
+	guess.size = Vector2(492, 24)
+	guess.add_theme_font_size_override("font_size", 13)
+	guess.add_theme_color_override("font_color", Color(0.60, 0.57, 0.52, 1.0))
+	panel.add_child(guess)
+
+	var q := Label.new()
+	q.text = String(card.get("question", ""))
+	q.position = Vector2(34, 182)
+	q.size = Vector2(492, 50)
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.add_theme_font_size_override("font_size", 16)
+	q.add_theme_color_override("font_color", Color(0.20, 0.30, 0.24, 1.0))
+	panel.add_child(q)
+
+	if String(mem.get("state", "new")) == "new":
+		var input := TextEdit.new()
+		input.placeholder_text = "写下你的回忆…"
+		input.position = Vector2(34, 244)
+		input.size = Vector2(492, 112)
+		panel.add_child(input)
+		_add_panel_button(panel, "取消", Vector2(150, 376), Vector2(120, 40), "close")
+		var submit := Button.new()
+		submit.text = "回答"
+		submit.position = Vector2(290, 376)
+		submit.size = Vector2(120, 40)
+		submit.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_button_style(submit, false)
+		submit.pressed.connect(_submit_memory_answer.bind(String(mem.get("id", "")), input))
+		panel.add_child(submit)
+	else:
+		var ans_title := Label.new()
+		ans_title.text = "家人的回答（已确认）"
+		ans_title.position = Vector2(34, 244)
+		ans_title.size = Vector2(492, 22)
+		ans_title.add_theme_font_size_override("font_size", 13)
+		ans_title.add_theme_color_override("font_color", Color(0.35, 0.45, 0.35, 1.0))
+		panel.add_child(ans_title)
+		var ans := Label.new()
+		ans.text = String(mem.get("answer", ""))
+		ans.position = Vector2(34, 270)
+		ans.size = Vector2(492, 88)
+		ans.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ans.add_theme_font_size_override("font_size", 16)
+		ans.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
+		panel.add_child(ans)
+		_add_panel_button(panel, "关闭", Vector2(220, 376), Vector2(120, 40), "close")
+
+func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
+	var mem := _find_demo_memory(mem_id)
+	if mem.is_empty():
+		return
+	var text: String = input.text.strip_edges()
+	if text == "":
+		_show_toast("写点什么再回答吧～")
+		return
+	mem["answer"] = text
+	mem["state"] = "grown"
+	_close_active_panel()
+	_grow_memory_node(mem.get("node"))
+	_show_toast("记忆长大了 🌱 → 🌸")
+
+# 生长动画：花苞 → 开放（≤3 秒）。占位单贴图用缩放近似 seed→bud→bloom。
+func _grow_memory_node(node: Variant) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var n: Node2D = node
+	if n.has_node("DemoTag"):
+		n.get_node("DemoTag").queue_free()
+	n.scale = Vector2(0.25, 0.25)
+	var t := create_tween()
+	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _clear_world() -> void:
 	for child in world.get_children():
