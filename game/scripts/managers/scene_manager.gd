@@ -458,7 +458,7 @@ func _update_plant_button() -> void:
 		plant_button.text = "Plant: ON" if plant_mode else "Plant: OFF"
 		_apply_button_style(plant_button, plant_mode)
 
-func _show_garden() -> void:
+func _show_garden(spawn_key: String = "default") -> void:
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -474,9 +474,11 @@ func _show_garden() -> void:
 	_add_core_objects()
 	_add_npcs()
 	_add_animals()
-	_add_player(Vector2(650, 405))
+	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
+	_add_player(spawn)
 	_rebuild_plants()
 	_spawn_demo_memory_nodes()
+	ScenePortal.build_portals("garden", world, _on_portal_travel)
 
 # 阶段 1（mock-first）：用一张演示记忆卡片，在花园 slot 上生成 3 朵可点击记忆花。
 # 走 SlotManager 分配（不重叠）+ NodeFactory 生成（bottom_center + 点击区）。
@@ -495,6 +497,11 @@ const DEMO_MEMORY_CARD := {
 # 阶段1 mock 演示用的记忆列表。真实流程将由 MemoryManager + AI 客户端填充并持久化。
 # 每项：{ id, card, state(new/grown), answer, node }。当前不落库，离开花园后重置。
 var _demo_memories: Array = []
+
+# 鱼塘漂流瓶 demo 列表（mock-first，离场重置）。每项：{ id, question, state, answer, node }。
+var _demo_bottles: Array = []
+# 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
+var _travel_lock := false
 
 func _spawn_demo_memory_nodes() -> void:
 	_demo_memories.clear()
@@ -640,6 +647,193 @@ func _grow_memory_node(node: Variant) -> void:
 	var t := create_tween()
 	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+# ── 通用场景切换（ScenePortal 框架）────────────────────────────────
+# 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
+func goto_scene(target: String, spawn_key: String = "default") -> void:
+	match target:
+		"garden":
+			_show_garden(spawn_key)
+		"fishpond":
+			_build_fishpond(spawn_key)
+		_:
+			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
+
+# ScenePortal 走入/点按触发的回调；带防抖锁防止刚进场就反复触发。
+func _on_portal_travel(target: String, spawn_key: String) -> void:
+	if _travel_lock:
+		return
+	_travel_lock = true
+	goto_scene(target, spawn_key)
+	var timer := get_tree().create_timer(0.4)
+	timer.timeout.connect(func() -> void: _travel_lock = false)
+
+# 通用场景背景：优先读 manifest bg 真实美术，缺图回退纯色（fallback_color）。
+func _add_scene_background(scene: String, fallback_color: Color) -> void:
+	var backdrop := Sprite2D.new()
+	backdrop.name = "SceneBackdrop"
+	backdrop.centered = true
+	backdrop.position = GAME_SIZE / 2.0
+	backdrop.z_index = -100
+	backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var bg_path := "res://assets/%s/scene_%s_bg_01.png" % [scene, scene]
+	if ResourceLoader.exists(bg_path):
+		var tex: Texture2D = load(bg_path)
+		backdrop.texture = tex
+		var sx := GAME_SIZE.x / float(tex.get_width())
+		var sy := GAME_SIZE.y / float(tex.get_height())
+		backdrop.scale = Vector2(sx, sy)
+	else:
+		backdrop.texture = _solid_texture(int(GAME_SIZE.x), int(GAME_SIZE.y), fallback_color)
+	world.add_child(backdrop)
+
+# ── 爸爸鱼塘 fishpond ──────────────────────────────────────────────
+func _build_fishpond(spawn_key: String = "default") -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "fishpond"
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = "爸爸鱼塘"
+	_add_scene_background("fishpond", Color(0.42, 0.62, 0.70, 1.0))  # 占位水色，等 A 出背景
+	var spawn: Vector2 = ScenePortal.get_spawn("fishpond", spawn_key)
+	_add_player(spawn)
+	_spawn_demo_bottles()
+	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
+	print("[Stage1] fishpond bottles spawned=", _demo_bottles.size(), " slot 用量=", SlotManager.usage("fishpond"))
+
+# 阶段1 mock：在水面 slot 上生成 2 个可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
+const DEMO_BOTTLE_QUESTIONS := [
+	"爸爸最常带你们去哪里钓鱼或散步？",
+	"有没有一个和爸爸在水边度过的周末，你一直记得？",
+]
+
+func _spawn_demo_bottles() -> void:
+	_demo_bottles.clear()
+	SlotManager.reset("fishpond")
+	SlotManager.load_scene("fishpond")
+	var spawned := 0
+	for i in range(DEMO_BOTTLE_QUESTIONS.size()):
+		var slot: Variant = SlotManager.allocate("fishpond", "bottle", "bottle_%d" % i)
+		if slot == null:
+			break
+		var bid := "bottle_%d" % i
+		var card := {"node_type": "bottle", "suggested_scene": "fishpond"}
+		var node := NodeFactory.make_memory_node(card, slot, _on_bottle_clicked.bind(bid))
+		var tag := Label.new()
+		tag.name = "DemoTag"
+		tag.text = "漂流瓶"
+		tag.position = Vector2(-26, -104)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_theme_font_size_override("font_size", 13)
+		tag.add_theme_color_override("font_color", Color(0.15, 0.30, 0.40, 0.95))
+		node.add_child(tag)
+		world.add_child(node)
+		_demo_bottles.append({"id": bid, "question": DEMO_BOTTLE_QUESTIONS[i], "state": "floating", "answer": "", "node": node})
+		spawned += 1
+
+func _find_demo_bottle(bid: String) -> Dictionary:
+	for b in _demo_bottles:
+		if String(b.get("id", "")) == bid:
+			return b
+	return {}
+
+func _on_bottle_clicked(bid: String) -> void:
+	var b := _find_demo_bottle(bid)
+	if not b.is_empty():
+		_open_bottle_panel(b)
+
+# 漂流瓶问题面板（复用记忆卡片样式）：未答=问题+回答框；已答=显示回答。
+func _open_bottle_panel(b: Dictionary) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 150)
+	panel.size = Vector2(560, 420)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "🍶 漂来一个问题"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(490, 34)
+	title.add_theme_font_size_override("font_size", 23)
+	title.add_theme_color_override("font_color", Color(0.18, 0.30, 0.38, 1.0))
+	panel.add_child(title)
+
+	var q := Label.new()
+	q.text = String(b.get("question", ""))
+	q.position = Vector2(34, 76)
+	q.size = Vector2(492, 70)
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.add_theme_font_size_override("font_size", 17)
+	q.add_theme_color_override("font_color", Color(0.20, 0.28, 0.26, 1.0))
+	panel.add_child(q)
+
+	if String(b.get("state", "floating")) == "floating":
+		var input := TextEdit.new()
+		input.placeholder_text = "写下你的回答…"
+		input.position = Vector2(34, 160)
+		input.size = Vector2(492, 130)
+		panel.add_child(input)
+		_add_panel_button(panel, "取消", Vector2(150, 312), Vector2(120, 40), "close")
+		var submit := Button.new()
+		submit.text = "回答"
+		submit.position = Vector2(290, 312)
+		submit.size = Vector2(120, 40)
+		submit.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_button_style(submit, false)
+		submit.pressed.connect(_submit_bottle_answer.bind(String(b.get("id", "")), input))
+		panel.add_child(submit)
+	else:
+		var ans_title := Label.new()
+		ans_title.text = "你的回答（已生成记忆）"
+		ans_title.position = Vector2(34, 160)
+		ans_title.size = Vector2(492, 22)
+		ans_title.add_theme_font_size_override("font_size", 13)
+		ans_title.add_theme_color_override("font_color", Color(0.30, 0.45, 0.42, 1.0))
+		panel.add_child(ans_title)
+		var ans := Label.new()
+		ans.text = String(b.get("answer", ""))
+		ans.position = Vector2(34, 186)
+		ans.size = Vector2(492, 104)
+		ans.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ans.add_theme_font_size_override("font_size", 16)
+		ans.add_theme_color_override("font_color", Color(0.18, 0.22, 0.20, 1.0))
+		panel.add_child(ans)
+		_add_panel_button(panel, "关闭", Vector2(220, 312), Vector2(120, 40), "close")
+
+func _submit_bottle_answer(bid: String, input: TextEdit) -> void:
+	var b := _find_demo_bottle(bid)
+	if b.is_empty():
+		return
+	var text: String = input.text.strip_edges()
+	if text == "":
+		_show_toast("写点什么再回答吧～")
+		return
+	b["answer"] = text
+	b["state"] = "opened"
+	_close_active_panel()
+	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆）。
+	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bid + "_mem")
+	if slot != null:
+		var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
+			"suggested_scene": "fishpond", "question": String(b.get("question", "")),
+			"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
+		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆 🌊"))
+		mem_node.scale = Vector2(0.25, 0.25)
+		world.add_child(mem_node)
+		_grow_memory_node(mem_node)
+	_show_toast("漂流瓶被回答了 🍶 → 🌊")
 
 func _clear_world() -> void:
 	for child in world.get_children():
@@ -907,6 +1101,7 @@ func _add_player(pos: Vector2) -> void:
 	var display_name := MemoryManager.player_display_name if MemoryManager.player_display_name != "" else _default_name_for_role(MemoryManager.selected_role_key)
 	player = _create_character(display_name, ASSETS[asset_key], pos, true)
 	player.name = "Player_" + MemoryManager.selected_role_key
+	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
 	world.add_child(player)
 	_add_online_status_badge(player, true)
 

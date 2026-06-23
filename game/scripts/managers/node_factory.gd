@@ -51,8 +51,8 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	if ResourceLoader.exists(PLACEHOLDER_TEXTURE):
-		var tex: Texture2D = load(PLACEHOLDER_TEXTURE)
+	var tex := _resolve_texture(entry)
+	if tex != null:
 		sprite.texture = tex
 		if tex.get_height() > 0:
 			sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
@@ -61,6 +61,19 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 
 	root.add_child(_make_click_area(entry, on_click))
 	return root
+
+## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退占位。
+## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
+func _resolve_texture(entry: Dictionary) -> Texture2D:
+	var scene := String(entry.get("scene", ""))
+	var file_name := String(entry.get("file_name", ""))
+	if scene != "" and file_name != "":
+		var real_path := "res://assets/%s/%s" % [scene, file_name]
+		if ResourceLoader.exists(real_path):
+			return load(real_path)
+	if ResourceLoader.exists(PLACEHOLDER_TEXTURE):
+		return load(PLACEHOLDER_TEXTURE)
+	return null
 
 ## 点击区：取自 manifest click_rect（相对 pivot，逻辑坐标），最小 80×80。
 func _make_click_area(entry: Dictionary, on_click: Callable) -> Area2D:
