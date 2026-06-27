@@ -479,6 +479,8 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_add_player(spawn)
 	_rebuild_plants()
 	_spawn_demo_memory_nodes()
+	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数算一版画像
+	_render_family_portrait()                         # 挂到入口木牌
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
 
 # 阶段 1（mock-first）：用一张演示记忆卡片，在花园 slot 上生成 3 朵可点击记忆花。
@@ -576,6 +578,47 @@ func _render_memory_links(scene: String) -> void:
 		if a == Vector2.INF or b == Vector2.INF:
 			continue
 		_draw_link_line(a, b, String(link.get("question", "")))
+
+# 渲染家庭画像木牌（入口处）：占位画板 + 版本/成员/记忆数；版本变化时重画。
+# 挂载点(645,200)为临时位置，待搭档定稿花园木牌位后校准。
+func _render_family_portrait() -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var existing := world.get_node_or_null("FamilyPortraitBoard")
+	if existing != null:
+		existing.queue_free()
+	var fp: Dictionary = MemoryManager.family_portrait
+	if int(fp.get("version", 0)) <= 0:
+		return  # 还没有画像（无人参与）
+	var board := Node2D.new()
+	board.name = "FamilyPortraitBoard"
+	board.position = Vector2(645, 200)
+	board.z_index = 4000  # 盖在家庭树之上，保证可见（临时）
+	var sprite := Sprite2D.new()
+	sprite.texture = _solid_texture(132, 92, Color(0.60, 0.44, 0.29, 1.0))
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	board.add_child(sprite)
+	var lbl := Label.new()
+	lbl.text = "🖼️ 家庭画像 v%d\n%d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
+	lbl.position = Vector2(-58, -26)
+	lbl.size = Vector2(116, 52)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	board.add_child(lbl)
+	var area := Area2D.new()
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(132, 92)
+	shape.shape = rect
+	area.add_child(shape)
+	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_show_toast("🖼️ 家庭画像 v%d · %d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
+	board.add_child(area)
+	world.add_child(board)
 
 # 取某条记忆在该场景的记忆花落点（slot.pos）；找不到返回 Vector2.INF。
 func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
@@ -775,6 +818,8 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 		_show_toast("记忆长大了 🌱 → 🌸 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
 	else:
 		_show_toast("记忆长大了 🌱 → 🌸")
+	if MemoryManager.maybe_recompute_family_portrait():  # 参与成员变化 → 重画家庭画像木牌
+		_render_family_portrait()
 
 func _season_cn(season: String) -> String:
 	match season:

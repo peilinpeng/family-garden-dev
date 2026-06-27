@@ -35,6 +35,9 @@ var room_objects: Array = []
 # 有效跨成员回答 +1：回答者≠上传者 且 同一 (memory, 回答者) 只计一次。进花园直接读它判季节。
 var cross_member_interaction_count: int = 0
 var cross_member_pairs: Array = []  # 去重键 "memory_id|answerer"
+# 家庭画像（family-portrait）：新成员首次参与 或 记忆数翻倍(2→4→8→16) 时重算版本，挂到入口木牌。
+# 阶段1 用 version 占位代表"重算了一版画像"；阶段2 换 AI 真画像，version 用于触发重画/缓存失效。
+var family_portrait: Dictionary = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
 
 ## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
 func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "") -> Dictionary:
@@ -194,6 +197,52 @@ func register_cross_member_answer(memory_id: String, answerer: String) -> bool:
 	save_game()
 	return true
 
+## 参与过的成员 key（上传记忆 或 回答过的人）。
+func participants() -> Array:
+	var seen: Array = []
+	for m in memories:
+		var u := String(m.get("user_id", ""))
+		if u != "" and not (u in seen):
+			seen.append(u)
+	for a in answers:
+		var u := String(a.get("user_id", ""))
+		if u != "" and not (u in seen):
+			seen.append(u)
+	return seen
+
+## ≤n 的最大 2 的幂（≥2）；不足 2 返回 0。用于"记忆数翻倍"阈值 2/4/8/16…。
+func _largest_pow2_le(n: int) -> int:
+	if n < 2:
+		return 0
+	var p := 2
+	while p * 2 <= n:
+		p *= 2
+	return p
+
+## 按需重算家庭画像：新成员首次参与 或 记忆数跨过新的翻倍阈值 → version +1。返回是否重算。
+func maybe_recompute_family_portrait() -> bool:
+	var parts := participants()
+	var mem_count := memories.size()
+	var known: Array = family_portrait.get("members", [])
+	var new_member := false
+	for p in parts:
+		if not (p in known):
+			new_member = true
+			break
+	var threshold := _largest_pow2_le(mem_count)
+	var doubled := threshold > int(family_portrait.get("last_threshold", 0))
+	if not new_member and not doubled:
+		return false
+	family_portrait = {
+		"version": int(family_portrait.get("version", 0)) + 1,
+		"member_count": parts.size(),
+		"memory_count": mem_count,
+		"last_threshold": threshold,
+		"members": parts
+	}
+	save_game()
+	return true
+
 ## 花园季节（家庭关系温度计）：0→春 / 3-9→夏 / 10+→秋（docs/dev/34 §Part 1）。
 func garden_season() -> String:
 	if cross_member_interaction_count >= 10:
@@ -315,6 +364,7 @@ func _reset_all() -> void:
 	room_objects = []
 	cross_member_interaction_count = 0
 	cross_member_pairs = []
+	family_portrait = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
 	mailbox_alert_state = MAILBOX_ALERT_DOT
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
@@ -333,6 +383,7 @@ func save_game() -> void:
 		"room_objects": room_objects,
 		"cross_member_interaction_count": cross_member_interaction_count,
 		"cross_member_pairs": cross_member_pairs,
+		"family_portrait": family_portrait,
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
@@ -364,6 +415,7 @@ func load_save() -> void:
 		room_objects = parsed.get("room_objects", [])
 		cross_member_interaction_count = int(parsed.get("cross_member_interaction_count", 0))
 		cross_member_pairs = parsed.get("cross_member_pairs", [])
+		family_portrait = parsed.get("family_portrait", {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []})
 		if parsed.has("mailbox_alert_state"):
 			mailbox_alert_state = normalize_mailbox_alert(str(parsed.get("mailbox_alert_state", MAILBOX_ALERT_NONE)))
 		else:
