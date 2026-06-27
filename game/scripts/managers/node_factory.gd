@@ -8,11 +8,15 @@ extends Node
 
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const PLACEHOLDER_TEXTURE := "res://assets/garden/flower.png"
+const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 
 var _by_asset_id: Dictionary = {}
+var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
 
 func _ready() -> void:
 	_load_manifest()
+	if ResourceLoader.exists(DYNAMIC_NODE_PREFAB):
+		_prefab = load(DYNAMIC_NODE_PREFAB)
 
 func _load_manifest() -> void:
 	if not FileAccess.file_exists(MANIFEST_PATH):
@@ -36,19 +40,45 @@ func get_node_asset(node_type: String, scene: String = "") -> Dictionary:
 	return {}
 
 ## 用一张 AI 记忆卡片 + 一个 slot 生成可点击节点。on_click 无参回调。
+## 节点结构来自预制体 DynamicNode.tscn；此处只按 manifest 配置贴图/点击区/坐标。
 func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) -> Node2D:
 	var node_type := String(card.get("node_type", "memory_flower"))
 	var scene := String(card.get("suggested_scene", ""))
 	var entry := get_node_asset(node_type, scene)
 	var pos := _to_vec(slot.get("pos", [640, 400]))
 
-	var root := Node2D.new()
+	var root := _new_root()
 	root.name = "Node_%s_%s" % [node_type, String(slot.get("slot_id", ""))]
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
 
-	var display_h := float(entry.get("display_height", 96))
+	_configure_sprite(root.get_node("Sprite"), entry)
+	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
+	return root
+
+## 取预制体实例；预制体缺失时回退代码构建（节点名与预制体一致：Sprite / ClickArea / Shape）。
+func _new_root() -> Node2D:
+	if _prefab != null:
+		return _prefab.instantiate()
+	var root := Node2D.new()
 	var sprite := Sprite2D.new()
+	sprite.name = "Sprite"
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	root.add_child(sprite)
+	var area := Area2D.new()
+	area.name = "ClickArea"
+	area.input_pickable = true
+	area.monitoring = true
+	area.monitorable = true
+	var shape := CollisionShape2D.new()
+	shape.name = "Shape"
+	area.add_child(shape)
+	root.add_child(area)
+	return root
+
+func _configure_sprite(sprite: Sprite2D, entry: Dictionary) -> void:
+	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
 	var tex := _resolve_texture(entry)
@@ -57,10 +87,6 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 		if tex.get_height() > 0:
 			sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
 	sprite.position = Vector2(0, -display_h * 0.5)  # 把贴图抬到落点上方 = bottom_center 近似
-	root.add_child(sprite)
-
-	root.add_child(_make_click_area(entry, on_click))
-	return root
 
 ## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退占位。
 ## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
@@ -76,13 +102,12 @@ func _resolve_texture(entry: Dictionary) -> Texture2D:
 	return null
 
 ## 点击区：取自 manifest click_rect（相对 pivot，逻辑坐标），最小 80×80。
-func _make_click_area(entry: Dictionary, on_click: Callable) -> Area2D:
-	var area := Area2D.new()
-	area.name = "ClickArea"
+## 配置预制体已有的 ClickArea + ClickArea/Shape（每实例新建 RectangleShape2D，避免共享）。
+func _configure_click_area(area: Area2D, entry: Dictionary, on_click: Callable) -> void:
 	area.input_pickable = true
 	area.monitoring = true
 	area.monitorable = true
-	var shape := CollisionShape2D.new()
+	var shape_node: CollisionShape2D = area.get_node("Shape")
 	var rect := RectangleShape2D.new()
 	var cr: Variant = entry.get("click_rect", null)
 	if cr is Array and (cr as Array).size() == 4:
@@ -93,14 +118,12 @@ func _make_click_area(entry: Dictionary, on_click: Callable) -> Area2D:
 	else:
 		rect.size = Vector2(96, 96)
 		area.position = Vector2(0, -48)
-	shape.shape = rect
-	area.add_child(shape)
+	shape_node.shape = rect
 	if on_click.is_valid():
 		area.input_event.connect(func(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 				get_viewport().set_input_as_handled()
 				on_click.call())
-	return area
 
 func _to_vec(arr: Variant) -> Vector2:
 	if arr is Array and (arr as Array).size() >= 2:
