@@ -523,17 +523,31 @@ const ROOM_ANALYSIS_MOCK := {
 # 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
 var _travel_lock := false
 
+# 其他家庭成员的 role key（≠当前玩家），用于把种子记忆归属给别人 → 玩家回答即跨成员互动。
+func _demo_other_members() -> Array:
+	var others: Array = []
+	for role_data in CHARACTER_DATA:
+		var rk := String(role_data.get("role", ""))
+		if rk != "" and rk != MemoryManager.selected_role_key:
+			others.append(rk)
+	return others
+
 func _spawn_demo_memory_nodes() -> void:
 	_demo_memories.clear()
 	SlotManager.load_scene("garden")
 	# 首次进入：把 3 张演示卡片落库（create_memory + create_node）；之后统一从数据层读，实现持久化。
 	if MemoryManager.get_nodes_for_scene("garden").is_empty():
+		# 种子记忆归属给其他家庭成员（≠当前玩家），这样玩家回答它们才算"跨成员互动"，分季背景才会随之升温。
+		var uploaders := _demo_other_members()
 		for i in range(3):
 			var slot: Variant = SlotManager.allocate("garden", "memory_flower", "garden_seed_%d" % i)
 			if slot == null:
 				break
 			var mem := MemoryManager.create_memory(DEMO_MEMORY_CARD, "photo")
+			if not uploaders.is_empty():
+				mem["user_id"] = uploaders[i % uploaders.size()]  # 改上传者为别的成员
 			MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", String(slot.get("slot_id", "")))
+		MemoryManager.save_game()  # 落盘改过的 user_id
 	# 统一从数据层渲染（首次/再次进入一致）。
 	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
 	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " slot 用量=", SlotManager.usage("garden"))
@@ -678,9 +692,21 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 	mem["answer"] = text
 	mem["state"] = "grown"
 	MemoryManager.answer_memory(String(mem.get("memory_id", "")), text)  # 持久化：存 answer + 标节点 grown + 存档
+	# 跨成员互动计数（回答别人上传的记忆）→ 升温则刷新分季背景。
+	var bumped := MemoryManager.register_cross_member_answer(String(mem.get("memory_id", "")), MemoryManager.selected_role_key)
 	_close_active_panel()
 	_grow_memory_node(mem.get("node"))
-	_show_toast("记忆长大了 🌱 → 🌸")
+	if bumped:
+		_update_season_overlay()
+		_show_toast("记忆长大了 🌱 → 🌸 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
+	else:
+		_show_toast("记忆长大了 🌱 → 🌸")
+
+func _season_cn(season: String) -> String:
+	match season:
+		"autumn": return "秋"
+		"summer": return "夏"
+		_: return "春"
 
 # 生长动画：花苞 → 开放（≤3 秒）。占位单贴图用缩放近似 seed→bud→bloom。
 func _grow_memory_node(node: Variant) -> void:
@@ -915,6 +941,36 @@ func _add_background() -> void:
 	else:
 		sprite.texture = _solid_texture(1280, 720, Color(0.72, 0.86, 0.62, 1.0))
 	world.add_child(sprite)
+	_add_season_overlay()
+
+# 分季氛围叠加层（家庭关系温度计）：按跨成员互动数着色，0→春稀疏 / 3-9→夏 / 10+→秋繁茂。
+# 半透明叠在背景之上、记忆花之下；无需新美术，A 的分季层定稿后可替换为真层。
+func _add_season_overlay() -> void:
+	var overlay := ColorRect.new()
+	overlay.name = "SeasonOverlay"
+	overlay.position = Vector2.ZERO
+	overlay.size = GAME_SIZE
+	overlay.z_index = 1  # 背景(0)之上、记忆花(z=pos.y)之下
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.color = _season_overlay_color(MemoryManager.garden_season())
+	world.add_child(overlay)
+
+# 跨成员互动数变化后实时重着色（不重建场景）。
+func _update_season_overlay() -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var ov := world.get_node_or_null("SeasonOverlay")
+	if ov is ColorRect:
+		(ov as ColorRect).color = _season_overlay_color(MemoryManager.garden_season())
+
+func _season_overlay_color(season: String) -> Color:
+	match season:
+		"autumn":
+			return Color(0.86, 0.52, 0.18, 0.20)  # 金黄繁茂
+		"summer":
+			return Color(0.96, 0.80, 0.34, 0.12)  # 暖绿/夏
+		_:
+			return Color(0.45, 0.80, 0.50, 0.06)  # 清新稀疏/春
 
 func _add_core_objects() -> void:
 	_add_interactable_sprite(

@@ -31,6 +31,10 @@ var answers: Array = []
 # 阶段1：房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
 var rooms: Array = []
 var room_objects: Array = []
+# 跨成员互动计数（= 家庭关系温度计，对齐 families.cross_member_interaction_count）。
+# 有效跨成员回答 +1：回答者≠上传者 且 同一 (memory, 回答者) 只计一次。进花园直接读它判季节。
+var cross_member_interaction_count: int = 0
+var cross_member_pairs: Array = []  # 去重键 "memory_id|answerer"
 
 ## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
 func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "") -> Dictionary:
@@ -150,6 +154,29 @@ func get_room_for_user(user_id: String) -> Dictionary:
 func get_room_objects(room_id: String) -> Array:
 	return room_objects.filter(func(o): return o is Dictionary and String(o.get("room_id", "")) == room_id)
 
+## 登记一次跨成员回答：回答者≠上传者 且 同一 (memory, 回答者) 未计过 → 计数 +1。
+## 返回是否真正计数（用于触发分季背景刷新）。
+func register_cross_member_answer(memory_id: String, answerer: String) -> bool:
+	var mem := get_memory(memory_id)
+	var uploader := String(mem.get("user_id", ""))
+	if uploader == "" or answerer == "" or answerer == uploader:
+		return false
+	var pair := memory_id + "|" + answerer
+	if pair in cross_member_pairs:
+		return false
+	cross_member_pairs.append(pair)
+	cross_member_interaction_count += 1
+	save_game()
+	return true
+
+## 花园季节（家庭关系温度计）：0→春 / 3-9→夏 / 10+→秋（docs/dev/34 §Part 1）。
+func garden_season() -> String:
+	if cross_member_interaction_count >= 10:
+		return "autumn"
+	if cross_member_interaction_count >= 3:
+		return "summer"
+	return "spring"
+
 func apply_cloud_data(data: Dictionary) -> void:
 	var remote_places: Array = data.get("travel_places", [])
 	var remote_postcards: Array = data.get("postcards", [])
@@ -261,6 +288,8 @@ func _reset_all() -> void:
 	answers = []
 	rooms = []
 	room_objects = []
+	cross_member_interaction_count = 0
+	cross_member_pairs = []
 	mailbox_alert_state = MAILBOX_ALERT_DOT
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
@@ -277,6 +306,8 @@ func save_game() -> void:
 		"answers": answers,
 		"rooms": rooms,
 		"room_objects": room_objects,
+		"cross_member_interaction_count": cross_member_interaction_count,
+		"cross_member_pairs": cross_member_pairs,
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
@@ -306,6 +337,8 @@ func load_save() -> void:
 		answers = parsed.get("answers", [])
 		rooms = parsed.get("rooms", [])
 		room_objects = parsed.get("room_objects", [])
+		cross_member_interaction_count = int(parsed.get("cross_member_interaction_count", 0))
+		cross_member_pairs = parsed.get("cross_member_pairs", [])
 		if parsed.has("mailbox_alert_state"):
 			mailbox_alert_state = normalize_mailbox_alert(str(parsed.get("mailbox_alert_state", MAILBOX_ALERT_NONE)))
 		else:
