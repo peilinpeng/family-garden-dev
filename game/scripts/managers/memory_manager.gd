@@ -8,6 +8,7 @@ extends Node
 signal mailbox_alert_changed(state: String)
 
 const SAVE_PATH := "user://family_garden_save_v2.json"
+const FAMILY_ID := "Happy_birthday_David"
 
 const MAILBOX_ALERT_NONE := "none"
 const MAILBOX_ALERT_DOT := "dot"
@@ -21,6 +22,85 @@ var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_
 var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
 var player_display_name: String = ""
+
+# 阶段1：记忆/节点/回答数据（字段对齐 backend/supabase/memory_schema.sql）。
+# 当前本地持久化（存档 JSON）；后续增量接 CloudManager 写 Supabase。
+var memories: Array = []
+var nodes: Array = []
+var answers: Array = []
+
+## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
+func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "") -> Dictionary:
+	var mem := {
+		"id": "mem_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"user_id": selected_role_key,
+		"input_type": input_type,
+		"raw_text": raw_text,
+		"image_url": image_url,
+		"status": "ai_done" if not ai_card.is_empty() else "uploaded",
+		"ai_card": ai_card,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	memories.append(mem)
+	save_game()
+	return mem
+
+## 为某条 memory 在场景里创建一个节点（slot_id 由游戏系统分配，AI 不输出坐标）。
+func create_node(memory_id: String, scene_id: String, node_type: String, slot_id: String, asset_key: String = "") -> Dictionary:
+	var node := {
+		"id": "node_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"memory_id": memory_id,
+		"scene_id": scene_id,
+		"node_type": node_type,
+		"asset_key": asset_key,
+		"slot_id": slot_id,
+		"state": "new",
+		"clickable": true,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	nodes.append(node)
+	save_game()
+	return node
+
+func get_memory(memory_id: String) -> Dictionary:
+	for m in memories:
+		if m is Dictionary and String(m.get("id", "")) == memory_id:
+			return m
+	return {}
+
+## 注：不能叫 get_node，会覆盖 Node 原生方法（Godot 4.7 视为错误）。
+func get_node_by_id(node_id: String) -> Dictionary:
+	for n in nodes:
+		if n is Dictionary and String(n.get("id", "")) == node_id:
+			return n
+	return {}
+
+func get_nodes_for_scene(scene_id: String) -> Array:
+	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
+
+func get_answer_for_memory(memory_id: String) -> String:
+	var result := ""
+	for a in answers:
+		if a is Dictionary and String(a.get("memory_id", "")) == memory_id:
+			result = String(a.get("answer_text", ""))
+	return result
+
+## 回答一条记忆：存 answer + 把该记忆的节点标记为 grown + 存档。
+func answer_memory(memory_id: String, answer_text: String) -> void:
+	answers.append({
+		"id": "ans_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"memory_id": memory_id,
+		"user_id": selected_role_key,
+		"answer_text": answer_text,
+		"created_at": Time.get_datetime_string_from_system()
+	})
+	for n in nodes:
+		if n is Dictionary and String(n.get("memory_id", "")) == memory_id:
+			n["state"] = "grown"
+	save_game()
 
 func apply_cloud_data(data: Dictionary) -> void:
 	var remote_places: Array = data.get("travel_places", [])
@@ -123,12 +203,28 @@ func notify_family_activity() -> void:
 func clear_mailbox_alert() -> void:
 	set_mailbox_alert(MAILBOX_ALERT_NONE)
 
+func _reset_all() -> void:
+	plants = []
+	travel_places = []
+	postcards = []
+	garden_messages = []
+	memories = []
+	nodes = []
+	answers = []
+	mailbox_alert_state = MAILBOX_ALERT_DOT
+	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
+	selected_role_key = ""
+	player_display_name = ""
+
 func save_game() -> void:
 	var data := {
 		"plants": plants,
 		"travel_places": travel_places,
 		"postcards": postcards,
 		"garden_messages": garden_messages,
+		"memories": memories,
+		"nodes": nodes,
+		"answers": answers,
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
@@ -140,25 +236,11 @@ func save_game() -> void:
 
 func load_save() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
-		plants = []
-		travel_places = []
-		postcards = []
-		garden_messages = []
-		mailbox_alert_state = MAILBOX_ALERT_DOT
-		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
-		selected_role_key = ""
-		player_display_name = ""
+		_reset_all()
 		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if not file:
-		plants = []
-		travel_places = []
-		postcards = []
-		garden_messages = []
-		mailbox_alert_state = MAILBOX_ALERT_DOT
-		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
-		selected_role_key = ""
-		player_display_name = ""
+		_reset_all()
 		return
 	var text := file.get_as_text()
 	var parsed = JSON.parse_string(text)
@@ -167,6 +249,9 @@ func load_save() -> void:
 		travel_places = parsed.get("travel_places", [])
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
+		memories = parsed.get("memories", [])
+		nodes = parsed.get("nodes", [])
+		answers = parsed.get("answers", [])
 		if parsed.has("mailbox_alert_state"):
 			mailbox_alert_state = normalize_mailbox_alert(str(parsed.get("mailbox_alert_state", MAILBOX_ALERT_NONE)))
 		else:
@@ -176,14 +261,7 @@ func load_save() -> void:
 		selected_role_key = str(parsed.get("selected_role_key", ""))
 		player_display_name = str(parsed.get("player_display_name", ""))
 	else:
-		plants = []
-		travel_places = []
-		postcards = []
-		garden_messages = []
-		mailbox_alert_state = MAILBOX_ALERT_DOT
-		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
-		selected_role_key = ""
-		player_display_name = ""
+		_reset_all()
 
 func find_place(place_id: String) -> Dictionary:
 	for place in travel_places:

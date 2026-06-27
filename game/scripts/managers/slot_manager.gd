@@ -51,6 +51,21 @@ func release(scene: String, slot_id: String) -> void:
 	if _scenes.has(scene):
 		_scenes[scene]["occupied"].erase(slot_id)
 
+## 直接标记某 slot 已占用（用于渲染已落库节点时回填占用表）。
+func occupy(scene: String, slot_id: String, node_id: String = "") -> void:
+	if not _scenes.has(scene):
+		load_scene(scene)
+	_scenes[scene]["occupied"][slot_id] = node_id
+
+## 按 slot_id 取槽位定义（含 pos）；找不到返回 {}。
+func get_slot(scene: String, slot_id: String) -> Dictionary:
+	if not _scenes.has(scene):
+		load_scene(scene)
+	for s in _scenes[scene]["slots"]:
+		if String(s.get("slot_id", "")) == slot_id:
+			return s
+	return {}
+
 ## 调试用：当前占用数 / 总槽位数。
 func usage(scene: String) -> Vector2i:
 	if not _scenes.has(scene):

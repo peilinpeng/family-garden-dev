@@ -4,19 +4,39 @@ extends Node
 ## 按 asset_manifest 把记忆节点放到 slot 的落点（bottom_center 近似），
 ## 自动建 ≥80×80 点击区。AI 不输出坐标（docs/09 §5/6/9）。
 ## 阶段 1 / feature/garden-mvp-loop。
-## 注：A 的正式美术尚未产出（manifest status=todo），此处贴图回退到占位 flower.png。
+## 注：A 的正式美术尚未产出（manifest status=todo），此处贴图回退到程序化占位（_get_placeholder）。
 
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
-const PLACEHOLDER_TEXTURE := "res://assets/garden/flower.png"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
+var _placeholder_tex: Texture2D = null
 
 func _ready() -> void:
 	_load_manifest()
 	if ResourceLoader.exists(DYNAMIC_NODE_PREFAB):
 		_prefab = load(DYNAMIC_NODE_PREFAB)
+
+## 占位记忆节点贴图：柔紫圆形 + 描边。真美术（manifest status=imported）到位后改为加载真资产。
+## 用可辨识图形而非背景同款花，避免和花园背景里画的花糊在一起。
+func _get_placeholder() -> Texture2D:
+	if _placeholder_tex != null:
+		return _placeholder_tex
+	var size := 44
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := Vector2(size / 2.0, size / 2.0)
+	var r := size / 2.0 - 2.0
+	for y in range(size):
+		for x in range(size):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			if d <= r:
+				img.set_pixel(x, y, Color(0.64, 0.48, 0.82))
+			elif d <= r + 1.5:
+				img.set_pixel(x, y, Color(0.34, 0.22, 0.48))
+	_placeholder_tex = ImageTexture.create_from_image(img)
+	return _placeholder_tex
 
 func _load_manifest() -> void:
 	if not FileAccess.file_exists(MANIFEST_PATH):
@@ -81,14 +101,13 @@ func _configure_sprite(sprite: Sprite2D, entry: Dictionary) -> void:
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	var tex := _resolve_texture(entry)
-	if tex != null:
-		sprite.texture = tex
-		if tex.get_height() > 0:
-			sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
+	var tex := _resolve_texture(entry)  # 真美术优先，缺图回退程序化占位（必非 null）
+	sprite.texture = tex
+	if tex.get_height() > 0:
+		sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
 	sprite.position = Vector2(0, -display_h * 0.5)  # 把贴图抬到落点上方 = bottom_center 近似
 
-## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退占位。
+## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退程序化占位。
 ## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
 func _resolve_texture(entry: Dictionary) -> Texture2D:
 	var scene := String(entry.get("scene", ""))
@@ -97,9 +116,7 @@ func _resolve_texture(entry: Dictionary) -> Texture2D:
 		var real_path := "res://assets/%s/%s" % [scene, file_name]
 		if ResourceLoader.exists(real_path):
 			return load(real_path)
-	if ResourceLoader.exists(PLACEHOLDER_TEXTURE):
-		return load(PLACEHOLDER_TEXTURE)
-	return null
+	return _get_placeholder()
 
 ## 点击区：取自 manifest click_rect（相对 pivot，逻辑坐标），最小 80×80。
 ## 配置预制体已有的 ClickArea + ClickArea/Shape（每实例新建 RectangleShape2D，避免共享）。
