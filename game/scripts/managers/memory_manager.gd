@@ -28,6 +28,9 @@ var player_display_name: String = ""
 var memories: Array = []
 var nodes: Array = []
 var answers: Array = []
+# 阶段1：房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
+var rooms: Array = []
+var room_objects: Array = []
 
 ## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
 func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "") -> Dictionary:
@@ -101,6 +104,51 @@ func answer_memory(memory_id: String, answer_text: String) -> void:
 		if n is Dictionary and String(n.get("memory_id", "")) == memory_id:
 			n["state"] = "grown"
 	save_game()
+
+## 用 AI 房间识别结果创建一个房间（room_analysis：room_type/style/suggested_room_theme/...）。
+func create_room(analysis: Dictionary, source_memory_id: String = "") -> Dictionary:
+	var room := {
+		"id": "room_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"user_id": selected_role_key,
+		"room_name": String(analysis.get("suggested_room_theme", "")),
+		"room_type": String(analysis.get("room_type", "unknown")),
+		"style": String(analysis.get("style", "")),
+		"background_asset": "",
+		"source_memory_id": source_memory_id,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	rooms.append(room)
+	save_game()
+	return room
+
+## 在房间里摆一件物件（slot_id 由 ZoneManager 分配，AI 只给 object_type / zone）。
+func create_room_object(room_id: String, object_type: String, zone: String, slot_id: String, asset_key: String = "") -> Dictionary:
+	var obj := {
+		"id": "obj_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"room_id": room_id,
+		"object_type": object_type,
+		"asset_key": asset_key,
+		"slot_id": slot_id,
+		"zone": zone,
+		"clickable": true,
+		"collision": false,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	room_objects.append(obj)
+	save_game()
+	return obj
+
+func get_room_for_user(user_id: String) -> Dictionary:
+	var result := {}
+	for r in rooms:
+		if r is Dictionary and String(r.get("user_id", "")) == user_id:
+			result = r  # 取最近一个
+	return result
+
+func get_room_objects(room_id: String) -> Array:
+	return room_objects.filter(func(o): return o is Dictionary and String(o.get("room_id", "")) == room_id)
 
 func apply_cloud_data(data: Dictionary) -> void:
 	var remote_places: Array = data.get("travel_places", [])
@@ -211,6 +259,8 @@ func _reset_all() -> void:
 	memories = []
 	nodes = []
 	answers = []
+	rooms = []
+	room_objects = []
 	mailbox_alert_state = MAILBOX_ALERT_DOT
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
@@ -225,6 +275,8 @@ func save_game() -> void:
 		"memories": memories,
 		"nodes": nodes,
 		"answers": answers,
+		"rooms": rooms,
+		"room_objects": room_objects,
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
@@ -252,6 +304,8 @@ func load_save() -> void:
 		memories = parsed.get("memories", [])
 		nodes = parsed.get("nodes", [])
 		answers = parsed.get("answers", [])
+		rooms = parsed.get("rooms", [])
+		room_objects = parsed.get("room_objects", [])
 		if parsed.has("mailbox_alert_state"):
 			mailbox_alert_state = normalize_mailbox_alert(str(parsed.get("mailbox_alert_state", MAILBOX_ALERT_NONE)))
 		else:

@@ -503,6 +503,23 @@ var _demo_memories: Array = []
 var _demo_bottles: Array = []
 # 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
 var _fishpond_memories: Array = []
+# 玩家房间已渲染的家具节点缓存（每项 { id(obj_id), object_type, node }）。
+var _room_objects: Array = []
+
+# 阶段1 房间识别 mock（镜像 backend/mocks/room_analysis_mock.json）；阶段2 换 CloudManager 真调用。
+# AI 只给 object_type / zone，落点由 ZoneManager 分配。
+const ROOM_ANALYSIS_MOCK := {
+	"room_type": "bedroom",
+	"style": "warm_cozy",
+	"suggested_room_theme": "study_corner",
+	"description": "这个房间适合生成一个温暖的学习角落。",
+	"objects": [
+		{"object_type": "desk", "zone": "back_left"},
+		{"object_type": "lamp", "zone": "back_left"},
+		{"object_type": "plant", "zone": "right_side"},
+		{"object_type": "photo_wall", "zone": "back_wall"}
+	]
+}
 # 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
 var _travel_lock := false
 
@@ -1313,6 +1330,7 @@ func _enter_house(id: String, label_text: String) -> void:
 	if id == "player" and ResourceLoader.exists(ANNA_ROOM_SCENE):
 		world.add_child((load(ANNA_ROOM_SCENE) as PackedScene).instantiate())
 		_add_player(room_info.get("spawn", Vector2(640, 560)))
+		_render_room("player")  # 渲染已落库的房间家具（关游戏重开仍在）
 		_add_room_hint_panel(room_label, id)
 		return
 
@@ -1393,10 +1411,11 @@ func _add_room_foreground_if_exists(foreground_asset_key: String, room_rect: Rec
 
 
 func _add_room_hint_panel(room_label: String, house_id: String) -> void:
+	var is_player := house_id == "player"
 	var panel := Panel.new()
 	room_card = panel
 	panel.position = Vector2(22, 86)
-	panel.size = Vector2(292, 156)
+	panel.size = Vector2(292, 196 if is_player else 156)  # 玩家房间多一行"上传房间照片"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	ui_layer.add_child(panel)
@@ -1419,9 +1438,42 @@ Use Back Garden to return."
 	body.add_theme_color_override("font_color", Color(0.36, 0.30, 0.23, 0.90))
 	panel.add_child(body)
 
-	_add_panel_button(panel, "Note", Vector2(18, 104), Vector2(78, 34), "house_note:" + house_id)
-	_add_panel_button(panel, "Cards", Vector2(106, 104), Vector2(82, 34), "MemoryManager.postcards")
-	_add_panel_button(panel, "Back", Vector2(198, 104), Vector2(76, 34), "back_garden")
+	var btn_y := 150 if is_player else 104
+	if is_player:
+		_add_panel_button(panel, "上传房间照片(mock)", Vector2(18, 104), Vector2(256, 34), "generate_room:" + house_id)
+	_add_panel_button(panel, "Note", Vector2(18, btn_y), Vector2(78, 34), "house_note:" + house_id)
+	_add_panel_button(panel, "Cards", Vector2(106, btn_y), Vector2(82, 34), "MemoryManager.postcards")
+	_add_panel_button(panel, "Back", Vector2(198, btn_y), Vector2(76, 34), "back_garden")
+
+# 上传房间照片(阶段1 内联 mock)→ AI 识别 → 落库 + 布局 → 渲染。已生成则不重复。
+func _on_generate_room(house_id: String) -> void:
+	if house_id != "player":
+		return
+	if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty():
+		_show_toast("房间已经布置过了 🏠")
+		return
+	var src := MemoryManager.create_memory({}, "room_photo")  # 房间照片来源记忆
+	RoomLayoutManager.generate(ROOM_ANALYSIS_MOCK, String(src.get("id", "")))
+	_render_room("player")
+	_show_toast("房间生成好了 🛋️")
+
+# 渲染玩家房间已落库的家具（重入/重启后重建）。
+func _render_room(house_id: String) -> void:
+	_room_objects.clear()
+	if house_id != "player":
+		return
+	var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
+	if room.is_empty():
+		return
+	var n := RoomLayoutManager.render(String(room.get("id", "")), world, _on_room_object_clicked)
+	print("[Stage1] room 家具 rendered=", n, " zone 用量=", ZoneManager.usage("room"))
+
+func _on_room_object_clicked(obj_id: String) -> void:
+	for o in MemoryManager.room_objects:
+		if o is Dictionary and String(o.get("id", "")) == obj_id:
+			_show_toast("这是 " + String(o.get("object_type", "物件")) + " 🪑")
+			return
+	_show_toast("房间里的物件 🪑")
 
 
 func _add_room_collision_zones(room_id: String, room_rect: Rect2) -> void:
@@ -2674,6 +2726,8 @@ func _on_panel_button(action: String) -> void:
 		_open_add_message_form()
 	elif action.begins_with("house_photos:"):
 		_open_postcards_panel()
+	elif action.begins_with("generate_room:"):
+		_on_generate_room(action.split(":")[1])
 
 func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):

@@ -76,6 +76,27 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
 
+## 用一个房间物件（object_type）+ 一个 zone 落点生成可点击家具节点。
+## 真美术未产出时占位渲染 + 物件名标签（看清是 desk/lamp/...）。point = ZoneManager 落点 {slot_id, zone, pos}。
+func make_room_object(object_type: String, point: Dictionary, on_click: Callable) -> Node2D:
+	var entry := get_node_asset(object_type, "room")  # 无对应资产时为 {} → 占位
+	var pos := _to_vec(point.get("pos", [640, 400]))
+	var root := _new_root()
+	root.name = "Obj_%s_%s" % [object_type, String(point.get("slot_id", ""))]
+	root.position = pos
+	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
+	_configure_sprite(root.get_node("Sprite"), entry)
+	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
+	var label := Label.new()
+	label.name = "ObjTag"
+	label.text = object_type
+	label.position = Vector2(-30, -118)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(0.30, 0.28, 0.40, 0.95))
+	root.add_child(label)
+	return root
+
 ## 取预制体实例；预制体缺失时回退代码构建（节点名与预制体一致：Sprite / ClickArea / Shape）。
 func _new_root() -> Node2D:
 	if _prefab != null:
