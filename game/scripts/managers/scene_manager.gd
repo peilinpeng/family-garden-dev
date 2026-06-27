@@ -550,12 +550,86 @@ func _spawn_demo_memory_nodes() -> void:
 		MemoryManager.save_game()  # 落盘改过的 user_id
 	# 统一从数据层渲染（首次/再次进入一致）。
 	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
-	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " slot 用量=", SlotManager.usage("garden"))
+	_spawn_demo_memory_link()       # ≥2 条记忆时生成 mock 关联（阶段2 换 cross-memory-link 真调用）
+	_render_memory_links("garden")  # 画连线
+	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
+
+# 阶段1 mock：花园里 ≥2 条记忆且尚无连线时，给前两条造一条关联连线。
+# 阶段2 换 cross-memory-link 接口：每上传新记忆增量算关联，relation_type/question 由 AI 给。
+func _spawn_demo_memory_link() -> void:
+	if not MemoryManager.get_memory_links("garden").is_empty():
+		return
+	if _demo_memories.size() < 2:
+		return
+	var a := String(_demo_memories[0].get("memory_id", ""))
+	var b := String(_demo_memories[-1].get("memory_id", ""))  # 连最分散的一对，连线更清晰
+	if a == "" or b == "" or a == b:
+		return
+	MemoryManager.create_memory_link(a, b, "garden", "same_place",
+		"这两段记忆好像在同一个地方？和家人聊聊那里的故事吧")
+
+# 画花园里所有记忆连线：两端取各自记忆花的落点，连一条藤蔓线 + 可点的关联问题。
+func _render_memory_links(scene: String) -> void:
+	for link in MemoryManager.get_memory_links(scene):
+		var a := _memory_flower_pos(scene, String(link.get("memory_id", "")))
+		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
+		if a == Vector2.INF or b == Vector2.INF:
+			continue
+		_draw_link_line(a, b, String(link.get("question", "")))
+
+# 取某条记忆在该场景的记忆花落点（slot.pos）；找不到返回 Vector2.INF。
+func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
+	for nd in MemoryManager.get_nodes_for_scene(scene):
+		if String(nd.get("memory_id", "")) == memory_id and String(nd.get("node_type", "")) == "memory_flower":
+			var slot := SlotManager.get_slot(scene, String(nd.get("slot_id", "")))
+			if not slot.is_empty():
+				var p: Variant = slot.get("pos", null)
+				if p is Array and (p as Array).size() >= 2:
+					return Vector2(float(p[0]), float(p[1]))
+	return Vector2.INF
+
+# 一条连线：两花之间拱起的藤蔓线（盖在记忆花之上，避免被花遮住）+ 中点可点的 🔗 关联问题。
+func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
+	var head := Vector2(0, -100)  # 连到花头上方，越过花顶
+	var arc := ((a + b) * 0.5 + head) + Vector2(0, -40)  # 中点再抬高 → 轻微拱形
+	var line := Line2D.new()
+	line.name = "MemoryLink"
+	line.points = PackedVector2Array([a + head, arc, b + head])
+	line.width = 4.0
+	line.default_color = Color(0.46, 0.66, 0.36, 0.9)
+	line.z_index = 5000  # 盖在记忆花(z=pos.y)之上，保证可见
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	world.add_child(line)
+	# 中点：🔗 图标 + 可点区域，点击弹关联问题。
+	var mid := arc
+	var area := Area2D.new()
+	area.position = mid
+	area.z_index = 5001
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(40, 40)
+	shape.shape = rect
+	area.add_child(shape)
+	var tag := Label.new()
+	tag.text = "🔗"
+	tag.position = Vector2(-12, -16)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_font_size_override("font_size", 22)
+	area.add_child(tag)
+	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_show_toast("🔗 " + question))
+	world.add_child(area)
 
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
 func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
 	for nd in MemoryManager.get_nodes_for_scene(scene):
+		if String(nd.get("node_type", "")) == "memory_link":
+			continue  # 连线节点不是落点物，由 _render_memory_links 单独画
 		var node_id := String(nd.get("id", ""))
 		var memory_id := String(nd.get("memory_id", ""))
 		var slot_id := String(nd.get("slot_id", ""))

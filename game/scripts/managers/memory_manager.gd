@@ -87,6 +87,31 @@ func get_node_by_id(node_id: String) -> Dictionary:
 func get_nodes_for_scene(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
 
+## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link，阶段1 用 mock）。
+func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String) -> Dictionary:
+	var node := {
+		"id": "link_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"family_id": FAMILY_ID,
+		"memory_id": memory_id,
+		"linked_memory_id": linked_memory_id,
+		"scene_id": scene_id,
+		"node_type": "memory_link",
+		"relation_type": relation_type,
+		"question": question,
+		"slot_id": "",
+		"state": "new",
+		"clickable": true,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	nodes.append(node)
+	save_game()
+	return node
+
+func get_memory_links(scene_id: String) -> Array:
+	return nodes.filter(func(n): return n is Dictionary \
+		and String(n.get("node_type", "")) == "memory_link" \
+		and String(n.get("scene_id", "")) == scene_id)
+
 func get_answer_for_memory(memory_id: String) -> String:
 	var result := ""
 	for a in answers:
