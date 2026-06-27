@@ -501,33 +501,60 @@ var _demo_memories: Array = []
 
 # 鱼塘漂流瓶 demo 列表（mock-first，离场重置）。每项：{ id, question, state, answer, node }。
 var _demo_bottles: Array = []
+# 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
+var _fishpond_memories: Array = []
 # 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
 var _travel_lock := false
 
 func _spawn_demo_memory_nodes() -> void:
 	_demo_memories.clear()
 	SlotManager.load_scene("garden")
-	var spawned := 0
-	for i in range(3):
-		var slot: Variant = SlotManager.allocate("garden", "memory_flower", "demo_%d" % i)
-		if slot == null:
-			break
-		var mem_id := "demo_%d" % i
-		var node := NodeFactory.make_memory_node(DEMO_MEMORY_CARD, slot, _on_memory_clicked.bind(mem_id))
-		# 占位美术与背景花相近，加一个轻量"记忆"标签便于辨认（真 3 态美术到位后移除）。
-		var tag := Label.new()
-		tag.name = "DemoTag"
-		tag.text = "记忆"
-		tag.position = Vector2(-22, -126)
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.add_theme_font_size_override("font_size", 13)
-		tag.add_theme_color_override("font_color", Color(0.55, 0.20, 0.35, 0.95))
-		node.add_child(tag)
-		node.scale = Vector2(0.55, 0.55)  # "new" = 花苞，待回答后生长
-		world.add_child(node)
-		_demo_memories.append({"id": mem_id, "card": DEMO_MEMORY_CARD, "state": "new", "answer": "", "node": node})
-		spawned += 1
-	print("[Stage1] demo 记忆花 spawned=", spawned, " slot 用量=", SlotManager.usage("garden"))
+	# 首次进入：把 3 张演示卡片落库（create_memory + create_node）；之后统一从数据层读，实现持久化。
+	if MemoryManager.get_nodes_for_scene("garden").is_empty():
+		for i in range(3):
+			var slot: Variant = SlotManager.allocate("garden", "memory_flower", "garden_seed_%d" % i)
+			if slot == null:
+				break
+			var mem := MemoryManager.create_memory(DEMO_MEMORY_CARD, "photo")
+			MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", String(slot.get("slot_id", "")))
+	# 统一从数据层渲染（首次/再次进入一致）。
+	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
+	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " slot 用量=", SlotManager.usage("garden"))
+
+# 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
+# cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
+func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
+	for nd in MemoryManager.get_nodes_for_scene(scene):
+		var node_id := String(nd.get("id", ""))
+		var memory_id := String(nd.get("memory_id", ""))
+		var slot_id := String(nd.get("slot_id", ""))
+		var mem := MemoryManager.get_memory(memory_id)
+		var card: Dictionary = mem.get("ai_card", {})
+		SlotManager.occupy(scene, slot_id, node_id)  # 重入时回填占用，避免新分配撞位
+		var slot := SlotManager.get_slot(scene, slot_id)
+		if slot.is_empty():
+			continue
+		var live := NodeFactory.make_memory_node(card, slot, click_cb.bind(node_id))
+		var state := String(nd.get("state", "new"))
+		if String(nd.get("node_type", "")) == "memory_flower":
+			_add_memory_tag(live)
+		live.scale = Vector2.ONE if state == "grown" else Vector2(0.55, 0.55)  # grown=已开花 / new=花苞
+		world.add_child(live)
+		cache.append({
+			"id": node_id, "memory_id": memory_id, "card": card,
+			"state": state, "answer": MemoryManager.get_answer_for_memory(memory_id), "node": live
+		})
+
+# 占位美术与背景花相近，加一个轻量"记忆"标签便于辨认（真 3 态美术到位后移除）。
+func _add_memory_tag(node: Node2D) -> void:
+	var tag := Label.new()
+	tag.name = "DemoTag"
+	tag.text = "记忆"
+	tag.position = Vector2(-22, -126)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_font_size_override("font_size", 13)
+	tag.add_theme_color_override("font_color", Color(0.55, 0.20, 0.35, 0.95))
+	node.add_child(tag)
 
 func _find_demo_memory(mem_id: String) -> Dictionary:
 	for m in _demo_memories:
@@ -633,6 +660,7 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 		return
 	mem["answer"] = text
 	mem["state"] = "grown"
+	MemoryManager.answer_memory(String(mem.get("memory_id", "")), text)  # 持久化：存 answer + 标节点 grown + 存档
 	_close_active_panel()
 	_grow_memory_node(mem.get("node"))
 	_show_toast("记忆长大了 🌱 → 🌸")
@@ -705,8 +733,11 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	var spawn: Vector2 = ScenePortal.get_spawn("fishpond", spawn_key)
 	_add_player(spawn)
 	_spawn_demo_bottles()
+	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
+	_fishpond_memories.clear()
+	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
-	print("[Stage1] fishpond bottles spawned=", _demo_bottles.size(), " slot 用量=", SlotManager.usage("fishpond"))
+	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
 
 # 阶段1 mock：在水面 slot 上生成 2 个可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
 const DEMO_BOTTLE_QUESTIONS := [
@@ -824,16 +855,22 @@ func _submit_bottle_answer(bid: String, input: TextEdit) -> void:
 	b["answer"] = text
 	b["state"] = "opened"
 	_close_active_panel()
-	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆）。
+	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆），并落库持久化（关游戏重开仍在）。
 	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bid + "_mem")
 	if slot != null:
 		var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
 			"suggested_scene": "fishpond", "question": String(b.get("question", "")),
 			"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
+		var mem := MemoryManager.create_memory(card, "bottle")
+		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
+		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
 		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆 🌊"))
 		mem_node.scale = Vector2(0.25, 0.25)
 		world.add_child(mem_node)
 		_grow_memory_node(mem_node)
+		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
+		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
+			"card": card, "state": "grown", "answer": text, "node": mem_node})
 	_show_toast("漂流瓶被回答了 🍶 → 🌊")
 
 func _clear_world() -> void:
