@@ -6,6 +6,7 @@ extends Node
 ## 从 main.gd 拆出，逻辑保持不变（增量 3 / feature/c-foundation）。
 
 const GAME_SIZE := Vector2(1280, 720)
+const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 
 
 const ASSETS := {
@@ -1269,6 +1270,14 @@ func _enter_house(id: String, label_text: String) -> void:
 	var room_info: Dictionary = _get_room_data(id)
 	var room_label: String = str(room_info.get("label", label_text))
 	info_label.text = room_label
+
+	# 样板（增量迁移 §7）：玩家房间用编辑器场景 AnnaRoom.tscn（静态背景+碰撞），
+	# 玩家/提示面板/返回流程仍复用代码。其他 3 间保持原过程化构建。
+	if id == "player" and ResourceLoader.exists(ANNA_ROOM_SCENE):
+		world.add_child((load(ANNA_ROOM_SCENE) as PackedScene).instantiate())
+		_add_player(room_info.get("spawn", Vector2(640, 560)))
+		_add_room_hint_panel(room_label, id)
+		return
 
 	var room_rect: Rect2 = _add_room_background(str(room_info.get("asset", "")))
 	_add_room_collision_zones(id, room_rect)
