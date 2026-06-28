@@ -23,6 +23,7 @@ SlotManager="*res://scripts/managers/slot_manager.gd"
 ZoneManager="*res://scripts/managers/zone_manager.gd"
 NodeFactory="*res://scripts/managers/node_factory.gd"
 RoomLayoutManager="*res://scripts/managers/room_layout_manager.gd"
+AIClient="*res://scripts/managers/ai_client.gd"
 ScenePortal="*res://scripts/managers/scene_portal.gd"
 SceneManager="*res://scripts/managers/scene_manager.gd"
 

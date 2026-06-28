@@ -483,19 +483,8 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_render_family_portrait()                         # 挂到入口木牌
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
 
-# 阶段 1（mock-first）：用一张演示记忆卡片，在花园 slot 上生成 3 朵可点击记忆花。
-# 走 SlotManager 分配（不重叠）+ NodeFactory 生成（bottom_center + 点击区）。
-# 卡片 UI / 回答 / 生长动画为后续增量；现在点击先弹 toast 验证链路。
-const DEMO_MEMORY_CARD := {
-	"title": "一次家庭旅行",
-	"description": "这是一段温暖的家庭旅行记忆。画面中有户外空间和轻松的氛围。",
-	"memory_type": "travel",
-	"suggested_scene": "garden",
-	"question": "你还记得这次旅行中最开心的一件事吗？",
-	"node_type": "memory_flower",
-	"confidence": 1.0,
-	"guess": "可能是 1990 年代的旅行"
-}
+# 记忆卡片 / 房间识别 / 漂流瓶问题 / 关联连线的 mock 已统一收到 AIClient（docs/04 接口）。
+# 阶段2 真调用到位后只换 AIClient 实现层，本文件调用点不变。
 
 # 阶段1 mock 演示用的记忆列表。真实流程将由 MemoryManager + AI 客户端填充并持久化。
 # 每项：{ id, card, state(new/grown), answer, node }。当前不落库，离开花园后重置。
@@ -508,20 +497,6 @@ var _fishpond_memories: Array = []
 # 玩家房间已渲染的家具节点缓存（每项 { id(obj_id), object_type, node }）。
 var _room_objects: Array = []
 
-# 阶段1 房间识别 mock（镜像 backend/mocks/room_analysis_mock.json）；阶段2 换 CloudManager 真调用。
-# AI 只给 object_type / zone，落点由 ZoneManager 分配。
-const ROOM_ANALYSIS_MOCK := {
-	"room_type": "bedroom",
-	"style": "warm_cozy",
-	"suggested_room_theme": "study_corner",
-	"description": "这个房间适合生成一个温暖的学习角落。",
-	"objects": [
-		{"object_type": "desk", "zone": "back_left"},
-		{"object_type": "lamp", "zone": "back_left"},
-		{"object_type": "plant", "zone": "right_side"},
-		{"object_type": "photo_wall", "zone": "back_wall"}
-	]
-}
 # 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
 var _travel_lock := false
 
@@ -545,7 +520,7 @@ func _spawn_demo_memory_nodes() -> void:
 			var slot: Variant = SlotManager.allocate("garden", "memory_flower", "garden_seed_%d" % i)
 			if slot == null:
 				break
-			var mem := MemoryManager.create_memory(DEMO_MEMORY_CARD, "photo")
+			var mem := MemoryManager.create_memory(AIClient.mock_memory_card(), "photo")
 			if not uploaders.is_empty():
 				mem["user_id"] = uploaders[i % uploaders.size()]  # 改上传者为别的成员
 			MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", String(slot.get("slot_id", "")))
@@ -567,8 +542,9 @@ func _spawn_demo_memory_link() -> void:
 	var b := String(_demo_memories[-1].get("memory_id", ""))  # 连最分散的一对，连线更清晰
 	if a == "" or b == "" or a == b:
 		return
-	MemoryManager.create_memory_link(a, b, "garden", "same_place",
-		"这两段记忆好像在同一个地方？和家人聊聊那里的故事吧")
+	var link: Dictionary = AIClient.mock_link()  # 阶段2 换 await AIClient.cross_memory_link(a, candidates)
+	MemoryManager.create_memory_link(a, b, "garden",
+		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
 
 # 画花园里所有记忆连线：两端取各自记忆花的落点，连一条藤蔓线 + 可点的关联问题。
 func _render_memory_links(scene: String) -> void:
@@ -901,18 +877,15 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
 
-# 阶段1 mock：在水面 slot 上生成 2 个可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
-const DEMO_BOTTLE_QUESTIONS := [
-	"爸爸最常带你们去哪里钓鱼或散步？",
-	"有没有一个和爸爸在水边度过的周末，你一直记得？",
-]
-
+# 阶段1 mock：在水面 slot 上生成可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
+# 问题来自 AIClient（mock，阶段2 换 generate-bottle-question 真调用）。
 func _spawn_demo_bottles() -> void:
 	_demo_bottles.clear()
 	SlotManager.reset("fishpond")
 	SlotManager.load_scene("fishpond")
+	var questions: Array = AIClient.mock_bottle_questions()
 	var spawned := 0
-	for i in range(DEMO_BOTTLE_QUESTIONS.size()):
+	for i in range(questions.size()):
 		var slot: Variant = SlotManager.allocate("fishpond", "bottle", "bottle_%d" % i)
 		if slot == null:
 			break
@@ -928,7 +901,7 @@ func _spawn_demo_bottles() -> void:
 		tag.add_theme_color_override("font_color", Color(0.15, 0.30, 0.40, 0.95))
 		node.add_child(tag)
 		world.add_child(node)
-		_demo_bottles.append({"id": bid, "question": DEMO_BOTTLE_QUESTIONS[i], "state": "floating", "answer": "", "node": node})
+		_demo_bottles.append({"id": bid, "question": String(questions[i]), "state": "floating", "answer": "", "node": node})
 		spawned += 1
 
 func _find_demo_bottle(bid: String) -> Dictionary:
@@ -1620,7 +1593,7 @@ Use Back Garden to return."
 	_add_panel_button(panel, "Cards", Vector2(106, btn_y), Vector2(82, 34), "MemoryManager.postcards")
 	_add_panel_button(panel, "Back", Vector2(198, btn_y), Vector2(76, 34), "back_garden")
 
-# 上传房间照片(阶段1 内联 mock)→ AI 识别 → 落库 + 布局 → 渲染。已生成则不重复。
+# 上传房间照片 → AI 识别(AIClient，mock/真后端+回退) → 落库 + 布局 → 渲染。已生成则不重复。
 func _on_generate_room(house_id: String) -> void:
 	if house_id != "player":
 		return
@@ -1628,7 +1601,9 @@ func _on_generate_room(house_id: String) -> void:
 		_show_toast("房间已经布置过了 🏠")
 		return
 	var src := MemoryManager.create_memory({}, "room_photo")  # 房间照片来源记忆
-	RoomLayoutManager.generate(ROOM_ANALYSIS_MOCK, String(src.get("id", "")))
+	var image_url := String(src.get("image_url", ""))
+	var analysis: Dictionary = await AIClient.analyze_room_photo(image_url)  # 真后端优先，失败回退 mock
+	RoomLayoutManager.generate(analysis, String(src.get("id", "")))
 	_render_room("player")
 	_show_toast("房间生成好了 🛋️")
 
