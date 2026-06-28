@@ -54,6 +54,7 @@ func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: 
 	}
 	memories.append(mem)
 	save_game()
+	_sync("memories", mem)
 	return mem
 
 ## 为某条 memory 在场景里创建一个节点（slot_id 由游戏系统分配，AI 不输出坐标）。
@@ -72,6 +73,7 @@ func create_node(memory_id: String, scene_id: String, node_type: String, slot_id
 	}
 	nodes.append(node)
 	save_game()
+	_sync("nodes", node)
 	return node
 
 func get_memory(memory_id: String) -> Dictionary:
@@ -108,6 +110,7 @@ func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: S
 	}
 	nodes.append(node)
 	save_game()
+	_sync("nodes", node)
 	return node
 
 func get_memory_links(scene_id: String) -> Array:
@@ -124,18 +127,24 @@ func get_answer_for_memory(memory_id: String) -> String:
 
 ## 回答一条记忆：存 answer + 把该记忆的节点标记为 grown + 存档。
 func answer_memory(memory_id: String, answer_text: String) -> void:
-	answers.append({
+	var ans := {
 		"id": "ans_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 		"family_id": FAMILY_ID,
 		"memory_id": memory_id,
 		"user_id": selected_role_key,
 		"answer_text": answer_text,
 		"created_at": Time.get_datetime_string_from_system()
-	})
+	}
+	answers.append(ans)
+	var grown: Array = []
 	for n in nodes:
 		if n is Dictionary and String(n.get("memory_id", "")) == memory_id:
 			n["state"] = "grown"
+			grown.append(n)
 	save_game()
+	_sync("answers", ans)
+	for n in grown:
+		_sync("nodes", n)  # 节点状态变 grown，同步
 
 ## 用 AI 房间识别结果创建一个房间（room_analysis：room_type/style/suggested_room_theme/...）。
 func create_room(analysis: Dictionary, source_memory_id: String = "") -> Dictionary:
@@ -152,6 +161,7 @@ func create_room(analysis: Dictionary, source_memory_id: String = "") -> Diction
 	}
 	rooms.append(room)
 	save_game()
+	_sync("rooms", room)
 	return room
 
 ## 在房间里摆一件物件（slot_id 由 ZoneManager 分配，AI 只给 object_type / zone）。
@@ -170,6 +180,7 @@ func create_room_object(room_id: String, object_type: String, zone: String, slot
 	}
 	room_objects.append(obj)
 	save_game()
+	_sync("room_objects", obj)
 	return obj
 
 func get_room_for_user(user_id: String) -> Dictionary:
@@ -195,6 +206,7 @@ func register_cross_member_answer(memory_id: String, answerer: String) -> bool:
 	cross_member_pairs.append(pair)
 	cross_member_interaction_count += 1
 	save_game()
+	_sync("families", _family_row())
 	return true
 
 ## 参与过的成员 key（上传记忆 或 回答过的人）。
@@ -241,6 +253,7 @@ func maybe_recompute_family_portrait() -> bool:
 		"members": parts
 	}
 	save_game()
+	_sync("families", _family_row())
 	return true
 
 ## 花园季节（家庭关系温度计）：0→春 / 3-9→夏 / 10+→秋（docs/dev/34 §Part 1）。
@@ -369,6 +382,40 @@ func _reset_all() -> void:
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
 	player_display_name = ""
+
+# ── 远端同步接缝（迭代1a）────────────────────────────────────────────────
+# 写操作把单条记录推给 CloudManager 的持久化后端；无后端时 no-op，本地 save_game 兜底。
+# 迭代1b 注入 CloudBase 后端后即生效，本方法及调用点签名不变。
+func _sync(table: String, row: Dictionary) -> void:
+	CloudManager.persist_record(table, row)
+
+# families 行（家庭级状态：跨成员计数 + 家庭画像）。
+func _family_row() -> Dictionary:
+	return {
+		"id": FAMILY_ID,
+		"cross_member_interaction_count": cross_member_interaction_count,
+		"family_portrait": family_portrait
+	}
+
+# 从远端拉取并覆盖本地缓存（迭代1b 启动时调用）。无后端时各表返回空 → 保留本地存档。
+func pull_remote() -> void:
+	var t_mem := CloudManager.load_table("memories")
+	if not t_mem.is_empty(): memories = t_mem
+	var t_node := CloudManager.load_table("nodes")
+	if not t_node.is_empty(): nodes = t_node
+	var t_ans := CloudManager.load_table("answers")
+	if not t_ans.is_empty(): answers = t_ans
+	var t_room := CloudManager.load_table("rooms")
+	if not t_room.is_empty(): rooms = t_room
+	var t_obj := CloudManager.load_table("room_objects")
+	if not t_obj.is_empty(): room_objects = t_obj
+	var t_fam := CloudManager.load_table("families")
+	if not t_fam.is_empty() and t_fam[0] is Dictionary:
+		var row: Dictionary = t_fam[0]
+		cross_member_interaction_count = int(row.get("cross_member_interaction_count", cross_member_interaction_count))
+		var fp: Variant = row.get("family_portrait", null)
+		if fp is Dictionary:
+			family_portrait = fp
 
 func save_game() -> void:
 	var data := {

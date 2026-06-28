@@ -15,6 +15,29 @@ const FAMILY_ID: String = "Happy_birthday_David"
 const REST_BASE: String = SUPABASE_URL + "/rest/v1"
 const STORAGE_BUCKET: String = "family-photos"
 
+# ── 持久化后端接缝（迭代1a · 后端无关接口）─────────────────────────────────
+# 默认无远端后端：persist/load/delete 为 no-op / 空，由 MemoryManager 本地存档兜底。
+# 迭代1b 通过 set_persistence_backend 注入 CloudBase（或 Supabase）后端实现
+# （需实现 persist_record(table,row) / load_table(table,query) / delete_record(table,id)），
+# MemoryManager 的写入/读取出入口签名不变。
+var _persist_backend: Object = null
+
+func set_persistence_backend(backend: Object) -> void:
+	_persist_backend = backend
+
+func persist_record(table: String, row: Dictionary) -> void:
+	if _persist_backend != null and _persist_backend.has_method("persist_record"):
+		_persist_backend.persist_record(table, row)
+
+func load_table(table: String, query: String = "") -> Array:
+	if _persist_backend != null and _persist_backend.has_method("load_table"):
+		return _persist_backend.load_table(table, query)
+	return []
+
+func delete_record(table: String, row_id: String) -> void:
+	if _persist_backend != null and _persist_backend.has_method("delete_record"):
+		_persist_backend.delete_record(table, row_id)
+
 
 func load_family_data() -> Dictionary:
 	var places: Array = await select_table("travel_places", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
