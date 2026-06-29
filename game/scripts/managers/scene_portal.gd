@@ -59,7 +59,7 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 	var tap_enabled := bool(portal.get("tap_enabled", true))
 
 	var area := Area2D.new()
-	area.name = "Portal_" + String(portal.get("portal_id", "portal"))
+	area.name = String(portal.get("portal_id", "portal"))
 	area.monitoring = true
 	area.collision_mask = 1  # 主控角色在 layer 1
 	area.position = rect.position + rect.size * 0.5

@@ -1,0 +1,72 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_01.png" id="1_land_walk_01"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_02.png" id="2_land_walk_02"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_03.png" id="3_land_walk_03"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_04.png" id="4_land_walk_04"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_05.png" id="5_land_walk_05"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_06.png" id="6_land_walk_06"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_07.png" id="7_land_walk_07"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_walk_08.png" id="8_land_walk_08"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_water_01.png" id="9_water_01"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_water_02.png" id="10_water_02"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_water_03.png" id="11_water_03"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_water_04.png" id="12_water_04"]
+[ext_resource type="Texture2D" path="res://assets/pond/duck/duck_land_idle_01.png" id="16_land_idle_01"]
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_land_walk_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_land_walk_02")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_land_walk_03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_land_walk_04")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_land_walk_05")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_land_walk_06")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_land_walk_07")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_land_walk_08")
+}],
+"loop": true,
+"name": &"land_walk",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("9_water_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_water_02")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_water_03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_water_04")
+}],
+"loop": true,
+"name": &"water_swim",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("16_land_idle_01")
+}],
+"loop": true,
+"name": &"land_idle",
+"speed": 1.0
+}]

@@ -1,13 +1,19 @@
 {
   "scene": "fishpond",
-  "doc": "docs/09_godot_coordinate_art_spec.md §14",
-  "_status": "draft — 占位坐标，鱼塘背景定稿后由 A+C 核对并冻结",
+  "doc": "docs/09_godot_coordinate_art_spec.md section 14",
   "spawn_points": {
-    "default":     [640, 520],
-    "from_garden": [1040, 520]
+    "default": [1232, 364],
+    "from_garden": [1232, 364],
+    "PondSpawnPoint": [1232, 364]
   },
   "portals": [
-    { "portal_id": "fishpond_portal_garden", "target_scene": "garden", "spawn_point": "from_fishpond",
-      "trigger_rect": [1120, 456, 96, 128], "prompt_text": "回到家庭花园", "tap_enabled": true }
+    {
+      "portal_id": "GardenReturnArea",
+      "target_scene": "res://scenes/Main.tscn",
+      "spawn_point": "GardenFromPondSpawnPoint",
+      "trigger_rect": [1184, 300, 96, 128],
+      "prompt_text": "Return to garden",
+      "tap_enabled": true
+    }
   ]
 }

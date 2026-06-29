@@ -7,6 +7,7 @@ extends Node
 
 const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
+const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 
 
 const ASSETS := {
@@ -471,6 +472,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 	info_label.text = "Family Garden"
 	_add_background()
 	_add_collision_zones()
+	_add_garden_spawn_markers()
 	_add_houses()
 	_add_core_objects()
 	_add_npcs()
@@ -818,10 +820,17 @@ func _grow_memory_node(node: Variant) -> void:
 # ── 通用场景切换（ScenePortal 框架）────────────────────────────────
 # 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
 func goto_scene(target: String, spawn_key: String = "default") -> void:
+	if target == POND_AREA_SCENE:
+		_build_fishpond(spawn_key)
+		return
+	if target == "res://scenes/Main.tscn":
+		_show_garden(spawn_key)
+		return
+
 	match target:
 		"garden":
 			_show_garden(spawn_key)
-		"fishpond":
+		"fishpond", "pond":
 			_build_fishpond(spawn_key)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
@@ -867,15 +876,25 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	_update_plant_button()
 	_clear_world()
 	info_label.text = "爸爸鱼塘"
-	_add_scene_background("fishpond", Color(0.42, 0.62, 0.70, 1.0))  # 占位水色，等 A 出背景
+	var pond_area: Node2D = null
+	if ResourceLoader.exists(POND_AREA_SCENE):
+		pond_area = (load(POND_AREA_SCENE) as PackedScene).instantiate() as Node2D
+		if pond_area != null:
+			pond_area.position = GAME_SIZE / 2.0
+			world.add_child(pond_area)
+	else:
+		_add_scene_background("fishpond", Color(0.42, 0.62, 0.70, 1.0))  # 占位水色，等 A 出背景
 	var spawn: Vector2 = ScenePortal.get_spawn("fishpond", spawn_key)
 	_add_player(spawn)
 	_spawn_demo_bottles()
+	_register_scene_message_bottle(pond_area)
 	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
 	_fishpond_memories.clear()
 	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
+
+const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
 
 # 阶段1 mock：在水面 slot 上生成可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
 # 问题来自 AIClient（mock，阶段2 换 generate-bottle-question 真调用）。
@@ -903,6 +922,22 @@ func _spawn_demo_bottles() -> void:
 		world.add_child(node)
 		_demo_bottles.append({"id": bid, "question": String(questions[i]), "state": "floating", "answer": "", "node": node})
 		spawned += 1
+
+func _register_scene_message_bottle(pond_area: Node2D) -> void:
+	if pond_area == null:
+		return
+	var bottle := pond_area.get_node_or_null("Props/MessageBottle") as Area2D
+	if bottle == null:
+		return
+	bottle.input_pickable = true
+	if not bottle.input_event.is_connected(_on_scene_message_bottle_input):
+		bottle.input_event.connect(_on_scene_message_bottle_input)
+	_demo_bottles.append({"id": "scene_bottle", "question": SCENE_BOTTLE_QUESTION, "state": "floating", "answer": "", "node": bottle})
+
+func _on_scene_message_bottle_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_on_bottle_clicked("scene_bottle")
 
 func _find_demo_bottle(bid: String) -> Dictionary:
 	for b in _demo_bottles:
@@ -1063,6 +1098,12 @@ func _season_overlay_color(season: String) -> Color:
 			return Color(0.96, 0.80, 0.34, 0.12)  # 暖绿/夏
 		_:
 			return Color(0.45, 0.80, 0.50, 0.06)  # 清新稀疏/春
+
+func _add_garden_spawn_markers() -> void:
+	var marker := Marker2D.new()
+	marker.name = "GardenFromPondSpawnPoint"
+	marker.position = ScenePortal.get_spawn("garden", "GardenFromPondSpawnPoint")
+	world.add_child(marker)
 
 func _add_core_objects() -> void:
 	_add_interactable_sprite(

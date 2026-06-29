@@ -1,0 +1,437 @@
+[gd_scene format=3 uid="uid://bu1gx15ab3nur"]
+
+[ext_resource type="Texture2D" uid="uid://6qkrqeudvesf" path="res://assets/pond/background/pond_background.png" id="1_background"]
+[ext_resource type="Texture2D" uid="uid://cb1bajmhqkkjs" path="res://assets/pond/water/water_ripple_01.png" id="2_water_ripple_01"]
+[ext_resource type="Texture2D" uid="uid://4iwsvayq7hqt" path="res://assets/pond/water/water_ripple_02.png" id="3_water_ripple_02"]
+[ext_resource type="Texture2D" uid="uid://bktxbw4awlfqh" path="res://assets/pond/water/water_ripple_03.png" id="4_water_ripple_03"]
+[ext_resource type="Texture2D" uid="uid://c0xbmonwuk6el" path="res://assets/pond/water/water_ripple_04.png" id="5_water_ripple_04"]
+[ext_resource type="Texture2D" uid="uid://b6aumyfbm0n7c" path="res://assets/pond/frog/frog_unknown_01.png" id="10_frog_01"]
+[ext_resource type="Texture2D" uid="uid://mk7l7f5ws6uc" path="res://assets/pond/frog/frog_unknown_02.png" id="11_frog_02"]
+[ext_resource type="Texture2D" uid="uid://diha7k1u3h16a" path="res://assets/pond/frog/frog_unknown_03.png" id="12_frog_03"]
+[ext_resource type="Texture2D" uid="uid://cmnlaecpk651d" path="res://assets/pond/frog/frog_unknown_04.png" id="13_frog_04"]
+[ext_resource type="Texture2D" uid="uid://bb8liinvwfu2n" path="res://assets/pond/props/fishing_platform.png" id="14_fishing_platform"]
+[ext_resource type="Texture2D" uid="uid://d2hh7hxnom1d8" path="res://assets/pond/props/bench_seat.png" id="15_bench_seat"]
+[ext_resource type="Texture2D" uid="uid://c1oyga53oyyso" path="res://assets/pond/props/wooden_sign.png" id="16_wooden_sign"]
+[ext_resource type="Texture2D" uid="uid://bgq8op6yxwae5" path="res://assets/pond/props/water_bucket.png" id="17_water_bucket"]
+[ext_resource type="Texture2D" uid="uid://6leaep7h6nm8" path="res://assets/pond/props/metal_bucket.png" id="18_metal_bucket"]
+[ext_resource type="Texture2D" uid="uid://dynm5wchtycee" path="res://assets/pond/props/metal_crate.png" id="19_metal_crate"]
+[ext_resource type="Texture2D" uid="uid://cikvq8j74fpww" path="res://assets/pond/props/rope_coil.png" id="20_rope_coil"]
+[ext_resource type="Texture2D" uid="uid://bjjnttbnsbl15" path="res://assets/pond/decorations/flower_bed.png" id="22_flower_bed"]
+[ext_resource type="Texture2D" uid="uid://k6674isv1wt5" path="res://assets/pond/decorations/flower_pot.png" id="23_flower_pot"]
+[ext_resource type="Texture2D" uid="uid://bn6l5t5wb0s67" path="res://assets/pond/decorations/lotus_flower_01.png" id="24_lotus_flower_01"]
+[ext_resource type="Texture2D" uid="uid://d1682w6di11xc" path="res://assets/pond/decorations/lotus_flower_02.png" id="25_lotus_flower_02"]
+[ext_resource type="Texture2D" uid="uid://baw60bsi27klv" path="res://assets/pond/decorations/lotus_flower_03.png" id="26_lotus_flower_03"]
+[ext_resource type="Texture2D" uid="uid://dfuwbfuge22if" path="res://assets/pond/decorations/pond_hut_01.png" id="27_pond_hut_01"]
+[ext_resource type="Texture2D" uid="uid://41bt7kpdayqb" path="res://assets/pond/decorations/pond_hut_02.png" id="28_pond_hut_02"]
+[ext_resource type="Texture2D" uid="uid://bwailosf67icw" path="res://assets/pond/decorations/stone_lantern.png" id="29_stone_lantern"]
+[ext_resource type="Script" uid="uid://inffx8qysmkx" path="res://scripts/pond/frog_idle_controller.gd" id="31_frog_idle_controller"]
+[ext_resource type="SpriteFrames" uid="uid://ddxjhwf5v7ftc" path="res://assets/pond/fish/fish_05/fish_05_sprite_frames.tres" id="32_fish_05_frames"]
+[ext_resource type="Script" uid="uid://b3w3jr8adbvkg" path="res://scripts/pond/fish_path_swim_controller.gd" id="33_fish_path_swim_controller"]
+[ext_resource type="SpriteFrames" uid="uid://ivo4higddm5h" path="res://assets/pond/bottle/bottle_float_sprite_frames.tres" id="34_bottle_float_frames"]
+[ext_resource type="Script" path="res://scripts/pond/duck_route_controller.gd" id="35_duck_route_controller"]
+[ext_resource type="SpriteFrames" path="res://assets/pond/duck/duck_sprite_frames.tres" id="36_duck_frames"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_water_loop"]
+animations = [{
+"frames": [{
+"duration": 2.0,
+"texture": ExtResource("2_water_ripple_01")
+}, {
+"duration": 2.0,
+"texture": ExtResource("3_water_ripple_02")
+}, {
+"duration": 2.0,
+"texture": ExtResource("4_water_ripple_03")
+}, {
+"duration": 2.0,
+"texture": ExtResource("5_water_ripple_04")
+}],
+"loop": true,
+"name": &"water_loop",
+"speed": 5.0
+}]
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_01"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -197, 83, 0, 0, 0, 0, -286, 113, 0, 0, 0, 0, -197, 148, 0, 0, 0, 0, -80, 86, 0, 0, 0, 0, 90, 72, 0, 0, 0, 0, 154, 4, 0, 0, 0, 0, -10, -48, 0, 0, 0, 0, -197, 84)
+}
+point_count = 8
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_02"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 142, -64, 0, 0, 0, 0, 260, -22, 0, 0, 0, 0, 202, 86, 0, 0, 0, 0, 42, 104, 0, 0, 0, 0, -24, 10, 0, 0, 0, 0, 142, -64)
+}
+point_count = 6
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_03"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -66, -112, 0, 0, 0, 0, 21.319061, -129.07533, 0, 0, 0, 0, 82, -142, 0, 0, 0, 0, 166, -62, 0, 0, 0, 0, 78, 18, 0, 0, 0, 0, -102, -4, 0, 0, 0, 0, -66, -112)
+}
+point_count = 7
+
+[sub_resource type="Curve2D" id="Curve2D_duck_route"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 520, 24, 0, 0, 0, 0, 470, 120, 0, 0, 0, 0, 360, 165, 0, 0, 0, 0, 250, 132, 0, 0, 0, 0, 95, 80, 0, 0, 0, 0, -70, 116, 0, 0, 0, 0, -175, 188, 0, 0, 0, 0, -35, 247, 0, 0, 0, 0, 184, 240, 0, 0, 0, 0, 360, 178, 0, 0, 0, 0, 520, 24)
+}
+point_count = 11
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_spxtl"]
+size = Vector2(1.7799995, 2.1325002)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_lyoci"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("10_frog_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_frog_02")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_frog_03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_frog_04")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="platform_collision_shape"]
+size = Vector2(165.25, 124.375)
+
+[sub_resource type="RectangleShape2D" id="fishing_spot_shape"]
+size = Vector2(104, 195.5)
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_yaflx"]
+radius = 187.79343
+height = 751.1737
+
+[sub_resource type="ConvexPolygonShape2D" id="water_collision_polygon"]
+points = PackedVector2Array(-245, -169, 256, -158, 364, -53, 366, 87, 237, 216, -234, 213, -380, 92, -378, -64)
+
+[sub_resource type="RectangleShape2D" id="message_bottle_shape"]
+size = Vector2(130, 281)
+
+[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
+size = Vector2(96, 96)
+
+[sub_resource type="RectangleShape2D" id="garden_return_shape"]
+size = Vector2(96, 128)
+
+[node name="PondArea" type="Node2D" unique_id=1357813240]
+
+[node name="PondSpawnPoint" type="Marker2D" parent="." unique_id=1257032741]
+position = Vector2(592, 4)
+
+[node name="Background" type="Node2D" parent="." unique_id=1585894851]
+z_index = -300
+
+[node name="PondBackground" type="Sprite2D" parent="Background" unique_id=1104201607]
+texture_filter = 1
+position = Vector2(-640, -360)
+texture = ExtResource("1_background")
+centered = false
+
+[node name="WaterEffects" type="Node2D" parent="." unique_id=1870291362]
+z_index = -210
+
+[node name="WaterRipple01" type="Sprite2D" parent="WaterEffects" unique_id=647598197]
+visible = false
+modulate = Color(1, 1, 1, 0.72)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("2_water_ripple_01")
+
+[node name="WaterRipple02" type="Sprite2D" parent="WaterEffects" unique_id=2006438827]
+visible = false
+modulate = Color(1, 1, 1, 0.48)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("3_water_ripple_02")
+
+[node name="WaterRipple03" type="Sprite2D" parent="WaterEffects" unique_id=94446271]
+visible = false
+modulate = Color(1, 1, 1, 0.44)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("4_water_ripple_03")
+
+[node name="WaterRipple04" type="Sprite2D" parent="WaterEffects" unique_id=974890440]
+visible = false
+modulate = Color(1, 1, 1, 0.4)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("5_water_ripple_04")
+
+[node name="WaterLoop" type="AnimatedSprite2D" parent="WaterEffects" unique_id=517155954]
+modulate = Color(1, 1, 1, 0.72)
+texture_filter = 1
+position = Vector2(-8, 5)
+sprite_frames = SubResource("SpriteFrames_water_loop")
+animation = &"water_loop"
+autoplay = "water_loop"
+
+[node name="Fish" type="Node2D" parent="." unique_id=1568134208]
+z_index = -185
+
+[node name="Fish05Path01" type="Path2D" parent="Fish" unique_id=1635649366]
+curve = SubResource("Curve2D_fish05_path_01")
+
+[node name="Fish05Follow01" type="PathFollow2D" parent="Fish/Fish05Path01" unique_id=1398039717]
+position = Vector2(-197, 83)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 18.0
+
+[node name="Fish05_01" type="AnimatedSprite2D" parent="Fish/Fish05Path01/Fish05Follow01" unique_id=1912126510]
+texture_filter = 1
+scale = Vector2(0.78, 0.78)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_left"
+autoplay = "swim_right"
+frame_progress = 0.10039557
+
+[node name="Fish05Path02" type="Path2D" parent="Fish" unique_id=3349240]
+curve = SubResource("Curve2D_fish05_path_02")
+
+[node name="Fish05Follow02" type="PathFollow2D" parent="Fish/Fish05Path02" unique_id=700844256]
+position = Vector2(142, -64)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 14.0
+fish_node_path = NodePath("Fish05_02")
+
+[node name="Fish05_02" type="AnimatedSprite2D" parent="Fish/Fish05Path02/Fish05Follow02" unique_id=62013584]
+texture_filter = 1
+scale = Vector2(0.72, 0.72)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_down_left"
+autoplay = "swim_left"
+frame_progress = 0.48933223
+
+[node name="Fish05Path03" type="Path2D" parent="Fish" unique_id=1101627299]
+curve = SubResource("Curve2D_fish05_path_03")
+
+[node name="Fish05Follow03" type="PathFollow2D" parent="Fish/Fish05Path03" unique_id=807773791]
+position = Vector2(-66, -112)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 12.0
+fish_node_path = NodePath("Fish05_03")
+
+[node name="Fish05_03" type="AnimatedSprite2D" parent="Fish/Fish05Path03/Fish05Follow03" unique_id=1574914212]
+texture_filter = 1
+scale = Vector2(0.68, 0.68)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_up_left"
+autoplay = "swim_down_right"
+
+[node name="Duck" type="Node2D" parent="." unique_id=1615666267]
+
+[node name="DuckRoute" type="Path2D" parent="Duck" unique_id=1286904617]
+curve = SubResource("Curve2D_duck_route")
+
+[node name="DuckFollow" type="PathFollow2D" parent="Duck/DuckRoute" unique_id=1546729308]
+rotates = false
+script = ExtResource("35_duck_route_controller")
+speed = 18.0
+duck_node_path = NodePath("DuckSprite")
+water_start_ratio = 0.32
+water_end_ratio = 0.72
+idle_start_ratio = 0.92
+
+[node name="DuckSprite" type="AnimatedSprite2D" parent="Duck/DuckRoute/DuckFollow" unique_id=1440150349]
+texture_filter = 1
+scale = Vector2(0.55, 0.55)
+sprite_frames = ExtResource("36_duck_frames")
+animation = &"land_walk"
+autoplay = "land_walk"
+
+[node name="Decorations" type="Node2D" parent="." unique_id=1216150192]
+z_index = -100
+y_sort_enabled = true
+
+[node name="LotusFlower01" type="Sprite2D" parent="Decorations" unique_id=425334740]
+texture_filter = 1
+position = Vector2(-211, -58.000004)
+scale = Vector2(0.80396694, 0.8039669)
+texture = ExtResource("24_lotus_flower_01")
+
+[node name="LotusFlower02" type="Sprite2D" parent="Decorations" unique_id=544391272]
+texture_filter = 1
+position = Vector2(197.60251, 145.51102)
+scale = Vector2(0.8541216, 0.8541216)
+texture = ExtResource("25_lotus_flower_02")
+
+[node name="LotusFlower03" type="Sprite2D" parent="Decorations" unique_id=1521018776]
+texture_filter = 1
+position = Vector2(290, 78)
+scale = Vector2(0.78, 0.78)
+texture = ExtResource("26_lotus_flower_03")
+
+[node name="PondHutLeft" type="Node2D" parent="Decorations" unique_id=1556571010]
+z_index = 12
+position = Vector2(-444, 12)
+
+[node name="Sprite2D" type="Sprite2D" parent="Decorations/PondHutLeft" unique_id=1902360459]
+texture_filter = 1
+position = Vector2(932, 105)
+texture = ExtResource("27_pond_hut_01")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="Decorations/PondHutLeft" unique_id=634103747]
+collision_mask = 0
+
+[node name="PondHutRight" type="Node2D" parent="Decorations" unique_id=1710699959]
+z_index = -4
+position = Vector2(446, -4)
+
+[node name="Sprite2D" type="Sprite2D" parent="Decorations/PondHutRight" unique_id=42313060]
+texture_filter = 1
+position = Vector2(83, -131)
+texture = ExtResource("28_pond_hut_02")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="Decorations/PondHutRight" unique_id=539561206]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Decorations/PondHutRight/StaticBody2D" unique_id=2024133986]
+position = Vector2(78, -124.375)
+scale = Vector2(100, 100)
+shape = SubResource("RectangleShape2D_spxtl")
+
+[node name="StoneLantern" type="Sprite2D" parent="Decorations" unique_id=124704570]
+texture_filter = 1
+position = Vector2(496, 268)
+texture = ExtResource("29_stone_lantern")
+
+[node name="FlowerBed" type="Sprite2D" parent="Decorations" unique_id=349467915]
+texture_filter = 1
+position = Vector2(-501.6507, -188.5)
+scale = Vector2(1.0068494, 1.0068493)
+texture = ExtResource("22_flower_bed")
+
+[node name="FlowerPot" type="Sprite2D" parent="Decorations" unique_id=382852485]
+texture_filter = 1
+position = Vector2(392, 282)
+texture = ExtResource("23_flower_pot")
+
+[node name="Frog" type="Node2D" parent="." unique_id=1595900153]
+z_index = -50
+y_sort_enabled = true
+
+[node name="FrogIdle" type="AnimatedSprite2D" parent="Frog" unique_id=1338881457]
+texture_filter = 1
+position = Vector2(-156, -64)
+scale = Vector2(0.7692309, 0.76923084)
+sprite_frames = SubResource("SpriteFrames_lyoci")
+frame_progress = 0.43147728
+script = ExtResource("31_frog_idle_controller")
+
+[node name="Props" type="Node2D" parent="." unique_id=1642340744]
+y_sort_enabled = true
+
+[node name="FishingPlatform" type="Node2D" parent="Props" unique_id=1398988904]
+z_index = 238
+position = Vector2(330, 238)
+
+[node name="Sprite2D" type="Sprite2D" parent="Props/FishingPlatform" unique_id=1818185910]
+texture_filter = 1
+position = Vector2(-333, -46)
+texture = ExtResource("14_fishing_platform")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="Props/FishingPlatform" unique_id=76202978]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/FishingPlatform/StaticBody2D" unique_id=1636667438]
+position = Vector2(-334.625, -36.1875)
+shape = SubResource("platform_collision_shape")
+
+[node name="BenchSeat" type="Node2D" parent="Props" unique_id=2067446121]
+z_index = 268
+position = Vector2(106, 268)
+
+[node name="Sprite2D" type="Sprite2D" parent="Props/BenchSeat" unique_id=193292704]
+texture_filter = 1
+position = Vector2(-441, -502)
+texture = ExtResource("15_bench_seat")
+
+[node name="WoodenSign" type="Node2D" parent="Props" unique_id=1198863273]
+z_index = 266
+position = Vector2(-490, 266)
+
+[node name="Sprite2D" type="Sprite2D" parent="Props/WoodenSign" unique_id=135968253]
+texture_filter = 1
+position = Vector2(-46, -72)
+texture = ExtResource("16_wooden_sign")
+
+[node name="WaterBucket" type="Sprite2D" parent="Props" unique_id=1190353196]
+texture_filter = 1
+position = Vector2(396, -93)
+texture = ExtResource("17_water_bucket")
+
+[node name="MetalBucket" type="Sprite2D" parent="Props" unique_id=1027197588]
+texture_filter = 1
+position = Vector2(268, 270)
+texture = ExtResource("18_metal_bucket")
+
+[node name="MetalCrate" type="Sprite2D" parent="Props" unique_id=1858937511]
+texture_filter = 1
+position = Vector2(428, 214)
+texture = ExtResource("19_metal_crate")
+
+[node name="RopeCoil" type="Sprite2D" parent="Props" unique_id=39721903]
+texture_filter = 1
+position = Vector2(469, -42)
+texture = ExtResource("20_rope_coil")
+
+[node name="MessageBottle" type="Area2D" parent="Props" unique_id=1223938100]
+input_pickable = true
+position = Vector2(-76, 48)
+metadata/interact_action = "pond_message_bottle"
+metadata/prompt = "Check the drifting bottle"
+
+[node name="BottleFloat" type="AnimatedSprite2D" parent="Props/MessageBottle" unique_id=426752641]
+texture_filter = 1
+scale = Vector2(1.3559322, 1.3559322)
+sprite_frames = ExtResource("34_bottle_float_frames")
+animation = &"float_loop"
+autoplay = "float_loop"
+frame_progress = 0.022527007
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/MessageBottle"]
+shape = SubResource("bottle_interact_shape")
+
+[node name="FishingSpot" type="Area2D" parent="Props" unique_id=1934565884]
+position = Vector2(330, 176)
+metadata/interact_action = "pond_fishing_spot"
+metadata/prompt = "Fish by the pond"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/FishingSpot" unique_id=2123803980]
+position = Vector2(176, -23.25)
+shape = SubResource("fishing_spot_shape")
+
+[node name="Collision" type="Node2D" parent="." unique_id=202846744]
+
+[node name="WaterCollision" type="StaticBody2D" parent="Collision" unique_id=1735714110]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collision/WaterCollision" unique_id=1346919308]
+visible = false
+position = Vector2(-6, 22)
+rotation = 4.712389
+scale = Vector2(1.065, 1.065)
+shape = SubResource("CapsuleShape2D_yaflx")
+disabled = true
+
+[node name="WaterCollisionPolygon" type="CollisionShape2D" parent="Collision/WaterCollision" unique_id=1711372782]
+visible = false
+shape = SubResource("water_collision_polygon")
+
+[node name="GardenReturnArea" type="Area2D" parent="." unique_id=203321299]
+position = Vector2(592, 4)
+metadata/target_scene = "res://scenes/Main.tscn"
+metadata/target_spawn_point = "GardenFromPondSpawnPoint"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="GardenReturnArea" unique_id=1168962107]
+shape = SubResource("garden_return_shape")

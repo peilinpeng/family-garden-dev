@@ -8,6 +8,7 @@ extends Node
 
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
+const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
@@ -72,7 +73,10 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
 
-	_configure_sprite(root.get_node("Sprite"), entry)
+	if node_type == "bottle":
+		_configure_bottle_sprite(root, entry)
+	else:
+		_configure_sprite(root.get_node("Sprite"), entry, node_type)
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
 
@@ -85,7 +89,7 @@ func make_room_object(object_type: String, point: Dictionary, on_click: Callable
 	root.name = "Obj_%s_%s" % [object_type, String(point.get("slot_id", ""))]
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
-	_configure_sprite(root.get_node("Sprite"), entry)
+	_configure_sprite(root.get_node("Sprite"), entry, object_type)
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	var label := Label.new()
 	label.name = "ObjTag"
@@ -118,7 +122,7 @@ func _new_root() -> Node2D:
 	root.add_child(area)
 	return root
 
-func _configure_sprite(sprite: Sprite2D, entry: Dictionary) -> void:
+func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String) -> void:
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
@@ -130,6 +134,30 @@ func _configure_sprite(sprite: Sprite2D, entry: Dictionary) -> void:
 
 ## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退程序化占位。
 ## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
+func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
+	var sprite: Sprite2D = root.get_node("Sprite")
+	sprite.visible = false
+
+	var frames := load(BOTTLE_FLOAT_FRAMES) as SpriteFrames
+	if frames == null:
+		_configure_sprite(sprite, entry, "bottle")
+		sprite.visible = true
+		return
+
+	var display_h := float(entry.get("display_height", 80))
+	var animated := AnimatedSprite2D.new()
+	animated.name = "BottleFloat"
+	animated.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	animated.sprite_frames = frames
+	animated.animation = &"float_loop"
+	animated.autoplay = "float_loop"
+
+	var first_frame := frames.get_frame_texture(&"float_loop", 0)
+	if first_frame != null and first_frame.get_height() > 0:
+		animated.scale = Vector2.ONE * (display_h / float(first_frame.get_height()))
+	animated.position = Vector2(0, -display_h * 0.5)
+	root.add_child(animated)
+
 func _resolve_texture(entry: Dictionary) -> Texture2D:
 	var scene := String(entry.get("scene", ""))
 	var file_name := String(entry.get("file_name", ""))
@@ -138,6 +166,38 @@ func _resolve_texture(entry: Dictionary) -> Texture2D:
 		if ResourceLoader.exists(real_path):
 			return load(real_path)
 	return _get_placeholder()
+
+func _make_placeholder_texture(node_type: String) -> Texture2D:
+	var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	if node_type == "bottle":
+		_fill_rect(img, 21, 8, 7, 8, Color(0.76, 0.88, 0.92, 1.0))
+		_fill_rect(img, 17, 16, 16, 24, Color(0.58, 0.78, 0.86, 0.92))
+		_fill_rect(img, 19, 18, 12, 18, Color(0.70, 0.90, 0.96, 0.78))
+		_fill_rect(img, 20, 6, 9, 3, Color(0.36, 0.22, 0.12, 1.0))
+		_fill_rect(img, 21, 28, 9, 3, Color(0.95, 0.82, 0.52, 1.0))
+	else:
+		_fill_rect(img, 23, 24, 3, 17, Color(0.28, 0.54, 0.30, 1.0))
+		_fill_circle(img, 24, 18, 5, Color(0.98, 0.77, 0.84, 1.0))
+		_fill_circle(img, 18, 23, 5, Color(0.98, 0.70, 0.78, 1.0))
+		_fill_circle(img, 30, 23, 5, Color(0.98, 0.70, 0.78, 1.0))
+		_fill_circle(img, 24, 28, 5, Color(0.98, 0.77, 0.84, 1.0))
+		_fill_circle(img, 24, 23, 3, Color(0.96, 0.82, 0.30, 1.0))
+	return ImageTexture.create_from_image(img)
+
+func _fill_rect(img: Image, x0: int, y0: int, w: int, h: int, color: Color) -> void:
+	for y in range(maxi(0, y0), mini(img.get_height(), y0 + h)):
+		for x in range(maxi(0, x0), mini(img.get_width(), x0 + w)):
+			img.set_pixel(x, y, color)
+
+func _fill_circle(img: Image, cx: int, cy: int, radius: int, color: Color) -> void:
+	var r2 := radius * radius
+	for y in range(maxi(0, cy - radius), mini(img.get_height(), cy + radius + 1)):
+		for x in range(maxi(0, cx - radius), mini(img.get_width(), cx + radius + 1)):
+			var dx := x - cx
+			var dy := y - cy
+			if dx * dx + dy * dy <= r2:
+				img.set_pixel(x, y, color)
 
 ## 点击区：取自 manifest click_rect（相对 pivot，逻辑坐标），最小 80×80。
 ## 配置预制体已有的 ClickArea + ClickArea/Shape（每实例新建 RectangleShape2D，避免共享）。
