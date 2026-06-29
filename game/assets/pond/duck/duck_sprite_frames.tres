@@ -42,19 +42,10 @@ animations = [{
 "frames": [{
 "duration": 1.0,
 "texture": ExtResource("9_water_01")
-}, {
-"duration": 1.0,
-"texture": ExtResource("10_water_02")
-}, {
-"duration": 1.0,
-"texture": ExtResource("11_water_03")
-}, {
-"duration": 1.0,
-"texture": ExtResource("12_water_04")
 }],
 "loop": true,
 "name": &"water_swim",
-"speed": 5.0
+"speed": 1.0
 }, {
 "frames": [{
 "duration": 1.0,

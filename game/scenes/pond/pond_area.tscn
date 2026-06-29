@@ -120,6 +120,30 @@ size = Vector2(96, 96)
 [sub_resource type="RectangleShape2D" id="garden_return_shape"]
 size = Vector2(96, 128)
 
+[sub_resource type="RectangleShape2D" id="air_wall_top_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_bottom_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_side_shape"]
+size = Vector2(48, 720)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_bank_wall_shape"]
+size = Vector2(820, 86)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_right_wall_shape"]
+size = Vector2(270, 100)
+
+[sub_resource type="RectangleShape2D" id="right_fence_inner_wall_shape"]
+size = Vector2(70, 270)
+
+[sub_resource type="RectangleShape2D" id="right_house_lower_wall_shape"]
+size = Vector2(160, 64)
+
+[sub_resource type="RectangleShape2D" id="right_house_side_wall_shape"]
+size = Vector2(56, 236)
+
 [node name="PondArea" type="Node2D" unique_id=1357813240]
 
 [node name="PondSpawnPoint" type="Marker2D" parent="." unique_id=1257032741]
@@ -239,10 +263,14 @@ script = ExtResource("35_duck_route_controller")
 speed = 18.0
 duck_node_path = NodePath("DuckSprite")
 water_shape_path = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
+land_move_seconds = Vector2(5.0, 9.0)
+land_rest_seconds = Vector2(2.0, 4.0)
+water_move_seconds = Vector2(6.0, 10.0)
+water_rest_seconds = Vector2(1.8, 3.5)
 
 [node name="DuckSprite" type="AnimatedSprite2D" parent="Duck/DuckRoute/DuckFollow" unique_id=1440150349]
 texture_filter = 1
-scale = Vector2(0.55, 0.55)
+scale = Vector2(0.36, 0.36)
 sprite_frames = ExtResource("36_duck_frames")
 animation = &"land_walk"
 autoplay = "land_walk"
@@ -282,7 +310,8 @@ texture = ExtResource("27_pond_hut_01")
 collision_mask = 0
 
 [node name="PondHutRight" type="Node2D" parent="Decorations" unique_id=1710699959]
-z_index = -4
+z_index = 320
+z_as_relative = false
 position = Vector2(446, -4)
 
 [node name="Sprite2D" type="Sprite2D" parent="Decorations/PondHutRight" unique_id=42313060]
@@ -425,6 +454,54 @@ disabled = true
 [node name="WaterCollisionPolygon" type="CollisionShape2D" parent="Collision/WaterCollision" unique_id=1711372782]
 visible = false
 shape = SubResource("water_collision_polygon")
+
+[node name="PondAirWalls" type="StaticBody2D" parent="Collision"]
+collision_mask = 0
+
+[node name="TopBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(0, -348)
+shape = SubResource("air_wall_top_shape")
+
+[node name="BottomBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(0, 348)
+shape = SubResource("air_wall_bottom_shape")
+
+[node name="LeftBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(-628, 0)
+shape = SubResource("air_wall_side_shape")
+
+[node name="RightBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(628, 0)
+shape = SubResource("air_wall_side_shape")
+
+[node name="PondUpperBank" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(-76, -176)
+shape = SubResource("pond_upper_bank_wall_shape")
+
+[node name="PondUpperRightBank" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(360, -166)
+shape = SubResource("pond_upper_right_wall_shape")
+
+[node name="RightFenceInner" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(612, -154)
+shape = SubResource("right_fence_inner_wall_shape")
+
+[node name="RightHouseLower" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(520, -66)
+shape = SubResource("right_house_lower_wall_shape")
+
+[node name="RightHouseSide" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+visible = false
+position = Vector2(604, -148)
+shape = SubResource("right_house_side_wall_shape")
 
 [node name="GardenReturnArea" type="Area2D" parent="." unique_id=203321299]
 position = Vector2(592, 4)
