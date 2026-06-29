@@ -24,12 +24,6 @@ animations = [{
 "texture": ExtResource("2_land_walk_02")
 }, {
 "duration": 1.0,
-"texture": ExtResource("3_land_walk_03")
-}, {
-"duration": 1.0,
-"texture": ExtResource("4_land_walk_04")
-}, {
-"duration": 1.0,
 "texture": ExtResource("5_land_walk_05")
 }, {
 "duration": 1.0,
@@ -63,6 +57,9 @@ animations = [{
 "speed": 5.0
 }, {
 "frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_land_walk_03")
+}, {
 "duration": 1.0,
 "texture": ExtResource("16_land_idle_01")
 }],

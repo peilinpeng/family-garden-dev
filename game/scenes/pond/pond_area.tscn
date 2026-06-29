@@ -71,7 +71,7 @@ point_count = 7
 
 [sub_resource type="Curve2D" id="Curve2D_duck_route"]
 _data = {
-"points": PackedVector2Array(0, 0, 0, 0, 520, 24, 0, 0, 0, 0, 470, 120, 0, 0, 0, 0, 360, 165, 0, 0, 0, 0, 250, 132, 0, 0, 0, 0, 95, 80, 0, 0, 0, 0, -70, 116, 0, 0, 0, 0, -175, 188, 0, 0, 0, 0, -35, 247, 0, 0, 0, 0, 184, 240, 0, 0, 0, 0, 360, 178, 0, 0, 0, 0, 520, 24)
+"points": PackedVector2Array(0, 0, 0, 0, 520, 24, 0, 0, 0, 0, 448, 82, 0, 0, 0, 0, 330, 118, 0, 0, 0, 0, 160, 96, 0, 0, 0, 0, -30, 112, 0, 0, 0, 0, -190, 176, 0, 0, 0, 0, -110, 232, 0, 0, 0, 0, 80, 246, 0, 0, 0, 0, 275, 202, 0, 0, 0, 0, 410, 122, 0, 0, 0, 0, 520, 24)
 }
 point_count = 11
 
@@ -238,9 +238,7 @@ rotates = false
 script = ExtResource("35_duck_route_controller")
 speed = 18.0
 duck_node_path = NodePath("DuckSprite")
-water_start_ratio = 0.32
-water_end_ratio = 0.72
-idle_start_ratio = 0.92
+water_shape_path = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
 
 [node name="DuckSprite" type="AnimatedSprite2D" parent="Duck/DuckRoute/DuckFollow" unique_id=1440150349]
 texture_filter = 1
@@ -393,7 +391,7 @@ metadata/prompt = "Check the drifting bottle"
 
 [node name="BottleFloat" type="AnimatedSprite2D" parent="Props/MessageBottle" unique_id=426752641]
 texture_filter = 1
-scale = Vector2(1.3559322, 1.3559322)
+scale = Vector2(0.6779661, 0.6779661)
 sprite_frames = ExtResource("34_bottle_float_frames")
 animation = &"float_loop"
 autoplay = "float_loop"

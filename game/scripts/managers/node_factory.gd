@@ -144,7 +144,7 @@ func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
 		sprite.visible = true
 		return
 
-	var display_h := float(entry.get("display_height", 80))
+	var display_h := float(entry.get("display_height", 80)) * 0.5
 	var animated := AnimatedSprite2D.new()
 	animated.name = "BottleFloat"
 	animated.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
