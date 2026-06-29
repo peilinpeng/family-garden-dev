@@ -72,6 +72,7 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 	root.name = "Node_%s_%s" % [node_type, String(slot.get("slot_id", ""))]
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
+	root.z_as_relative = false
 
 	if node_type == "bottle":
 		_configure_bottle_sprite(root, entry)
@@ -89,6 +90,7 @@ func make_room_object(object_type: String, point: Dictionary, on_click: Callable
 	root.name = "Obj_%s_%s" % [object_type, String(point.get("slot_id", ""))]
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
+	root.z_as_relative = false
 	_configure_sprite(root.get_node("Sprite"), entry, object_type)
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	var label := Label.new()

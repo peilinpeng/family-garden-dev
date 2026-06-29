@@ -198,7 +198,6 @@ animation = &"water_loop"
 autoplay = "water_loop"
 
 [node name="Fish" type="Node2D" parent="." unique_id=1568134208]
-z_index = -185
 
 [node name="Fish05Path01" type="Path2D" parent="Fish" unique_id=1635649366]
 curve = SubResource("Curve2D_fish05_path_01")
@@ -276,29 +275,35 @@ animation = &"land_walk"
 autoplay = "land_walk"
 
 [node name="Decorations" type="Node2D" parent="." unique_id=1216150192]
-z_index = -100
 y_sort_enabled = true
 
 [node name="LotusFlower01" type="Sprite2D" parent="Decorations" unique_id=425334740]
 texture_filter = 1
+z_index = -58
+z_as_relative = false
 position = Vector2(-211, -58.000004)
 scale = Vector2(0.80396694, 0.8039669)
 texture = ExtResource("24_lotus_flower_01")
 
 [node name="LotusFlower02" type="Sprite2D" parent="Decorations" unique_id=544391272]
 texture_filter = 1
+z_index = 146
+z_as_relative = false
 position = Vector2(197.60251, 145.51102)
 scale = Vector2(0.8541216, 0.8541216)
 texture = ExtResource("25_lotus_flower_02")
 
 [node name="LotusFlower03" type="Sprite2D" parent="Decorations" unique_id=1521018776]
 texture_filter = 1
+z_index = 78
+z_as_relative = false
 position = Vector2(290, 78)
 scale = Vector2(0.78, 0.78)
 texture = ExtResource("26_lotus_flower_03")
 
 [node name="PondHutLeft" type="Node2D" parent="Decorations" unique_id=1556571010]
-z_index = 12
+z_index = 136
+z_as_relative = false
 position = Vector2(-444, 12)
 
 [node name="Sprite2D" type="Sprite2D" parent="Decorations/PondHutLeft" unique_id=1902360459]
@@ -329,26 +334,33 @@ shape = SubResource("RectangleShape2D_spxtl")
 
 [node name="StoneLantern" type="Sprite2D" parent="Decorations" unique_id=124704570]
 texture_filter = 1
+z_index = 268
+z_as_relative = false
 position = Vector2(496, 268)
 texture = ExtResource("29_stone_lantern")
 
 [node name="FlowerBed" type="Sprite2D" parent="Decorations" unique_id=349467915]
 texture_filter = 1
+z_index = -118
+z_as_relative = false
 position = Vector2(-501.6507, -188.5)
 scale = Vector2(1.0068494, 1.0068493)
 texture = ExtResource("22_flower_bed")
 
 [node name="FlowerPot" type="Sprite2D" parent="Decorations" unique_id=382852485]
 texture_filter = 1
+z_index = 282
+z_as_relative = false
 position = Vector2(392, 282)
 texture = ExtResource("23_flower_pot")
 
 [node name="Frog" type="Node2D" parent="." unique_id=1595900153]
-z_index = -50
 y_sort_enabled = true
 
 [node name="FrogIdle" type="AnimatedSprite2D" parent="Frog" unique_id=1338881457]
 texture_filter = 1
+z_index = -64
+z_as_relative = false
 position = Vector2(-156, -64)
 scale = Vector2(0.7692309, 0.76923084)
 sprite_frames = SubResource("SpriteFrames_lyoci")
@@ -360,6 +372,7 @@ y_sort_enabled = true
 
 [node name="FishingPlatform" type="Node2D" parent="Props" unique_id=1398988904]
 z_index = 238
+z_as_relative = false
 position = Vector2(330, 238)
 
 [node name="Sprite2D" type="Sprite2D" parent="Props/FishingPlatform" unique_id=1818185910]
@@ -376,6 +389,7 @@ shape = SubResource("platform_collision_shape")
 
 [node name="BenchSeat" type="Node2D" parent="Props" unique_id=2067446121]
 z_index = 268
+z_as_relative = false
 position = Vector2(106, 268)
 
 [node name="Sprite2D" type="Sprite2D" parent="Props/BenchSeat" unique_id=193292704]
@@ -385,6 +399,7 @@ texture = ExtResource("15_bench_seat")
 
 [node name="WoodenSign" type="Node2D" parent="Props" unique_id=1198863273]
 z_index = 266
+z_as_relative = false
 position = Vector2(-490, 266)
 
 [node name="Sprite2D" type="Sprite2D" parent="Props/WoodenSign" unique_id=135968253]
@@ -394,25 +409,35 @@ texture = ExtResource("16_wooden_sign")
 
 [node name="WaterBucket" type="Sprite2D" parent="Props" unique_id=1190353196]
 texture_filter = 1
+z_index = -93
+z_as_relative = false
 position = Vector2(396, -93)
 texture = ExtResource("17_water_bucket")
 
 [node name="MetalBucket" type="Sprite2D" parent="Props" unique_id=1027197588]
 texture_filter = 1
+z_index = 270
+z_as_relative = false
 position = Vector2(268, 270)
 texture = ExtResource("18_metal_bucket")
 
 [node name="MetalCrate" type="Sprite2D" parent="Props" unique_id=1858937511]
 texture_filter = 1
+z_index = 214
+z_as_relative = false
 position = Vector2(428, 214)
 texture = ExtResource("19_metal_crate")
 
 [node name="RopeCoil" type="Sprite2D" parent="Props" unique_id=39721903]
 texture_filter = 1
+z_index = -42
+z_as_relative = false
 position = Vector2(469, -42)
 texture = ExtResource("20_rope_coil")
 
 [node name="MessageBottle" type="Area2D" parent="Props" unique_id=1223938100]
+z_index = 48
+z_as_relative = false
 input_pickable = true
 position = Vector2(-76, 48)
 metadata/interact_action = "pond_message_bottle"

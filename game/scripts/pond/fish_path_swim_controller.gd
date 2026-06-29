@@ -17,13 +17,18 @@ func _ready() -> void:
 	_last_global_position = global_position
 	if _fish != null:
 		_fish.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_fish.z_as_relative = false
+		_fish.z_index = int(global_position.y)
 		_fish.play(&"swim_right")
 
 func _process(delta: float) -> void:
 	progress += speed * delta
 	var movement := global_position - _last_global_position
 	_last_global_position = global_position
-	if _fish == null or movement.length_squared() <= DIRECTION_EPSILON * DIRECTION_EPSILON:
+	if _fish == null:
+		return
+	_fish.z_index = int(global_position.y)
+	if movement.length_squared() <= DIRECTION_EPSILON * DIRECTION_EPSILON:
 		return
 	var animation_name := _animation_for_delta(movement)
 	if _fish.animation != animation_name:

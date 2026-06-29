@@ -30,6 +30,8 @@ func _ready() -> void:
 	_last_global_position = global_position
 	if _duck != null:
 		_duck.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_duck.z_as_relative = false
+		_duck.z_index = int(global_position.y)
 	_start_move_state()
 
 func _process(delta: float) -> void:
