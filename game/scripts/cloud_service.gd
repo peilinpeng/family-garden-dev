@@ -22,6 +22,16 @@ const STORAGE_BUCKET: String = "family-photos"
 # MemoryManager 的写入/读取出入口签名不变。
 var _persist_backend: Object = null
 
+## 启动:若 config/cloudbase.json 配了 endpoint,注入 CloudBase 后端并预拉云端;
+## 未配置则保持本地(接缝全 no-op),游戏照常离线运行。
+func _ready() -> void:
+	if CloudBaseBackend.is_configured():
+		var backend := CloudBaseBackend.new()
+		add_child(backend)
+		set_persistence_backend(backend)
+		await get_tree().process_frame   # 等其它 autoload(MemoryManager 等)就绪
+		await backend.bootstrap()
+
 func set_persistence_backend(backend: Object) -> void:
 	_persist_backend = backend
 

@@ -1,0 +1,9 @@
+{
+  "name": "data_gateway",
+  "version": "1.0.0",
+  "description": "Family Garden · CloudBase 数据网关云函数(Godot HTTP CRUD 入口)",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.9.0"
+  }
+}

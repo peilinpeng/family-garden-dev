@@ -42,7 +42,7 @@ func deposit(id: String, amount: int) -> int:
 func withdraw(id: String, amount: int) -> int:
 	return storehouse.move_to(backpack, id, amount)
 
-# ── 持久化 ────────────────────────────────────────────
+# ── 持久化(本地优先 + 上云) ──────────────────────────
 func save() -> void:
 	var data := {
 		"backpack": backpack.to_array(),
@@ -51,6 +51,30 @@ func save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
+	_push_to_cloud()
+
+## 推到云(经接缝;无后端时 no-op)。背包/共享仓各一行。
+## 注:共享仓真正"全家实时共享"还需联机 A 面(云函数校验+广播,docs/43),这里先做持久化。
+func _push_to_cloud() -> void:
+	var cloud := get_node_or_null("/root/CloudManager")
+	if cloud == null or not cloud.has_method("persist_record"):
+		return
+	cloud.persist_record("inventories", {"id": "backpack", "kind": "backpack", "stacks": backpack.to_array()})
+	cloud.persist_record("inventories", {"id": "storehouse", "kind": "storehouse", "stacks": storehouse.to_array()})
+
+## 从云覆盖(bootstrap 后由 CloudBaseBackend 调)。云端有则以云为准。
+func sync_from_cloud() -> void:
+	var cloud := get_node_or_null("/root/CloudManager")
+	if cloud == null or not cloud.has_method("load_table"):
+		return
+	var rows: Array = cloud.load_table("inventories")
+	for r in rows:
+		if not (r is Dictionary):
+			continue
+		var stacks: Array = r.get("stacks", [])
+		match str(r.get("kind", "")):
+			"backpack": backpack.from_array(stacks)
+			"storehouse": storehouse.from_array(stacks)
 
 func load_inv() -> bool:
 	if not FileAccess.file_exists(SAVE_PATH):
