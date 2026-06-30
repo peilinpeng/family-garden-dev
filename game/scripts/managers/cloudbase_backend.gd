@@ -28,7 +28,9 @@ static func load_config() -> Dictionary:
 	return p if p is Dictionary else {}
 
 static func is_configured() -> bool:
-	return str(load_config().get("endpoint", "")) != ""
+	# 需同时有 endpoint 和家庭访问密钥;缺一则保持离线(不发无鉴权请求)
+	var c := load_config()
+	return str(c.get("endpoint", "")) != "" and str(c.get("access_key", "")) != ""
 
 func _init() -> void:
 	_cfg = load_config()
@@ -81,9 +83,10 @@ func _request(body: Dictionary) -> Dictionary:
 	var req := HTTPRequest.new()
 	add_child(req)
 	var headers := ["Content-Type: application/json"]
-	var token := str(_cfg.get("auth_token", ""))
-	if token != "":
-		headers.append("Authorization: Bearer " + token)
+	# 家庭访问密钥:服务端用它解析 family_id(绝不信 body 里的 family_id)
+	var key := str(_cfg.get("access_key", ""))
+	if key != "":
+		headers.append("Authorization: Bearer " + key)
 	var err := req.request(endpoint, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
 	if err != OK:
 		req.queue_free()

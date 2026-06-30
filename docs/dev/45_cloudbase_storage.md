@@ -47,9 +47,16 @@ Godot
 - ✅ MemoryManager 的 `_sync` 表(memories/nodes/answers/rooms/room_objects/families)。
 - ✅ 库存(背包/共享仓)`inventories`,本地优先 + 推云 + 启动从云覆盖。
 
-## 5. 还没做(下一步)
+## 5. 安全加固(已做)
 
-- **安全加固**:`family_id` 现由客户端传,上线接 CloudBase 身份认证,从已验证身份取(README §5)。
-- **迁旧读路径**:`CloudService.load_family_data`(Supabase 直连)→ 走本网关,统一到 CloudBase。
+网关不再信客户端的 `family_id`,改用**家庭访问密钥**鉴权(详见 `backend/cloudbase/README.md` §6):
+- ✅ family_id 由 `Authorization: Bearer <access_key>` 在服务端解析(查 families 集合)。
+- ✅ 无效密钥 → 401;`access_key` 客户端永不可写;删除只限本家庭;表白名单。
+- 客户端:`config/cloudbase.json` 填 `access_key`;`is_configured()` 要求 endpoint+access_key 都非空,否则保持离线(不发无鉴权请求)。
+
+## 6. 还没做(下一步)
+
+- **每用户身份**:现为"家庭共享口令";要区分成员(防越权改他人个人背包)→ 接 CloudBase 身份认证 + 自定义登录 token。
+- **迁旧读路径**:`CloudService.load_family_data`(Supabase 直连)→ 走本网关。
 - **实时同步**(共享仓即时刷新、看到家人走动)= CloudBase 实时,建在存储之上(`docs/43`)。
 - 共享仓并发"抢最后一个"→ 网关事务校验。
