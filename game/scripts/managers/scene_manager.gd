@@ -8,11 +8,17 @@ extends Node
 const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
+const FARM_SCENE := "res://scenes/Farm.tscn"
 
 
 const ASSETS := {
 	"background": "res://assets/backgrounds/shared_garden.png",
 	"travel_map": "res://assets/maps/travel_map.png",
+	"globalmap_background": "res://assets/globalmap/background.png",
+	"globalmap_farm": "res://assets/globalmap/farm.png",
+	"globalmap_garden": "res://assets/globalmap/garden.png",
+	"globalmap_house": "res://assets/globalmap/house.png",
+	"globalmap_pond": "res://assets/globalmap/pond.png",
 	"tree": "res://assets/garden/family_tree.png",
 	"mailbox": "res://assets/garden/mailbox.png",
 	"bench": "res://assets/garden/bench.png",
@@ -173,6 +179,7 @@ var room_card: Panel = null
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
 var map_ui: Control = null
+var global_map_ui: Control = null
 var adding_place := false
 var pending_place_position := Vector2.ZERO
 var animal_nodes: Dictionary = {}
@@ -230,6 +237,7 @@ func _build_ui() -> void:
 	root.add_child(help)
 
 	# Bottom navigation. Kept compact and centered under the garden.
+	_add_button(root, "World", Vector2(160, 672), Vector2(86, 32), "global_map")
 	_add_button(root, "Tree", Vector2(250, 672), Vector2(82, 32), "family_tree")
 	_add_button(root, "Sign", Vector2(342, 672), Vector2(90, 32), "message_board")
 	_add_button(root, "Map", Vector2(442, 672), Vector2(76, 32), "travel_map")
@@ -261,6 +269,8 @@ func _on_ui_button(action: String) -> void:
 		"toggle_plant":
 			plant_mode = not plant_mode
 			_update_plant_button()
+		"global_map":
+			_show_global_map()
 		"travel_map":
 			_show_travel_map()
 		"MemoryManager.postcards":
@@ -817,6 +827,169 @@ func _grow_memory_node(node: Variant) -> void:
 	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
+# ── 全局导航地图（导航页 / World Map）──────────────────────────────
+# 一张拍平的世界插画，四个抠图图层正好压在底图对应区域上。鼠标悬浮时该图层
+# 抬起（高亮 + 下方柔和阴影），点击进入对应场景（走统一入口 goto_scene）。
+const GLOBAL_MAP_REGIONS := [
+	{"id": "farm", "asset": "globalmap_farm", "label": "农场", "target": "farm"},
+	{"id": "garden", "asset": "globalmap_garden", "label": "花园", "target": "garden"},
+	{"id": "house", "asset": "globalmap_house", "label": "小屋", "target": "house"},
+	{"id": "pond", "asset": "globalmap_pond", "label": "鱼塘", "target": "fishpond"},
+]
+
+func _show_global_map() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "global_map"
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = "世界地图"
+
+	# 整张导航页放在 ui_layer（在 world 之上），但移到底部导航栏之后，保证那些按钮仍可点。
+	var view := Control.new()
+	view.name = "GlobalMapView"
+	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(view)
+	ui_layer.move_child(view, 0)
+	global_map_ui = view
+
+	# 美术没导入时的柔色兜底。
+	var fallback := ColorRect.new()
+	fallback.name = "GlobalMapFallback"
+	fallback.color = Color(0.80, 0.88, 0.70, 1.0)
+	fallback.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(fallback)
+
+	# 拍平底图。
+	var bg_tex := _safe_texture(ASSETS["globalmap_background"])
+	if bg_tex:
+		var bg := TextureRect.new()
+		bg.name = "GlobalMapBackground"
+		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.stretch_mode = TextureRect.STRETCH_SCALE
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		bg.texture = bg_tex
+		view.add_child(bg)
+
+	var loaded := 0
+	for region in GLOBAL_MAP_REGIONS:
+		if _add_global_map_region(view, region):
+			loaded += 1
+
+	if loaded == 0:
+		_show_toast("世界地图美术还没导入 — 用 Godot 打开一次项目即可。")
+	else:
+		_show_toast("把鼠标移到某个地点，点击即可进入。")
+
+func _add_global_map_region(view: Control, region: Dictionary) -> bool:
+	var tex := _safe_texture(ASSETS[str(region["asset"])])
+	if tex == null:
+		return false
+
+	# 把缩放轴心放在抠图的视觉中心，悬浮“弹起”才是原地放大。
+	var img := tex.get_image()
+	var pivot: Vector2 = tex.get_size() / 2.0
+	if img != null:
+		var used := img.get_used_rect()
+		pivot = Vector2(used.position) + Vector2(used.size) / 2.0
+
+	# 柔和阴影：同一剪影染黑，平时隐藏，悬浮时出现在图层正下方。
+	var shadow := TextureRect.new()
+	shadow.name = "Shadow_" + str(region["id"])
+	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	shadow.texture = tex
+	shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.modulate = Color(0.0, 0.0, 0.0, 0.0)
+	shadow.pivot_offset = pivot
+	view.add_child(shadow)
+
+	# 可交互抠图本体。click_mask 让只有画上像素的地方响应，透明处穿透到下面的图层。
+	var button := TextureButton.new()
+	button.name = "Region_" + str(region["id"])
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.ignore_texture_size = true
+	button.stretch_mode = TextureButton.STRETCH_SCALE
+	button.texture_normal = tex
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.pivot_offset = pivot
+	if img != null:
+		var mask := BitMap.new()
+		mask.create_from_image_alpha(img, 0.1)
+		button.texture_click_mask = mask
+	view.add_child(button)
+
+	button.mouse_entered.connect(_on_global_map_region_hover.bind(button, shadow, true))
+	button.mouse_exited.connect(_on_global_map_region_hover.bind(button, shadow, false))
+	button.pressed.connect(_on_global_map_region_pressed.bind(str(region["target"]), str(region["label"])))
+	return true
+
+func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hovering: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	var target_scale: Vector2 = Vector2(1.04, 1.04) if hovering else Vector2.ONE
+	var target_tint: Color = Color(1.08, 1.08, 1.08, 1.0) if hovering else Color(1, 1, 1, 1)
+	# 把悬浮的图层（连同阴影）抬到其它图层之上。
+	button.z_index = 10 if hovering else 0
+	if is_instance_valid(shadow):
+		shadow.z_index = 9 if hovering else 0
+
+	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", target_scale, 0.12)
+	tween.tween_property(button, "modulate", target_tint, 0.12)
+	if is_instance_valid(shadow):
+		var shadow_alpha: float = 0.30 if hovering else 0.0
+		var shadow_offset: Vector2 = Vector2(10, 16) if hovering else Vector2.ZERO
+		tween.tween_property(shadow, "scale", target_scale, 0.12)
+		tween.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, shadow_alpha), 0.12)
+		tween.tween_property(shadow, "position", shadow_offset, 0.12)
+
+func _on_global_map_region_pressed(target: String, label_text: String) -> void:
+	_show_toast("进入%s…" % label_text)
+	goto_scene(target)
+
+# 把一个自包含的编辑器场景（Farm.tscn / AnnaRoom.tscn）嵌进持久化的 world。
+# 这些场景按 1280×720 屏幕坐标、左上角为原点制作，所以实例放在 (0,0)。
+func _build_embedded_scene(scene_key: String, scene_path: String, title: String, fallback_color: Color, add_player: bool) -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = scene_key
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = title
+
+	var instance: Node = null
+	if ResourceLoader.exists(scene_path):
+		instance = (load(scene_path) as PackedScene).instantiate()
+	if instance != null:
+		if instance is Node2D:
+			(instance as Node2D).position = Vector2.ZERO
+		world.add_child(instance)
+	else:
+		_add_scene_background(scene_key, fallback_color)
+
+	# 场景若不自带主控角色（如静态房间模板），补一个出生点上的玩家。
+	if add_player:
+		_add_player(ScenePortal.get_spawn(scene_key, "default"))
+
 # ── 通用场景切换（ScenePortal 框架）────────────────────────────────
 # 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
 func goto_scene(target: String, spawn_key: String = "default") -> void:
@@ -832,6 +1005,12 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			_show_garden(spawn_key)
 		"fishpond", "pond":
 			_build_fishpond(spawn_key)
+		"farm":
+			# Farm.tscn 自带玩家（farm.gd 的 _spawn_player），不要再补一个。
+			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
+		"house":
+			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
+			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
 
@@ -1053,6 +1232,12 @@ func _clear_map_ui() -> void:
 	if map_ui != null and is_instance_valid(map_ui):
 		map_ui.queue_free()
 	map_ui = null
+	_clear_global_map_ui()
+
+func _clear_global_map_ui() -> void:
+	if global_map_ui != null and is_instance_valid(global_map_ui):
+		global_map_ui.queue_free()
+	global_map_ui = null
 
 func _add_background() -> void:
 	var texture := _safe_texture(ASSETS["background"])
