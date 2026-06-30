@@ -1,0 +1,413 @@
+{
+  "godot_root": "C:\\Users\\l\\Documents\\游戏素材\\family-garden-dev\\game",
+  "source_root": "E:\\000\\family garden\\assets\\pond",
+  "total_files": 58,
+  "operations": [
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\background\\pond_background.png",
+      "target_path": "assets/pond/background/pond_background.png",
+      "action": "skip_same",
+      "asset_type": "background",
+      "notes": "Pond background layer. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_down_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_down_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_down_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_down_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_down_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_down_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_up_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_up_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_up_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_up_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_01\\koi_fish_swim_up_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_up_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_down_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_down_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_down_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_down_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_down_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_down_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_up_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_up_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_up_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_up_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_02\\koi_fish_swim_up_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_02/koi_fish_swim_up_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_down_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_down_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_down_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_down_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_down_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_down_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_up_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_up_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_up_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_up_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_03\\koi_fish_swim_up_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_03/koi_fish_swim_up_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_down_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_down_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_down_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_down_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_down_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_down_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_up_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_up_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_up_left_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_up_left_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\fish\\koi_fish_04\\koi_fish_swim_up_right_01.png",
+      "target_path": "assets/pond/fish/koi_fish/koi_fish_04/koi_fish_swim_up_right_01.png",
+      "action": "skip_same",
+      "asset_type": "fish",
+      "notes": "Koi fish 8-direction sprite frame; variant folder prevents filename collisions. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\frog\\frog_unknown_01.png",
+      "target_path": "assets/pond/frog/frog_unknown_01.png",
+      "action": "skip_same",
+      "asset_type": "frog",
+      "notes": "Frog sprite; source action is not yet identified. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\frog\\frog_unknown_02.png",
+      "target_path": "assets/pond/frog/frog_unknown_02.png",
+      "action": "skip_same",
+      "asset_type": "frog",
+      "notes": "Frog sprite; source action is not yet identified. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\frog\\frog_unknown_03.png",
+      "target_path": "assets/pond/frog/frog_unknown_03.png",
+      "action": "skip_same",
+      "asset_type": "frog",
+      "notes": "Frog sprite; source action is not yet identified. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\frog\\frog_unknown_04.png",
+      "target_path": "assets/pond/frog/frog_unknown_04.png",
+      "action": "skip_same",
+      "asset_type": "frog",
+      "notes": "Frog sprite; source action is not yet identified. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\bench_seat.png",
+      "target_path": "assets/pond/props/bench_seat.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\fence_section.png",
+      "target_path": "assets/pond/decorations/fence_section.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\fishing_platform.png",
+      "target_path": "assets/pond/props/fishing_platform.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\flower_bed.png",
+      "target_path": "assets/pond/decorations/flower_bed.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\flower_pot.png",
+      "target_path": "assets/pond/decorations/flower_pot.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\lotus_flower_01.png",
+      "target_path": "assets/pond/decorations/lotus_flower_01.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\lotus_flower_02.png",
+      "target_path": "assets/pond/decorations/lotus_flower_02.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\lotus_flower_03.png",
+      "target_path": "assets/pond/decorations/lotus_flower_03.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\metal_bucket.png",
+      "target_path": "assets/pond/props/metal_bucket.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\metal_crate.png",
+      "target_path": "assets/pond/props/metal_crate.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\pond_hut_01.png",
+      "target_path": "assets/pond/decorations/pond_hut_01.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\pond_hut_02.png",
+      "target_path": "assets/pond/decorations/pond_hut_02.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\rope_coil.png",
+      "target_path": "assets/pond/props/rope_coil.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\stone_lantern.png",
+      "target_path": "assets/pond/decorations/stone_lantern.png",
+      "action": "skip_same",
+      "asset_type": "decoration",
+      "notes": "Static pond decoration. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\water_bucket.png",
+      "target_path": "assets/pond/props/water_bucket.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\items\\wooden_sign.png",
+      "target_path": "assets/pond/props/wooden_sign.png",
+      "action": "skip_same",
+      "asset_type": "prop",
+      "notes": "Interactive or placeable pond prop. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\unsorted\\object_unknown_01.gif",
+      "target_path": "assets/pond/unsorted/object_unknown_01.gif",
+      "action": "skip_same",
+      "asset_type": "unsorted",
+      "notes": "Unsorted source asset copied for review. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\water\\water_ripple_01.png",
+      "target_path": "assets/pond/water/water_ripple_01.png",
+      "action": "skip_same",
+      "asset_type": "water",
+      "notes": "Water ripple/effect sprite. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\water\\water_ripple_02.png",
+      "target_path": "assets/pond/water/water_ripple_02.png",
+      "action": "skip_same",
+      "asset_type": "water",
+      "notes": "Water ripple/effect sprite. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\water\\water_ripple_03.png",
+      "target_path": "assets/pond/water/water_ripple_03.png",
+      "action": "skip_same",
+      "asset_type": "water",
+      "notes": "Water ripple/effect sprite. Target already matches source size and modified time."
+    },
+    {
+      "source_path": "E:\\000\\family garden\\assets\\pond\\water\\water_ripple_04.png",
+      "target_path": "assets/pond/water/water_ripple_04.png",
+      "action": "skip_same",
+      "asset_type": "water",
+      "notes": "Water ripple/effect sprite. Target already matches source size and modified time."
+    }
+  ]
+}
