@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 @export var speed := 170.0
+@export var character_id := ""   ## 设了就用该角色;留空则按存档 selected_role_key
 
 var sprite: Sprite2D
 var step_timer := 0.0
@@ -9,6 +10,26 @@ var facing_row := 0
 
 func _ready() -> void:
 	sprite = get_node_or_null("Sprite2D")
+	if character_id != "":
+		apply_character(character_id)
+
+## 数据驱动换角色:从 CharacterDB 取贴图/帧网格/缩放套到 Sprite2D。
+func apply_character(role_key: String) -> void:
+	if sprite == null:
+		sprite = get_node_or_null("Sprite2D")
+	var db := get_node_or_null("/root/CharacterDB")
+	if db == null or sprite == null:
+		return
+	var def: Dictionary = db.get_def(role_key)
+	if def.is_empty():
+		return
+	var tex: Texture2D = db.texture(role_key)
+	if tex != null:
+		sprite.texture = tex
+	sprite.hframes = int(def.get("hframes", 3))
+	sprite.vframes = int(def.get("vframes", 4))
+	sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+	character_id = role_key
 
 func _physics_process(delta: float) -> void:
 	var direction := Vector2.ZERO

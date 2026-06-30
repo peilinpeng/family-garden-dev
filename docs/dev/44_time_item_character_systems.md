@@ -1,7 +1,7 @@
 # 44 · 时间 / 物品 / 角色 三系统设计
 
 > 关联:[05 数据模型](../05_backend_data_model.md)、[43 联机方案](43_cloudbase_multiplayer_handoff.md)、`MemoryManager`、`ZoneManager`、`NodeFactory`
-> 状态:**昼夜已落地(GameClock)· 物品系统已落地** ;角色为设计待实现
+> 状态:**昼夜 · 物品 · 角色 三系统均已落地**(联机/上云为后续)
 > 已定决策:昼夜=**现实时间(动森式)**;库存=**个人背包 + 共享仓 都要**
 
 ---
@@ -78,7 +78,16 @@
 
 ---
 
-## 3. 角色系统(成员即角色,和联机绑定)
+## 3. 角色系统(成员即角色,和联机绑定)· 已实现 ✅
+
+落地文件:`assets/manifest/characters.json`、`scripts/managers/character_db.gd`(autoload `CharacterDB`)、`scripts/player.gd`(加 `apply_character`)、`scripts/farm/remote_player.gd` + `scenes/RemotePlayer.tscn`。
+- `CharacterDB`:4 角色(father/mother/partner/player),每个配 sheet/hframes/vframes/scale;`resolve(role_key)` 解析别名(papa→father、girl→player…)。girl 表分辨率大,单独缩放归一。
+- `Player.apply_character(role)`:数据驱动换贴图/帧网格/缩放;本地玩家按存档 `selected_role_key`(独立运行回退 father)。
+- `RemotePlayer`:渲染任意角色 + 名字标签 + `set_target()` 接收位置 + 插值 + 走路动画;z=脚底。**联机时由 presence 喂位置**;现在用 `placeholder_wander` 当占位家庭成员在花园里溜达。
+- Farm:本地玩家 + 其余 3 个家庭成员可见。
+- **联机 TODO**:把占位 wander 换成 presence 驱动(`set_target`),接 `members` 表真实成员-角色映射。
+
+### 3.x 原设计(供参考)
 
 - 已有:角色选择 `selected_role_key` + papa/mama/boy/girl 立绘 + `Player.tscn`。
 - `CharacterDef`(数据):`role → {name, sprite_sheet, 默认外观}`。

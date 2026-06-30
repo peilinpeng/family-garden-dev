@@ -90,6 +90,35 @@ func _spawn_player() -> void:
 	player.global_position = _find_walkable_start()
 	last_safe = player.global_position
 	add_child(player)
+	# 本地玩家用所选角色(独立运行无存档则回退默认)
+	var mem := get_node_or_null("/root/MemoryManager")
+	var role := str(mem.selected_role_key) if mem != null and mem.selected_role_key != "" else "father"
+	if player.has_method("apply_character"):
+		player.apply_character(role)
+	_spawn_family(role)
+
+## 其他家庭成员(占位:轻度溜达;联机后由 presence 驱动,见 docs/43)。
+func _spawn_family(local_role: String) -> void:
+	var db := get_node_or_null("/root/CharacterDB")
+	if db == null:
+		return
+	var local_id: String = db.resolve(local_role)
+	# 几个开阔草地落点 + 各自小范围漫步框
+	var spots := {
+		"mother":  [Vector2(705, 235), Rect2(660, 222, 95, 36)],
+		"partner": [Vector2(1120, 600), Rect2(1075, 582, 95, 44)],
+		"player":  [Vector2(470, 640), Rect2(430, 622, 95, 44)],
+		"father":  [Vector2(640, 250), Rect2(600, 236, 95, 36)],
+	}
+	for cid in db.all_ids():
+		if cid == local_id or not spots.has(cid):
+			continue
+		var rp: Node2D = preload("res://scenes/RemotePlayer.tscn").instantiate()
+		rp.role_key = cid
+		rp.placeholder_wander = true
+		rp.wander_area = spots[cid][1]
+		add_child(rp)
+		rp.global_position = spots[cid][0]
 
 ## 在画面中心附近螺旋找一个可走点作为出生位置。
 func _find_walkable_start() -> Vector2:

@@ -29,6 +29,7 @@ SceneManager="*res://scripts/managers/scene_manager.gd"
 GameClock="*res://scripts/managers/game_clock.gd"
 ItemDB="*res://scripts/managers/item_db.gd"
 InventoryManager="*res://scripts/managers/inventory_manager.gd"
+CharacterDB="*res://scripts/managers/character_db.gd"
 
 [display]
 
