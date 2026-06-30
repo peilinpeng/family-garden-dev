@@ -34,7 +34,11 @@ func _ready() -> void:
 	randomize()
 	_recalc_feet()
 	global_position = _clamp_to_pen(global_position)
-	_enter(State.IDLE)
+	_enter(State.REST if _night() else State.IDLE)   # 夜里一上来就睡
+
+func _night() -> bool:
+	var gc := get_node_or_null("/root/GameClock")
+	return gc != null and gc.is_night()
 
 ## AnimatedSprite2D 居中,脚底 = 中心 + 半个精灵高(随缩放/换帧变化)。
 func _recalc_feet() -> void:
@@ -92,26 +96,36 @@ func _clamp_to_pen(p: Vector2) -> Vector2:
 
 func _pick_next() -> void:
 	var r := randf()
-	if r < 0.35:
-		_enter(State.WALK)
-	elif r < 0.60:
-		_enter(State.EAT)
-	elif r < 0.80:
-		_enter(State.IDLE)
+	if _night():
+		# 夜里基本一直睡:绝大多数继续 REST,偶尔短暂 IDLE
+		if r < 0.9:
+			_enter(State.REST)
+		else:
+			_enter(State.IDLE)
 	else:
-		_enter(State.REST)
+		# 白天也放慢:少走动、多吃/发呆
+		if r < 0.15:
+			_enter(State.WALK)
+		elif r < 0.45:
+			_enter(State.EAT)
+		elif r < 0.75:
+			_enter(State.IDLE)
+		else:
+			_enter(State.REST)
 
 func _enter(s: int) -> void:
 	state = s
 	match s:
 		State.IDLE:
-			anim.play("idle"); state_time = randf_range(4.0, 8.0)
+			# 夜里偶尔醒一下很短,白天发呆久一点
+			anim.play("idle"); state_time = randf_range(3.0, 6.0) if _night() else randf_range(8.0, 16.0)
 		State.WALK:
 			anim.play("walk"); state_time = randf_range(5.0, 9.0)
 			target = Vector2(
 				randf_range(pen.position.x, pen.end.x),
 				randf_range(pen.position.y, pen.end.y))
 		State.EAT:
-			anim.play("eat"); state_time = randf_range(8.0, 14.0)
+			anim.play("eat"); state_time = randf_range(12.0, 20.0)
 		State.REST:
-			anim.play("rest"); state_time = randf_range(12.0, 22.0)
+			# 夜里睡得久(保持睡姿不乱切),白天小憩
+			anim.play("rest"); state_time = randf_range(40.0, 90.0) if _night() else randf_range(18.0, 32.0)
