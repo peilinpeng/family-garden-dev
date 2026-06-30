@@ -13,6 +13,10 @@
 [ext_resource type="Texture2D" uid="uid://bhq0oji8khs7m" path="res://assets/farm/seeds.png" id="11_seeds"]
 [ext_resource type="Texture2D" uid="uid://gc48c71nl1cw" path="res://assets/farm/farmlands.png" id="12_farmlands"]
 [ext_resource type="PackedScene" path="res://scenes/Cow.tscn" id="13_cow"]
+[ext_resource type="PackedScene" path="res://scenes/Bull.tscn" id="14_bull"]
+[ext_resource type="PackedScene" path="res://scenes/Sheep.tscn" id="15_sheep"]
+[ext_resource type="PackedScene" path="res://scenes/Chicken.tscn" id="16_chicken"]
+[ext_resource type="PackedScene" path="res://scenes/Chick.tscn" id="17_chick"]
 
 [node name="Farm" type="Node2D" unique_id=1902479684]
 script = ExtResource("1_farm")
@@ -196,4 +200,19 @@ region_rect = Rect2(892, 432, 157, 20)
 position = Vector2(78, 20)
 
 [node name="Cow" parent="Objects" instance=ExtResource("13_cow")]
-position = Vector2(210, 550)
+position = Vector2(150, 540)
+
+[node name="Bull" parent="Objects" instance=ExtResource("14_bull")]
+position = Vector2(275, 535)
+
+[node name="Sheep" parent="Objects" instance=ExtResource("15_sheep")]
+position = Vector2(205, 565)
+
+[node name="Chicken" parent="Objects" instance=ExtResource("16_chicken")]
+position = Vector2(220, 270)
+
+[node name="Chicken2" parent="Objects" instance=ExtResource("16_chicken")]
+position = Vector2(345, 300)
+
+[node name="Chick" parent="Objects" instance=ExtResource("17_chick")]
+position = Vector2(290, 285)
