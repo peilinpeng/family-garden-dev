@@ -156,13 +156,13 @@ func _try_plant(click: Vector2) -> void:
 	if best == -1 or best_d > CLICK_SNAP:
 		return  # 没点在任何种植点附近
 
-	# 已有作物:成熟则收获,未熟则忽略
+	# 已有作物:成熟则收获(产出进背包),未熟则忽略
 	if crops.has(best):
 		var c: Crop = crops[best]
 		if c.is_mature():
+			_harvest(c)
 			c.queue_free()
 			crops.erase(best)
-			print("收获: ", PLOTS[best])
 		return
 
 	# 必须走近才能种
@@ -171,8 +171,33 @@ func _try_plant(click: Vector2) -> void:
 		return
 
 	var data := CropDB.get_crop(selected)
+	# 种植消耗一颗对应种子
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv != null:
+		if not inv.has("seed_" + data.id):
+			print("没有 ", data.id, " 的种子")
+			return
+		inv.take("seed_" + data.id, 1)
 	var crop := Crop.new()
 	add_child(crop)
 	crop.setup(data.panel, data.row, PLOTS[best])
 	crops[best] = crop
 	print("种下 ", data.id, " @ ", PLOTS[best])
+
+## 收获:产出 1-3 个对应作物进背包,有概率返还一颗种子。
+func _harvest(c: Crop) -> void:
+	var crop_id := _crop_id_of(c)
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv == null or crop_id == "":
+		return
+	var yield_n := randi_range(1, 3)
+	inv.give("produce_" + crop_id, yield_n)
+	if randf() < 0.5:
+		inv.give("seed_" + crop_id, 1)
+	print("收获 ", crop_id, " ×", yield_n)
+
+func _crop_id_of(c: Crop) -> String:
+	for d in CropDB.CROPS:
+		if int(d.panel) == c.panel and int(d.row) == c.row:
+			return str(d.id)
+	return ""

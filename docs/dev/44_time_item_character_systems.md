@@ -1,7 +1,7 @@
 # 44 · 时间 / 物品 / 角色 三系统设计
 
 > 关联:[05 数据模型](../05_backend_data_model.md)、[43 联机方案](43_cloudbase_multiplayer_handoff.md)、`MemoryManager`、`ZoneManager`、`NodeFactory`
-> 状态:**时间·昼夜已落地(GameClock)**;物品 / 角色为设计待实现
+> 状态:**昼夜已落地(GameClock)· 物品系统已落地** ;角色为设计待实现
 > 已定决策:昼夜=**现实时间(动森式)**;库存=**个人背包 + 共享仓 都要**
 
 ---
@@ -44,7 +44,15 @@
 
 ---
 
-## 2. 物品系统(个人背包 + 共享仓)
+## 2. 物品系统(个人背包 + 共享仓)· 已实现 ✅
+
+落地文件:`assets/manifest/items.json`、`scripts/items/item_def.gd`、`scripts/items/inventory.gd`、`scripts/managers/item_db.gd`(autoload `ItemDB`)、`scripts/managers/inventory_manager.gd`(autoload `InventoryManager`)、`scripts/ui/inventory_ui.gd` + `scenes/InventoryUI.tscn`。
+- 37 个物品(16 作物各 种子+产出,图标复用 crops_daily 图集;+ 工具/礼物/货币)。
+- `Inventory`:堆叠(按 max_stack)+ 槽位容量 + 增删移转 + 序列化 + `changed` 信号。
+- `InventoryManager`:`backpack`(私有)+ `storehouse`(共享),本地存档 `user://inventory_v1.json`(后续走 seam 接 CloudBase),`deposit/withdraw` 转移,首次发初始种子。
+- 接入农场:种植**消耗种子**、收获**产出进背包**(+概率返还种子)。
+- UI:按 **I** 开关,背包/共享仓双栏,左键移 1 / Shift 移整组。
+- **联机 TODO**:共享仓改为走 A 面(云函数校验写 + 广播),背包仍按本人。
 
 ### 2.1 定义
 
