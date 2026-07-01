@@ -6,21 +6,36 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
 ## 1. 准备 CloudBase 环境
 
 1. 开通腾讯云开发(CloudBase),记下 **环境 ID(env id)**。
-2. 开通 **云数据库**;集合按需自动创建(首次 upsert 即建)。
-   集合列表见 `docs/dev/45_cloudbase_storage.md`。
+2. 开通 **云数据库**,**手动创建**以下集合(⚠️ 实测确认:CloudBase 集合**不会**在首次
+   写入时自动创建,必须提前建好,否则 `snapshot`/`query` 会直接报
+   `ResourceNotFound: Db or Table not exist`):
+   ```
+   members, families, memories, nodes, answers, rooms, room_objects, inventories
+   ```
+   权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
+   不允许客户端 SDK 绕过网关直连数据库。
 
 ## 2. 部署云函数 data_gateway
 
+**方式 A(控制台,推荐给没装 CLI 的场景)**:
+1. 云函数 → 新建云函数,函数名 `data_gateway`,运行环境 Node.js 16+。
+2. 把 `index.js`/`package.json` 内容贴进在线编辑器,**或**（更稳妥,避免复制粘贴导致引号变形/
+   InvalidParameter.IllegalCharacters 报错）把这两个文件打包成 zip 后**通过「上传代码包」上传**。
+3. **务必确认依赖被安装**:创建/更新代码后,留意「是否安装依赖」的提示并确认。
+   ⚠️ 实测踩坑:更新代码后如果没有重新触发依赖安装,函数会在每次调用时直接
+   `FUNCTION_INVOCATION_FAILED`(`require('@cloudbase/node-sdk')` 找不到模块)——
+   每次改代码重新上传后,都要重新确认这一步做了。
+
+**方式 B(有 CLI 权限)**:
 ```bash
 cd backend/cloudbase/data_gateway
-npm install            # 安装 @cloudbase/node-sdk
-# 用 CloudBase CLI 或控制台上传该目录为云函数 data_gateway
-tcb fn deploy data_gateway   # 或在控制台手动新建并上传 index.js + package.json
+npm install
+tcb fn deploy data_gateway -e <你的环境ID>
 ```
 
-- 运行时:Node.js 16+。
-- 给该函数绑定 **HTTP 访问服务**,得到一个公网 HTTPS 触发地址(形如
-  `https://<env-id>.service.tcloudbase.com/data_gateway`)。
+给该函数绑定 **HTTP 访问服务**(路由配置里"关联资源"选**云函数**、选中 `data_gateway`,
+「身份认证」保持关闭——鉴权是我们代码自己做的,不是平台这层),得到一个公网 HTTPS
+触发地址(形如 `https://<env-id>-<appid>.<region>.app.tcloudbase.com/data_gateway`)。
 
 ## 3. 给每个家庭成员种一条身份(鉴权前提)
 

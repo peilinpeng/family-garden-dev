@@ -54,18 +54,31 @@ async function resolveMember(token) {
   };
 }
 
+// 单个集合查询失败(如集合还没手动创建)不应拖垮整批 snapshot——降级返回空数组,
+// 让其它已就绪的集合仍能正常同步。
 async function queryGeneric(table, familyId) {
-  const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
-  return res.data || [];
+  try {
+    const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
+    return res.data || [];
+  } catch (err) {
+    console.warn('[data_gateway] query failed for table=' + table + ': ' + (err && err.message || err));
+    return [];
+  }
 }
 
 // inventories 专属:只能看到「本家庭共享仓」+「自己的背包」,看不到别人的背包。
+// 集合还没建好时降级返回空,不抛出。
 async function queryInventories(familyId, memberId) {
-  const shared = await db.collection('inventories')
-    .where({ family_id: familyId, kind: 'storehouse' }).limit(10).get();
-  const own = await db.collection('inventories')
-    .where({ family_id: familyId, kind: 'backpack', owner_member_id: memberId }).limit(10).get();
-  return [...(shared.data || []), ...(own.data || [])];
+  try {
+    const shared = await db.collection('inventories')
+      .where({ family_id: familyId, kind: 'storehouse' }).limit(10).get();
+    const own = await db.collection('inventories')
+      .where({ family_id: familyId, kind: 'backpack', owner_member_id: memberId }).limit(10).get();
+    return [...(shared.data || []), ...(own.data || [])];
+  } catch (err) {
+    console.warn('[data_gateway] query failed for table=inventories: ' + (err && err.message || err));
+    return [];
+  }
 }
 
 async function upsertInventories(row, familyId, memberId) {

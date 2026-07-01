@@ -1,8 +1,9 @@
 # 45 · CloudBase 存储(持久化)落地
 
 > 关联:[43 联机方案](43_cloudbase_multiplayer_handoff.md)、[05 数据模型](../05_backend_data_model.md)、`backend/cloudbase/`
-> 状态:**代码已做完整端到端验证(见 §7),但尚未部署到真实 CloudBase 账号**——
-> 本环境没有 CloudBase 凭证/CLI,"真正部署点亮"这一步需要你在自己的账号里完成。
+> 状态:**已部署到真实 CloudBase 环境并跑通(环境 `familygarden-d7gy18huh87fd41d2`,
+> family_id=`family1`)**。真实线上验证了:身份解析、共享仓跨成员可见、个人背包
+> 互相隔离(见 §8)。
 > 负责:数据/后端线
 
 ---
@@ -108,3 +109,32 @@ Godot
   安全规则配置,这些只有部署到你的账号后才能验证。
 - 建议部署后按 §5/README 的清单,用真机跑一遍"两个成员同时游戏、共享仓互相可见"作为
   最终验收。
+
+## 8. 真实生产环境部署验证记录
+
+已部署到环境 `familygarden-d7gy18huh87fd41d2`(family_id=`family1`,4 个成员:
+father/mother/player/partner),用真实 HTTPS 请求(非本地模拟)验证通过:
+
+- `whoami` 正确解析真实成员身份(含中文昵称)。
+- 错误令牌 → 正确返回 `{ok:false, code:401}`。
+- 写入共享仓(`upsert` storehouse)→ 另一个成员的 `query` 能读到同一份数据
+  ——**跨成员共享在真实环境成立**。
+- 成员各自写入背包(`upsert` backpack)→ 对方 `query` 看不到彼此的背包行
+  ——**个人隔离在真实环境成立**。
+- `snapshot` 横跨全部 7 个业务集合一次性返回成功(真实 `bootstrap()` 会调这个)。
+
+### 部署过程中发现的 2 个真实问题(已修复/已文档化)
+
+1. **集合不会自动创建**(纠正了 §1 早前的错误说法):CloudBase 的集合必须在控制台
+   手动创建,`upsert`/`snapshot` 打到不存在的集合会直接报
+   `ResourceNotFound: Db or Table not exist`,且 **snapshot 是全有全无**——只要
+   `SNAPSHOT_TABLES` 里有一个集合不存在,整个 `bootstrap()` 会失败,不只是那一项缺数据。
+   **已修复**:`queryGeneric()`/`queryInventories()` 加了 try/catch,单个集合查询失败会
+   降级返回空数组,不再拖垮其它集合的同步(见 `data_gateway/index.js` 对应函数)。
+   仍需要:部署前把 README §1 列的 8 个集合都手动建好。
+
+2. **控制台"更新代码"不一定会重装依赖**:上传新版 zip 后,如果没有明确触发/确认
+   依赖安装,函数会在**每次调用**时以 `FUNCTION_INVOCATION_FAILED`(内部是
+   `require('@cloudbase/node-sdk')` 找不到模块)崩溃,连之前能跑通的 `whoami`
+   也会一起失效。排查方法:如果所有 action(包括之前测试通过的)突然一起失败,
+   先怀疑依赖没装,而不是代码逻辑本身。已写进 README §2 的部署步骤提醒。
