@@ -6,20 +6,28 @@ extends Node
 ## Godot 原生用 HTTP(见 docs/43):本类通过 HTTPS 调一个 CloudBase 云函数 data_gateway
 ## (源码 backend/cloudbase/data_gateway/),由它对云数据库做 CRUD。
 ##
-## 鉴权:每用户身份(见 docs/45 §5)。客户端发自己的 member_token,
-## 服务端据此解析 {family_id, member_id, role},**body 里不再需要/不被信任 family_id**。
+## 鉴权:每用户身份(见 docs/45 §5/§9)。两类配置分开存,原因不同:
+## - endpoint / family_id:项目级、非密钥,存 res://config/cloudbase.json(**可提交进 git**)。
+## - member_token:个人凭证,是密钥,**绝不进 git**——自助加入(join_family)时服务端生成,
+##   存在 res://config/cloudbase.json(**永远不提交这个字段/永远留空占位**)之外的
+##   user://cloud_identity.json 里,天然只存在于这台设备本地。
+##
+## 首次进入(没有本地 member_token):is_configured()==true 但 has_identity()==false,
+## 此时不会自动 bootstrap;由玩家在选角色界面选完角色/起完昵称的那一刻,
+## CloudService.ensure_cloud_identity() 调 join_family() 自助注册、拿到令牌、存本地,
+## 然后才 bootstrap()。之后每次启动 has_identity()==true,直接照常同步,无需再选。
 ##
 ## 读路径约束:CloudService.load_table 是同步的(pull_remote 同步调),所以本类用
 ## 「本地镜像缓存」——load_table 同步返回缓存,bootstrap()/refresh() 异步把云端拉进缓存。
 ## 写路径:persist_record/delete_record 走 fire-and-forget HTTP,同时乐观更新缓存。
-##
-## 未配置(endpoint 或 member_token 缺一)→ 全部安全降级:写 no-op、读空 → 等同纯本地。
 
-const CONFIG_PATH := "res://config/cloudbase.json"
+const CONFIG_PATH := "res://config/cloudbase.json"      ## 项目级,可提交:endpoint / family_id
+const IDENTITY_PATH := "user://cloud_identity.json"      ## 设备级,不提交:member_token
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
 const SNAPSHOT_TABLES := ["memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories"]
 
 var _cfg: Dictionary = {}
+
 var _cache: Dictionary = {}   ## table -> Array[Dictionary]
 
 # ── 配置(静态) ───────────────────────────────────────
@@ -30,13 +38,52 @@ static func load_config() -> Dictionary:
 	var p: Variant = JSON.parse_string(f.get_as_text())
 	return p if p is Dictionary else {}
 
+static func load_identity() -> Dictionary:
+	if not FileAccess.file_exists(IDENTITY_PATH):
+		return {}
+	var f := FileAccess.open(IDENTITY_PATH, FileAccess.READ)
+	var p: Variant = JSON.parse_string(f.get_as_text())
+	return p if p is Dictionary else {}
+
+## 只要求 endpoint 非空——member_token 缺失是正常的"还没自助加入"状态,不代表离线。
 static func is_configured() -> bool:
-	# 需同时有 endpoint 和本人的 member_token;缺一则保持离线(不发无鉴权请求)
-	var c := load_config()
-	return str(c.get("endpoint", "")) != "" and str(c.get("member_token", "")) != ""
+	return str(load_config().get("endpoint", "")) != ""
 
 func _init() -> void:
 	_cfg = load_config()
+	var identity := load_identity()
+	if identity.has("member_token"):
+		_cfg["member_token"] = identity["member_token"]
+
+## 本设备是否已经自助加入过(有自己的令牌)。
+func has_identity() -> bool:
+	return str(_cfg.get("member_token", "")) != ""
+
+func family_id() -> String:
+	return str(_cfg.get("family_id", ""))
+
+# ── 自助加入(首次选角色时调用一次) ───────────────────
+## 无需已有令牌:传家庭 id + 选的角色 + 起的昵称,服务端随机生成一个新令牌并建档。
+## 成功后把令牌存进 user://(此设备专属,永不提交),之后 has_identity() 变 true。
+func join_family(fam_id: String, role: String, display_name: String) -> bool:
+	var res: Dictionary = await _request({
+		"action": "join_family",
+		"family_id": fam_id,
+		"role": role,
+		"display_name": display_name,
+	})
+	if not bool(res.get("ok", false)):
+		push_warning("[CloudBase] join_family 失败: " + str(res.get("error", "")))
+		return false
+	var token := str(res.get("member_token", ""))
+	if token == "":
+		return false
+	_cfg["member_token"] = token
+	_cfg["family_id"] = fam_id
+	var f := FileAccess.open(IDENTITY_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify({"member_token": token}))
+	return true
 
 # ── 接缝实现(family_id 不再需要:服务端从 member_token 解析) ─
 func persist_record(table: String, row: Dictionary) -> void:
@@ -53,7 +100,8 @@ func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
 
 # ── 启动预拉(异步) ───────────────────────────────────
-## 注入后调一次:whoami → 拉云端各表进缓存 → 触发各系统同步读取 → 最后才广播身份就绪。
+## 只在 has_identity()==true 时调用(见 CloudService._ready / ensure_cloud_identity)。
+## whoami → 拉云端各表进缓存 → 触发各系统同步读取 → 最后才广播身份就绪。
 ##
 ## 关键顺序:GameIdentity.set_identity() 特意放在**最后一步**,而不是 whoami 一拿到结果
 ## 就立刻设置。这样任何代码只要看到 GameIdentity.is_ready()==true,就能保证背包/共享仓等
@@ -99,7 +147,8 @@ func _request(body: Dictionary) -> Dictionary:
 	var req := HTTPRequest.new()
 	add_child(req)
 	var headers := ["Content-Type: application/json"]
-	# 本人的成员令牌:服务端据此解析身份(family_id/member_id/role),不信 body
+	# 本人的成员令牌:服务端据此解析身份(family_id/member_id/role),不信 body。
+	# join_family 这个动作本身没有令牌(还没申请到),不带这个 header 也能调。
 	var token := str(_cfg.get("member_token", ""))
 	if token != "":
 		headers.append("Authorization: Bearer " + token)

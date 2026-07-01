@@ -442,6 +442,10 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 	MemoryManager.save_game()
 	_close_active_panel()
 	_show_garden()
+	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
+	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
+	var canonical_role: String = CharacterDB.resolve(role_key)
+	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name)
 
 
 func _default_name_for_role(role_key: String) -> String:

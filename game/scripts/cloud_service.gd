@@ -22,18 +22,39 @@ const STORAGE_BUCKET: String = "family-photos"
 # MemoryManager 的写入/读取出入口签名不变。
 var _persist_backend: Object = null
 
-## 启动:若 config/cloudbase.json 配了 endpoint,注入 CloudBase 后端并预拉云端;
-## 未配置则保持本地(接缝全 no-op),游戏照常离线运行。
+## 启动:若 config/cloudbase.json 配了 endpoint,注入 CloudBase 后端;
+## 若本设备已自助加入过(user://cloud_identity.json 里有令牌)则立刻预拉云端;
+## 若还没加入(第一次玩),先不 bootstrap——等玩家选完角色/起完昵称,
+## scene_manager 会调 ensure_cloud_identity() 自助注册 + 补上这次 bootstrap。
+## 未配置 endpoint 则保持纯本地(接缝全 no-op),游戏照常离线运行。
 func _ready() -> void:
 	if CloudBaseBackend.is_configured():
 		var backend := CloudBaseBackend.new()
 		add_child(backend)
 		set_persistence_backend(backend)
 		await get_tree().process_frame   # 等其它 autoload(MemoryManager 等)就绪
-		await backend.bootstrap()
+		if backend.has_identity():
+			await backend.bootstrap()
 
 func set_persistence_backend(backend: Object) -> void:
 	_persist_backend = backend
+
+## 首次选角色后调用:若配置了 CloudBase 但本设备还没自助加入过,
+## 用选中的角色+昵称注册一个云身份,再补跑一次 bootstrap 把数据同步起来。
+## 已经加入过的设备(has_identity()==true)直接跳过,不会重复注册。
+func ensure_cloud_identity(role: String, display_name: String) -> void:
+	if _persist_backend == null or not _persist_backend.has_method("has_identity"):
+		return
+	if _persist_backend.has_identity():
+		return
+	var fam_id: String = _persist_backend.family_id() if _persist_backend.family_id() != "" \
+		else str(CloudBaseBackend.load_config().get("family_id", ""))
+	if fam_id == "":
+		push_warning("[CloudBase] 未配置 family_id,无法自助加入")
+		return
+	var joined: bool = await _persist_backend.join_family(fam_id, role, display_name)
+	if joined:
+		await _persist_backend.bootstrap()
 
 func persist_record(table: String, row: Dictionary) -> void:
 	if _persist_backend != null and _persist_backend.has_method("persist_record"):

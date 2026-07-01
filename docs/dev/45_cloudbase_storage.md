@@ -2,8 +2,8 @@
 
 > 关联:[43 联机方案](43_cloudbase_multiplayer_handoff.md)、[05 数据模型](../05_backend_data_model.md)、`backend/cloudbase/`
 > 状态:**已部署到真实 CloudBase 环境并跑通(环境 `familygarden-d7gy18huh87fd41d2`,
-> family_id=`family1`)**。真实线上验证了:身份解析、共享仓跨成员可见、个人背包
-> 互相隔离(见 §8)。
+> family_id=`family1`)**;**玩家身份改为游戏内自助加入,不再需要任何人手动填/发令牌**
+> (见 §9)。真实线上验证了:身份解析、共享仓跨成员可见、个人背包互相隔离(见 §8)。
 > 负责:数据/后端线
 
 ---
@@ -138,3 +138,42 @@ father/mother/player/partner),用真实 HTTPS 请求(非本地模拟)验证通�
    `require('@cloudbase/node-sdk')` 找不到模块)崩溃,连之前能跑通的 `whoami`
    也会一起失效。排查方法:如果所有 action(包括之前测试通过的)突然一起失败,
    先怀疑依赖没装,而不是代码逻辑本身。已写进 README §2 的部署步骤提醒。
+
+## 9. 玩家身份改为游戏内自助加入(不再手动发令牌)
+
+**问题**:最初的方案要求管理员在控制台手动给每个成员种一条 `members` 记录、把
+`member_token` 发给对应的人、玩家再手动把令牌粘贴进 `config/cloudbase.json`。这对
+真实玩家完全不合理——不该让任何人接触到"令牌"这个概念。
+
+**现在的方案**:接入游戏里**已有的选角色界面**(`scene_manager.gd` 的
+`_show_role_select()`,4 张角色卡 + 昵称输入框)。玩家选完角色、起完昵称的那一刻,
+`_confirm_role_selection()` 会（不阻塞进花园地)后台调用
+`CloudService.ensure_cloud_identity(role, display_name)`:
+
+- 若本设备已经加入过(`user://cloud_identity.json` 存在)→ 直接跳过,不重复注册。
+- 若是第一次 → 调服务端新 action `join_family`(**唯一不需要令牌的 action**,因为这一步
+  就是发令牌本身):服务端随机生成一条新令牌、建 `members` 记录、把令牌返回;客户端
+  存进 `user://cloud_identity.json`(设备私有,不在项目目录,永不提交进 git)。
+
+配套的配置拆分(见 README §3/§4):
+- `config/cloudbase.json`(res://,**项目级、可提交**):`endpoint` + `family_id`,
+  都不是密钥。
+- `user://cloud_identity.json`(设备级,**绝不提交**,不在 git 仓库路径下):`member_token`,
+  自动生成、自动读写,玩家全程无感。
+
+`CloudService._ready()` 相应调整:只在**本设备已有身份**时才自动 `bootstrap()`;
+首次进入不会立刻同步(还没有身份),等 `ensure_cloud_identity()` 拿到令牌后补跑一次。
+
+已知权衡:**没有邀请码校验**,任何知道 `family_id` 的人调用 `join_family` 都能自助
+加入——这是产品侧明确选择接受的(私人家庭游戏,不是防真实攻击者的公开平台)。
+
+### 验证
+
+- 网关逻辑:新增 7 项 `join_family` 场景测试(无令牌注册成功、新令牌立即可用、
+  非法角色/缺参数被拒、同角色可重复注册出不同的人互不干扰、新成员能正常读写),
+  连同原 14 项一并通过(共 21 项)。
+- 端到端(本地 mock 网关 + 真实 Godot 运行时):模拟"全新玩家"完整走一遍
+  `main.gd` 启动 → 选角色界面选"papa"+起名"测试爸爸" → 24 帧内云身份自动就绪
+  (`role=father` 正确从别名转换、`display_name=测试爸爸` 正确传递)→ 本地令牌文件
+  生成。**二次启动**(令牌已存在)验证:16 帧内自动同步就绪,全程不经过选角色界面。
+- 离线路径(未配置 endpoint)Farm 场景真实运行,无报错,回归保持通过。
