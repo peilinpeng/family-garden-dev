@@ -28,7 +28,7 @@
 [ext_resource type="SpriteFrames" uid="uid://ddxjhwf5v7ftc" path="res://assets/pond/fish/fish_05/fish_05_sprite_frames.tres" id="32_fish_05_frames"]
 [ext_resource type="Script" uid="uid://b3w3jr8adbvkg" path="res://scripts/pond/fish_path_swim_controller.gd" id="33_fish_path_swim_controller"]
 [ext_resource type="SpriteFrames" uid="uid://ivo4higddm5h" path="res://assets/pond/bottle/bottle_float_sprite_frames.tres" id="34_bottle_float_frames"]
-[ext_resource type="Script" path="res://scripts/pond/duck_route_controller.gd" id="35_duck_route_controller"]
+[ext_resource type="Script" uid="uid://dyrwgl75hrjfh" path="res://scripts/pond/duck_route_controller.gd" id="35_duck_route_controller"]
 [ext_resource type="SpriteFrames" path="res://assets/pond/duck/duck_sprite_frames.tres" id="36_duck_frames"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_water_loop"]
@@ -101,6 +101,9 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="platform_collision_shape"]
 size = Vector2(165.25, 124.375)
 
+[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
+size = Vector2(96, 96)
+
 [sub_resource type="RectangleShape2D" id="fishing_spot_shape"]
 size = Vector2(104, 195.5)
 
@@ -110,15 +113,6 @@ height = 751.1737
 
 [sub_resource type="ConvexPolygonShape2D" id="water_collision_polygon"]
 points = PackedVector2Array(-245, -169, 256, -158, 364, -53, 366, 87, 237, 216, -234, 213, -380, 92, -378, -64)
-
-[sub_resource type="RectangleShape2D" id="message_bottle_shape"]
-size = Vector2(130, 281)
-
-[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
-size = Vector2(96, 96)
-
-[sub_resource type="RectangleShape2D" id="garden_return_shape"]
-size = Vector2(96, 128)
 
 [sub_resource type="RectangleShape2D" id="air_wall_top_shape"]
 size = Vector2(1280, 48)
@@ -143,6 +137,9 @@ size = Vector2(160, 64)
 
 [sub_resource type="RectangleShape2D" id="right_house_side_wall_shape"]
 size = Vector2(56, 236)
+
+[sub_resource type="RectangleShape2D" id="garden_return_shape"]
+size = Vector2(96, 128)
 
 [node name="PondArea" type="Node2D" unique_id=1357813240]
 
@@ -257,14 +254,13 @@ autoplay = "swim_down_right"
 curve = SubResource("Curve2D_duck_route")
 
 [node name="DuckFollow" type="PathFollow2D" parent="Duck/DuckRoute" unique_id=1546729308]
+position = Vector2(520, 24)
 rotates = false
 script = ExtResource("35_duck_route_controller")
 speed = 18.0
-duck_node_path = NodePath("DuckSprite")
-water_shape_path = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
-land_move_seconds = Vector2(5.0, 9.0)
-land_rest_seconds = Vector2(2.0, 4.0)
-water_move_seconds = Vector2(6.0, 10.0)
+land_move_seconds = Vector2(5, 9)
+land_rest_seconds = Vector2(2, 4)
+water_move_seconds = Vector2(6, 10)
 water_rest_seconds = Vector2(1.8, 3.5)
 
 [node name="DuckSprite" type="AnimatedSprite2D" parent="Duck/DuckRoute/DuckFollow" unique_id=1440150349]
@@ -278,25 +274,25 @@ autoplay = "land_walk"
 y_sort_enabled = true
 
 [node name="LotusFlower01" type="Sprite2D" parent="Decorations" unique_id=425334740]
-texture_filter = 1
 z_index = -58
 z_as_relative = false
+texture_filter = 1
 position = Vector2(-211, -58.000004)
 scale = Vector2(0.80396694, 0.8039669)
 texture = ExtResource("24_lotus_flower_01")
 
 [node name="LotusFlower02" type="Sprite2D" parent="Decorations" unique_id=544391272]
-texture_filter = 1
 z_index = 146
 z_as_relative = false
+texture_filter = 1
 position = Vector2(197.60251, 145.51102)
 scale = Vector2(0.8541216, 0.8541216)
 texture = ExtResource("25_lotus_flower_02")
 
 [node name="LotusFlower03" type="Sprite2D" parent="Decorations" unique_id=1521018776]
-texture_filter = 1
 z_index = 78
 z_as_relative = false
+texture_filter = 1
 position = Vector2(290, 78)
 scale = Vector2(0.78, 0.78)
 texture = ExtResource("26_lotus_flower_03")
@@ -333,24 +329,24 @@ scale = Vector2(100, 100)
 shape = SubResource("RectangleShape2D_spxtl")
 
 [node name="StoneLantern" type="Sprite2D" parent="Decorations" unique_id=124704570]
-texture_filter = 1
 z_index = 268
 z_as_relative = false
+texture_filter = 1
 position = Vector2(496, 268)
 texture = ExtResource("29_stone_lantern")
 
 [node name="FlowerBed" type="Sprite2D" parent="Decorations" unique_id=349467915]
-texture_filter = 1
 z_index = -118
 z_as_relative = false
+texture_filter = 1
 position = Vector2(-501.6507, -188.5)
 scale = Vector2(1.0068494, 1.0068493)
 texture = ExtResource("22_flower_bed")
 
 [node name="FlowerPot" type="Sprite2D" parent="Decorations" unique_id=382852485]
-texture_filter = 1
 z_index = 282
 z_as_relative = false
+texture_filter = 1
 position = Vector2(392, 282)
 texture = ExtResource("23_flower_pot")
 
@@ -358,9 +354,9 @@ texture = ExtResource("23_flower_pot")
 y_sort_enabled = true
 
 [node name="FrogIdle" type="AnimatedSprite2D" parent="Frog" unique_id=1338881457]
-texture_filter = 1
 z_index = -64
 z_as_relative = false
+texture_filter = 1
 position = Vector2(-156, -64)
 scale = Vector2(0.7692309, 0.76923084)
 sprite_frames = SubResource("SpriteFrames_lyoci")
@@ -408,37 +404,36 @@ position = Vector2(-46, -72)
 texture = ExtResource("16_wooden_sign")
 
 [node name="WaterBucket" type="Sprite2D" parent="Props" unique_id=1190353196]
-texture_filter = 1
 z_index = -93
 z_as_relative = false
+texture_filter = 1
 position = Vector2(396, -93)
 texture = ExtResource("17_water_bucket")
 
 [node name="MetalBucket" type="Sprite2D" parent="Props" unique_id=1027197588]
-texture_filter = 1
 z_index = 270
 z_as_relative = false
+texture_filter = 1
 position = Vector2(268, 270)
 texture = ExtResource("18_metal_bucket")
 
 [node name="MetalCrate" type="Sprite2D" parent="Props" unique_id=1858937511]
-texture_filter = 1
 z_index = 214
 z_as_relative = false
+texture_filter = 1
 position = Vector2(428, 214)
 texture = ExtResource("19_metal_crate")
 
 [node name="RopeCoil" type="Sprite2D" parent="Props" unique_id=39721903]
-texture_filter = 1
 z_index = -42
 z_as_relative = false
+texture_filter = 1
 position = Vector2(469, -42)
 texture = ExtResource("20_rope_coil")
 
 [node name="MessageBottle" type="Area2D" parent="Props" unique_id=1223938100]
 z_index = 48
 z_as_relative = false
-input_pickable = true
 position = Vector2(-76, 48)
 metadata/interact_action = "pond_message_bottle"
 metadata/prompt = "Check the drifting bottle"
@@ -451,7 +446,7 @@ animation = &"float_loop"
 autoplay = "float_loop"
 frame_progress = 0.022527007
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/MessageBottle"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Props/MessageBottle" unique_id=1302818272]
 shape = SubResource("bottle_interact_shape")
 
 [node name="FishingSpot" type="Area2D" parent="Props" unique_id=1934565884]
@@ -480,50 +475,50 @@ disabled = true
 visible = false
 shape = SubResource("water_collision_polygon")
 
-[node name="PondAirWalls" type="StaticBody2D" parent="Collision"]
+[node name="PondAirWalls" type="StaticBody2D" parent="Collision" unique_id=1784965288]
 collision_mask = 0
 
-[node name="TopBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="TopBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=510288573]
 visible = false
 position = Vector2(0, -348)
 shape = SubResource("air_wall_top_shape")
 
-[node name="BottomBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="BottomBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1526983303]
 visible = false
 position = Vector2(0, 348)
 shape = SubResource("air_wall_bottom_shape")
 
-[node name="LeftBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="LeftBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=417097837]
 visible = false
 position = Vector2(-628, 0)
 shape = SubResource("air_wall_side_shape")
 
-[node name="RightBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="RightBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=2132872214]
 visible = false
 position = Vector2(628, 0)
 shape = SubResource("air_wall_side_shape")
 
-[node name="PondUpperBank" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="PondUpperBank" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=205908747]
 visible = false
 position = Vector2(-76, -176)
 shape = SubResource("pond_upper_bank_wall_shape")
 
-[node name="PondUpperRightBank" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="PondUpperRightBank" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=459162468]
 visible = false
 position = Vector2(360, -166)
 shape = SubResource("pond_upper_right_wall_shape")
 
-[node name="RightFenceInner" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="RightFenceInner" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1684639299]
 visible = false
 position = Vector2(612, -154)
 shape = SubResource("right_fence_inner_wall_shape")
 
-[node name="RightHouseLower" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="RightHouseLower" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1802285351]
 visible = false
 position = Vector2(520, -66)
 shape = SubResource("right_house_lower_wall_shape")
 
-[node name="RightHouseSide" type="CollisionShape2D" parent="Collision/PondAirWalls"]
+[node name="RightHouseSide" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=318226272]
 visible = false
 position = Vector2(604, -148)
 shape = SubResource("right_house_side_wall_shape")

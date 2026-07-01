@@ -5,7 +5,6 @@
 [ext_resource type="Texture2D" uid="uid://tmljo5dhd03q" path="res://assets/pond/fish/fish_05/fish_05_swim_down_03.png" id="3_down_03"]
 [ext_resource type="Texture2D" uid="uid://bmbbnmcmfwg48" path="res://assets/pond/fish/fish_05/fish_05_swim_down_left_01.png" id="4_down_left_01"]
 [ext_resource type="Texture2D" uid="uid://b0rq8dav4pnho" path="res://assets/pond/fish/fish_05/fish_05_swim_down_left_02.png" id="5_down_left_02"]
-[ext_resource type="Texture2D" uid="uid://b2217gfawoabn" path="res://assets/pond/fish/fish_05/fish_05_swim_down_left_03.png" id="6_down_left_03"]
 [ext_resource type="Texture2D" uid="uid://irvkwm7ftew2" path="res://assets/pond/fish/fish_05/fish_05_swim_down_right_01.png" id="7_down_right_01"]
 [ext_resource type="Texture2D" uid="uid://dmwc54us45c5r" path="res://assets/pond/fish/fish_05/fish_05_swim_down_right_02.png" id="8_down_right_02"]
 [ext_resource type="Texture2D" uid="uid://c3qc1p86wbkk7" path="res://assets/pond/fish/fish_05/fish_05_swim_left_01.png" id="9_left_01"]
@@ -76,13 +75,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 2.0,
-"texture": ExtResource("6_down_left_03")
-}, {
-"duration": 2.0,
 "texture": ExtResource("9_left_01")
-}, {
-"duration": 2.0,
-"texture": ExtResource("6_down_left_03")
 }, {
 "duration": 2.0,
 "texture": ExtResource("9_left_01")
