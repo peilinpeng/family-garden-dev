@@ -90,9 +90,11 @@ func _spawn_player() -> void:
 	player.global_position = _find_walkable_start()
 	last_safe = player.global_position
 	add_child(player)
-	# 本地玩家用所选角色(独立运行无存档则回退默认)
+	# 本地玩家角色:云身份(每用户登录,不可伪造)优先,否则回退本地存档角色
 	var mem := get_node_or_null("/root/MemoryManager")
-	var role := str(mem.selected_role_key) if mem != null and mem.selected_role_key != "" else "father"
+	var local_fallback := str(mem.selected_role_key) if mem != null and mem.selected_role_key != "" else "father"
+	var identity := get_node_or_null("/root/GameIdentity")
+	var role: String = identity.local_role(local_fallback) if identity != null else local_fallback
 	if player.has_method("apply_character"):
 		player.apply_character(role)
 	_spawn_family(role)

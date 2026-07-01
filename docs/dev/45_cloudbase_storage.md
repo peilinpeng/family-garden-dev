@@ -1,7 +1,7 @@
 # 45 · CloudBase 存储(持久化)落地
 
 > 关联:[43 联机方案](43_cloudbase_multiplayer_handoff.md)、[05 数据模型](../05_backend_data_model.md)、`backend/cloudbase/`
-> 状态:**客户端适配器 + 云函数网关 + 接缝注入 已落地;待你部署云函数 + 填 endpoint 即点亮**
+> 状态:**客户端适配器 + 云函数网关 + 接缝注入 + 每用户身份认证 已落地;待你部署云函数 + 种 members + 填 endpoint/member_token 即点亮**
 > 负责:数据/后端线
 
 ---
@@ -35,9 +35,10 @@ Godot
 
 | 集合 | 来源 | 关键字段 |
 |---|---|---|
+| `members` | 后台预分发(不进网关白名单,只服务端可查) | family_id, member_token, role, display_name |
 | `families` | MemoryManager `_family_row` | id=family_id, cross_member_interaction_count, family_portrait |
 | `memories` `nodes` `answers` `rooms` `room_objects` | MemoryManager `_sync` | 各自 id + 业务字段 |
-| `inventories` | InventoryManager | id(backpack/storehouse), kind, stacks[] |
+| `inventories` | InventoryManager | id(`backpack:`+member_id 或 `storehouse:`+family_id), kind, owner_member_id(仅backpack), stacks[] |
 | `travel_places` `postcards` `messages` `mailbox_events` | 现有 Supabase 直连(待迁) | 见 supabase_schema.sql |
 
 > `SNAPSHOT_TABLES`(cloudbase_backend.gd)= bootstrap 时预拉的表,供同步 `load_table` 读。
@@ -47,16 +48,20 @@ Godot
 - ✅ MemoryManager 的 `_sync` 表(memories/nodes/answers/rooms/room_objects/families)。
 - ✅ 库存(背包/共享仓)`inventories`,本地优先 + 推云 + 启动从云覆盖。
 
-## 5. 安全加固(已做)
+## 5. 安全:每用户身份认证(已做)
 
-网关不再信客户端的 `family_id`,改用**家庭访问密钥**鉴权(详见 `backend/cloudbase/README.md` §6):
-- ✅ family_id 由 `Authorization: Bearer <access_key>` 在服务端解析(查 families 集合)。
-- ✅ 无效密钥 → 401;`access_key` 客户端永不可写;删除只限本家庭;表白名单。
-- 客户端:`config/cloudbase.json` 填 `access_key`;`is_configured()` 要求 endpoint+access_key 都非空,否则保持离线(不发无鉴权请求)。
+网关不再信客户端的 family_id/member_id,改用**每用户 member_token** 鉴权(详见 `backend/cloudbase/README.md` §6):
+- ✅ 服务端用 `Authorization: Bearer <member_token>` 查 `members` 集合,解析出 `{family_id, member_id, role}`。
+- ✅ **members 集合完全不可达**(不在 action 白名单),客户端拿不到、也改不了任何人的 token。
+- ✅ **个人库存强隔离**:背包按 `owner_member_id` 强制隔离,家庭成员之间互相看不到对方背包;伪造 id 会被服务端纠正,不会污染他人数据。
+- ✅ 共享仓仍按 `family_id` 家庭共享;通用表跨家庭写入会被 403 拒绝。
+- ✅ 无效/缺失令牌 → 401。
+- 以上用内存模拟数据库跑过完整逻辑测试(9 类场景全部通过),见 README §6。
+- 客户端:`config/cloudbase.json` 填**本人的** `member_token`(不再是共享密钥);`GameIdentity` autoload 存 `whoami()` 解析出的身份,`Player`/`Farm` 的本地角色优先取云身份、否则回退本地存档角色。
 
 ## 6. 还没做(下一步)
 
-- **每用户身份**:现为"家庭共享口令";要区分成员(防越权改他人个人背包)→ 接 CloudBase 身份认证 + 自定义登录 token。
 - **迁旧读路径**:`CloudService.load_family_data`(Supabase 直连)→ 走本网关。
-- **实时同步**(共享仓即时刷新、看到家人走动)= CloudBase 实时,建在存储之上(`docs/43`)。
+- **实时同步**(共享仓即时刷新、看到家人走动)= CloudBase 实时,建在存储之上(`docs/43`);`RemotePlayer.set_target()` 已是现成的接入口。
 - 共享仓并发"抢最后一个"→ 网关事务校验。
+- 正式登录(微信/手机号)替代预分发的静态令牌。

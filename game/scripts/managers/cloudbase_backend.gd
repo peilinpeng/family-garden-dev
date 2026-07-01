@@ -6,11 +6,14 @@ extends Node
 ## Godot 原生用 HTTP(见 docs/43):本类通过 HTTPS 调一个 CloudBase 云函数 data_gateway
 ## (源码 backend/cloudbase/data_gateway/),由它对云数据库做 CRUD。
 ##
+## 鉴权:每用户身份(见 docs/45 §5)。客户端发自己的 member_token,
+## 服务端据此解析 {family_id, member_id, role},**body 里不再需要/不被信任 family_id**。
+##
 ## 读路径约束:CloudService.load_table 是同步的(pull_remote 同步调),所以本类用
 ## 「本地镜像缓存」——load_table 同步返回缓存,bootstrap()/refresh() 异步把云端拉进缓存。
 ## 写路径:persist_record/delete_record 走 fire-and-forget HTTP,同时乐观更新缓存。
 ##
-## 未配置(endpoint 空)→ 全部安全降级:写 no-op、读空 → 等同当前纯本地。
+## 未配置(endpoint 或 member_token 缺一)→ 全部安全降级:写 no-op、读空 → 等同纯本地。
 
 const CONFIG_PATH := "res://config/cloudbase.json"
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
@@ -28,33 +31,31 @@ static func load_config() -> Dictionary:
 	return p if p is Dictionary else {}
 
 static func is_configured() -> bool:
-	# 需同时有 endpoint 和家庭访问密钥;缺一则保持离线(不发无鉴权请求)
+	# 需同时有 endpoint 和本人的 member_token;缺一则保持离线(不发无鉴权请求)
 	var c := load_config()
-	return str(c.get("endpoint", "")) != "" and str(c.get("access_key", "")) != ""
+	return str(c.get("endpoint", "")) != "" and str(c.get("member_token", "")) != ""
 
 func _init() -> void:
 	_cfg = load_config()
 
-func family_id() -> String:
-	return str(_cfg.get("family_id", ""))
-
-# ── 接缝实现 ─────────────────────────────────────────
+# ── 接缝实现(family_id 不再需要:服务端从 member_token 解析) ─
 func persist_record(table: String, row: Dictionary) -> void:
 	# 乐观更新缓存(按 id upsert),再异步推云
 	_cache_upsert(table, row)
-	_post({"action": "upsert", "table": table, "row": row, "family_id": family_id()})
+	_post({"action": "upsert", "table": table, "row": row})
 
 func delete_record(table: String, row_id: String) -> void:
 	if _cache.has(table):
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
-	_post({"action": "delete", "table": table, "id": row_id, "family_id": family_id()})
+	_post({"action": "delete", "table": table, "id": row_id})
 
 func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
 
 # ── 启动预拉(异步) ───────────────────────────────────
-## 注入后调一次:把云端各表拉进缓存,再让 MemoryManager 同步读取。
+## 注入后调一次:先问清自己是谁(whoami),再把云端各表拉进缓存,触发各系统同步读取。
 func bootstrap() -> void:
+	await _whoami()
 	await refresh()
 	var mem := get_node_or_null("/root/MemoryManager")
 	if mem != null and mem.has_method("pull_remote"):
@@ -63,8 +64,23 @@ func bootstrap() -> void:
 	if inv != null and inv.has_method("sync_from_cloud"):
 		inv.sync_from_cloud()
 
+## 问服务端“我是谁”:member_id/family_id/role 均由服务端从 member_token 解析,
+## 客户端无法伪造。写入 GameIdentity,供 Player/Farm 等按角色渲染本地玩家。
+func _whoami() -> void:
+	var res: Dictionary = await _request({"action": "whoami"})
+	if not bool(res.get("ok", false)):
+		push_warning("[CloudBase] whoami 失败,member_token 可能无效")
+		return
+	var identity := get_node_or_null("/root/GameIdentity")
+	if identity != null:
+		identity.set_identity(
+			str(res.get("member_id", "")),
+			str(res.get("family_id", "")),
+			str(res.get("role", "")),
+			str(res.get("display_name", "")))
+
 func refresh() -> void:
-	var res: Dictionary = await _request({"action": "snapshot", "tables": SNAPSHOT_TABLES, "family_id": family_id()})
+	var res: Dictionary = await _request({"action": "snapshot", "tables": SNAPSHOT_TABLES})
 	var tables: Variant = res.get("tables", {})
 	if tables is Dictionary:
 		for t in tables:
@@ -83,10 +99,10 @@ func _request(body: Dictionary) -> Dictionary:
 	var req := HTTPRequest.new()
 	add_child(req)
 	var headers := ["Content-Type: application/json"]
-	# 家庭访问密钥:服务端用它解析 family_id(绝不信 body 里的 family_id)
-	var key := str(_cfg.get("access_key", ""))
-	if key != "":
-		headers.append("Authorization: Bearer " + key)
+	# 本人的成员令牌:服务端据此解析身份(family_id/member_id/role),不信 body
+	var token := str(_cfg.get("member_token", ""))
+	if token != "":
+		headers.append("Authorization: Bearer " + token)
 	var err := req.request(endpoint, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
 	if err != OK:
 		req.queue_free()

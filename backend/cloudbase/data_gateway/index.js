@@ -1,27 +1,29 @@
-// CloudBase 云函数:data_gateway(安全加固版)
+// CloudBase 云函数:data_gateway(每用户身份版)
 // Godot(HTTP)统一入口,对云数据库做 CRUD。集合 = 表名。
 //
-// 安全模型:
-//  - 客户端在 Authorization: Bearer <access_key> 里带「家庭访问密钥」。
-//  - 网关用 access_key 在服务端查 families 集合 → 解析出 family_id。**绝不信客户端传的 family_id。**
-//  - 无效/缺失密钥 → 401。所有读写只作用于解析出的 family_id。
-//  - 客户端永远不能写 access_key 字段;families.access_key 由后台预先种入。
+// 鉴权模型(每用户,取代旧的“家庭共享密钥”):
+//  - 每个家庭成员在 members 集合里有一条独立记录:{family_id, member_token, role, display_name}。
+//  - 客户端在 Authorization: Bearer <member_token> 里带自己的令牌。
+//  - 网关用 member_token 服务端查 members → 解析出 {family_id, member_id, role}。
+//    **body 里任何 family_id / member_id 一律忽略,不信客户端。**
+//  - 无效/缺失令牌 → 401。
+//  - members 集合**不在 TABLES 白名单**:客户端任何 action 都够不着它,只能被本文件内部
+//    resolveMember() 直接查询;member_token 永不通过 API 回传或可被改写。
+//  - 个人数据(库存背包)按 owner_member_id 强制隔离:成员只能读写自己的背包行;
+//    共享仓(storehouse)按 family_id 共享,家庭内任意成员可读写。
 //
-// 部署:见同目录 README.md。需先给某家庭种一条 families 行(含随机 access_key)。
+// 部署 & 如何给成员发令牌:见同目录 README.md。
 
 const cloudbase = require('@cloudbase/node-sdk');
 
 const app = cloudbase.init({ env: process.env.TCB_ENV || cloudbase.SYMBOL_CURRENT_ENV });
 const db = app.database();
-const _ = db.command;
 
-// 可写集合白名单(避免任意表)
+// 可被 action 直接读写的集合(members 不在其中,只能靠 resolveMember 内部查)
 const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
 ]);
-// 服务端专属、客户端永不可写的字段
-const PROTECTED_FIELDS = ['access_key'];
 
 function parseBody(event) {
   if (event && typeof event.body === 'string') {
@@ -37,58 +39,103 @@ function bearerToken(event) {
   return m ? m[1].trim() : '';
 }
 
-// 用 access_key 解析家庭;返回 { family_id } 或 null
-async function resolveFamily(token) {
+// 用 member_token 解析身份;返回 {member_id, family_id, role, display_name} 或 null。
+async function resolveMember(token) {
   if (!token) return null;
-  const res = await db.collection('families').where({ access_key: token }).limit(1).get();
+  const res = await db.collection('members').where({ member_token: token }).limit(1).get();
   const rows = res.data || [];
   if (rows.length === 0) return null;
   const doc = rows[0];
-  return { family_id: String(doc._id || doc.id || doc.family_id) };
+  return {
+    member_id: String(doc._id || doc.id),
+    family_id: String(doc.family_id),
+    role: String(doc.role || ''),
+    display_name: String(doc.display_name || ''),
+  };
 }
 
-function stripProtected(obj) {
-  const o = Object.assign({}, obj);
-  for (const f of PROTECTED_FIELDS) delete o[f];
-  return o;
-}
-
-async function queryTable(table, familyId) {
+async function queryGeneric(table, familyId) {
   const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
-  return (res.data || []).map(stripProtected); // 不把 access_key 等回传客户端
+  return res.data || [];
+}
+
+// inventories 专属:只能看到「本家庭共享仓」+「自己的背包」,看不到别人的背包。
+async function queryInventories(familyId, memberId) {
+  const shared = await db.collection('inventories')
+    .where({ family_id: familyId, kind: 'storehouse' }).limit(10).get();
+  const own = await db.collection('inventories')
+    .where({ family_id: familyId, kind: 'backpack', owner_member_id: memberId }).limit(10).get();
+  return [...(shared.data || []), ...(own.data || [])];
+}
+
+async function upsertInventories(row, familyId, memberId) {
+  const kind = String(row.kind || '');
+  if (kind === 'backpack') {
+    const id = 'backpack:' + memberId;               // 服务端强制,客户端传的 id 一律忽略
+    const doc = { id, family_id: familyId, kind: 'backpack', owner_member_id: memberId, stacks: row.stacks || [] };
+    await db.collection('inventories').doc(id).set(doc);
+    return { ok: true, id };
+  }
+  if (kind === 'storehouse') {
+    const id = 'storehouse:' + familyId;              // 每家庭一份,家庭内任意成员可写
+    const doc = { id, family_id: familyId, kind: 'storehouse', stacks: row.stacks || [] };
+    await db.collection('inventories').doc(id).set(doc);
+    return { ok: true, id };
+  }
+  return { ok: false, error: 'bad inventory kind' };
 }
 
 exports.main = async (event) => {
   const body = parseBody(event);
   const action = body.action || '';
 
-  // —— 鉴权:服务端解析 family_id ——
-  const fam = await resolveFamily(bearerToken(event));
-  if (!fam) return { ok: false, code: 401, error: 'unauthorized' };
-  const familyId = fam.family_id;
+  // —— 鉴权:服务端用 member_token 解析身份 ——
+  const identity = await resolveMember(bearerToken(event));
+  if (!identity) return { ok: false, code: 401, error: 'unauthorized' };
+  const { family_id: familyId, member_id: memberId } = identity;
 
   try {
+    if (action === 'whoami') {
+      return { ok: true, member_id: memberId, family_id: familyId, role: identity.role, display_name: identity.display_name };
+    }
+
     if (action === 'snapshot') {
       const tables = Array.isArray(body.tables) ? body.tables : [];
       const out = {};
-      for (const t of tables) if (TABLES.has(t)) out[t] = await queryTable(t, familyId);
+      for (const t of tables) {
+        if (!TABLES.has(t)) continue;
+        out[t] = t === 'inventories' ? await queryInventories(familyId, memberId) : await queryGeneric(t, familyId);
+      }
       return { ok: true, tables: out };
     }
 
     if (action === 'query') {
       if (!TABLES.has(body.table)) return { ok: false, error: 'bad table' };
-      return { ok: true, rows: await queryTable(body.table, familyId) };
+      const rows = body.table === 'inventories'
+        ? await queryInventories(familyId, memberId)
+        : await queryGeneric(body.table, familyId);
+      return { ok: true, rows };
     }
 
     if (action === 'upsert') {
       if (!TABLES.has(body.table)) return { ok: false, error: 'bad table' };
-      const incoming = stripProtected(body.row || {});      // 客户端不能写保护字段
+      const incoming = Object.assign({}, body.row || {});
+
+      if (body.table === 'inventories') {
+        return await upsertInventories(incoming, familyId, memberId);
+      }
+
+      // 通用表:强制 family_id,保留服务端已有字段,客户端不能覆盖别家的行
       const id = String(incoming.id || '');
-      // merge-preserve:保留服务端已有字段(如 access_key),强制 family_id
       let existing = {};
       if (id) {
         const got = await db.collection(body.table).doc(id).get().catch(() => ({ data: [] }));
-        if (got.data && got.data.length) existing = got.data[0];
+        if (got.data && got.data.length) {
+          if (String(got.data[0].family_id) !== familyId) {
+            return { ok: false, code: 403, error: 'forbidden' };
+          }
+          existing = got.data[0];
+        }
       }
       const merged = Object.assign({}, existing, incoming, { family_id: familyId });
       if (id) {
@@ -102,13 +149,15 @@ exports.main = async (event) => {
     if (action === 'delete') {
       if (!TABLES.has(body.table)) return { ok: false, error: 'bad table' };
       const id = String(body.id);
-      // 只能删本家庭的行
       const got = await db.collection(body.table).doc(id).get().catch(() => ({ data: [] }));
-      if (got.data && got.data.length && String(got.data[0].family_id) === familyId) {
-        await db.collection(body.table).doc(id).remove();
-        return { ok: true };
+      if (!got.data || !got.data.length) return { ok: false, error: 'not found' };
+      const row = got.data[0];
+      if (String(row.family_id) !== familyId) return { ok: false, code: 403, error: 'forbidden' };
+      if (body.table === 'inventories' && row.kind === 'backpack' && String(row.owner_member_id) !== memberId) {
+        return { ok: false, code: 403, error: 'forbidden' };
       }
-      return { ok: false, error: 'not found or forbidden' };
+      await db.collection(body.table).doc(id).remove();
+      return { ok: true };
     }
 
     return { ok: false, error: 'unknown action: ' + action };
