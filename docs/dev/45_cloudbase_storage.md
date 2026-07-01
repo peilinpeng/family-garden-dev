@@ -1,7 +1,8 @@
 # 45 · CloudBase 存储(持久化)落地
 
 > 关联:[43 联机方案](43_cloudbase_multiplayer_handoff.md)、[05 数据模型](../05_backend_data_model.md)、`backend/cloudbase/`
-> 状态:**客户端适配器 + 云函数网关 + 接缝注入 + 每用户身份认证 已落地;待你部署云函数 + 种 members + 填 endpoint/member_token 即点亮**
+> 状态:**代码已做完整端到端验证(见 §7),但尚未部署到真实 CloudBase 账号**——
+> 本环境没有 CloudBase 凭证/CLI,"真正部署点亮"这一步需要你在自己的账号里完成。
 > 负责:数据/后端线
 
 ---
@@ -65,3 +66,45 @@ Godot
 - **实时同步**(共享仓即时刷新、看到家人走动)= CloudBase 实时,建在存储之上(`docs/43`);`RemotePlayer.set_target()` 已是现成的接入口。
 - 共享仓并发"抢最后一个"→ 网关事务校验。
 - 正式登录(微信/手机号)替代预分发的静态令牌。
+
+## 7. 端到端验证结果(诚实汇报)
+
+**本环境没有真实 CloudBase 账号/凭证/CLI**,所以"部署到线上并验证"这一步物理上做不到——
+需要你在自己的 CloudBase 账号里完成部署(§1–§4)。以下是在此约束下,能做到的最大程度验证:
+
+### 验证方式
+用一个本地 Node HTTP 服务器,**跑真实的 `data_gateway/index.js` 逻辑**(用一个内存版
+`@cloudbase/node-sdk` stub 顶替真实 SDK),让 Godot 用**真实的 `HTTPRequest`**、走**真实的
+生产触发路径**(`CloudService._ready()` → 判断配置 → 注入后端 → `bootstrap()`)去访问它。
+这验证的是"我们的代码"而非"CloudBase 平台本身"——平台连通性仍需你部署后确认。
+
+### 验证到的内容(全部通过)
+- 网关鉴权/隔离逻辑:14 项单元场景(401、whoami、个人背包隔离、共享仓同步、伪造 id 纠正、
+  跨家庭隔离等)。
+- 真实 HTTP 全链路:`CloudService._ready()` 自动读配置、注入后端、`whoami()` 解析身份、
+  `GameIdentity` 正确更新、`Farm` 正确按云身份选角色(用 mother 角色验证,非默认值重合)。
+- **跨会话持久化**:会话 A 写入共享仓 → 清空本地缓存模拟"全新登录/换设备" → 会话 B correctly 从云端拉回同一份数据。
+- **多成员隔离**:两个不同 member_token 各自的背包互不可见、互不污染。
+- 离线路径回归:未配置时 Farm 正常运行,无报错。
+
+### 验证中发现并修复的 2 个真实 bug(不是假设,是实际复现)
+1. **共享仓覆盖 bug**:`sync_from_cloud()` 用 `from_array()` 覆盖本地库存时会触发 `changed`
+   信号,连带触发 `save()` 把(可能过期的)数据**重新推回云端**,与玩家操作发生竞态、
+   互相覆盖。复现方式:成员 A 写入共享仓 777 金币,任意成员下次登录触发的
+   `_grant_starter_kit()`/`sync_from_cloud()` 会把共享仓覆盖回空。
+   **修复**:加 `_loading` 门槛,加载/同步期间不触发再次上云推送;`backpack`/`storehouse`
+   改为分开推送(`_push_backpack()`/`_push_storehouse()`),`_grant_starter_kit()`
+   只推自己动过的 backpack,绝不连带推送尚未同步过的 storehouse。
+2. **身份就绪时序 bug**:`GameIdentity.is_ready()` 原本在 `whoami()` 一返回就为 true,
+   早于 `sync_from_cloud()` 真正跑完。若代码在此窗口期读写库存,随后到达的（更早请求到的）
+   快照会覆盖这次操作的本地效果。
+   **修复**:`bootstrap()` 里 `set_identity()` 挪到全部数据同步完成之后再调用,
+   `is_ready()==true` 现在保证数据也已经落地,消除该窗口期。
+
+两个 bug 均已在修复后,用相同的复现步骤重新验证通过(见提交历史)。
+
+### 仍未验证 / 你部署时需要做的
+- **真实 CloudBase 平台本身**:云函数冷启动、真实网络延迟、腾讯云 SDK 的实际行为、
+  安全规则配置,这些只有部署到你的账号后才能验证。
+- 建议部署后按 §5/README 的清单,用真机跑一遍"两个成员同时游戏、共享仓互相可见"作为
+  最终验收。

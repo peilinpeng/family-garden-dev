@@ -53,9 +53,17 @@ func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
 
 # ── 启动预拉(异步) ───────────────────────────────────
-## 注入后调一次:先问清自己是谁(whoami),再把云端各表拉进缓存,触发各系统同步读取。
+## 注入后调一次:whoami → 拉云端各表进缓存 → 触发各系统同步读取 → 最后才广播身份就绪。
+##
+## 关键顺序:GameIdentity.set_identity() 特意放在**最后一步**,而不是 whoami 一拿到结果
+## 就立刻设置。这样任何代码只要看到 GameIdentity.is_ready()==true,就能保证背包/共享仓等
+## 数据也已经是云端最新状态——不存在“身份先就绪、数据还在路上”的窗口期。
+## (曾复现的真实竞态:若身份先就绪,玩家这时的操作可能被随后才落地的旧快照悄悄覆盖。)
 func bootstrap() -> void:
-	await _whoami()
+	var who: Dictionary = await _request({"action": "whoami"})
+	if not bool(who.get("ok", false)):
+		push_warning("[CloudBase] whoami 失败,member_token 可能无效")
+		return
 	await refresh()
 	var mem := get_node_or_null("/root/MemoryManager")
 	if mem != null and mem.has_method("pull_remote"):
@@ -63,21 +71,13 @@ func bootstrap() -> void:
 	var inv := get_node_or_null("/root/InventoryManager")
 	if inv != null and inv.has_method("sync_from_cloud"):
 		inv.sync_from_cloud()
-
-## 问服务端“我是谁”:member_id/family_id/role 均由服务端从 member_token 解析,
-## 客户端无法伪造。写入 GameIdentity,供 Player/Farm 等按角色渲染本地玩家。
-func _whoami() -> void:
-	var res: Dictionary = await _request({"action": "whoami"})
-	if not bool(res.get("ok", false)):
-		push_warning("[CloudBase] whoami 失败,member_token 可能无效")
-		return
 	var identity := get_node_or_null("/root/GameIdentity")
 	if identity != null:
 		identity.set_identity(
-			str(res.get("member_id", "")),
-			str(res.get("family_id", "")),
-			str(res.get("role", "")),
-			str(res.get("display_name", "")))
+			str(who.get("member_id", "")),
+			str(who.get("family_id", "")),
+			str(who.get("role", "")),
+			str(who.get("display_name", "")))
 
 func refresh() -> void:
 	var res: Dictionary = await _request({"action": "snapshot", "tables": SNAPSHOT_TABLES})
