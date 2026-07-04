@@ -23,6 +23,14 @@ func _ready() -> void:
 	_build()
 
 func _build() -> void:
+	var shadow := Sprite2D.new()
+	shadow.name = "Shadow"
+	shadow.texture = load("res://assets/characters/shadow.png")
+	shadow.position = Vector2(0, 30)
+	shadow.scale = Vector2(0.28, 0.16)
+	shadow.modulate = Color(1, 1, 1, 0.8)
+	add_child(shadow)
+
 	sprite = Sprite2D.new()
 	add_child(sprite)
 	var db := get_node_or_null("/root/CharacterDB")

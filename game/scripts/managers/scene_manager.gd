@@ -931,7 +931,7 @@ func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 		var used := img.get_used_rect()
 		pivot = Vector2(used.position) + Vector2(used.size) / 2.0
 
-	# 柔和阴影：同一剪影染黑，平时隐藏，悬浮时出现在图层正下方。
+	# 柔和阴影：同一剪影模糊染黑，平时隐藏，悬浮时出现在图层正下方，模拟被"抬起"投下的影子。
 	var shadow := TextureRect.new()
 	shadow.name = "Shadow_" + str(region["id"])
 	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -942,6 +942,9 @@ func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.modulate = Color(0.0, 0.0, 0.0, 0.0)
 	shadow.pivot_offset = pivot
+	var shadow_mat := ShaderMaterial.new()
+	shadow_mat.shader = load("res://assets/shaders/soft_shadow_blur.gdshader")
+	shadow.material = shadow_mat
 	view.add_child(shadow)
 
 	# 可交互抠图本体。click_mask 让只有画上像素的地方响应，透明处穿透到下面的图层。
@@ -969,22 +972,36 @@ func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hovering: bool) -> void:
 	if not is_instance_valid(button):
 		return
-	var target_scale: Vector2 = Vector2(1.04, 1.04) if hovering else Vector2.ONE
-	var target_tint: Color = Color(1.08, 1.08, 1.08, 1.0) if hovering else Color(1, 1, 1, 1)
 	# 把悬浮的图层（连同阴影）抬到其它图层之上。
 	button.z_index = 10 if hovering else 0
 	if is_instance_valid(shadow):
 		shadow.z_index = 9 if hovering else 0
 
-	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(button, "scale", target_scale, 0.12)
-	tween.tween_property(button, "modulate", target_tint, 0.12)
-	if is_instance_valid(shadow):
-		var shadow_alpha: float = 0.30 if hovering else 0.0
-		var shadow_offset: Vector2 = Vector2(10, 16) if hovering else Vector2.ZERO
-		tween.tween_property(shadow, "scale", target_scale, 0.12)
-		tween.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, shadow_alpha), 0.12)
-		tween.tween_property(shadow, "position", shadow_offset, 0.12)
+	if hovering:
+		# 悬浮时：图层整体上移(离开地图)+ 轻微放大 + 提亮，用回弹缓动做出"弹起"的体积感；
+		# 阴影同步放大、下移、变模糊变深，靠位移差和模糊制造"离开桌面"的空间感。
+		var lift := Vector2(0, -8)
+		var t := create_tween().set_parallel(true)
+		t.tween_property(button, "position", lift, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(button, "scale", Vector2(1.06, 1.06), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.chain().tween_property(button, "scale", Vector2(1.045, 1.045), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var tint := create_tween()
+		tint.tween_property(button, "modulate", Color(1.18, 1.16, 1.1, 1.0), 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tint.tween_property(button, "modulate", Color(1.10, 1.09, 1.05, 1.0), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		if is_instance_valid(shadow):
+			var st := create_tween().set_parallel(true)
+			st.tween_property(shadow, "scale", Vector2(1.10, 1.10), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			st.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, 0.38), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			st.tween_property(shadow, "position", Vector2(12, 20), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		var t := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(button, "position", Vector2.ZERO, 0.12)
+		t.tween_property(button, "scale", Vector2.ONE, 0.12)
+		t.tween_property(button, "modulate", Color(1, 1, 1, 1), 0.12)
+		if is_instance_valid(shadow):
+			t.tween_property(shadow, "scale", Vector2.ONE, 0.12)
+			t.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, 0.0), 0.12)
+			t.tween_property(shadow, "position", Vector2.ZERO, 0.12)
 
 func _on_global_map_region_pressed(target: String, label_text: String) -> void:
 	_show_toast("进入%s…" % label_text)
@@ -1587,6 +1604,15 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	body.z_index = int(pos.y)
 	body.collision_layer = 1
 	body.collision_mask = 1
+
+	var shadow := Sprite2D.new()
+	shadow.name = "Shadow"
+	shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shadow.texture = _safe_texture("res://assets/characters/shadow.png")
+	shadow.position = Vector2(0, 30)
+	shadow.scale = Vector2(0.28, 0.16)
+	shadow.modulate = Color(1, 1, 1, 0.8)
+	body.add_child(shadow)
 
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
