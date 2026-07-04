@@ -246,14 +246,11 @@ func _build_ui() -> void:
 	root.add_child(help)
 
 	# Bottom navigation. Kept compact and centered under the garden.
-	_add_button(root, "World", Vector2(160, 672), Vector2(86, 32), "global_map")
-	_add_button(root, "Tree", Vector2(250, 672), Vector2(82, 32), "family_tree")
-	_add_button(root, "Sign", Vector2(342, 672), Vector2(90, 32), "message_board")
-	_add_button(root, "Map", Vector2(442, 672), Vector2(76, 32), "travel_map")
-	_add_button(root, "Postcards", Vector2(528, 672), Vector2(120, 32), "MemoryManager.postcards")
-	_add_button(root, "Save", Vector2(658, 672), Vector2(78, 32), "save")
-	_add_button(root, "Role", Vector2(746, 672), Vector2(82, 32), "role_select")
-	_add_button(root, "Back Garden", Vector2(838, 672), Vector2(126, 32), "back_garden")
+	_add_button(root, "World", Vector2(248, 672), Vector2(86, 32), "global_map")
+	_add_button(root, "Tree", Vector2(338, 672), Vector2(82, 32), "family_tree")
+	_add_button(root, "Map", Vector2(430, 672), Vector2(76, 32), "travel_map")
+	_add_button(root, "Postcards", Vector2(516, 672), Vector2(120, 32), "MemoryManager.postcards")
+	_add_world_chat_box(root, Vector2(650, 672), Vector2(382, 32))
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
 	var button := Button.new()
@@ -266,6 +263,25 @@ func _add_button(root: Control, button_text: String, pos: Vector2, button_size: 
 	_set_button_icon(button, _icon_key_for_action(action))
 	root.add_child(button)
 	return button
+
+func _add_world_chat_box(root: Control, pos: Vector2, box_size: Vector2) -> LineEdit:
+	var chat := LineEdit.new()
+	chat.name = "WorldChatInput"
+	chat.placeholder_text = "World chat..."
+	chat.position = pos
+	chat.size = box_size
+	chat.mouse_filter = Control.MOUSE_FILTER_STOP
+	chat.clear_button_enabled = true
+	chat.add_theme_font_size_override("font_size", 13)
+	chat.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	chat.add_theme_color_override("font_placeholder_color", Color(0.38, 0.31, 0.24, 0.68))
+	var normal_style := _button_style("button_normal", Color(1.0, 0.92, 0.74, 0.92), Color(0.58, 0.45, 0.30, 1.0))
+	var focus_style := _button_style("button_hover", Color(1.0, 0.96, 0.82, 0.96), Color(0.60, 0.48, 0.32, 1.0))
+	chat.add_theme_stylebox_override("normal", normal_style)
+	chat.add_theme_stylebox_override("focus", focus_style)
+	chat.add_theme_stylebox_override("read_only", normal_style)
+	root.add_child(chat)
+	return chat
 
 func _on_ui_button(action: String) -> void:
 	match action:
