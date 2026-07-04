@@ -156,7 +156,7 @@
 
 ## 已知注意事项
 
-- `project.godot` 当前有本地改动: `config/features` 从 `"4.7"` 变为 `"4.6"`。本次按“现有内容”一并提交，后续如需锁定 Godot 版本请统一确认。
+- `project.godot` 曾被旧版本编辑器从 `"4.7"` 误写为 `"4.6"`；项目已统一锁定 **Godot 4.7.x**，不得降级保存工程文件。
 - `assets/characters/girl.png` 当前有较大本地改动，也按“现有内容”一并提交。
 - `game/assets/fishpond/` 和 `game/assets/pond/` 中存在重复/中转素材，后续可以再做一次资产目录清理。
 - `game/scripts/managers/node_factory.gd` 中历史中文注释存在乱码，但本次未重写该文件结构，仅补排序属性。
@@ -166,5 +166,5 @@
 1. 用 Godot 编辑器打开项目，先跑 `res://scenes/Main.tscn`。
 2. 进入池塘场景，检查碰撞和遮挡。
 3. 如果遮挡有个别物件不顺眼，优先调整该物件的视觉落地点 `z_index`，不要改父节点整体层级。
-4. 统一确认 Godot 版本后，再决定 `project.godot` 的 `config/features` 是否保持 `"4.6"`。
+4. 使用 Godot 4.7.x 打开并保存工程，确认 `project.godot` 的 `config/features` 保持 `"4.7"`。
 5. 清理或归档 `assets/fishpond/` 中与 `assets/pond/` 重复的素材。
