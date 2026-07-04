@@ -16,6 +16,7 @@ var _step_timer := 0.0
 var _step := 1
 var _facing := 0
 var _wander_timer := 0.0
+var _frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧,优先于 hframes/vframes
 
 func _ready() -> void:
 	target = global_position
@@ -39,9 +40,20 @@ func _build() -> void:
 		var tex: Texture2D = db.texture(role_key)
 		if tex != null:
 			sprite.texture = tex
-		sprite.hframes = int(def.get("hframes", 3))
-		sprite.vframes = int(def.get("vframes", 4))
 		sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+		_frame_rects.clear()
+		var raw_rects: Array = def.get("frame_rects", [])
+		for r in raw_rects:
+			if r is Array and r.size() >= 4:
+				_frame_rects.append(Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])))
+		if _frame_rects.size() > 0:
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+		else:
+			sprite.region_enabled = false
+			sprite.hframes = int(def.get("hframes", 3))
+			sprite.vframes = int(def.get("vframes", 4))
 		if display_name == "":
 			display_name = str(def.get("name", role_key))
 	label = Label.new()
@@ -84,4 +96,8 @@ func _animate(delta: float, v: Vector2) -> void:
 			_step = (_step + 1) % 3
 	else:
 		_step = 1
-	sprite.frame = _facing * sprite.hframes + _step
+	var index := _facing * 3 + _step
+	if _frame_rects.size() > index:
+		sprite.region_rect = _frame_rects[index]
+	else:
+		sprite.frame = index
