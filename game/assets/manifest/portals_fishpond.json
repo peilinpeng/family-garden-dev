@@ -2,9 +2,10 @@
   "scene": "fishpond",
   "doc": "docs/09_godot_coordinate_art_spec.md section 14",
   "spawn_points": {
-    "default": [1232, 364],
-    "from_garden": [1232, 364],
-    "PondSpawnPoint": [1232, 364]
+    "default": [1080, 364],
+    "from_garden": [1080, 364],
+    "from_farm": [1080, 364],
+    "PondSpawnPoint": [1080, 364]
   },
   "portals": [
     {

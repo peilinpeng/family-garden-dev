@@ -1,0 +1,101 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/farm/animal.gd" id="1_anim"]
+[ext_resource type="Texture2D" uid="uid://dil6qi43fkwvn" path="res://assets/farm/npc_farmer.png" id="2_sheet"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_idle"]
+atlas = ExtResource("2_sheet")
+region = Rect2(104, 27, 123, 255)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_water1"]
+atlas = ExtResource("2_sheet")
+region = Rect2(272, 29, 171, 253)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_water2"]
+atlas = ExtResource("2_sheet")
+region = Rect2(522, 26, 152, 254)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_water3"]
+atlas = ExtResource("2_sheet")
+region = Rect2(723, 23, 155, 254)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kneel"]
+atlas = ExtResource("2_sheet")
+region = Rect2(926, 44, 195, 237)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_walk1"]
+atlas = ExtResource("2_sheet")
+region = Rect2(18, 341, 211, 281)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_walk2"]
+atlas = ExtResource("2_sheet")
+region = Rect2(276, 341, 192, 278)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_water4"]
+atlas = ExtResource("2_sheet")
+region = Rect2(494, 343, 189, 271)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_water5"]
+atlas = ExtResource("2_sheet")
+region = Rect2(710, 344, 189, 271)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_farmer"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_idle")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_walk1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_walk2")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_water1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_water2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_water3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_water4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_water5")
+}],
+"loop": true,
+"name": &"eat",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kneel")
+}],
+"loop": true,
+"name": &"rest",
+"speed": 2.5
+}]
+
+[node name="NpcFarmer" type="Node2D" unique_id=3821005512]
+script = ExtResource("1_anim")
+pen = Rect2(580, 610, 120, 50)
+speed = 22.0
+
+[node name="Anim" type="AnimatedSprite2D" parent="." unique_id=3821005513]
+scale = Vector2(0.28, 0.28)
+sprite_frames = SubResource("SpriteFrames_farmer")
+animation = &"idle"
+autoplay = "idle"

@@ -5,6 +5,9 @@ shader_type canvas_item;
 uniform float blur_amount : hint_range(0.0, 0.02) = 0.006;
 
 void fragment() {
+	// 先记下节点 modulate 传进来的透明度，否则下面覆盖 COLOR 时会把它丢掉，
+	// 导致悬浮淡入淡出的 tween 完全不起作用、阴影一直按纹理原始 alpha 渲染成实心黑块。
+	float modulate_alpha = COLOR.a;
 	float alpha_sum = 0.0;
 	float taps = 0.0;
 	for (int x = -2; x <= 2; x++) {
@@ -14,5 +17,5 @@ void fragment() {
 			taps += 1.0;
 		}
 	}
-	COLOR = vec4(0.0, 0.0, 0.0, alpha_sum / taps);
+	COLOR = vec4(0.0, 0.0, 0.0, (alpha_sum / taps) * modulate_alpha);
 }

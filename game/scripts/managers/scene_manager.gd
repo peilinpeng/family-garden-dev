@@ -509,6 +509,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 	adding_place = false
 	_clear_world()
 	info_label.text = "Family Garden"
+	AudioManager.play_music("garden")
 	_add_background()
 	_add_collision_zones()
 	_add_garden_spawn_markers()
@@ -878,6 +879,8 @@ func _show_global_map() -> void:
 	_update_plant_button()
 	_clear_world()
 	info_label.text = "世界地图"
+	AudioManager.play_music("globalmap")
+	AudioManager.play_sfx("打开地图")
 
 	# 整张导航页放在 ui_layer（在 world 之上），但移到底部导航栏之后，保证那些按钮仍可点。
 	var view := Control.new()
@@ -1053,10 +1056,12 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			_build_fishpond(spawn_key)
 		"farm":
 			# Farm.tscn 自带玩家（farm.gd 的 _spawn_player），不要再补一个。
+			AudioManager.play_music("farm")
 			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
 			ScenePortal.build_portals("farm", world, _on_portal_travel)
 		"house":
 			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
+			AudioManager.play_music("house")
 			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
@@ -1100,6 +1105,7 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
+	AudioManager.play_music("fishpond")
 	_clear_world()
 	info_label.text = "爸爸鱼塘"
 	var pond_area: Node2D = null
@@ -1582,7 +1588,16 @@ func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> S
 func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var asset_key := _current_player_asset_key()
 	var display_name := MemoryManager.player_display_name if MemoryManager.player_display_name != "" else _default_name_for_role(MemoryManager.selected_role_key)
-	player = _create_character(display_name, ASSETS[asset_key], pos, true)
+	# 角色贴图网格(hframes/vframes)以 CharacterDB/characters.json 为准,
+	# 不同角色的行数可能不一样(如 girl 现在是 3x5,多一行待机眨眼帧)。
+	var char_def: Dictionary = CharacterDB.get_def(asset_key)
+	var char_hframes: int = int(char_def.get("hframes", 3))
+	var char_vframes: int = int(char_def.get("vframes", 4))
+	player = _create_character(display_name, ASSETS[asset_key], pos, true, char_hframes, char_vframes)
+	# player.gd 的 apply_character() 是唯一处理 frame_rects(非等分网格精确裁切)的地方,
+	# 这里补调一次,否则 girl 这种手工排版的图集会被上面_create_character 的均分网格逻辑切错。
+	if player.has_method("apply_character"):
+		player.apply_character(asset_key)
 	player.name = "Player_" + MemoryManager.selected_role_key
 	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
 	var parent := world if parent_override == null else parent_override
@@ -1598,7 +1613,7 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
@@ -1620,10 +1635,10 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var texture := _safe_texture(path)
 	if texture:
 		sprite.texture = texture
-		sprite.hframes = 3
-		sprite.vframes = 4
+		sprite.hframes = hframes
+		sprite.vframes = vframes
 		sprite.frame = 1
-		var frame_height := float(texture.get_height()) / 4.0
+		var frame_height := float(texture.get_height()) / float(vframes)
 		if frame_height > 0.0:
 			sprite.scale = Vector2.ONE * (82.0 / frame_height)
 	else:
