@@ -10,9 +10,21 @@
       "portal_id": "FarmGardenReturnArea",
       "target_scene": "res://scenes/Main.tscn",
       "spawn_point": "from_farm",
-      "trigger_rect": [560, 620, 160, 96],
+      "trigger_rect": [580, 585, 130, 30],
       "prompt_text": "Return to garden",
-      "tap_enabled": true
+      "tap_enabled": true,
+      "fade": true,
+      "delay": 1.0
+    },
+    {
+      "portal_id": "FarmPondPathArea",
+      "target_scene": "res://scenes/pond/pond_area.tscn",
+      "spawn_point": "from_farm",
+      "trigger_rect": [0, 388, 36, 40],
+      "prompt_text": "Walk to the pond",
+      "tap_enabled": true,
+      "fade": true,
+      "delay": 1.0
     }
   ]
 }

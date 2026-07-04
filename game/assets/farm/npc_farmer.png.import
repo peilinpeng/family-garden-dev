@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://diwy8xqvwpb0v"
-path="res://.godot/imported/cowhouse.png-30bf82763480218959e263f157a6f49f.ctex"
+uid="uid://dil6qi43fkwvn"
+path="res://.godot/imported/npc_farmer.png-4a564c8223c6cfe56dd236fcd92af385.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/farm/cowhouse.png"
-dest_files=["res://.godot/imported/cowhouse.png-30bf82763480218959e263f157a6f49f.ctex"]
+source_file="res://assets/farm/npc_farmer.png"
+dest_files=["res://.godot/imported/npc_farmer.png-4a564c8223c6cfe56dd236fcd92af385.ctex"]
 
 [params]
 

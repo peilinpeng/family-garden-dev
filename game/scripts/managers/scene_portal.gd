@@ -6,6 +6,7 @@ extends Node
 ## 阶段 1 / feature/garden-mvp-loop。
 
 const PLAYER_GROUP := "player"
+const FADE_OUT_DURATION := 0.4   ## fade=true 传送门:人物淡出到透明用的时长(秒)
 
 # scene -> { "spawn_points": Dictionary, "portals": Array<Dictionary> }
 var _scenes: Dictionary = {}
@@ -52,11 +53,15 @@ func build_portals(scene: String, world: Node2D, travel_cb: Callable) -> int:
 		built += 1
 	return built
 
+## fade=true 时不立即切场景:人物先锁住输入原地淡出,delay 秒后才真正传送,
+## 避免"一脚踩进去画面突然跳走"的突兀感（见 docs/09 §14 之外的手感调整）。
 func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 	var rect := _to_rect(portal.get("trigger_rect", [0, 0, 96, 128]))
 	var target := String(portal.get("target_scene", ""))
 	var spawn_key := String(portal.get("spawn_point", "default"))
 	var tap_enabled := bool(portal.get("tap_enabled", true))
+	var fade := bool(portal.get("fade", false))
+	var delay := float(portal.get("delay", 0.0))
 
 	var area := Area2D.new()
 	area.name = String(portal.get("portal_id", "portal"))
@@ -70,10 +75,16 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 	shape.shape = box
 	area.add_child(shape)
 
+	var firing := false   # 防止渐隐等待期间重复触发同一个传送门
+
 	# 走入触发：仅主控角色（player 组）
 	area.body_entered.connect(func(body: Node) -> void:
-		if body.is_in_group(PLAYER_GROUP):
-			travel_cb.call(target, spawn_key))
+		if not body.is_in_group(PLAYER_GROUP) or firing:
+			return
+		firing = true
+		if fade:
+			await _fade_then_travel(body, delay)
+		travel_cb.call(target, spawn_key))
 
 	# 点按触发
 	if tap_enabled:
@@ -84,6 +95,16 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 				travel_cb.call(target, spawn_key))
 
 	world.add_child(area)
+
+## 人物锁住输入原地站定,Sprite2D 淡出到透明,等 delay 秒再放行去真正传送。
+func _fade_then_travel(body: Node, delay: float) -> void:
+	if body.has_method("set_movement_locked"):
+		body.call("set_movement_locked", true)
+	var visual: CanvasItem = body.get_node_or_null("Sprite2D") as CanvasItem
+	if visual != null:
+		var tween := body.get_tree().create_tween()
+		tween.tween_property(visual, "modulate:a", 0.0, FADE_OUT_DURATION)
+	await body.get_tree().create_timer(delay).timeout
 
 func _to_vec(arr: Variant) -> Vector2:
 	if arr is Array and (arr as Array).size() >= 2:

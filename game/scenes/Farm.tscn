@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://vr8utav2qk25" path="res://assets/farm/water.png" id="3_water"]
 [ext_resource type="Texture2D" uid="uid://bcxkk5jh2mp3x" path="res://assets/farm/flower.png" id="4_flower"]
 [ext_resource type="Texture2D" uid="uid://g1fqra7pkbhx" path="res://assets/farm/chickenhouse.png" id="5_chicken"]
-[ext_resource type="Texture2D" uid="uid://b1vhe4k27pxcq" path="res://assets/farm/cowhouse.png" id="6_cow"]
+[ext_resource type="Texture2D" uid="uid://diwy8xqvwpb0v" path="res://assets/farm/cowhouse.png" id="6_cow"]
 [ext_resource type="Texture2D" uid="uid://c5gp1jdgd72p7" path="res://assets/farm/door_chickenhouse.png" id="7_dchicken"]
 [ext_resource type="Texture2D" uid="uid://bm3e81dm6xreh" path="res://assets/farm/door_cowhouse.png" id="8_dcow"]
 [ext_resource type="Texture2D" uid="uid://ctyecacxgm1e0" path="res://assets/farm/mailbox_farm.png" id="9_mail"]
@@ -17,12 +17,13 @@
 [ext_resource type="PackedScene" path="res://scenes/Sheep.tscn" id="15_sheep"]
 [ext_resource type="PackedScene" path="res://scenes/Chicken.tscn" id="16_chicken"]
 [ext_resource type="PackedScene" path="res://scenes/Chick.tscn" id="17_chick"]
-[ext_resource type="PackedScene" path="res://scenes/InventoryUI.tscn" id="18_invui"]
+[ext_resource type="PackedScene" uid="uid://cjjt0n70udi1k" path="res://scenes/InventoryUI.tscn" id="18_invui"]
+[ext_resource type="PackedScene" path="res://scenes/NpcFarmer.tscn" id="19_npcfarmer"]
 
 [node name="Farm" type="Node2D" unique_id=1902479684]
 script = ExtResource("1_farm")
 
-[node name="InventoryUI" parent="." instance=ExtResource("18_invui")]
+[node name="InventoryUI" parent="." unique_id=735121490 instance=ExtResource("18_invui")]
 
 [node name="Background" type="Sprite2D" parent="." unique_id=1168986645]
 z_index = -100
@@ -34,17 +35,20 @@ z_index = -99
 texture = ExtResource("3_water")
 centered = false
 
-[node name="Flower" type="Sprite2D" parent="." unique_id=634791049]
-z_index = -98
-texture = ExtResource("4_flower")
-centered = false
-
 [node name="Farmlands" type="Sprite2D" parent="." unique_id=1635402406]
 z_index = -40
 texture = ExtResource("12_farmlands")
 centered = false
 
 [node name="Objects" type="Node2D" parent="." unique_id=1689025707]
+
+[node name="Flower" type="Sprite2D" parent="Objects" unique_id=634791049]
+z_index = 599
+texture = ExtResource("4_flower")
+centered = false
+
+[node name="SortAnchor" type="Marker2D" parent="Objects/Flower" unique_id=634791050]
+position = Vector2(645, 599)
 
 [node name="ChickenHouse" type="Node2D" parent="Objects" unique_id=1941587688]
 
@@ -137,40 +141,40 @@ position = Vector2(665, 204)
 [node name="BedFrames" type="Node2D" parent="Objects" unique_id=40743305]
 
 [node name="BedTL" type="Sprite2D" parent="Objects/BedFrames" unique_id=615119057]
-z_index = 290
-position = Vector2(469, 270)
+z_index = 281
+position = Vector2(473, 265)
 texture = ExtResource("12_farmlands")
 centered = false
 region_enabled = true
-region_rect = Rect2(469, 270, 157, 20)
+region_rect = Rect2(473.20728, 265.32175, 146.41669, 114.04538)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedTL" unique_id=1973781007]
-position = Vector2(78, 20)
+position = Vector2(78, 16)
 
 [node name="BedTM" type="Sprite2D" parent="Objects/BedFrames" unique_id=1262018070]
-z_index = 289
-position = Vector2(681, 269)
+z_index = 280
+position = Vector2(689, 264)
 texture = ExtResource("12_farmlands")
 centered = false
 region_enabled = true
-region_rect = Rect2(681, 269, 158, 20)
+region_rect = Rect2(689.0697, 264.3331, 145.0072, 22.9169)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedTM" unique_id=1254158061]
-position = Vector2(79, 20)
+position = Vector2(79, 16)
 
 [node name="BedTR" type="Sprite2D" parent="Objects/BedFrames" unique_id=270742799]
-z_index = 289
-position = Vector2(893, 269)
+z_index = 281
+position = Vector2(899, 265)
 texture = ExtResource("12_farmlands")
 centered = false
 region_enabled = true
-region_rect = Rect2(893, 269, 156, 20)
+region_rect = Rect2(899.183, 264.86026, 145.88293, 24.13974)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedTR" unique_id=1516252144]
-position = Vector2(78, 20)
+position = Vector2(78, 16)
 
 [node name="BedBL" type="Sprite2D" parent="Objects/BedFrames" unique_id=2059569417]
-z_index = 450
+z_index = 448
 position = Vector2(469, 430)
 texture = ExtResource("12_farmlands")
 centered = false
@@ -178,10 +182,10 @@ region_enabled = true
 region_rect = Rect2(469, 430, 157, 20)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedBL" unique_id=986705391]
-position = Vector2(78, 20)
+position = Vector2(78, 18)
 
 [node name="BedBM" type="Sprite2D" parent="Objects/BedFrames" unique_id=27280440]
-z_index = 451
+z_index = 449
 position = Vector2(683, 431)
 texture = ExtResource("12_farmlands")
 centered = false
@@ -189,10 +193,10 @@ region_enabled = true
 region_rect = Rect2(683, 431, 155, 20)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedBM" unique_id=1587771398]
-position = Vector2(77, 20)
+position = Vector2(77, 18)
 
 [node name="BedBR" type="Sprite2D" parent="Objects/BedFrames" unique_id=1587567346]
-z_index = 452
+z_index = 450
 position = Vector2(892, 432)
 texture = ExtResource("12_farmlands")
 centered = false
@@ -200,22 +204,25 @@ region_enabled = true
 region_rect = Rect2(892, 432, 157, 20)
 
 [node name="SortAnchor" type="Marker2D" parent="Objects/BedFrames/BedBR" unique_id=271306457]
-position = Vector2(78, 20)
+position = Vector2(78, 18)
 
-[node name="Cow" parent="Objects" instance=ExtResource("13_cow")]
+[node name="Cow" parent="Objects" unique_id=340675407 instance=ExtResource("13_cow")]
 position = Vector2(150, 540)
 
-[node name="Bull" parent="Objects" instance=ExtResource("14_bull")]
+[node name="Bull" parent="Objects" unique_id=266297451 instance=ExtResource("14_bull")]
 position = Vector2(275, 535)
 
-[node name="Sheep" parent="Objects" instance=ExtResource("15_sheep")]
+[node name="Sheep" parent="Objects" unique_id=2113277735 instance=ExtResource("15_sheep")]
 position = Vector2(205, 565)
 
-[node name="Chicken" parent="Objects" instance=ExtResource("16_chicken")]
+[node name="Chicken" parent="Objects" unique_id=1659178469 instance=ExtResource("16_chicken")]
 position = Vector2(220, 270)
 
-[node name="Chicken2" parent="Objects" instance=ExtResource("16_chicken")]
+[node name="Chicken2" parent="Objects" unique_id=1343191068 instance=ExtResource("16_chicken")]
 position = Vector2(345, 300)
 
-[node name="Chick" parent="Objects" instance=ExtResource("17_chick")]
+[node name="NpcFarmer" parent="Objects" unique_id=-473961785 instance=ExtResource("19_npcfarmer")]
+position = Vector2(958, 189)
+
+[node name="Chick" parent="Objects" unique_id=555661648 instance=ExtResource("17_chick")]
 position = Vector2(290, 285)

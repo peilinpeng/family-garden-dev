@@ -170,6 +170,7 @@ func _try_doors(click: Vector2) -> bool:
 			continue
 		if player.global_position.distance_to(d.point) <= DOOR_REACH:
 			d.node.visible = not d.node.visible
+			AudioManager.play_sfx("开门" if not d.node.visible else "门")
 			print("开门" if not d.node.visible else "关门", " ", d.node.name)
 		else:
 			print("离门太远,走近点再开")

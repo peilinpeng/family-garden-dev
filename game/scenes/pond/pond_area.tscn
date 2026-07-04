@@ -232,7 +232,7 @@ position = Vector2(604, -148)
 shape = SubResource("right_house_side_wall_shape")
 
 [node name="PondSpawnPoint" type="Marker2D" parent="." unique_id=1257032741]
-position = Vector2(592, 4)
+position = Vector2(440, 4)
 
 [node name="GardenReturnArea" type="Area2D" parent="." unique_id=203321299]
 position = Vector2(592, 4)
