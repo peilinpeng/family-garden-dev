@@ -53,7 +53,8 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	# 用脚底(碰撞体中心 +18)做排序枢轴,遮挡翻转点更贴近视觉
-	z_index = int(global_position.y + 18.0)
+	var parent_canvas := get_parent() as CanvasItem
+	z_index = 0 if parent_canvas != null and parent_canvas.y_sort_enabled else int(global_position.y + 18.0)
 
 func _set_facing(direction: Vector2) -> void:
 	if abs(direction.x) > abs(direction.y):

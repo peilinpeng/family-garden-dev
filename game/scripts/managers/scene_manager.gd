@@ -9,6 +9,7 @@ const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
+const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 
 
 const ASSETS := {
@@ -217,6 +218,14 @@ func _build_ui() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(root)
+
+	var day_night_clock := TextureRect.new()
+	day_night_clock.name = "DayNightClock"
+	day_night_clock.set_script(DAY_NIGHT_CLOCK_UI_SCRIPT)
+	day_night_clock.position = Vector2(GAME_SIZE.x - 136, 16)
+	day_night_clock.size = Vector2(112, 124)
+	day_night_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(day_night_clock)
 
 	info_label = Label.new()
 	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1012,6 +1021,7 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 		"farm":
 			# Farm.tscn 自带玩家（farm.gd 的 _spawn_player），不要再补一个。
 			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
+			ScenePortal.build_portals("farm", world, _on_portal_travel)
 		"house":
 			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
 			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
@@ -1068,7 +1078,14 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	else:
 		_add_scene_background("fishpond", Color(0.42, 0.62, 0.70, 1.0))  # 占位水色，等 A 出背景
 	var spawn: Vector2 = ScenePortal.get_spawn("fishpond", spawn_key)
-	_add_player(spawn)
+	var player_parent: Node = world
+	var player_spawn := spawn
+	if pond_area != null:
+		var ysort_objects := pond_area.get_node_or_null("YSortObjects") as Node2D
+		if ysort_objects != null:
+			player_parent = ysort_objects
+			player_spawn = ysort_objects.to_local(spawn)
+	_add_player(player_spawn, player_parent)
 	_spawn_demo_bottles()
 	_register_scene_message_bottle(pond_area)
 	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
@@ -1109,7 +1126,7 @@ func _spawn_demo_bottles() -> void:
 func _register_scene_message_bottle(pond_area: Node2D) -> void:
 	if pond_area == null:
 		return
-	var bottle := pond_area.get_node_or_null("Props/MessageBottle") as Area2D
+	var bottle := pond_area.get_node_or_null("MessageBottle") as Area2D
 	if bottle == null:
 		return
 	bottle.input_pickable = true
@@ -1529,14 +1546,23 @@ func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> S
 	world.add_child(body)
 	return body
 
-func _add_player(pos: Vector2) -> void:
+func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var asset_key := _current_player_asset_key()
 	var display_name := MemoryManager.player_display_name if MemoryManager.player_display_name != "" else _default_name_for_role(MemoryManager.selected_role_key)
 	player = _create_character(display_name, ASSETS[asset_key], pos, true)
 	player.name = "Player_" + MemoryManager.selected_role_key
 	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
-	world.add_child(player)
+	var parent := world if parent_override == null else parent_override
+	parent.add_child(player)
 	_add_online_status_badge(player, true)
+	var parent_canvas := parent as CanvasItem
+	if parent_canvas != null and parent_canvas.y_sort_enabled:
+		var sort_origin_offset := 18.0
+		player.position.y += sort_origin_offset
+		for child in player.get_children():
+			if child is Node2D:
+				(child as Node2D).position.y -= sort_origin_offset
+		player.z_index = 0
 
 
 func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool) -> CharacterBody2D:

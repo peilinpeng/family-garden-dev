@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://c1remoteplayer01"]
+[gd_scene format=3 uid="uid://d3y1y846puf7m"]
 
 [ext_resource type="Script" path="res://scripts/farm/remote_player.gd" id="1_remote"]
 

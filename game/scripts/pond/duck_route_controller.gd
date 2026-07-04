@@ -2,7 +2,7 @@ extends PathFollow2D
 
 @export var speed := 20.0
 @export var initial_progress_ratio := 0.0
-@export var duck_node_path: NodePath = NodePath("DuckSprite")
+@export var duck_node_path: NodePath = NodePath("../../DuckSprite")
 @export var water_shape_path: NodePath = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
 @export var land_move_seconds := Vector2(2.0, 4.2)
 @export var land_rest_seconds := Vector2(0.7, 1.8)
@@ -30,8 +30,8 @@ func _ready() -> void:
 	_last_global_position = global_position
 	if _duck != null:
 		_duck.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_duck.z_as_relative = false
-		_duck.z_index = int(global_position.y)
+		_duck.global_position = global_position
+		_duck.z_index = 0
 	_start_move_state()
 
 func _process(delta: float) -> void:
@@ -49,7 +49,8 @@ func _process(delta: float) -> void:
 	_last_global_position = global_position
 	if _duck == null:
 		return
-	_duck.z_index = int(global_position.y)
+	_duck.global_position = global_position
+	_duck.z_index = 0
 	if movement.length_squared() > MOVE_EPSILON * MOVE_EPSILON:
 		_duck.flip_h = movement.x < 0.0
 	if not _is_resting:

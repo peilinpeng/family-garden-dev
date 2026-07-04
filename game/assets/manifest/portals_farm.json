@@ -1,0 +1,18 @@
+{
+  "scene": "farm",
+  "doc": "docs/09_godot_coordinate_art_spec.md section 14",
+  "spawn_points": {
+    "default": [640, 650],
+    "from_garden": [640, 650]
+  },
+  "portals": [
+    {
+      "portal_id": "FarmGardenReturnArea",
+      "target_scene": "res://scenes/Main.tscn",
+      "spawn_point": "from_farm",
+      "trigger_rect": [560, 620, 160, 96],
+      "prompt_text": "Return to garden",
+      "tap_enabled": true
+    }
+  ]
+}

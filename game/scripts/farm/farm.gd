@@ -88,6 +88,7 @@ func _apply_anchor_z(n: Node) -> void:
 func _spawn_player() -> void:
 	player = preload("res://scenes/Player.tscn").instantiate()
 	player.global_position = _find_walkable_start()
+	player.add_to_group("player")
 	last_safe = player.global_position
 	add_child(player)
 	# 本地玩家角色:云身份(每用户登录,不可伪造)优先,否则回退本地存档角色

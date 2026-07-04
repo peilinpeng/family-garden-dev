@@ -2,7 +2,7 @@ extends PathFollow2D
 
 @export var speed := 22.0
 @export var initial_progress_ratio := 0.0
-@export var fish_node_path: NodePath = NodePath("Fish05_01")
+@export var fish_node_path: NodePath = NodePath("../../Fish05_01")
 
 const DIRECTION_EPSILON := 0.25
 
@@ -17,8 +17,8 @@ func _ready() -> void:
 	_last_global_position = global_position
 	if _fish != null:
 		_fish.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_fish.z_as_relative = false
-		_fish.z_index = int(global_position.y)
+		_fish.global_position = global_position
+		_fish.z_index = 0
 		_fish.play(&"swim_right")
 
 func _process(delta: float) -> void:
@@ -27,7 +27,8 @@ func _process(delta: float) -> void:
 	_last_global_position = global_position
 	if _fish == null:
 		return
-	_fish.z_index = int(global_position.y)
+	_fish.global_position = global_position
+	_fish.z_index = 0
 	if movement.length_squared() <= DIRECTION_EPSILON * DIRECTION_EPSILON:
 		return
 	var animation_name := _animation_for_delta(movement)
