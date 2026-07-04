@@ -9,6 +9,7 @@ const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
+const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 
 
@@ -39,6 +40,27 @@ const ASSETS := {
 	"button_normal": "res://assets/ui/buttons/button_normal.png",
 	"button_hover": "res://assets/ui/buttons/button_hover.png",
 	"button_selected": "res://assets/ui/buttons/button_selected.png",
+	"dialog_toast_panel": "res://assets/ui/dialog_toast_panel.png",
+	"inventory_bg": "res://assets/ui/Inventory_Light_example_with_slots_2.png",
+	"cursor_arrow": "res://assets/ui/cursors/cursor_arrow.png",
+	"cursor_pointer": "res://assets/ui/cursors/cursor_pointer.png",
+	# 下面这批已经导入项目、但还没有具体使用场景对接,先注册好 key 方便以后接:
+	"speech_bubble": "res://assets/ui/speech_bubble_grey.png",
+	"dialog_box_medium": "res://assets/ui/Dialouge UI/Premade dialog box medium.png",
+	"dialog_box_big": "res://assets/ui/Dialouge UI/Premade dialog box  big.png",
+	"emote_sheet": "res://assets/ui/Dialouge UI/Emotes/Teemo Basic emote animations sprite sheet.png",
+	"play_button": "res://assets/ui/UI Big Play Button.png",
+	"settings_buttons": "res://assets/ui/UI Settings Buttons.png",
+	"square_buttons_small": "res://assets/ui/buttons/Small Square Buttons.png",
+	"square_buttons_19x26": "res://assets/ui/buttons/Square Buttons 19x26.png",
+	"square_buttons_26x19": "res://assets/ui/buttons/Square Buttons 26x19.png",
+	"square_buttons_26x26": "res://assets/ui/buttons/Square Buttons 26x26.png",
+	"icons_all": "res://assets/ui/icons/All Icons.png",
+	"icons_weather": "res://assets/ui/icons/Weather_Icons_smal_freel.png",
+	"icons_white": "res://assets/ui/icons/white icons.png",
+	"icons_special": "res://assets/ui/icons/special icons/Special Icons.png",
+	"icons_happy_sad": "res://assets/ui/icons/special icons/Small Happines-Sadness icons.png",
+	"basic_pack_sheet": "res://assets/ui/Sprite sheet for Basic Pack.png",
 	"icon_map": "res://assets/ui/icons/icon_map.png",
 	"icon_postcard": "res://assets/ui/icons/icon_postcard.png",
 	"icon_mailbox": "res://assets/ui/icons/icon_mailbox.png",
@@ -210,7 +232,17 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 	world = p_world
 	ui_layer = p_ui_layer
 	MemoryManager.mailbox_alert_changed.connect(_on_mailbox_alert_changed)
+	_setup_custom_cursor()
 	_build_ui()
+
+## 自定义猫爪鼠标指针(默认箭头 + 悬浮可点击时的指示手型),整局只需设一次。
+func _setup_custom_cursor() -> void:
+	var arrow := _safe_texture(str(ASSETS.get("cursor_arrow", "")))
+	if arrow:
+		Input.set_custom_mouse_cursor(arrow, Input.CURSOR_ARROW, Vector2(6, 4))
+	var pointer := _safe_texture(str(ASSETS.get("cursor_pointer", "")))
+	if pointer:
+		Input.set_custom_mouse_cursor(pointer, Input.CURSOR_POINTING_HAND, Vector2(6, 4))
 
 func _build_ui() -> void:
 	var root := Control.new()
@@ -511,11 +543,13 @@ func _show_garden(spawn_key: String = "default") -> void:
 	info_label.text = "Family Garden"
 	AudioManager.play_music("garden")
 	_add_background()
-	_add_collision_zones()
+	# Phase B(花园 TileMap 改造):碰撞区/房子/核心物件热区/NPC 都是按旧整图背景手工调的坐标,
+	# 跟新的 GardenTiled 布局对不上,先关掉;等新布局定稿后再照新坐标重建这几块。
+	# _add_collision_zones()
 	_add_garden_spawn_markers()
-	_add_houses()
-	_add_core_objects()
-	_add_npcs()
+	# _add_houses()
+	# _add_core_objects()
+	# _add_npcs()
 	_add_animals()
 	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
 	_add_player(spawn)
@@ -1300,6 +1334,15 @@ func _clear_global_map_ui() -> void:
 	global_map_ui = null
 
 func _add_background() -> void:
+	# Phase B(花园 TileMap 改造):有 GardenTiled.tscn 就用它(小屋固定底图 + 可画的地面/装饰
+	# TileMapLayer),没有就退回旧的整图背景,避免半途改造中场景直接崩掉。
+	if ResourceLoader.exists(GARDEN_TILED_SCENE):
+		var tiled := (load(GARDEN_TILED_SCENE) as PackedScene).instantiate()
+		tiled.name = "GardenTiled"
+		world.add_child(tiled)
+		_add_season_overlay()
+		return
+
 	var texture := _safe_texture(ASSETS["background"])
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1458,7 +1501,11 @@ func _add_npcs() -> void:
 			continue
 		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
 		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
-		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false)
+		var npc_asset_key := str(role_data.get("asset", "girl"))
+		var npc_def: Dictionary = CharacterDB.get_def(npc_asset_key)
+		var npc_frame_rects: Array = npc_def.get("frame_rects", [])
+		var npc_scale := float(npc_def.get("scale", -1.0))
+		var npc_body := _create_character(npc_name, ASSETS[npc_asset_key], npc_pos, false, 3, 4, npc_frame_rects, npc_scale)
 		npc_body.name = "NPC_" + role_key
 		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
 		npc_body.set("home_position", npc_pos)
@@ -1466,6 +1513,7 @@ func _add_npcs() -> void:
 		npc_body.set("move_speed", 34.0)
 		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
 		npc_body.call_deferred("set_blocked_rects", _get_character_blocked_rects())
+		npc_body.call_deferred("set_frame_rects", npc_frame_rects)
 		world.add_child(npc_body)
 		_add_online_status_badge(npc_body, false)
 		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
@@ -1613,7 +1661,7 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4, frame_rects: Array = [], scale_override: float = -1.0) -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
@@ -1635,12 +1683,23 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var texture := _safe_texture(path)
 	if texture:
 		sprite.texture = texture
-		sprite.hframes = hframes
-		sprite.vframes = vframes
-		sprite.frame = 1
-		var frame_height := float(texture.get_height()) / float(vframes)
-		if frame_height > 0.0:
-			sprite.scale = Vector2.ONE * (82.0 / frame_height)
+		if frame_rects.size() > 0:
+			# 非等分网格贴图(如 girl_2):按精确裁切矩形取帧,交给挂上去的行为脚本(npc_wander.gd
+			# 等)逐帧切 region_rect,这里只摆一个初始的"朝下待机"帧。
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+			var r0 = frame_rects[1] if frame_rects.size() > 1 else frame_rects[0]
+			if r0 is Array and r0.size() >= 4:
+				sprite.region_rect = Rect2(float(r0[0]), float(r0[1]), float(r0[2]), float(r0[3]))
+			sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else 0.46)
+		else:
+			sprite.hframes = hframes
+			sprite.vframes = vframes
+			sprite.frame = 1
+			var frame_height := float(texture.get_height()) / float(vframes)
+			if frame_height > 0.0:
+				sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else (82.0 / frame_height))
 	else:
 		sprite.texture = _solid_texture(32, 48, Color(0.92, 0.80, 0.62, 1.0))
 		sprite.scale = Vector2(1.6, 1.6)

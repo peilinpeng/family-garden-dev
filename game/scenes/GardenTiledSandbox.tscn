@@ -1,0 +1,12 @@
+[gd_scene format=3]
+
+[ext_resource type="TileSet" path="res://assets/garden/tileset/garden_ground_tileset.tres" id="1_ground_set"]
+
+[node name="GardenTiledSandbox" type="Node2D"]
+scale = Vector2(2, 2)
+
+[node name="Ground" type="TileMapLayer" parent="."]
+tile_set = ExtResource("1_ground_set")
+
+[node name="Decor" type="TileMapLayer" parent="."]
+z_index = 10
