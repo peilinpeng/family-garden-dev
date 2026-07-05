@@ -46,11 +46,11 @@
           "if": {
             "anyOf": [
               { "properties": { "data": { "type": "null" } } },
-              { "properties": { "data": { "type": "object", "properties": { "links": { "maxItems": 0 } } } } }
+              { "properties": { "data": { "type": "object", "properties": { "links": { "type": "array", "maxItems": 0 } } } } }
             ]
           },
-          "then": { "properties": { "meta": { "properties": { "result": { "const": "empty" } } } } },
-          "else": { "properties": { "meta": { "properties": { "result": { "const": "complete" } } } } }
+          "then": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "complete" } } } } }
         }
       ]
     },
