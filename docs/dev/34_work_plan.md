@@ -90,10 +90,10 @@ AI 驱动的"数字家庭第三空间"。家庭成员上传照片/留言/明信�
 | **记忆卡片"可见的诚实"UI(AI 推测=浅灰斜体+问号 / 家人确认=深色)** | ❌ | 见 Part 2-A/C |
 | 美术 manifest + slot/portal JSON | ❌ | `game/assets/manifest/` |
 
-### 1.6 进开发前要拍板(待确认/不一致)
+### 1.6 进开发前要拍板（历史记录；已决项见注释）
 1. **截止日**:README 写 7-15,立项时间线写 6-30(时间线已作废,仍需向队友确认最终日)。
-2. **`objects` 格式**:docs/04 写字符串数组,mock 写带 zone 对象数组。建议**以 mock 为准**,反向更新 docs/04。
-3. **数据库去留**:比赛期**保留 Supabase**(已跑通),仅图片/Web 包后续迁腾讯云 COS/CDN。
+2. **`objects` 格式**：已在 Gate 1 决定为带 zone 的对象数组，见 `docs/04_ai_interfaces.md` 1.0.0。
+3. **数据库去留**：已切换为 CloudBase 主存储；旧 Supabase 路径待 Gate 5 迁移，见 `docs/dev/46_cloudbase_storage_handoff.md`。
 4. **角色 sheet**:docs/09 要 12 帧(3×4,32×40 art px),现有 `player.gd` 需确认迁移。
 5. **漂流瓶来源**:`bottles.created_by_ai` 可同时表达 AI/家人两种,无需二选一。
 6. **B/C owner** docs/dev/31 仍"待定",需更新角色表。

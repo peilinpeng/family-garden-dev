@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/cross-memory-link.request.schema.json",
+  "title": "cross-memory-link 请求",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memory_id", "candidates", "language"],
+  "properties": {
+    "memory_id": { "$ref": "common.schema.json#/$defs/id" },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memory_id", "title", "description", "memory_type"],
+        "properties": {
+          "memory_id": { "$ref": "common.schema.json#/$defs/id" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "memory_type": { "$ref": "common.schema.json#/$defs/memoryType" }
+        }
+      }
+    },
+    "language": { "$ref": "common.schema.json#/$defs/language" }
+  }
+}

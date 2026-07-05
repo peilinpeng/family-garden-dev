@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/generate-memory-card.request.schema.json",
+  "title": "generate-memory-card 请求",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memory_id", "input_type", "language"],
+  "properties": {
+    "memory_id": { "$ref": "common.schema.json#/$defs/id" },
+    "input_type": { "type": "string", "enum": ["photo", "text", "postcard", "bottle_answer"] },
+    "image_url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 },
+    "raw_text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "language": { "$ref": "common.schema.json#/$defs/language" }
+  },
+  "anyOf": [
+    { "required": ["image_url"] },
+    { "required": ["raw_text"] }
+  ]
+}
