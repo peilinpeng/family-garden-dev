@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/generate-bottle-question.response.schema.json",
+  "title": "generate-bottle-question 响应",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "data", "meta"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["question", "target_memory_type", "suggested_scene", "prompt_type", "tone"],
+              "properties": {
+                "question": { "type": "string", "minLength": 8, "maxLength": 120 },
+                "target_memory_type": {
+                  "type": "string",
+                  "enum": ["shared_memory", "travel", "childhood", "home", "daily_life", "family_event", "personal_room", "old_memory"]
+                },
+                "suggested_scene": { "$ref": "common.schema.json#/$defs/scene" },
+                "prompt_type": { "type": "string", "enum": ["shared_memory", "personal_memory", "directed_memory"] },
+                "tone": { "type": "string", "enum": ["warm"] },
+                "safety_note": { "type": "string", "maxLength": 200 }
+              }
+            }
+          ]
+        },
+        "meta": { "$ref": "common.schema.json#/$defs/successMeta" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "data": { "type": "null" } } },
+          "then": { "properties": { "meta": { "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "properties": { "result": { "const": "complete" } } } } }
+        }
+      ]
+    },
+    { "$ref": "common.schema.json#/$defs/failureEnvelope" }
+  ]
+}

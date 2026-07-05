@@ -28,20 +28,29 @@ AI 模型服务
 
 ---
 
-## 2. 推荐技术组合
+## 2. 当前技术组合
 
-比赛最稳组合：
+项目已经从早期 Supabase 暂留方案切换为 CloudBase 主存储。以下是当前真实基线，不再是候选方案：
 
 | 模块 | 推荐方案 |
 |---|---|
-| 游戏引擎 | Godot 或 Unity，按技术决策确定 |
+| 游戏引擎 | Godot 4.7 |
 | 游戏包托管 | 腾讯云 COS + CDN |
 | 用户上传图片 | 腾讯云 COS |
 | AI 中转 | 腾讯云云函数 / Serverless Function |
-| 数据库 | Supabase 暂留，或后续评估 CloudBase |
+| 数据库 | CloudBase 云数据库（已部署） |
+| 数据网关 | CloudBase 云函数 `data_gateway`（已部署） |
+| 成员身份 | 每成员 `member_token`，由服务端解析家庭和成员身份 |
+| 实时移动 | 尚未接入；后续使用轻量 WebSocket 中继 |
 | 本地兜底 | mock JSON + 预设图片 |
 
-如果当前 Supabase 数据库已稳定，不建议一开始全量迁移数据库。可以先迁图片和静态资源到 COS/CDN。
+Godot 通过 HTTP 调用 `data_gateway`，不直接访问数据库 SDK。已上线集合包括
+`members / families / memories / nodes / answers / rooms / room_objects / inventories`。
+`travel_places / postcards / messages / mailbox_events` 仍保留旧读路径，统一迁移属于 Gate 5，
+不在 Gate 1 修改线上数据。
+
+身份原则：除自助加入外，`family_id`、`member_id`、`created_by` 等归属字段必须由服务端
+根据 Authorization 中的成员身份派生，不能信任客户端请求体中的同名字段。
 
 ---
 
@@ -175,6 +184,27 @@ AI 模型服务
 | source_memory_id | string | 来源记忆 |
 | created_at | timestamp | 创建时间 |
 
+### 3.9 契约 v1 公共元数据
+
+新建或由 AI 更新的业务记录逐步补充以下字段。为兼容现有 CloudBase 线上数据，全部采用增量字段：旧记录缺失时按默认值读取，不清库、不要求一次性回填。
+
+| 字段 | 默认/来源 | 说明 |
+|---|---|---|
+| schema_version | 新记录为 `1`；旧记录按 `0` | 数据结构版本，不等同于 prompt 版本 |
+| created_by | 服务端解析的 `member_id` | 客户端传入值必须忽略 |
+| created_at | 服务端时间优先 | 旧客户端时间继续兼容读取 |
+| updated_at | 服务端时间优先 | 记录最近一次有效更新 |
+| request_id | AI Serverless 生成或透传 | 串联一次生成和持久化 |
+| generation_source | `ai / fallback / manual` | 区分真实生成、兜底和人工输入 |
+| provider | AI Serverless 写入 | 例如 `hunyuan`；非 AI 记录可为空 |
+| model | AI Serverless 写入 | 实际模型版本；非 AI 记录可为空 |
+| prompt_version | AI Serverless 写入 | 例如 `memory-card-v1` |
+| version | 共享可变记录从 `1` 开始 | 优先用于共享仓、共享世界状态等冲突敏感记录 |
+
+删除策略：MVP 延续现有硬删除。没有审计、恢复或合规需求前不新增 `deleted_at`；若后续引入软删除，必须升级 `schema_version` 并让所有默认查询过滤已删除记录。
+
+幂等策略：AI 请求使用 `request_id`；业务写入继续使用稳定记录 `id`。Gate 2 的 AI Serverless 应拒绝同一 `request_id` 对不同请求内容的复用。CloudBase 通用 CRUD 的幂等与乐观锁增强留到 Gate 5。
+
 ---
 
 ## 4. 数据生命周期
@@ -186,11 +216,11 @@ AI 模型服务
 ↓
 图片上传到 COS
 ↓
-创建 memories 记录，status = uploaded
+创建 memories 记录，status = uploaded（归属字段由服务端写入）
 ↓
 调用 AI 中转，status = ai_processing
 ↓
-AI 返回 ai_card，status = ai_done
+AI 返回 ai_card，status = ai_done，并记录生成来源与模型元数据
 ↓
 游戏读取 ai_card.suggested_scene 和 ai_card.node_type
 ↓

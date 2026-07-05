@@ -76,9 +76,14 @@ AI 输出示例：
 {
   "room_type": "bedroom",
   "style": "warm_cozy",
-  "objects": ["desk", "lamp", "plant", "photo_wall"],
   "suggested_room_theme": "study_corner",
-  "description": "这个房间看起来温暖安静，适合生成一个带书桌、台灯、植物和照片墙的个人空间。"
+  "description": "这个房间看起来温暖安静，适合生成一个带书桌、台灯、植物和照片墙的个人空间。",
+  "objects": [
+    { "object_type": "desk", "zone": "back_left" },
+    { "object_type": "lamp", "zone": "back_left" },
+    { "object_type": "plant", "zone": "right_side" },
+    { "object_type": "photo_wall", "zone": "back_wall" }
+  ]
 }
 ```
 

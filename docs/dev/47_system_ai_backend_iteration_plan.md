@@ -203,17 +203,17 @@ Gate 0 的详细命令、结果、功能矩阵和已知问题见
 
 需要定稿：
 
-- [ ] `generate-memory-card` 请求与响应；
-- [ ] `generate-bottle-question` 请求与响应；
-- [ ] `analyze-room-photo` 请求与响应；
-- [ ] `cross-memory-link` 请求与响应；
-- [ ] 允许的 `memory_type`；
-- [ ] 允许的 `suggested_scene`；
-- [ ] 允许的 `node_type`；
-- [ ] 允许的 `relation_type`；
-- [ ] 房间类型、主题、物件和 zone 的允许范围；
-- [ ] 最大文字长度、数组长度、候选记忆数量和物件数量；
-- [ ] “没有结果”与“请求失败”的区别。
+- [x] `generate-memory-card` 请求与响应；
+- [x] `generate-bottle-question` 请求与响应；
+- [x] `analyze-room-photo` 请求与响应；
+- [x] `cross-memory-link` 请求与响应；
+- [x] 允许的 `memory_type`；
+- [x] 允许的 `suggested_scene`；
+- [x] 允许的 `node_type`；
+- [x] 允许的 `relation_type`；
+- [x] 房间类型、主题、物件和 zone 的允许范围；
+- [x] 最大文字长度、数组长度、候选记忆数量和物件数量；
+- [x] “没有结果”与“请求失败”的区别。
 
 ### 5.3 建议统一响应包络
 
@@ -253,34 +253,34 @@ Gate 0 的详细命令、结果、功能矩阵和已知问题见
 
 核心业务记录统一补充：
 
-- [ ] `schema_version`；
-- [ ] `family_id`；
-- [ ] `created_by`；
-- [ ] `created_at` / `updated_at`；
-- [ ] `deleted_at` 或明确删除策略；
-- [ ] `request_id` / 幂等键；
-- [ ] `generation_source`（ai / fallback / manual）；
-- [ ] `provider` / `model` / `prompt_version`；
-- [ ] 必要的 `version` 字段用于乐观锁。
+- [x] `schema_version`；
+- [x] `family_id`；
+- [x] `created_by`；
+- [x] `created_at` / `updated_at`；
+- [x] `deleted_at` 或明确删除策略；
+- [x] `request_id` / 幂等键；
+- [x] `generation_source`（ai / fallback / manual）；
+- [x] `provider` / `model` / `prompt_version`；
+- [x] 必要的 `version` 字段用于乐观锁。
 
 ### 5.5 错误码
 
 至少定义：
 
-- `INVALID_REQUEST`；
-- `UNAUTHORIZED`；
-- `FORBIDDEN`；
-- `RATE_LIMITED`；
-- `UPLOAD_FAILED`；
-- `IMAGE_UNSUPPORTED`；
-- `CONTENT_UNSAFE`；
-- `AI_TIMEOUT`；
-- `AI_UPSTREAM_ERROR`；
-- `AI_INVALID_OUTPUT`；
-- `DATA_CONFLICT`；
-- `DATA_NOT_FOUND`；
-- `NETWORK_OFFLINE`；
-- `INTERNAL_ERROR`。
+- [x] `INVALID_REQUEST`；
+- [x] `UNAUTHORIZED`；
+- [x] `FORBIDDEN`；
+- [x] `RATE_LIMITED`；
+- [x] `UPLOAD_FAILED`；
+- [x] `IMAGE_UNSUPPORTED`；
+- [x] `CONTENT_UNSAFE`；
+- [x] `AI_TIMEOUT`；
+- [x] `AI_UPSTREAM_ERROR`；
+- [x] `AI_INVALID_OUTPUT`；
+- [x] `DATA_CONFLICT`；
+- [x] `DATA_NOT_FOUND`；
+- [x] `NETWORK_OFFLINE`；
+- [x] `INTERNAL_ERROR`。
 
 ### 5.6 交付物
 
@@ -292,11 +292,18 @@ Gate 0 的详细命令、结果、功能矩阵和已知问题见
 
 ### 5.7 退出条件
 
-- [ ] 四个接口的输入输出均无模糊字段；
-- [ ] mock 能通过同一套响应校验；
-- [ ] 客户端和后端对错误码理解一致；
-- [ ] 数据变更具备向后兼容或迁移方案；
-- [ ] 契约变更已通知两位场景负责人。
+- [x] 四个接口的输入输出均无模糊字段；
+- [x] mock 能通过同一套响应校验；
+- [x] 客户端和后端对错误码理解一致；
+- [x] 数据变更具备向后兼容或迁移方案；
+- [ ] 契约变更已通知两位场景负责人（通知文本见 `docs/dev/49_gate1_contract_decisions.md` §5）。
+
+Gate 1 的机器契约位于 `backend/ai/schemas/`，兼容决策与 Gate 2 / Gate 3 迁移清单见
+`docs/dev/49_gate1_contract_decisions.md`。验证命令：
+
+```bash
+python3 backend/ai/tests/validate_contracts.py
+```
 
 ---
 

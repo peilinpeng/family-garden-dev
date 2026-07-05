@@ -1,0 +1,13 @@
+{
+  "links": [
+    {
+      "memory_id_a": "mem_new",
+      "memory_id_b": "mem_007",
+      "relation_type": "same_place",
+      "confidence": 0.78,
+      "question": "这两段记忆看起来都与水边有关，它们是在同一个地方吗？",
+      "node_type": "memory_link"
+    }
+  ],
+  "safety_note": "仅依据已提供内容的可见重叠，没有推断人物关系。"
+}

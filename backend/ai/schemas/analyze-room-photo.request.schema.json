@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/analyze-room-photo.request.schema.json",
+  "title": "analyze-room-photo 请求",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memory_id", "image_url", "language"],
+  "properties": {
+    "memory_id": { "$ref": "common.schema.json#/$defs/id" },
+    "image_url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 },
+    "language": { "$ref": "common.schema.json#/$defs/language" }
+  }
+}

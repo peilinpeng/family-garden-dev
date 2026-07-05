@@ -1,0 +1,12 @@
+{
+  "memory_id": "mem_new",
+  "candidates": [
+    {
+      "memory_id": "mem_007",
+      "title": "水库边的周末",
+      "description": "一家人在水边散步和野餐。",
+      "memory_type": "travel"
+    }
+  ],
+  "language": "zh-CN"
+}

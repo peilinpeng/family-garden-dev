@@ -1,0 +1,11 @@
+{
+  "scene": "fishpond",
+  "target_memory_type": "childhood",
+  "tone": "warm",
+  "memory_stats": [
+    { "memory_type": "travel", "count": 3 },
+    { "memory_type": "childhood", "count": 2 }
+  ],
+  "avoid_topics": ["conflict", "trauma", "health", "politics"],
+  "language": "zh-CN"
+}

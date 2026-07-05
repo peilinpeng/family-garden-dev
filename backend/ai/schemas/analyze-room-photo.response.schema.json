@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/analyze-room-photo.response.schema.json",
+  "title": "analyze-room-photo 响应",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "data", "meta"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["room_type", "style", "suggested_room_theme", "description", "objects"],
+              "properties": {
+                "room_type": { "$ref": "common.schema.json#/$defs/roomType" },
+                "style": { "$ref": "common.schema.json#/$defs/roomStyle" },
+                "suggested_room_theme": { "$ref": "common.schema.json#/$defs/roomTheme" },
+                "description": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "objects": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 8,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["object_type", "zone"],
+                    "properties": {
+                      "object_type": { "$ref": "common.schema.json#/$defs/roomObjectType" },
+                      "zone": { "$ref": "common.schema.json#/$defs/roomZone" }
+                    },
+                    "allOf": [
+                      {
+                        "if": { "properties": { "object_type": { "const": "photo_wall" } } },
+                        "then": { "properties": { "zone": { "const": "back_wall" } } },
+                        "else": { "properties": { "zone": { "not": { "const": "back_wall" } } } }
+                      }
+                    ]
+                  }
+                },
+                "safety_note": { "type": "string", "maxLength": 200 }
+              }
+            }
+          ]
+        },
+        "meta": { "$ref": "common.schema.json#/$defs/successMeta" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "data": { "type": "null" } } },
+          "then": { "properties": { "meta": { "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "properties": { "result": { "const": "complete" } } } } }
+        }
+      ]
+    },
+    { "$ref": "common.schema.json#/$defs/failureEnvelope" }
+  ]
+}

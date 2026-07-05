@@ -1,0 +1,7 @@
+{
+  "memory_id": "mem_001",
+  "input_type": "photo",
+  "image_url": "https://example.com/photo.jpg",
+  "raw_text": "这是我们几年前一起出去玩的照片。",
+  "language": "zh-CN"
+}
