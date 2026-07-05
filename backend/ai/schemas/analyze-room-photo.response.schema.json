@@ -52,8 +52,8 @@
       "allOf": [
         {
           "if": { "properties": { "data": { "type": "null" } } },
-          "then": { "properties": { "meta": { "properties": { "result": { "const": "empty" } } } } },
-          "else": { "properties": { "meta": { "properties": { "result": { "const": "complete" } } } } }
+          "then": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "complete" } } } } }
         }
       ]
     },
