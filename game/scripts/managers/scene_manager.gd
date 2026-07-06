@@ -171,6 +171,10 @@ var world: Node2D
 var ui_layer: CanvasLayer
 var info_label: Label
 var plant_button: Button
+var world_chat_input: LineEdit = null
+var world_chat_feed_panel: Panel = null
+var world_chat_feed: Label = null
+var world_chat_fade_tween: Tween = null
 var plant_mode := false
 var selected_plant_type := "tree"
 var mode := "garden"
@@ -204,6 +208,7 @@ func _load_cloud_data() -> void:
 	MemoryManager.apply_cloud_data(data)
 	cloud_load_finished = true
 	MemoryManager.save_game()
+	_refresh_world_chat_feed()
 
 
 func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
@@ -250,7 +255,10 @@ func _build_ui() -> void:
 	_add_button(root, "Tree", Vector2(338, 672), Vector2(82, 32), "family_tree")
 	_add_button(root, "Map", Vector2(430, 672), Vector2(76, 32), "travel_map")
 	_add_button(root, "Postcards", Vector2(516, 672), Vector2(120, 32), "MemoryManager.postcards")
-	_add_world_chat_box(root, Vector2(650, 672), Vector2(382, 32))
+	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
+	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
+	_add_button(root, "Chat", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
+	_refresh_world_chat_feed()
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
 	var button := Button.new()
@@ -267,7 +275,7 @@ func _add_button(root: Control, button_text: String, pos: Vector2, button_size: 
 func _add_world_chat_box(root: Control, pos: Vector2, box_size: Vector2) -> LineEdit:
 	var chat := LineEdit.new()
 	chat.name = "WorldChatInput"
-	chat.placeholder_text = "World chat..."
+	chat.placeholder_text = "Send a family message..."
 	chat.position = pos
 	chat.size = box_size
 	chat.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -275,13 +283,242 @@ func _add_world_chat_box(root: Control, pos: Vector2, box_size: Vector2) -> Line
 	chat.add_theme_font_size_override("font_size", 13)
 	chat.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
 	chat.add_theme_color_override("font_placeholder_color", Color(0.38, 0.31, 0.24, 0.68))
-	var normal_style := _button_style("button_normal", Color(1.0, 0.92, 0.74, 0.92), Color(0.58, 0.45, 0.30, 1.0))
-	var focus_style := _button_style("button_hover", Color(1.0, 0.96, 0.82, 0.96), Color(0.60, 0.48, 0.32, 1.0))
+	var normal_style := _world_chat_input_style(false)
+	var focus_style := _world_chat_input_style(true)
 	chat.add_theme_stylebox_override("normal", normal_style)
 	chat.add_theme_stylebox_override("focus", focus_style)
 	chat.add_theme_stylebox_override("read_only", normal_style)
+	chat.text_submitted.connect(_on_world_chat_submitted)
 	root.add_child(chat)
 	return chat
+
+func _world_chat_input_style(focused: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.86, 0.94) if focused else Color(1.0, 0.94, 0.82, 0.90)
+	style.border_color = Color(0.56, 0.42, 0.27, 0.95) if focused else Color(0.60, 0.48, 0.33, 0.86)
+	style.set_border_width_all(2)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	return style
+
+func _add_world_chat_feed(root: Control, pos: Vector2, feed_size: Vector2) -> Label:
+	var panel := Panel.new()
+	panel.name = "WorldChatPreview"
+	panel.position = pos
+	panel.size = feed_size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.modulate.a = 0.0
+	panel.visible = false
+	panel.gui_input.connect(_on_world_chat_preview_input)
+	panel.add_theme_stylebox_override("panel", _world_chat_preview_style())
+	root.add_child(panel)
+	world_chat_feed_panel = panel
+
+	var feed := Label.new()
+	feed.name = "WorldChatFeed"
+	feed.position = Vector2(12, 8)
+	feed.size = feed_size - Vector2(24, 14)
+	feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	feed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	feed.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	feed.add_theme_font_size_override("font_size", 12)
+	feed.add_theme_color_override("font_color", Color(0.24, 0.20, 0.15, 0.90))
+	panel.add_child(feed)
+	world_chat_feed = feed
+	return feed
+
+func _world_chat_preview_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.94, 0.78, 0.78)
+	style.border_color = Color(0.52, 0.36, 0.20, 0.72)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	return style
+
+func _on_world_chat_preview_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_open_world_chat_history_panel()
+
+func _on_world_chat_submitted(submitted_text: String) -> void:
+	var text := submitted_text.strip_edges()
+	if text == "":
+		return
+	_send_world_chat_message(text)
+
+func _send_world_chat_message(text: String) -> void:
+	if world_chat_input != null and is_instance_valid(world_chat_input):
+		world_chat_input.editable = false
+		world_chat_input.text = ""
+		world_chat_input.placeholder_text = "Sending..."
+
+	var author := _get_world_chat_author()
+	var message_id := "message_" + str(Time.get_ticks_msec())
+	if CloudManager != null:
+		var cloud_message: Dictionary = await CloudManager.create_message(author, text, "")
+		if not cloud_message.is_empty() and str(cloud_message.get("id", "")) != "":
+			message_id = str(cloud_message.get("id", ""))
+
+	var message := {
+		"id": message_id,
+		"author": author,
+		"text": text,
+		"created_at": Time.get_datetime_string_from_system(),
+		"role": MemoryManager.selected_role_key
+	}
+	MemoryManager.garden_messages.append(message)
+	MemoryManager.notify_family_activity()
+	MemoryManager.save_game()
+	_refresh_world_chat_feed(true)
+
+	if world_chat_input != null and is_instance_valid(world_chat_input):
+		world_chat_input.editable = true
+		world_chat_input.placeholder_text = "Send a family message..."
+		world_chat_input.grab_focus()
+	_show_toast("Message sent.")
+
+func _get_world_chat_author() -> String:
+	if GameIdentity != null and GameIdentity.is_ready() and str(GameIdentity.display_name).strip_edges() != "":
+		return str(GameIdentity.display_name).strip_edges()
+	if str(MemoryManager.player_display_name).strip_edges() != "":
+		return str(MemoryManager.player_display_name).strip_edges()
+	var role := str(MemoryManager.selected_role_key).strip_edges()
+	if role != "":
+		for character in CHARACTER_DATA:
+			if str(character.get("role", "")) == role:
+				return str(character.get("default_name", "Family"))
+	return "Family"
+
+func _refresh_world_chat_feed(show_preview: bool = false) -> void:
+	if world_chat_feed == null or not is_instance_valid(world_chat_feed):
+		return
+	var recent: Array[String] = []
+	var start_index := MemoryManager.garden_messages.size() - 3
+	if start_index < 0:
+		start_index = 0
+	for i in range(start_index, MemoryManager.garden_messages.size()):
+		var raw_message: Variant = MemoryManager.garden_messages[i]
+		if not (raw_message is Dictionary):
+			continue
+		var message: Dictionary = raw_message
+		var author := str(message.get("author", "Family"))
+		var text := str(message.get("text", "")).strip_edges()
+		if text == "":
+			continue
+		recent.append(author + ": " + text)
+	world_chat_feed.text = "\n".join(recent)
+	if show_preview and not recent.is_empty():
+		_show_world_chat_preview()
+
+func _show_world_chat_preview() -> void:
+	if world_chat_feed_panel == null or not is_instance_valid(world_chat_feed_panel):
+		return
+	if world_chat_fade_tween != null and world_chat_fade_tween.is_valid():
+		world_chat_fade_tween.kill()
+	world_chat_feed_panel.visible = true
+	world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	world_chat_feed_panel.modulate.a = 1.0
+	world_chat_fade_tween = create_tween()
+	world_chat_fade_tween.tween_interval(5.0)
+	world_chat_fade_tween.tween_property(world_chat_feed_panel, "modulate:a", 0.0, 1.2)
+	world_chat_fade_tween.tween_callback(func() -> void:
+		if world_chat_feed_panel != null and is_instance_valid(world_chat_feed_panel):
+			world_chat_feed_panel.visible = false
+			world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	)
+
+func _open_world_chat_history_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 96)
+	panel.size = Vector2(560, 520)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "World Chat"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(470, 30)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(34, 70)
+	scroll.size = Vector2(492, 360)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
+
+	if MemoryManager.garden_messages.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No messages yet."
+		empty_label.custom_minimum_size = Vector2(460, 48)
+		empty_label.add_theme_font_size_override("font_size", 15)
+		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
+		list.add_child(empty_label)
+	else:
+		for i in range(MemoryManager.garden_messages.size() - 1, -1, -1):
+			var raw_message: Variant = MemoryManager.garden_messages[i]
+			if raw_message is Dictionary:
+				list.add_child(_make_world_chat_history_card(raw_message))
+
+	_add_panel_button(panel, "Close", Vector2(218, 456), Vector2(124, 38), "close")
+
+func _make_world_chat_history_card(message: Dictionary) -> Control:
+	var card := Panel.new()
+	card.custom_minimum_size = Vector2(470, 78)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.95, 0.82, 0.82)
+	style.border_color = Color(0.62, 0.48, 0.32, 0.70)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	card.add_theme_stylebox_override("panel", style)
+
+	var meta := Label.new()
+	meta.text = str(message.get("author", "Family")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.position = Vector2(14, 10)
+	meta.size = Vector2(442, 20)
+	meta.add_theme_font_size_override("font_size", 12)
+	meta.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.86))
+	card.add_child(meta)
+
+	var body := Label.new()
+	body.text = str(message.get("text", ""))
+	body.position = Vector2(14, 32)
+	body.size = Vector2(442, 38)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	card.add_child(body)
+	return card
+
+func _format_world_chat_time(raw_time: String) -> String:
+	if raw_time == "":
+		return "No time"
+	return raw_time.replace("T", " ").replace("Z", "")
 
 func _on_ui_button(action: String) -> void:
 	match action:
@@ -300,6 +537,8 @@ func _on_ui_button(action: String) -> void:
 			_show_travel_map()
 		"MemoryManager.postcards":
 			_open_postcards_panel()
+		"world_chat_history":
+			_open_world_chat_history_panel()
 		"save":
 			MemoryManager.save_game()
 			_show_toast("Saved.")
@@ -958,18 +1197,28 @@ func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 	button.stretch_mode = TextureButton.STRETCH_SCALE
 	button.texture_normal = tex
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.pivot_offset = pivot
-	if img != null:
-		var mask := BitMap.new()
-		mask.create_from_image_alpha(img, 0.1)
-		button.texture_click_mask = mask
 	view.add_child(button)
 
-	button.mouse_entered.connect(_on_global_map_region_hover.bind(button, shadow, true))
-	button.mouse_exited.connect(_on_global_map_region_hover.bind(button, shadow, false))
-	button.pressed.connect(_on_global_map_region_pressed.bind(str(region["target"]), str(region["label"])))
+	var hotspot := Button.new()
+	hotspot.name = "Hotspot_" + str(region["id"])
+	hotspot.flat = true
+	hotspot.text = ""
+	hotspot.mouse_filter = Control.MOUSE_FILTER_STOP
+	hotspot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var rect := Rect2(Vector2.ZERO, GAME_SIZE)
+	if img != null:
+		var used_rect := img.get_used_rect()
+		rect = Rect2(Vector2(used_rect.position), Vector2(used_rect.size))
+	hotspot.position = rect.position
+	hotspot.size = rect.size
+	view.add_child(hotspot)
+
+	hotspot.mouse_entered.connect(_on_global_map_region_hover.bind(button, shadow, true))
+	hotspot.mouse_exited.connect(_on_global_map_region_hover.bind(button, shadow, false))
+	hotspot.pressed.connect(_on_global_map_region_pressed.bind(str(region["target"]), str(region["label"])))
 	return true
 
 func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hovering: bool) -> void:
@@ -1150,14 +1399,6 @@ func _spawn_demo_bottles() -> void:
 		var bid := "bottle_%d" % i
 		var card := {"node_type": "bottle", "suggested_scene": "fishpond"}
 		var node := NodeFactory.make_memory_node(card, slot, _on_bottle_clicked.bind(bid))
-		var tag := Label.new()
-		tag.name = "DemoTag"
-		tag.text = "漂流瓶"
-		tag.position = Vector2(-26, -104)
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.add_theme_font_size_override("font_size", 13)
-		tag.add_theme_color_override("font_color", Color(0.15, 0.30, 0.40, 0.95))
-		node.add_child(tag)
 		world.add_child(node)
 		_demo_bottles.append({"id": bid, "question": String(questions[i]), "state": "floating", "answer": "", "node": node})
 		spawned += 1
@@ -1637,7 +1878,7 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 		sprite.texture = texture
 		sprite.hframes = hframes
 		sprite.vframes = vframes
-		sprite.frame = 1
+		sprite.frame = 0
 		var frame_height := float(texture.get_height()) / float(vframes)
 		if frame_height > 0.0:
 			sprite.scale = Vector2.ONE * (82.0 / frame_height)
@@ -1661,6 +1902,9 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	name_label.position = Vector2(-52, -78)
 	name_label.size = Vector2(104, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.z_as_relative = false
+	name_label.z_index = 10000
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_label.add_theme_font_size_override("font_size", 12)
 	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
 	body.add_child(name_label)
@@ -1674,6 +1918,9 @@ func _add_online_status_badge(parent: Node2D, online: bool) -> void:
 	dot.text = "●"
 	dot.position = Vector2(34, -79)
 	dot.size = Vector2(20, 18)
+	dot.z_as_relative = false
+	dot.z_index = 10001
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dot.add_theme_font_size_override("font_size", 14)
 	dot.add_theme_color_override("font_color", Color(0.22, 0.78, 0.36, 1.0) if online else Color(0.55, 0.52, 0.48, 0.88))
 	parent.add_child(dot)
@@ -2809,6 +3056,7 @@ func _save_new_message(author_input: LineEdit, message_input: TextEdit) -> void:
 	MemoryManager.garden_messages.append(message)
 	MemoryManager.notify_family_activity()
 	MemoryManager.save_game()
+	_refresh_world_chat_feed()
 	_open_message_board_panel()
 	_show_toast("New note added.")
 
