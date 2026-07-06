@@ -26,6 +26,26 @@ test("production 拒绝关闭鉴权或使用本地安全模式", () => {
   );
 });
 
+test("production 对 TokenHub、模型、身份网关和内容安全凭据 fail-fast", () => {
+  assert.throws(
+    () => loadConfig({ NODE_ENV: "production", AUTH_MODE: "gateway", SAFETY_MODE: "tencent" }),
+    (error) => error.code === "INTERNAL_ERROR" && /TOKENHUB_API_KEY/.test(error.message),
+  );
+  const config = loadConfig({
+    NODE_ENV: "production",
+    AUTH_MODE: "gateway",
+    SAFETY_MODE: "tencent",
+    DATA_GATEWAY_URL: "https://example.com/data_gateway",
+    TOKENHUB_API_KEY: "test-key",
+    HUNYUAN_TEXT_MODEL: "hy3-preview",
+    HUNYUAN_VISION_MODEL: "hy-vision-2.0-instruct",
+    CONTENT_SAFETY_SECRET_ID: "test-id",
+    CONTENT_SAFETY_SECRET_KEY: "test-secret",
+  });
+  assert.equal(config.provider, "tokenhub");
+  assert.equal(config.textMaxTokens, 16384);
+});
+
 test("身份客户端转发 Authorization，并区分无效身份与上游故障", async () => {
   const config = { authMode: "gateway", dataGatewayUrl: "https://example.com/data_gateway", timeoutMs: 1000 };
   let captured;

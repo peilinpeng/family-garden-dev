@@ -33,6 +33,11 @@ function resultType(route, data) {
   return "complete";
 }
 
+function repairReasonFrom(error) {
+  const details = Array.isArray(error?.details) ? error.details.map(String).slice(0, 6) : [];
+  return (details.length > 0 ? details.join("；") : "JSON 解析或输出校验失败").slice(0, 600);
+}
+
 class AiRouter {
   constructor(options) {
     this.config = options.config;
@@ -68,9 +73,9 @@ class AiRouter {
     });
   }
 
-  async _providerCall(prompt) {
+  async _providerCall(prompt, route) {
     return this.protection.circuitBreaker.run(() => retry(
-      () => this.provider.complete(prompt),
+      () => this.provider.complete(prompt, { route }),
       this.config.maxRetries,
       { sleep: this.sleep },
     ));
@@ -79,10 +84,11 @@ class AiRouter {
   async _generate(route, payload, context) {
     const definition = ROUTES[route];
     let lastError;
+    let repairReason = "";
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const prompt = definition.prompt.build(payload, attempt === 1 ? "JSON 解析或 Schema 校验失败" : "");
-        const providerResult = await this._providerCall(prompt);
+        const prompt = definition.prompt.build(payload, repairReason);
+        const providerResult = await this._providerCall(prompt, route);
         const data = parseJsonOutput(providerResult.text);
         const response = {
           ok: true,
@@ -96,21 +102,26 @@ class AiRouter {
             result: resultType(route, data),
           },
         };
-        this.validator.validateResponse(route, response);
+        this.validator.validateResponse(route, response, payload);
         await this.safety.inspectOutput(data, context.requestId);
         return response;
       } catch (error) {
         lastError = error;
         if (error?.code !== "AI_INVALID_OUTPUT" || attempt === 1) break;
+        repairReason = repairReasonFrom(error);
         this.logger.warn("ai_output_repair", { request_id: context.requestId, route, code: error.code });
       }
     }
-    if (FALLBACK_CODES.has(lastError?.code)) return this._fallback(route, context, lastError.code);
+    if (FALLBACK_CODES.has(lastError?.code)) return this._fallback(route, payload, context, lastError.code);
     throw lastError;
   }
 
-  async _fallback(route, context, reason) {
+  async _fallback(route, payload, context, reason) {
     const data = structuredClone(this.mocks[route]);
+    if (route === "cross-memory-link") {
+      data.links = [];
+      data.safety_note = "AI 服务暂时不可用，未创建未经验证的跨记忆连线。";
+    }
     await this.safety.inspectOutput(data, context.requestId);
     const response = {
       ok: true,
@@ -125,10 +136,10 @@ class AiRouter {
         fallback_reason: reason,
       },
     };
-    this.validator.validateResponse(route, response);
+    this.validator.validateResponse(route, response, payload);
     this.logger.warn("ai_fallback", { request_id: context.requestId, route, reason });
     return response;
   }
 }
 
-module.exports = { AiRouter, ROUTES, FALLBACK_CODES, resultType };
+module.exports = { AiRouter, ROUTES, FALLBACK_CODES, resultType, repairReasonFrom };

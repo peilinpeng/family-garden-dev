@@ -19,15 +19,19 @@ function boolEnv(env, name, fallback = false) {
 function loadConfig(env = process.env) {
   const config = {
     env: env.NODE_ENV || "development",
-    provider: env.AI_PROVIDER || "hunyuan",
+    provider: env.AI_PROVIDER || "tokenhub",
     authMode: env.AUTH_MODE || "gateway",
     safetyMode: env.SAFETY_MODE || "tencent",
     dataGatewayUrl: env.DATA_GATEWAY_URL || "",
-    secretId: env.TENCENTCLOUD_SECRET_ID || "",
-    secretKey: env.TENCENTCLOUD_SECRET_KEY || "",
-    region: env.TENCENTCLOUD_REGION || "ap-shanghai",
+    tokenHubBaseUrl: env.TOKENHUB_BASE_URL || "https://tokenhub.tencentmaas.com/v1",
+    tokenHubApiKey: env.TOKENHUB_API_KEY || "",
+    secretId: env.CONTENT_SAFETY_SECRET_ID || "",
+    secretKey: env.CONTENT_SAFETY_SECRET_KEY || "",
+    region: env.CONTENT_SAFETY_REGION || "ap-shanghai",
     textModel: env.HUNYUAN_TEXT_MODEL || "",
     visionModel: env.HUNYUAN_VISION_MODEL || "",
+    textMaxTokens: intEnv(env, "AI_TEXT_MAX_TOKENS", 16384, 256, 131072),
+    visionMaxTokens: intEnv(env, "AI_VISION_MAX_TOKENS", 4096, 256, 32768),
     tmsBizType: env.TMS_BIZ_TYPE || "",
     imsBizType: env.IMS_BIZ_TYPE || "",
     timeoutMs: intEnv(env, "AI_TIMEOUT_MS", 20000, 1000, 120000),
@@ -45,7 +49,7 @@ function loadConfig(env = process.env) {
   if (!new Set(["development", "test", "production"]).has(config.env)) {
     throw new AppError("INTERNAL_ERROR", "NODE_ENV 配置无效。", { expose: false });
   }
-  if (config.provider !== "hunyuan") {
+  if (config.provider !== "tokenhub") {
     throw new AppError("INTERNAL_ERROR", "AI_PROVIDER 配置无效。", { expose: false });
   }
   if (!new Set(["gateway", "disabled"]).has(config.authMode)) {
@@ -59,6 +63,20 @@ function loadConfig(env = process.env) {
   }
   if ((config.authMode === "disabled" || config.safetyMode === "local") && !config.allowInsecureLocal && config.env !== "test") {
     throw new AppError("INTERNAL_ERROR", "非测试环境启用不安全本地模式需要显式确认。", { expose: false });
+  }
+  if (config.env === "production") {
+    const required = [
+      ["DATA_GATEWAY_URL", config.dataGatewayUrl],
+      ["TOKENHUB_API_KEY", config.tokenHubApiKey],
+      ["HUNYUAN_TEXT_MODEL", config.textModel],
+      ["HUNYUAN_VISION_MODEL", config.visionModel],
+      ["CONTENT_SAFETY_SECRET_ID", config.secretId],
+      ["CONTENT_SAFETY_SECRET_KEY", config.secretKey],
+    ];
+    const missing = required.filter(([, value]) => !value).map(([name]) => name);
+    if (missing.length > 0) {
+      throw new AppError("INTERNAL_ERROR", `生产环境缺少必填配置：${missing.join(", ")}`, { expose: false });
+    }
   }
   return config;
 }

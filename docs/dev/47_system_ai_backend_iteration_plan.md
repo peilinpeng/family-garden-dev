@@ -322,7 +322,7 @@ backend/ai/
 ├── index.js
 ├── router.js
 ├── providers/
-│   └── hunyuan.js
+│   └── tokenhub.js
 ├── prompts/
 │   ├── memory_card.js
 │   ├── bottle_question.js
@@ -348,7 +348,7 @@ backend/ai/
 - [x] 返回统一响应包络；
 - [x] 对外隐藏内部堆栈和上游敏感错误。
 
-#### 混元 Provider
+#### TokenHub 混元 Provider
 
 - [x] 将模型调用封装为 provider；
 - [x] 支持文字生成；
@@ -360,7 +360,7 @@ backend/ai/
 
 #### 密钥与配置
 
-- [x] SecretId / SecretKey 只从云函数环境变量读取；
+- [x] TokenHub API Key 与 TMS/IMS SecretId / SecretKey 只从云函数环境变量读取；
 - [x] 仓库提供 `.env.example` 或变量说明，但不提供真实值；
 - [x] 日志不输出 Authorization、签名和完整令牌；
 - [x] 确认 `.gitignore` 覆盖本地密钥文件；
@@ -430,6 +430,8 @@ backend/ai/
 
 Gate 2 本地验收记录见 `docs/dev/50_gate2_serverless_acceptance.md`。真实腾讯云部署、模型与
 TMS/IMS 收费调用需要账号环境变量，按验收记录 §8 在部署时补做，不以本地测试冒充线上成功。
+2026-07-06 已按腾讯云迁移公告把旧混元 SDK 替换为 TokenHub OpenAI 兼容接口；模型凭据与
+TMS/IMS 子用户凭据分离，旧 SDK 已退出生产依赖。
 
 ---
 

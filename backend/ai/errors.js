@@ -27,6 +27,7 @@ class AppError extends Error {
     this.expose = options.expose ?? true;
     this.details = options.details;
     this.cause = options.cause;
+    this.stage = options.stage;
   }
 }
 

@@ -115,6 +115,15 @@ expect_invalid(
     "客户端伪造 family_id",
 )
 
+missing_source_memory = load_json(FIXTURE_DIR / "cross-memory-link.request.json")
+for field in ("title", "description", "memory_type"):
+    missing_source_memory.pop(field)
+expect_invalid(
+    "cross-memory-link.request.schema.json",
+    missing_source_memory,
+    "跨记忆请求只提供新记忆 ID",
+)
+
 bad_memory = load_json(MOCK_DIR / "memory_card_mock.json")
 bad_memory["x"] = 640
 expect_invalid(

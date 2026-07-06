@@ -1,5 +1,8 @@
 {
   "memory_id": "mem_new",
+  "title": "水边的新回忆",
+  "description": "一家人在水库边散步，后来坐在草地上一起野餐。",
+  "memory_type": "travel",
   "candidates": [
     {
       "memory_id": "mem_007",

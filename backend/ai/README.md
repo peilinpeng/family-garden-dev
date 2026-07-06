@@ -16,7 +16,7 @@ Godot（Gate 3 接入）
   → AI HTTP 云函数
       → data_gateway/whoami 校验 member_token
       → TMS/IMS 输入审核
-      → 混元 ChatCompletions
+      → TokenHub OpenAI Chat Completions
       → JSON 提取 + Gate 1 Schema 校验
       → TMS 输出审核
       → 统一响应或安全 fallback
@@ -28,10 +28,10 @@ Godot（Gate 3 接入）
 |---|---|
 | `index.js` | CloudBase `main` 入口、HTTP 基础校验、统一错误输出 |
 | `router.js` | 四路编排、修复重采样、fallback |
-| `providers/hunyuan.js` | 腾讯云混元 SDK 适配 |
+| `providers/tokenhub.js` | TokenHub OpenAI 兼容接口适配 |
 | `prompts/` | 四套独立、带版本号的 prompt |
 | `schemas/` | Gate 1 JSON Schema 真源 |
-| `validators/` | AJV 校验与可靠 JSON 提取 |
+| `validators/` | AJV 校验、可靠 JSON 提取与跨记忆语义约束 |
 | `safety/` | 本地前置策略 + 腾讯 TMS/IMS 审核 |
 | `services/` | 身份、限流、并发、幂等、重试、熔断 |
 | `tests/` | 契约、集成、provider、安全和保护机制测试 |
@@ -68,15 +68,18 @@ Node 测试使用注入的 fake provider、身份服务和审核客户端，不�
 | `AUTH_MODE=gateway` | 通过现有 data_gateway 鉴权 |
 | `SAFETY_MODE=tencent` | 使用 TMS/IMS 审核 |
 | `DATA_GATEWAY_URL` | 已部署 data_gateway 的 HTTPS 地址 |
-| `TENCENTCLOUD_SECRET_ID` | 云函数环境变量中的腾讯云凭据 |
-| `TENCENTCLOUD_SECRET_KEY` | 云函数环境变量中的腾讯云凭据 |
-| `TENCENTCLOUD_REGION` | 默认 `ap-shanghai` |
-| `HUNYUAN_TEXT_MODEL` | 当前账号已开通的文字模型名称 |
-| `HUNYUAN_VISION_MODEL` | 当前账号已开通、支持图片理解的模型名称 |
+| `TOKENHUB_BASE_URL` | 境内固定为 `https://tokenhub.tencentmaas.com/v1` |
+| `TOKENHUB_API_KEY` | TokenHub 联调或生产 Key，只存云函数环境变量 |
+| `CONTENT_SAFETY_SECRET_ID` | 仅供 TMS/IMS 使用的腾讯云子用户凭据 |
+| `CONTENT_SAFETY_SECRET_KEY` | 仅供 TMS/IMS 使用的腾讯云子用户凭据 |
+| `CONTENT_SAFETY_REGION` | 默认 `ap-shanghai` |
+| `HUNYUAN_TEXT_MODEL` | 当前选用 `hy3-preview` |
+| `HUNYUAN_VISION_MODEL` | 当前选用 `hy-vision-2.0-instruct` |
 
 可选：`TMS_BIZ_TYPE`、`IMS_BIZ_TYPE`。使用自定义内容安全策略时填写控制台策略编号；否则调用账号默认策略。
 
-模型名称不写死在仓库。部署前在腾讯云产品概述/API Explorer 中确认当前账号、地域、计费和模型可用性。
+推荐填写已创建的 `family_garden_text` 与 `family_garden_image`。模型名称仍由部署环境显式配置，
+便于验收不达标时替换；部署前须在 TokenHub 控制台确认 Key 授权范围、计费和模型可用性。
 
 `AUTH_MODE=disabled` 或 `SAFETY_MODE=local` 仅允许 test，或在非 production 环境显式设置 `ALLOW_INSECURE_LOCAL=true`。production 会直接拒绝启动。
 
@@ -114,15 +117,24 @@ POST /api/ai/generate-memory-card
 
 身份只放在 `Authorization: Bearer <member_token>`，请求体不得放 `family_id`、`created_by` 或云服务密钥。
 
-## 5. 混元与内容安全
+## 5. TokenHub、混元与内容安全
 
-当前实现基于官方包：
+混元新模型通过 TokenHub 的 OpenAI 兼容接口调用：
 
-- `tencentcloud-sdk-nodejs-hunyuan`：文字与图片理解；
+- `https://tokenhub.tencentmaas.com/v1/chat/completions`；
+- `Authorization: Bearer <TOKENHUB_API_KEY>`；
+- `hy3-preview`：三个文字接口，并携带由 Gate 1 response Schema 派生的数据 Schema；
+- `hy-vision-2.0-instruct`：单张房间图片理解，结果继续经过 Gate 1 Schema 二次校验；
+- 非流式请求，文字最大输出默认 16384 tokens，视觉默认 4096 tokens。
+
+内容安全继续使用官方腾讯云 SDK：
+
 - `tencentcloud-sdk-nodejs-tms`：用户文字与模型文字输出审核；
 - `tencentcloud-sdk-nodejs-ims`：图片输入审核。
 
-图片请求使用非流式 `ChatCompletions`，消息包含一个 `text` 和一个 `image_url` content。TMS 文本按官方要求使用 UTF-8 Base64；IMS 使用 HTTPS `FileUrl`。
+TokenHub Key 与腾讯云子用户 SecretId/SecretKey 不得混用。图片请求包含一个 `text` 和一个
+`image_url` content。TMS 文本按官方要求使用 UTF-8 Base64；IMS 使用 HTTPS `FileUrl`。
+变量名不使用 CloudBase 保留的 `TENCENTCLOUD_`、`SCF_` 或 `QCLOUD_` 前缀。
 
 审核建议为 `Review` 或 `Block` 时统一返回 `CONTENT_UNSAFE`，不会把用户内容送给模型，也不会用 mock 掩盖。审核服务自身不可用时采用 fail-closed：返回上游错误，不绕过审核。
 
@@ -137,6 +149,10 @@ POST /api/ai/generate-memory-card
 
 模型首次返回无法解析或不符合 Schema 时，会附带约束提示重采样一次；第二次失败返回 `AI_INVALID_OUTPUT`，由 Gate 3 客户端状态机决定是否使用本地 fallback。
 
+跨记忆结果还会校验三条业务语义：不得自连、不得引用本次输入之外的 `memory_id`、同一无序
+记忆对最多一条连线。技术故障降级时返回空 `links`，不会把 mock 中的示例 ID 写入真实花园。
+跨记忆请求必须同时提供新记忆的标题、描述和类型；仅提供 ID 无法进行内容比较，会按非法请求拒绝。
+
 ## 7. 服务保护和运维
 
 - 进程内按成员限流；
@@ -144,7 +160,8 @@ POST /api/ai/generate-memory-card
 - 同一 request ID 幂等合并，不同内容冲突；
 - 上游超时、有限重试和指数退避；
 - 连续失败熔断；
-- 日志只保留 request ID、route、错误码、来源和耗时。
+- 日志只保留 request ID、route、错误码、来源和耗时；上游失败仅额外记录脱敏后的阶段与错误码，
+  不记录上游消息、用户内容或凭据。
 
 云函数可能多实例扩容，因此进程内限流、幂等和熔断不是全局强一致。生产必须同时配置 CloudBase/API 网关层限流；需要跨实例强幂等时再引入短期共享存储。
 
@@ -154,7 +171,7 @@ POST /api/ai/generate-memory-card
 
 以下动作需要腾讯云账号和可能产生费用，不由代码测试代替：
 
-- 开通/确认混元文字与图片模型；
+- 开通 TokenHub 并确认文字与图片模型授权范围；
 - 开通 TMS/IMS 并配置策略；
 - 设置真实环境变量；
 - 部署 CloudBase 云函数与 HTTP 访问服务；
