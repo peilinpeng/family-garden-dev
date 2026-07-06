@@ -5,6 +5,7 @@ extends PathFollow2D
 @export var fish_node_path: NodePath = NodePath("../../Fish05_01")
 
 const DIRECTION_EPSILON := 0.25
+const FISH_UNDER_WATER_Z := -20
 
 var _fish: AnimatedSprite2D
 var _last_global_position := Vector2.ZERO
@@ -18,7 +19,7 @@ func _ready() -> void:
 	if _fish != null:
 		_fish.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_fish.global_position = global_position
-		_fish.z_index = 0
+		_fish.z_index = FISH_UNDER_WATER_Z
 		_fish.play(&"swim_right")
 
 func _process(delta: float) -> void:
@@ -28,7 +29,7 @@ func _process(delta: float) -> void:
 	if _fish == null:
 		return
 	_fish.global_position = global_position
-	_fish.z_index = 0
+	_fish.z_index = FISH_UNDER_WATER_Z
 	if movement.length_squared() <= DIRECTION_EPSILON * DIRECTION_EPSILON:
 		return
 	var animation_name := _animation_for_delta(movement)

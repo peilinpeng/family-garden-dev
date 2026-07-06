@@ -7,12 +7,14 @@ const IDLE_BLINK_INTERVAL := 0.5  ## 朝下站定时,眨眼循环(睁-闭-睁)�
 
 var sprite: Sprite2D
 var step_timer := 0.0
-var step_index := 1
+var step_index := 0
 var facing_row := 0
 var idle_timer := 0.0
 var idle_frame := 0
 var frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl)按精确裁切矩形取帧,优先于 hframes/vframes
 var movement_locked := false   ## 场景切换渐隐过程中锁住输入,人物原地站定淡出
+
+const IDLE_FRAME_INDEX := 0
 
 func _ready() -> void:
 	sprite = get_node_or_null("Sprite2D")
@@ -115,7 +117,7 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 		_set_frame(facing_row * 3 + step_index)
 		return
 
-	step_index = 1
+	step_index = IDLE_FRAME_INDEX
 	step_timer = 0.0
 
 	# 朝下站定且有待机行时,播放睁-闭-睁的循环;其它朝向没有对应的待机行,
