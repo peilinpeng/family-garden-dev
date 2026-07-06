@@ -38,6 +38,34 @@ function formatErrors(errors = []) {
   return errors.slice(0, 10).map((error) => `${error.instancePath || "/"} ${error.message}`);
 }
 
+function validateMemoryLinks(response, request) {
+  if (!response?.ok || !Array.isArray(response?.data?.links)) return;
+  const allowedIds = new Set([
+    request?.memory_id,
+    ...(Array.isArray(request?.candidates) ? request.candidates.map((candidate) => candidate?.memory_id) : []),
+  ].filter(Boolean));
+  const pairs = new Set();
+  const errors = [];
+
+  for (const link of response.data.links) {
+    const a = String(link?.memory_id_a || "");
+    const b = String(link?.memory_id_b || "");
+    if (a === b) errors.push(`记忆不能与自身建立连线: ${a}`);
+    if (allowedIds.size > 0 && (!allowedIds.has(a) || !allowedIds.has(b))) {
+      errors.push(`连线引用了输入中不存在的 memory_id: ${a}, ${b}`);
+    }
+    const pair = [a, b].sort().join("\u0000");
+    if (pairs.has(pair)) errors.push(`同一对记忆只能保留一条连线: ${a}, ${b}`);
+    pairs.add(pair);
+  }
+
+  if (errors.length > 0) {
+    throw new AppError("AI_INVALID_OUTPUT", "模型输出不符合跨记忆语义约束。", {
+      details: errors.slice(0, 10),
+    });
+  }
+}
+
 class SchemaValidator {
   constructor(validators = loadSchemas()) {
     this.validators = validators;
@@ -55,13 +83,14 @@ class SchemaValidator {
     }
   }
 
-  validateResponse(route, response) {
+  validateResponse(route, response, request) {
     this.assertRoute(route);
     const validate = this.validators[route].response;
     if (!validate(response)) {
       throw new AppError("AI_INVALID_OUTPUT", "模型输出不符合接口契约。", { details: formatErrors(validate.errors) });
     }
+    if (route === "cross-memory-link") validateMemoryLinks(response, request);
   }
 }
 
-module.exports = { SchemaValidator, loadSchemas, ROUTES };
+module.exports = { SchemaValidator, loadSchemas, ROUTES, validateMemoryLinks };

@@ -5,7 +5,7 @@ const { loadConfig } = require("./config");
 const { AppError, errorEnvelope } = require("./errors");
 const { createLogger } = require("./logger");
 const { SchemaValidator } = require("./validators/schema_validator");
-const { HunyuanProvider } = require("./providers/hunyuan");
+const { TokenHubProvider } = require("./providers/tokenhub");
 const { SafetyService } = require("./safety");
 const { DataGatewayIdentityClient } = require("./services/identity_client");
 const { createProtection } = require("./services/protection");
@@ -19,6 +19,10 @@ function requestIdFrom(headers) {
   const supplied = headers["x-request-id"] || "";
   if (/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(supplied)) return supplied;
   return `req_${crypto.randomUUID()}`;
+}
+
+function upstreamCodeFrom(error) {
+  return String(error?.cause?.code || error?.cause?.name || "").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 80);
 }
 
 function parseEvent(event, maxBodyBytes) {
@@ -55,7 +59,7 @@ function parseEvent(event, maxBodyBytes) {
 function createApp(config = loadConfig(), overrides = {}) {
   const logger = overrides.logger || createLogger();
   const validator = overrides.validator || new SchemaValidator();
-  const provider = overrides.provider || new HunyuanProvider(config);
+  const provider = overrides.provider || new TokenHubProvider(config);
   const identity = overrides.identity || new DataGatewayIdentityClient(config);
   const safety = overrides.safety || new SafetyService(config);
   const protection = overrides.protection || createProtection(config, overrides.protectionOptions);
@@ -76,7 +80,13 @@ function createApp(config = loadConfig(), overrides = {}) {
       return response;
     } catch (error) {
       const response = errorEnvelope(error, requestId);
-      logger.warn("ai_request_failed", { request_id: requestId, code: response.error.code, duration_ms: Date.now() - startedAt });
+      logger.warn("ai_request_failed", {
+        request_id: requestId,
+        code: response.error.code,
+        stage: error?.stage || "",
+        upstream_code: upstreamCodeFrom(error),
+        duration_ms: Date.now() - startedAt,
+      });
       return response;
     }
   };
@@ -90,3 +100,4 @@ exports.main = async (event) => {
 exports.createApp = createApp;
 exports.parseEvent = parseEvent;
 exports.requestIdFrom = requestIdFrom;
+exports.upstreamCodeFrom = upstreamCodeFrom;

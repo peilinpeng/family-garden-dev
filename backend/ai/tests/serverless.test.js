@@ -86,6 +86,78 @@ test("首次非法输出触发一次修复重采样", async () => {
   assert.equal(calls, 2);
 });
 
+test("跨记忆重复、自连线或越界 ID 会触发修复重采样", async () => {
+  const payload = json(path.join(FIXTURES, "cross-memory-link.request.json"));
+  const valid = json(path.join(MOCKS, "cross_memory_link_mock.json"));
+  const invalidCases = [
+    {
+      ...valid,
+      links: [
+        valid.links[0],
+        { ...valid.links[0], memory_id_a: "mem_007", memory_id_b: "mem_new", relation_type: "same_theme" },
+      ],
+    },
+    { ...valid, links: [{ ...valid.links[0], memory_id_b: "mem_new" }] },
+    { ...valid, links: [{ ...valid.links[0], memory_id_b: "mem_not_in_request" }] },
+  ];
+
+  for (const invalid of invalidCases) {
+    let calls = 0;
+    const provider = {
+      complete: async () => ({
+        text: JSON.stringify(calls++ === 0 ? invalid : valid),
+        provider: "fake",
+        model: "text",
+      }),
+    };
+    const response = await makeApp(provider)(request("cross-memory-link", payload, `req_memory_link_${calls}_${invalid.links[0].memory_id_b}`));
+    assert.equal(response.ok, true);
+    assert.equal(calls, 2);
+    assert.deepEqual(response.data, valid);
+  }
+});
+
+test("修复重采样会把具体缺字段原因反馈给模型", async () => {
+  const payload = json(path.join(FIXTURES, "cross-memory-link.request.json"));
+  const valid = json(path.join(MOCKS, "cross_memory_link_mock.json"));
+  const incomplete = { ...valid, links: [{ ...valid.links[0] }] };
+  delete incomplete.links[0].confidence;
+  delete incomplete.links[0].question;
+  const prompts = [];
+  const provider = {
+    complete: async (prompt) => {
+      prompts.push(prompt.user);
+      return { text: JSON.stringify(prompts.length === 1 ? incomplete : valid), provider: "fake", model: "text" };
+    },
+  };
+  const response = await makeApp(provider)(request("cross-memory-link", payload, "req_repair_details"));
+  assert.equal(response.ok, true);
+  assert.equal(prompts.length, 2);
+  assert.match(prompts[1], /confidence/);
+  assert.match(prompts[1], /question/);
+});
+
+test("跨记忆请求必须提供新记忆内容，不能只给 ID", async () => {
+  const payload = json(path.join(FIXTURES, "cross-memory-link.request.json"));
+  delete payload.title;
+  delete payload.description;
+  delete payload.memory_type;
+  const provider = { complete: async () => { throw new Error("should not call"); } };
+  const response = await makeApp(provider)(request("cross-memory-link", payload, "req_missing_source_memory"));
+  assert.equal(response.ok, false);
+  assert.equal(response.error.code, "INVALID_REQUEST");
+});
+
+test("跨记忆上游降级不会创建带示例 ID 的假连线", async () => {
+  const provider = { complete: async () => { throw new AppError("AI_UPSTREAM_ERROR", "upstream"); } };
+  const payload = json(path.join(FIXTURES, "cross-memory-link.request.json"));
+  const response = await makeApp(provider)(request("cross-memory-link", payload, "req_memory_link_fallback"));
+  assert.equal(response.ok, true);
+  assert.equal(response.meta.source, "fallback");
+  assert.deepEqual(response.data.links, []);
+  assert.equal(response.meta.result, "empty");
+});
+
 test("二次非法输出返回 AI_INVALID_OUTPUT", async () => {
   const provider = { complete: async () => ({ text: "{}", provider: "fake", model: "text" }) };
   const response = await makeApp(provider)(request("generate-memory-card", json(path.join(FIXTURES, "generate-memory-card.request.json")), "req_invalid_twice"));
@@ -186,4 +258,30 @@ test("错误响应不暴露内部堆栈或密钥", async () => {
   assert.equal(response.error.code, "INTERNAL_ERROR");
   assert.equal(serialized.includes("secret-value"), false);
   assert.equal(serialized.includes("/private/path"), false);
+});
+
+test("失败日志只记录安全诊断码，不记录上游敏感消息", async () => {
+  const events = [];
+  const logger = {
+    info() {},
+    error() {},
+    warn(event, fields) { events.push({ event, fields }); },
+  };
+  const provider = {
+    complete: async () => {
+      const cause = new Error("SecretKey=never-log-this");
+      cause.code = "ResourceUnavailable.InArrears";
+      throw new AppError("INTERNAL_ERROR", "hidden", { expose: false, cause, stage: "ims" });
+    },
+  };
+  const response = await makeApp(provider, testConfig(), { logger })(request(
+    "generate-memory-card",
+    json(path.join(FIXTURES, "generate-memory-card.request.json")),
+    "req_safe_diagnostic",
+  ));
+  assert.equal(response.ok, false);
+  const failed = events.find((entry) => entry.event === "ai_request_failed");
+  assert.equal(failed.fields.stage, "ims");
+  assert.equal(failed.fields.upstream_code, "ResourceUnavailable.InArrears");
+  assert.equal(JSON.stringify(events).includes("never-log-this"), false);
 });

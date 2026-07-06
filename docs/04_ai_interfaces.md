@@ -1,6 +1,6 @@
 # 04｜AI 接口、结构化输出与内容安全规范
 
-> 契约版本：`1.0.0`
+> 契约版本：`1.1.0`
 > 状态：Gate 1 冻结
 > Schema 真源：`backend/ai/schemas/`
 > 适用接口：记忆卡片、漂流瓶问题、房间照片分析、跨记忆关联
@@ -305,6 +305,9 @@ POST /api/ai/cross-memory-link
 ```json
 {
   "memory_id": "mem_new",
+  "title": "水边的新回忆",
+  "description": "一家人在水库边散步，后来坐在草地上一起野餐。",
+  "memory_type": "travel",
   "candidates": [
     {
       "memory_id": "mem_007",
@@ -319,7 +322,7 @@ POST /api/ai/cross-memory-link
 
 约束：
 
-- `memory_id` 必填；
+- 新记忆的 `memory_id`、`title`、`description`、`memory_type` 必填；只给 ID 时模型没有可比较内容，服务端必须拒绝；
 - `candidates` 为 1～20 项；没有候选时客户端不调用接口；
 - 每项只提供 ID、标题、描述和记忆类型；
 - 标题最多 40 字符，描述最多 300 字符；
@@ -429,3 +432,4 @@ python3 backend/ai/tests/validate_contracts.py
 ## 13. 变更日志
 
 - `2026-07-05 / 1.0.0`：Gate 1 冻结四接口；增加统一包络、错误码、长度限制、JSON Schema、CloudBase 身份边界和兼容迁移说明；房间物件正式采用对象数组；漂流瓶正式采用单对象；跨记忆正式采用 `links` 数组。
+- `2026-07-06 / 1.1.0`：真实联调发现跨记忆请求只含新记忆 ID，模型无法可靠比较；补齐新记忆标题、描述与类型，禁止无依据关联。

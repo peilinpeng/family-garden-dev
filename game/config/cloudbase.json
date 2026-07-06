@@ -1,5 +1,5 @@
 {
-  "endpoint": "",
-  "env_id": "",
-  "family_id": ""
+  "endpoint": "https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway",
+  "env_id": "familygarden-d7gy18huh87fd41d2",
+  "family_id": "family1"
 }

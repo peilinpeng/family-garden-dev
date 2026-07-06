@@ -27,6 +27,17 @@ function moderationDataId(value) {
   return String(value || "request").replace(/[^A-Za-z0-9_@#-]/g, "_").slice(0, 64);
 }
 
+function diagnosticCode(kind, error) {
+  const prefix = String(kind || "MODERATION").toUpperCase();
+  const source = `${error?.code || ""} ${error?.name || ""}`;
+  if (/arrears|insufficient|balance/i.test(source)) return `${prefix}_ACCOUNT_IN_ARREARS`;
+  if (/biz.?type|strategy/i.test(source)) return `${prefix}_STRATEGY_INVALID`;
+  if (/not.?open|not.?active|service.?isolate|unactivated/i.test(source)) return `${prefix}_SERVICE_NOT_ACTIVE`;
+  if (/auth|permission|unauthorized|secret.?id|signature/i.test(source)) return `${prefix}_AUTH_OR_PERMISSION`;
+  if (/file.?url|download|image.?fetch|resource.?url/i.test(source)) return `${prefix}_IMAGE_FETCH_FAILED`;
+  return `${prefix}_UPSTREAM_FAILURE`;
+}
+
 class TencentModeration {
   constructor(config, options = {}) {
     this.config = config;
@@ -63,7 +74,12 @@ class TencentModeration {
       assertPass(response, "文本");
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError("AI_UPSTREAM_ERROR", "文本内容安全服务暂时不可用。", { expose: false, cause: error });
+      throw new AppError("AI_UPSTREAM_ERROR", "文本内容安全服务暂时不可用。", {
+        expose: true,
+        cause: error,
+        details: [`diagnostic=${diagnosticCode("TMS", error)}`],
+        stage: "tms",
+      });
     }
   }
 
@@ -79,9 +95,14 @@ class TencentModeration {
       assertPass(response, "图片");
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError("AI_UPSTREAM_ERROR", "图片内容安全服务暂时不可用。", { expose: false, cause: error });
+      throw new AppError("AI_UPSTREAM_ERROR", "图片内容安全服务暂时不可用。", {
+        expose: true,
+        cause: error,
+        details: [`diagnostic=${diagnosticCode("IMS", error)}`],
+        stage: "ims",
+      });
     }
   }
 }
 
-module.exports = { TencentModeration, assertPass, moderationDataId };
+module.exports = { TencentModeration, assertPass, moderationDataId, diagnosticCode };
