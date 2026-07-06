@@ -1291,6 +1291,7 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 # ── 通用场景切换（ScenePortal 框架）────────────────────────────────
 # 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
 func goto_scene(target: String, spawn_key: String = "default") -> void:
+	AIClient.cancel_all()
 	if target == POND_AREA_SCENE:
 		_build_fishpond(spawn_key)
 		return
@@ -2162,7 +2163,9 @@ func _on_generate_room(house_id: String) -> void:
 		return
 	var src := MemoryManager.create_memory({}, "room_photo")  # 房间照片来源记忆
 	var image_url := String(src.get("image_url", ""))
-	var analysis: Dictionary = await AIClient.analyze_room_photo(image_url)  # 真后端优先，失败回退 mock
+	# Gate 4 接入真实选图/上传前，这个按钮仍明确保持 mock，不发送空 image_url 浪费请求。
+	var analysis: Dictionary = AIClient.mock_room_analysis() if image_url == "" \
+		else await AIClient.analyze_room_photo(image_url, String(src.get("id", "")))
 	RoomLayoutManager.generate(analysis, String(src.get("id", "")))
 	_render_room("player")
 	_show_toast("房间生成好了 🛋️")
