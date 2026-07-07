@@ -331,6 +331,15 @@
       "giftable": true,
       "sell": 30
     },
+    { "id": "egg", "name": "鸡蛋", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 6, "icon": "crops_daily:6:1" },
+    { "id": "sugar", "name": "糖", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 4, "icon": "crops_daily:6:2" },
+    { "id": "honey", "name": "蜂蜜", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 10, "icon": "crops_daily:6:3" },
+    { "id": "lemon", "name": "柠檬", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 8, "icon": "crops_daily:6:5" },
+    { "id": "bread", "name": "面包", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 9, "icon": "crops_daily:6:6" },
+    { "id": "dish_tomato_egg", "name": "番茄炒蛋", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "家常番茄炒蛋，酸甜下饭。", "icon": "crops_daily:6:0" },
+    { "id": "dish_strawberry_jam", "name": "草莓果酱", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "慢熬的草莓果酱，甜蜜可口。", "icon": "crops_daily:6:4" },
+    { "id": "dish_honey_lemon_tea", "name": "蜂蜜柠檬茶", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "温润的蜂蜜柠檬茶。", "icon": "crops_daily:7:0" },
+    { "id": "dish_garden_breakfast", "name": "花园早餐", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "面包配蜂蜜与煎蛋的元气早餐。", "icon": "crops_daily:7:1" },
     {
       "id": "coin",
       "name": "金币",
