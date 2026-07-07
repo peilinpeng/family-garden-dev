@@ -19,8 +19,9 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
 
 **方式 A(控制台,推荐给没装 CLI 的场景)**:
 1. 云函数 → 新建云函数,函数名 `data_gateway`,运行环境 Node.js 16+。
-2. 把 `index.js`/`package.json` 内容贴进在线编辑器,**或**（更稳妥,避免复制粘贴导致引号变形/
-   InvalidParameter.IllegalCharacters 报错）把这两个文件打包成 zip 后**通过「上传代码包」上传**。
+2. 把 `index.js`/`package.json`/`package-lock.json` 内容放进代码包,**或**（更稳妥,避免
+   复制粘贴导致引号变形/InvalidParameter.IllegalCharacters 报错）把这三个文件打包成
+   zip 后**通过「上传代码包」上传**。
 3. **务必确认依赖被安装**:创建/更新代码后,留意「是否安装依赖」的提示并确认。
    ⚠️ 实测踩坑:更新代码后如果没有重新触发依赖安装,函数会在每次调用时直接
    `FUNCTION_INVOCATION_FAILED`(`require('@cloudbase/node-sdk')` 找不到模块)——
@@ -29,7 +30,9 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
 **方式 B(有 CLI 权限)**:
 ```bash
 cd backend/cloudbase/data_gateway
-npm install
+npm ci
+npm test
+npm run audit:prod
 tcb fn deploy data_gateway -e <你的环境ID>
 ```
 
@@ -109,11 +112,16 @@ db.collection('members').add({
 - ✅ **members 表完全不可达**:不在 action 白名单,客户端无法查询/写入/回传 member_token。
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
 - ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/partner/player` 四个合法角色,乱传会被拒绝。
+- ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
 - **轮换/吊销**:删/换某成员的 member_token 行即可让其失效,不影响其他成员。
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
 
-以上 9 项(未授权拒绝、身份解析、个人隔离、共享仓同步、伪造 id 纠正、跨家庭隔离、跨家庭写拒绝、越权删除拒绝、members 不可达)已用内存模拟数据库跑过逻辑测试,全部通过。
+以上边界已落成 `tests/data_gateway.test.js` 的 23 项可重复逻辑测试。
+
+依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
+带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
+待腾讯 SDK 4.x 的云函数初始化迁移验证完成后再升级，不在未验证时强行跨 major。
 
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。

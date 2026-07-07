@@ -169,9 +169,8 @@ father/mother/player/partner),用真实 HTTPS 请求(非本地模拟)验证通�
 
 ### 验证
 
-- 网关逻辑:新增 7 项 `join_family` 场景测试(无令牌注册成功、新令牌立即可用、
-  非法角色/缺参数被拒、同角色可重复注册出不同的人互不干扰、新成员能正常读写),
-  连同原 14 项一并通过(共 21 项)。
+- 网关逻辑:身份、家庭隔离、CRUD、`join_family` 与危险对象结构现已落成
+  `backend/cloudbase/data_gateway/tests/data_gateway.test.js` 的 23 项可重复自动测试。
 - 端到端(本地 mock 网关 + 真实 Godot 运行时):模拟"全新玩家"完整走一遍
   `main.gd` 启动 → 选角色界面选"papa"+起名"测试爸爸" → 24 帧内云身份自动就绪
   (`role=father` 正确从别名转换、`display_name=测试爸爸` 正确传递)→ 本地令牌文件
