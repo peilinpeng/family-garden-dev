@@ -58,7 +58,7 @@ animations = [{
 }],
 "loop": true,
 "name": &"default",
-"speed": 4.0
+"speed": 1.0
 }]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_pot"]
@@ -101,7 +101,7 @@ animations = [{
 }],
 "loop": true,
 "name": &"default",
-"speed": 4.0
+"speed": 1.0
 }]
 
 [node name="KitchenNew" type="Node2D"]
@@ -115,15 +115,15 @@ centered = false
 [node name="GroundProps" type="Node2D" parent="."]
 z_index = -60
 
-[node name="Waterfall" type="AnimatedSprite2D" parent="GroundProps"]
-centered = false
-sprite_frames = SubResource("SpriteFrames_waterfall")
-animation = &"default"
-autoplay = "default"
-
 [node name="Pond" type="AnimatedSprite2D" parent="GroundProps"]
 centered = false
 sprite_frames = SubResource("SpriteFrames_pond")
+animation = &"default"
+autoplay = "default"
+
+[node name="Waterfall" type="AnimatedSprite2D" parent="GroundProps"]
+centered = false
+sprite_frames = SubResource("SpriteFrames_waterfall")
 animation = &"default"
 autoplay = "default"
 
