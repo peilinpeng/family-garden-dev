@@ -495,7 +495,7 @@ idle → loading → success
 
 ### 7.6 退出条件
 
-- [ ] 四个接口均可通过真实 HTTP backend 调用（文字三项已通过，图片待有效临时链接复验）；
+- [x] 四个接口均可通过真实 HTTP backend 调用；
 - [x] 四个接口均可独立 fallback；
 - [x] UI 可通过统一信号区分真实 AI 与 fallback；
 - [x] 非法输出不会进入数据层；
