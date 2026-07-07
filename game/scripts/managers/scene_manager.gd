@@ -9,6 +9,7 @@ const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
+const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 
@@ -1097,6 +1098,11 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
 			AudioManager.play_music("house")
 			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
+		"kitchen":
+			# KitchenNew.tscn 自带玩家（kitchen_new.gd 的 _spawn_player），不要再补一个。
+			AudioManager.play_music("kitchen")
+			_build_embedded_scene("kitchen", KITCHEN_SCENE, "厨房", Color(0.58, 0.66, 0.50, 1.0), false)
+			ScenePortal.build_portals("kitchen", world, _on_portal_travel)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
 
