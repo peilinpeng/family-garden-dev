@@ -5,5 +5,6 @@
   "suggested_scene": "garden",
   "question": "你还记得这次旅行中最开心的一件事吗？",
   "node_type": "memory_flower",
-  "confidence": 1.0
+  "confidence": 1.0,
+  "safety_note": "仅整理用户提供的信息，没有推断具体人物关系。"
 }

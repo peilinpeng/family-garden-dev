@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "seed_corrato",
+      "name": "红番茄种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "corrato",
+      "buy": 8,
+      "icon": "crops_daily:0:0"
+    },
+    {
+      "id": "produce_corrato",
+      "name": "红番茄",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "corrato",
+      "sell": 12,
+      "giftable": true,
+      "icon": "crops_daily:6:0"
+    },
+    {
+      "id": "seed_tomelone",
+      "name": "蜜瓜种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "tomelone",
+      "buy": 8,
+      "icon": "crops_daily:0:1"
+    },
+    {
+      "id": "produce_tomelone",
+      "name": "蜜瓜",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "tomelone",
+      "sell": 13,
+      "giftable": true,
+      "icon": "crops_daily:6:1"
+    },
+    {
+      "id": "seed_peanks",
+      "name": "花生种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "peanks",
+      "buy": 8,
+      "icon": "crops_daily:0:2"
+    },
+    {
+      "id": "produce_peanks",
+      "name": "花生",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "peanks",
+      "sell": 14,
+      "giftable": true,
+      "icon": "crops_daily:6:2"
+    },
+    {
+      "id": "seed_cauliviol",
+      "name": "紫花菜种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "cauliviol",
+      "buy": 8,
+      "icon": "crops_daily:0:3"
+    },
+    {
+      "id": "produce_cauliviol",
+      "name": "紫花菜",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "cauliviol",
+      "sell": 15,
+      "giftable": true,
+      "icon": "crops_daily:6:3"
+    },
+    {
+      "id": "seed_bottarries",
+      "name": "瓶子莓种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "bottarries",
+      "buy": 8,
+      "icon": "crops_daily:0:4"
+    },
+    {
+      "id": "produce_bottarries",
+      "name": "瓶子莓",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "bottarries",
+      "sell": 16,
+      "giftable": true,
+      "icon": "crops_daily:6:4"
+    },
+    {
+      "id": "seed_safruma",
+      "name": "藏红果种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "safruma",
+      "buy": 8,
+      "icon": "crops_daily:0:5"
+    },
+    {
+      "id": "produce_safruma",
+      "name": "藏红果",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "safruma",
+      "sell": 17,
+      "giftable": true,
+      "icon": "crops_daily:6:5"
+    },
+    {
+      "id": "seed_mooam",
+      "name": "穆姆种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "mooam",
+      "buy": 8,
+      "icon": "crops_daily:0:6"
+    },
+    {
+      "id": "produce_mooam",
+      "name": "穆姆",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "mooam",
+      "sell": 18,
+      "giftable": true,
+      "icon": "crops_daily:6:6"
+    },
+    {
+      "id": "seed_reoin",
+      "name": "雷茎种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "reoin",
+      "buy": 8,
+      "icon": "crops_daily:0:7"
+    },
+    {
+      "id": "produce_reoin",
+      "name": "雷茎",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "reoin",
+      "sell": 19,
+      "giftable": true,
+      "icon": "crops_daily:6:7"
+    },
+    {
+      "id": "seed_rocue",
+      "name": "石瓜种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "rocue",
+      "buy": 8,
+      "icon": "crops_daily:7:0"
+    },
+    {
+      "id": "produce_rocue",
+      "name": "石瓜",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "rocue",
+      "sell": 20,
+      "giftable": true,
+      "icon": "crops_daily:13:0"
+    },
+    {
+      "id": "seed_sproccili",
+      "name": "西兰花种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "sproccili",
+      "buy": 8,
+      "icon": "crops_daily:7:1"
+    },
+    {
+      "id": "produce_sproccili",
+      "name": "西兰花",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "sproccili",
+      "sell": 21,
+      "giftable": true,
+      "icon": "crops_daily:13:1"
+    },
+    {
+      "id": "seed_cacorange",
+      "name": "仙橙种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "cacorange",
+      "buy": 8,
+      "icon": "crops_daily:7:2"
+    },
+    {
+      "id": "produce_cacorange",
+      "name": "仙橙",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "cacorange",
+      "sell": 22,
+      "giftable": true,
+      "icon": "crops_daily:13:2"
+    },
+    {
+      "id": "seed_popacom",
+      "name": "爆米花种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "popacom",
+      "buy": 8,
+      "icon": "crops_daily:7:3"
+    },
+    {
+      "id": "produce_popacom",
+      "name": "爆米花",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "popacom",
+      "sell": 23,
+      "giftable": true,
+      "icon": "crops_daily:13:3"
+    },
+    {
+      "id": "seed_chuf",
+      "name": "楚夫种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "chuf",
+      "buy": 8,
+      "icon": "crops_daily:7:4"
+    },
+    {
+      "id": "produce_chuf",
+      "name": "楚夫",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "chuf",
+      "sell": 24,
+      "giftable": true,
+      "icon": "crops_daily:13:4"
+    },
+    {
+      "id": "seed_trevainne",
+      "name": "藤蔓种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "trevainne",
+      "buy": 8,
+      "icon": "crops_daily:7:5"
+    },
+    {
+      "id": "produce_trevainne",
+      "name": "藤蔓",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "trevainne",
+      "sell": 25,
+      "giftable": true,
+      "icon": "crops_daily:13:5"
+    },
+    {
+      "id": "seed_cacerries",
+      "name": "仙莓种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "cacerries",
+      "buy": 8,
+      "icon": "crops_daily:7:6"
+    },
+    {
+      "id": "produce_cacerries",
+      "name": "仙莓",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "cacerries",
+      "sell": 26,
+      "giftable": true,
+      "icon": "crops_daily:13:6"
+    },
+    {
+      "id": "seed_aubaba",
+      "name": "紫茄种子",
+      "category": "seed",
+      "max_stack": 99,
+      "crop_id": "aubaba",
+      "buy": 8,
+      "icon": "crops_daily:7:7"
+    },
+    {
+      "id": "produce_aubaba",
+      "name": "紫茄",
+      "category": "produce",
+      "max_stack": 99,
+      "crop_id": "aubaba",
+      "sell": 27,
+      "giftable": true,
+      "icon": "crops_daily:13:7"
+    },
+    {
+      "id": "tool_wateringcan",
+      "name": "洒水壶",
+      "category": "tool",
+      "max_stack": 1
+    },
+    {
+      "id": "tool_hoe",
+      "name": "锄头",
+      "category": "tool",
+      "max_stack": 1
+    },
+    {
+      "id": "tool_basket",
+      "name": "采收篮",
+      "category": "tool",
+      "max_stack": 1
+    },
+    {
+      "id": "gift_bouquet",
+      "name": "花束",
+      "category": "gift",
+      "max_stack": 20,
+      "giftable": true,
+      "sell": 30
+    },
+    {
+      "id": "coin",
+      "name": "金币",
+      "category": "currency",
+      "max_stack": 9999999
+    }
+  ]
+}

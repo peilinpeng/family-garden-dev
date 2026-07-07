@@ -15,7 +15,17 @@ export_web/
 # 密钥与凭证：任何 service role key、腾讯云 SecretId/SecretKey、AI API key 一律不得入库
 .env
 .env.*
+!**/.env.example
 *.local
 secrets/
 *.pem
 *.key
+
+# Node 依赖与测试覆盖率
+node_modules/
+coverage/
+backend/ai/dist/
+
+# Python cache
+__pycache__/
+*.pyc

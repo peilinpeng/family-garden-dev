@@ -1,0 +1,170 @@
+[
+  {
+    "original_file": "图层 4.png",
+    "guessed_direction": "up",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_up_01.png",
+    "notes": "Head points up; tail centered-low, first tail pose."
+  },
+  {
+    "original_file": "图层 8.png",
+    "guessed_direction": "up",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_up_02.png",
+    "notes": "Head points up; tail bends slightly to one side for middle tail pose."
+  },
+  {
+    "original_file": "图层 20.png",
+    "guessed_direction": "up",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_up_03.png",
+    "notes": "Head points up; tail bends opposite side for loop."
+  },
+  {
+    "original_file": "图层 17.png",
+    "guessed_direction": "up_right",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_up_right_01.png",
+    "notes": "Head points upper-right; tail trails lower-left."
+  },
+  {
+    "original_file": "图层 7.png",
+    "guessed_direction": "up_right",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_up_right_02.png",
+    "notes": "Head points upper-right; tail bends for second swim pose."
+  },
+  {
+    "original_file": "图层 23.png",
+    "guessed_direction": "up_right",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_up_right_03.png",
+    "notes": "Head points upper-right; tail/body pose completes the cycle."
+  },
+  {
+    "original_file": "图层 6.png",
+    "guessed_direction": "right",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_right_01.png",
+    "notes": "Head and eyes point right; tail trails left."
+  },
+  {
+    "original_file": "图层 22.png",
+    "guessed_direction": "right",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_right_02.png",
+    "notes": "Head points right; tail bend differs from frame 1."
+  },
+  {
+    "original_file": "图层 5.png",
+    "guessed_direction": "right",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_right_03.png",
+    "notes": "Head points right with slight upper-right body angle; used as right-facing tail cycle frame."
+  },
+  {
+    "original_file": "图层 10.png",
+    "guessed_direction": "down_right",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_down_right_01.png",
+    "notes": "Head points lower-right; tail trails upper-left."
+  },
+  {
+    "original_file": "图层 11.png",
+    "guessed_direction": "down_right",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_down_right_02.png",
+    "notes": "Head points lower-right; tail bends for second pose."
+  },
+  {
+    "original_file": "图层 13.png",
+    "guessed_direction": "down_right",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_down_right_03.png",
+    "notes": "Head points lower-right; completes tail loop."
+  },
+  {
+    "original_file": "图层 9.png",
+    "guessed_direction": "down",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_down_01.png",
+    "notes": "Head points down; tail above."
+  },
+  {
+    "original_file": "图层 12.png",
+    "guessed_direction": "down",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_down_02.png",
+    "notes": "Head points down; alternate tail pose."
+  },
+  {
+    "original_file": "图层 16.png",
+    "guessed_direction": "down",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_down_03.png",
+    "notes": "Head points down; tail completes loop."
+  },
+  {
+    "original_file": "图层 14.png",
+    "guessed_direction": "down_left",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_down_left_01.png",
+    "notes": "Head points lower-left; tail trails upper-right."
+  },
+  {
+    "original_file": "图层 15.png",
+    "guessed_direction": "down_left",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_down_left_02.png",
+    "notes": "Head points lower-left; second tail pose."
+  },
+  {
+    "original_file": "图层 18.png",
+    "guessed_direction": "down_left",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_down_left_03.png",
+    "notes": "Slightly ambiguous between left and down-left; eye/head angle leans down-left enough for this cycle."
+  },
+  {
+    "original_file": "图层 2.png",
+    "guessed_direction": "left",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_left_01.png",
+    "notes": "Head and eyes point left; tail trails right."
+  },
+  {
+    "original_file": "图层 21.png",
+    "guessed_direction": "left",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_left_02.png",
+    "notes": "Head points left; alternate tail bend."
+  },
+  {
+    "original_file": "图层 24.png",
+    "guessed_direction": "left",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_left_03.png",
+    "notes": "Head reads left with slight upward body angle; used as left-facing tail cycle frame."
+  },
+  {
+    "original_file": "图层 1.png",
+    "guessed_direction": "up_left",
+    "guessed_frame_index": 1,
+    "new_file_name": "fish_05_swim_up_left_01.png",
+    "notes": "Head points upper-left; tail trails lower-right."
+  },
+  {
+    "original_file": "图层 3.png",
+    "guessed_direction": "up_left",
+    "guessed_frame_index": 2,
+    "new_file_name": "fish_05_swim_up_left_02.png",
+    "notes": "Head points upper-left; second tail pose."
+  },
+  {
+    "original_file": "图层 19.png",
+    "guessed_direction": "up_left",
+    "guessed_frame_index": 3,
+    "new_file_name": "fish_05_swim_up_left_03.png",
+    "notes": "Slightly ambiguous between up-left and left; eye/head angle and body tilt fit up-left cycle."
+  }
+]

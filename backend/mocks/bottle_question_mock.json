@@ -3,5 +3,6 @@
   "target_memory_type": "shared_memory",
   "suggested_scene": "fishpond",
   "prompt_type": "shared_memory",
-  "tone": "warm"
+  "tone": "warm",
+  "safety_note": "问题保持开放和低压力，不预设家庭经历。"
 }

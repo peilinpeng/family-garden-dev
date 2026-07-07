@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/cross-memory-link.response.schema.json",
+  "title": "cross-memory-link 响应",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "data", "meta"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["links"],
+              "properties": {
+                "links": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["memory_id_a", "memory_id_b", "relation_type", "confidence", "question", "node_type"],
+                    "properties": {
+                      "memory_id_a": { "$ref": "common.schema.json#/$defs/id" },
+                      "memory_id_b": { "$ref": "common.schema.json#/$defs/id" },
+                      "relation_type": { "$ref": "common.schema.json#/$defs/relationType" },
+                      "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                      "question": { "type": "string", "minLength": 1, "maxLength": 140 },
+                      "node_type": { "const": "memory_link" }
+                    }
+                  }
+                },
+                "safety_note": { "type": "string", "maxLength": 200 }
+              }
+            }
+          ]
+        },
+        "meta": { "$ref": "common.schema.json#/$defs/successMeta" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              { "properties": { "data": { "type": "null" } } },
+              { "properties": { "data": { "type": "object", "properties": { "links": { "type": "array", "maxItems": 0 } } } } }
+            ]
+          },
+          "then": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "complete" } } } } }
+        }
+      ]
+    },
+    { "$ref": "common.schema.json#/$defs/failureEnvelope" }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "pond_background": {
+    "type": "background",
+    "path": "assets/pond/background/pond_background.png"
+  },
+  "koi_fish": {
+    "type": "animated_sprite_collection",
+    "path": "assets/pond/fish",
+    "variants": [
+      {
+        "name": "koi_fish_01",
+        "type": "animated_sprite_8_direction",
+        "path": "assets/pond/fish/koi_fish_01"
+      },
+      {
+        "name": "koi_fish_02",
+        "type": "animated_sprite_8_direction",
+        "path": "assets/pond/fish/koi_fish_02"
+      },
+      {
+        "name": "koi_fish_03",
+        "type": "animated_sprite_8_direction",
+        "path": "assets/pond/fish/koi_fish_03"
+      },
+      {
+        "name": "koi_fish_04",
+        "type": "animated_sprite_8_direction",
+        "path": "assets/pond/fish/koi_fish_04"
+      }
+    ],
+    "directions": [
+      "up",
+      "up_right",
+      "right",
+      "down_right",
+      "down",
+      "down_left",
+      "left",
+      "up_left"
+    ]
+  },
+  "frog": {
+    "type": "sprite_or_animation",
+    "path": "assets/pond/frog",
+    "note": "Source filenames do not identify idle/jump action, so files are named frog_unknown_##."
+  },
+  "water_ripple": {
+    "type": "animation",
+    "path": "assets/pond/water"
+  },
+  "items": {
+    "type": "static_sprites",
+    "path": "assets/pond/items",
+    "files": [
+      "assets/pond/items/bench_seat.png",
+      "assets/pond/items/fence_section.png",
+      "assets/pond/items/wooden_sign.png",
+      "assets/pond/items/water_bucket.png",
+      "assets/pond/items/stone_lantern.png",
+      "assets/pond/items/rope_coil.png",
+      "assets/pond/items/flower_bed.png",
+      "assets/pond/items/flower_pot.png",
+      "assets/pond/items/fishing_platform.png",
+      "assets/pond/items/metal_bucket.png",
+      "assets/pond/items/metal_crate.png",
+      "assets/pond/items/pond_hut_01.png",
+      "assets/pond/items/lotus_flower_01.png",
+      "assets/pond/items/pond_hut_02.png",
+      "assets/pond/items/lotus_flower_02.png",
+      "assets/pond/items/lotus_flower_03.png"
+    ]
+  },
+  "unsorted": {
+    "type": "needs_review",
+    "path": "assets/pond/unsorted",
+    "items": [
+      "assets/pond/unsorted/object_unknown_01.gif"
+    ]
+  }
+}

@@ -6,11 +6,20 @@ extends Node
 ## 从 main.gd 拆出，逻辑保持不变（增量 3 / feature/c-foundation）。
 
 const GAME_SIZE := Vector2(1280, 720)
+const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
+const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
+const FARM_SCENE := "res://scenes/Farm.tscn"
+const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 
 
 const ASSETS := {
 	"background": "res://assets/backgrounds/shared_garden.png",
 	"travel_map": "res://assets/maps/travel_map.png",
+	"globalmap_background": "res://assets/globalmap/background.png",
+	"globalmap_farm": "res://assets/globalmap/farm.png",
+	"globalmap_garden": "res://assets/globalmap/garden.png",
+	"globalmap_house": "res://assets/globalmap/house.png",
+	"globalmap_pond": "res://assets/globalmap/pond.png",
 	"tree": "res://assets/garden/family_tree.png",
 	"mailbox": "res://assets/garden/mailbox.png",
 	"bench": "res://assets/garden/bench.png",
@@ -162,6 +171,10 @@ var world: Node2D
 var ui_layer: CanvasLayer
 var info_label: Label
 var plant_button: Button
+var world_chat_input: LineEdit = null
+var world_chat_feed_panel: Panel = null
+var world_chat_feed: Label = null
+var world_chat_fade_tween: Tween = null
 var plant_mode := false
 var selected_plant_type := "tree"
 var mode := "garden"
@@ -171,6 +184,7 @@ var room_card: Panel = null
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
 var map_ui: Control = null
+var global_map_ui: Control = null
 var adding_place := false
 var pending_place_position := Vector2.ZERO
 var animal_nodes: Dictionary = {}
@@ -194,6 +208,7 @@ func _load_cloud_data() -> void:
 	MemoryManager.apply_cloud_data(data)
 	cloud_load_finished = true
 	MemoryManager.save_game()
+	_refresh_world_chat_feed()
 
 
 func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
@@ -208,6 +223,14 @@ func _build_ui() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(root)
+
+	var day_night_clock := TextureRect.new()
+	day_night_clock.name = "DayNightClock"
+	day_night_clock.set_script(DAY_NIGHT_CLOCK_UI_SCRIPT)
+	day_night_clock.position = Vector2(GAME_SIZE.x - 136, 16)
+	day_night_clock.size = Vector2(112, 124)
+	day_night_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(day_night_clock)
 
 	info_label = Label.new()
 	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -228,13 +251,14 @@ func _build_ui() -> void:
 	root.add_child(help)
 
 	# Bottom navigation. Kept compact and centered under the garden.
-	_add_button(root, "Tree", Vector2(250, 672), Vector2(82, 32), "family_tree")
-	_add_button(root, "Sign", Vector2(342, 672), Vector2(90, 32), "message_board")
-	_add_button(root, "Map", Vector2(442, 672), Vector2(76, 32), "travel_map")
-	_add_button(root, "Postcards", Vector2(528, 672), Vector2(120, 32), "MemoryManager.postcards")
-	_add_button(root, "Save", Vector2(658, 672), Vector2(78, 32), "save")
-	_add_button(root, "Role", Vector2(746, 672), Vector2(82, 32), "role_select")
-	_add_button(root, "Back Garden", Vector2(838, 672), Vector2(126, 32), "back_garden")
+	_add_button(root, "World", Vector2(248, 672), Vector2(86, 32), "global_map")
+	_add_button(root, "Tree", Vector2(338, 672), Vector2(82, 32), "family_tree")
+	_add_button(root, "Map", Vector2(430, 672), Vector2(76, 32), "travel_map")
+	_add_button(root, "Postcards", Vector2(516, 672), Vector2(120, 32), "MemoryManager.postcards")
+	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
+	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
+	_add_button(root, "Chat", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
+	_refresh_world_chat_feed()
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
 	var button := Button.new()
@@ -248,6 +272,254 @@ func _add_button(root: Control, button_text: String, pos: Vector2, button_size: 
 	root.add_child(button)
 	return button
 
+func _add_world_chat_box(root: Control, pos: Vector2, box_size: Vector2) -> LineEdit:
+	var chat := LineEdit.new()
+	chat.name = "WorldChatInput"
+	chat.placeholder_text = "Send a family message..."
+	chat.position = pos
+	chat.size = box_size
+	chat.mouse_filter = Control.MOUSE_FILTER_STOP
+	chat.clear_button_enabled = true
+	chat.add_theme_font_size_override("font_size", 13)
+	chat.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	chat.add_theme_color_override("font_placeholder_color", Color(0.38, 0.31, 0.24, 0.68))
+	var normal_style := _world_chat_input_style(false)
+	var focus_style := _world_chat_input_style(true)
+	chat.add_theme_stylebox_override("normal", normal_style)
+	chat.add_theme_stylebox_override("focus", focus_style)
+	chat.add_theme_stylebox_override("read_only", normal_style)
+	chat.text_submitted.connect(_on_world_chat_submitted)
+	root.add_child(chat)
+	return chat
+
+func _world_chat_input_style(focused: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.86, 0.94) if focused else Color(1.0, 0.94, 0.82, 0.90)
+	style.border_color = Color(0.56, 0.42, 0.27, 0.95) if focused else Color(0.60, 0.48, 0.33, 0.86)
+	style.set_border_width_all(2)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	return style
+
+func _add_world_chat_feed(root: Control, pos: Vector2, feed_size: Vector2) -> Label:
+	var panel := Panel.new()
+	panel.name = "WorldChatPreview"
+	panel.position = pos
+	panel.size = feed_size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.modulate.a = 0.0
+	panel.visible = false
+	panel.gui_input.connect(_on_world_chat_preview_input)
+	panel.add_theme_stylebox_override("panel", _world_chat_preview_style())
+	root.add_child(panel)
+	world_chat_feed_panel = panel
+
+	var feed := Label.new()
+	feed.name = "WorldChatFeed"
+	feed.position = Vector2(12, 8)
+	feed.size = feed_size - Vector2(24, 14)
+	feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	feed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	feed.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	feed.add_theme_font_size_override("font_size", 12)
+	feed.add_theme_color_override("font_color", Color(0.24, 0.20, 0.15, 0.90))
+	panel.add_child(feed)
+	world_chat_feed = feed
+	return feed
+
+func _world_chat_preview_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.94, 0.78, 0.78)
+	style.border_color = Color(0.52, 0.36, 0.20, 0.72)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	return style
+
+func _on_world_chat_preview_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_open_world_chat_history_panel()
+
+func _on_world_chat_submitted(submitted_text: String) -> void:
+	var text := submitted_text.strip_edges()
+	if text == "":
+		return
+	_send_world_chat_message(text)
+
+func _send_world_chat_message(text: String) -> void:
+	if world_chat_input != null and is_instance_valid(world_chat_input):
+		world_chat_input.editable = false
+		world_chat_input.text = ""
+		world_chat_input.placeholder_text = "Sending..."
+
+	var author := _get_world_chat_author()
+	var message_id := "message_" + str(Time.get_ticks_msec())
+	if CloudManager != null:
+		var cloud_message: Dictionary = await CloudManager.create_message(author, text, "")
+		if not cloud_message.is_empty() and str(cloud_message.get("id", "")) != "":
+			message_id = str(cloud_message.get("id", ""))
+
+	var message := {
+		"id": message_id,
+		"author": author,
+		"text": text,
+		"created_at": Time.get_datetime_string_from_system(),
+		"role": MemoryManager.selected_role_key
+	}
+	MemoryManager.garden_messages.append(message)
+	MemoryManager.notify_family_activity()
+	MemoryManager.save_game()
+	_refresh_world_chat_feed(true)
+
+	if world_chat_input != null and is_instance_valid(world_chat_input):
+		world_chat_input.editable = true
+		world_chat_input.placeholder_text = "Send a family message..."
+		world_chat_input.grab_focus()
+	_show_toast("Message sent.")
+
+func _get_world_chat_author() -> String:
+	if GameIdentity != null and GameIdentity.is_ready() and str(GameIdentity.display_name).strip_edges() != "":
+		return str(GameIdentity.display_name).strip_edges()
+	if str(MemoryManager.player_display_name).strip_edges() != "":
+		return str(MemoryManager.player_display_name).strip_edges()
+	var role := str(MemoryManager.selected_role_key).strip_edges()
+	if role != "":
+		for character in CHARACTER_DATA:
+			if str(character.get("role", "")) == role:
+				return str(character.get("default_name", "Family"))
+	return "Family"
+
+func _refresh_world_chat_feed(show_preview: bool = false) -> void:
+	if world_chat_feed == null or not is_instance_valid(world_chat_feed):
+		return
+	var recent: Array[String] = []
+	var start_index := MemoryManager.garden_messages.size() - 3
+	if start_index < 0:
+		start_index = 0
+	for i in range(start_index, MemoryManager.garden_messages.size()):
+		var raw_message: Variant = MemoryManager.garden_messages[i]
+		if not (raw_message is Dictionary):
+			continue
+		var message: Dictionary = raw_message
+		var author := str(message.get("author", "Family"))
+		var text := str(message.get("text", "")).strip_edges()
+		if text == "":
+			continue
+		recent.append(author + ": " + text)
+	world_chat_feed.text = "\n".join(recent)
+	if show_preview and not recent.is_empty():
+		_show_world_chat_preview()
+
+func _show_world_chat_preview() -> void:
+	if world_chat_feed_panel == null or not is_instance_valid(world_chat_feed_panel):
+		return
+	if world_chat_fade_tween != null and world_chat_fade_tween.is_valid():
+		world_chat_fade_tween.kill()
+	world_chat_feed_panel.visible = true
+	world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	world_chat_feed_panel.modulate.a = 1.0
+	world_chat_fade_tween = create_tween()
+	world_chat_fade_tween.tween_interval(5.0)
+	world_chat_fade_tween.tween_property(world_chat_feed_panel, "modulate:a", 0.0, 1.2)
+	world_chat_fade_tween.tween_callback(func() -> void:
+		if world_chat_feed_panel != null and is_instance_valid(world_chat_feed_panel):
+			world_chat_feed_panel.visible = false
+			world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	)
+
+func _open_world_chat_history_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 96)
+	panel.size = Vector2(560, 520)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "World Chat"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(470, 30)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(34, 70)
+	scroll.size = Vector2(492, 360)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
+
+	if MemoryManager.garden_messages.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No messages yet."
+		empty_label.custom_minimum_size = Vector2(460, 48)
+		empty_label.add_theme_font_size_override("font_size", 15)
+		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
+		list.add_child(empty_label)
+	else:
+		for i in range(MemoryManager.garden_messages.size() - 1, -1, -1):
+			var raw_message: Variant = MemoryManager.garden_messages[i]
+			if raw_message is Dictionary:
+				list.add_child(_make_world_chat_history_card(raw_message))
+
+	_add_panel_button(panel, "Close", Vector2(218, 456), Vector2(124, 38), "close")
+
+func _make_world_chat_history_card(message: Dictionary) -> Control:
+	var card := Panel.new()
+	card.custom_minimum_size = Vector2(470, 78)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.95, 0.82, 0.82)
+	style.border_color = Color(0.62, 0.48, 0.32, 0.70)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	card.add_theme_stylebox_override("panel", style)
+
+	var meta := Label.new()
+	meta.text = str(message.get("author", "Family")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.position = Vector2(14, 10)
+	meta.size = Vector2(442, 20)
+	meta.add_theme_font_size_override("font_size", 12)
+	meta.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.86))
+	card.add_child(meta)
+
+	var body := Label.new()
+	body.text = str(message.get("text", ""))
+	body.position = Vector2(14, 32)
+	body.size = Vector2(442, 38)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	card.add_child(body)
+	return card
+
+func _format_world_chat_time(raw_time: String) -> String:
+	if raw_time == "":
+		return "No time"
+	return raw_time.replace("T", " ").replace("Z", "")
+
 func _on_ui_button(action: String) -> void:
 	match action:
 		"family_tree":
@@ -259,10 +531,14 @@ func _on_ui_button(action: String) -> void:
 		"toggle_plant":
 			plant_mode = not plant_mode
 			_update_plant_button()
+		"global_map":
+			_show_global_map()
 		"travel_map":
 			_show_travel_map()
 		"MemoryManager.postcards":
 			_open_postcards_panel()
+		"world_chat_history":
+			_open_world_chat_history_panel()
 		"save":
 			MemoryManager.save_game()
 			_show_toast("Saved.")
@@ -430,6 +706,10 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 	MemoryManager.save_game()
 	_close_active_panel()
 	_show_garden()
+	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
+	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
+	var canonical_role: String = CharacterDB.resolve(role_key)
+	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name)
 
 
 func _default_name_for_role(role_key: String) -> String:
@@ -458,7 +738,7 @@ func _update_plant_button() -> void:
 		plant_button.text = "Plant: ON" if plant_mode else "Plant: OFF"
 		_apply_button_style(plant_button, plant_mode)
 
-func _show_garden() -> void:
+func _show_garden(spawn_key: String = "default") -> void:
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -468,14 +748,780 @@ func _show_garden() -> void:
 	adding_place = false
 	_clear_world()
 	info_label.text = "Family Garden"
+	AudioManager.play_music("garden")
 	_add_background()
 	_add_collision_zones()
+	_add_garden_spawn_markers()
 	_add_houses()
 	_add_core_objects()
 	_add_npcs()
 	_add_animals()
-	_add_player(Vector2(650, 405))
+	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
+	_add_player(spawn)
 	_rebuild_plants()
+	_spawn_demo_memory_nodes()
+	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数算一版画像
+	_render_family_portrait()                         # 挂到入口木牌
+	ScenePortal.build_portals("garden", world, _on_portal_travel)
+
+# 记忆卡片 / 房间识别 / 漂流瓶问题 / 关联连线的 mock 已统一收到 AIClient（docs/04 接口）。
+# 阶段2 真调用到位后只换 AIClient 实现层，本文件调用点不变。
+
+# 阶段1 mock 演示用的记忆列表。真实流程将由 MemoryManager + AI 客户端填充并持久化。
+# 每项：{ id, card, state(new/grown), answer, node }。当前不落库，离开花园后重置。
+var _demo_memories: Array = []
+
+# 鱼塘漂流瓶 demo 列表（mock-first，离场重置）。每项：{ id, question, state, answer, node }。
+var _demo_bottles: Array = []
+# 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
+var _fishpond_memories: Array = []
+# 玩家房间已渲染的家具节点缓存（每项 { id(obj_id), object_type, node }）。
+var _room_objects: Array = []
+
+# 切场景防抖锁（docs/09 §14：切换期间锁输入 0.3–0.5s，防重复触发）。
+var _travel_lock := false
+
+# 其他家庭成员的 role key（≠当前玩家），用于把种子记忆归属给别人 → 玩家回答即跨成员互动。
+func _demo_other_members() -> Array:
+	var others: Array = []
+	for role_data in CHARACTER_DATA:
+		var rk := String(role_data.get("role", ""))
+		if rk != "" and rk != MemoryManager.selected_role_key:
+			others.append(rk)
+	return others
+
+func _spawn_demo_memory_nodes() -> void:
+	_demo_memories.clear()
+	SlotManager.load_scene("garden")
+	# 首次进入：把 3 张演示卡片落库（create_memory + create_node）；之后统一从数据层读，实现持久化。
+	if MemoryManager.get_nodes_for_scene("garden").is_empty():
+		# 种子记忆归属给其他家庭成员（≠当前玩家），这样玩家回答它们才算"跨成员互动"，分季背景才会随之升温。
+		var uploaders := _demo_other_members()
+		for i in range(3):
+			var slot: Variant = SlotManager.allocate("garden", "memory_flower", "garden_seed_%d" % i)
+			if slot == null:
+				break
+			var mem := MemoryManager.create_memory(AIClient.mock_memory_card(), "photo")
+			if not uploaders.is_empty():
+				mem["user_id"] = uploaders[i % uploaders.size()]  # 改上传者为别的成员
+			MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", String(slot.get("slot_id", "")))
+		MemoryManager.save_game()  # 落盘改过的 user_id
+	# 统一从数据层渲染（首次/再次进入一致）。
+	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
+	_spawn_demo_memory_link()       # ≥2 条记忆时生成 mock 关联（阶段2 换 cross-memory-link 真调用）
+	_render_memory_links("garden")  # 画连线
+	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
+
+# 阶段1 mock：花园里 ≥2 条记忆且尚无连线时，给前两条造一条关联连线。
+# 阶段2 换 cross-memory-link 接口：每上传新记忆增量算关联，relation_type/question 由 AI 给。
+func _spawn_demo_memory_link() -> void:
+	if not MemoryManager.get_memory_links("garden").is_empty():
+		return
+	if _demo_memories.size() < 2:
+		return
+	var a := String(_demo_memories[0].get("memory_id", ""))
+	var b := String(_demo_memories[-1].get("memory_id", ""))  # 连最分散的一对，连线更清晰
+	if a == "" or b == "" or a == b:
+		return
+	var link: Dictionary = AIClient.mock_link()  # 阶段2 换 await AIClient.cross_memory_link(a, candidates)
+	MemoryManager.create_memory_link(a, b, "garden",
+		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
+
+# 画花园里所有记忆连线：两端取各自记忆花的落点，连一条藤蔓线 + 可点的关联问题。
+func _render_memory_links(scene: String) -> void:
+	for link in MemoryManager.get_memory_links(scene):
+		var a := _memory_flower_pos(scene, String(link.get("memory_id", "")))
+		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
+		if a == Vector2.INF or b == Vector2.INF:
+			continue
+		_draw_link_line(a, b, String(link.get("question", "")))
+
+# 渲染家庭画像木牌（入口处）：占位画板 + 版本/成员/记忆数；版本变化时重画。
+# 挂载点(645,200)为临时位置，待搭档定稿花园木牌位后校准。
+func _render_family_portrait() -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var existing := world.get_node_or_null("FamilyPortraitBoard")
+	if existing != null:
+		existing.queue_free()
+	var fp: Dictionary = MemoryManager.family_portrait
+	if int(fp.get("version", 0)) <= 0:
+		return  # 还没有画像（无人参与）
+	var board := Node2D.new()
+	board.name = "FamilyPortraitBoard"
+	board.position = Vector2(645, 200)
+	board.z_index = 4000  # 盖在家庭树之上，保证可见（临时）
+	var sprite := Sprite2D.new()
+	sprite.texture = _solid_texture(132, 92, Color(0.60, 0.44, 0.29, 1.0))
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	board.add_child(sprite)
+	var lbl := Label.new()
+	lbl.text = "🖼️ 家庭画像 v%d\n%d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
+	lbl.position = Vector2(-58, -26)
+	lbl.size = Vector2(116, 52)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	board.add_child(lbl)
+	var area := Area2D.new()
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(132, 92)
+	shape.shape = rect
+	area.add_child(shape)
+	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_show_toast("🖼️ 家庭画像 v%d · %d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
+	board.add_child(area)
+	world.add_child(board)
+
+# 取某条记忆在该场景的记忆花落点（slot.pos）；找不到返回 Vector2.INF。
+func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
+	for nd in MemoryManager.get_nodes_for_scene(scene):
+		if String(nd.get("memory_id", "")) == memory_id and String(nd.get("node_type", "")) == "memory_flower":
+			var slot := SlotManager.get_slot(scene, String(nd.get("slot_id", "")))
+			if not slot.is_empty():
+				var p: Variant = slot.get("pos", null)
+				if p is Array and (p as Array).size() >= 2:
+					return Vector2(float(p[0]), float(p[1]))
+	return Vector2.INF
+
+# 一条连线：两花之间拱起的藤蔓线（盖在记忆花之上，避免被花遮住）+ 中点可点的 🔗 关联问题。
+func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
+	var head := Vector2(0, -100)  # 连到花头上方，越过花顶
+	var arc := ((a + b) * 0.5 + head) + Vector2(0, -40)  # 中点再抬高 → 轻微拱形
+	var line := Line2D.new()
+	line.name = "MemoryLink"
+	line.points = PackedVector2Array([a + head, arc, b + head])
+	line.width = 4.0
+	line.default_color = Color(0.46, 0.66, 0.36, 0.9)
+	line.z_index = 5000  # 盖在记忆花(z=pos.y)之上，保证可见
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	world.add_child(line)
+	# 中点：🔗 图标 + 可点区域，点击弹关联问题。
+	var mid := arc
+	var area := Area2D.new()
+	area.position = mid
+	area.z_index = 5001
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(40, 40)
+	shape.shape = rect
+	area.add_child(shape)
+	var tag := Label.new()
+	tag.text = "🔗"
+	tag.position = Vector2(-12, -16)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_font_size_override("font_size", 22)
+	area.add_child(tag)
+	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_show_toast("🔗 " + question))
+	world.add_child(area)
+
+# 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
+# cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
+func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
+	for nd in MemoryManager.get_nodes_for_scene(scene):
+		if String(nd.get("node_type", "")) == "memory_link":
+			continue  # 连线节点不是落点物，由 _render_memory_links 单独画
+		var node_id := String(nd.get("id", ""))
+		var memory_id := String(nd.get("memory_id", ""))
+		var slot_id := String(nd.get("slot_id", ""))
+		var mem := MemoryManager.get_memory(memory_id)
+		var card: Dictionary = mem.get("ai_card", {})
+		SlotManager.occupy(scene, slot_id, node_id)  # 重入时回填占用，避免新分配撞位
+		var slot := SlotManager.get_slot(scene, slot_id)
+		if slot.is_empty():
+			continue
+		var live := NodeFactory.make_memory_node(card, slot, click_cb.bind(node_id))
+		var state := String(nd.get("state", "new"))
+		if String(nd.get("node_type", "")) == "memory_flower":
+			_add_memory_tag(live)
+		live.scale = Vector2.ONE if state == "grown" else Vector2(0.55, 0.55)  # grown=已开花 / new=花苞
+		world.add_child(live)
+		cache.append({
+			"id": node_id, "memory_id": memory_id, "card": card,
+			"state": state, "answer": MemoryManager.get_answer_for_memory(memory_id), "node": live
+		})
+
+# 占位美术与背景花相近，加一个轻量"记忆"标签便于辨认（真 3 态美术到位后移除）。
+func _add_memory_tag(node: Node2D) -> void:
+	var tag := Label.new()
+	tag.name = "DemoTag"
+	tag.text = "记忆"
+	tag.position = Vector2(-22, -126)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_font_size_override("font_size", 13)
+	tag.add_theme_color_override("font_color", Color(0.55, 0.20, 0.35, 0.95))
+	node.add_child(tag)
+
+func _find_demo_memory(mem_id: String) -> Dictionary:
+	for m in _demo_memories:
+		if String(m.get("id", "")) == mem_id:
+			return m
+	return {}
+
+func _on_memory_clicked(mem_id: String) -> void:
+	var mem := _find_demo_memory(mem_id)
+	if not mem.is_empty():
+		_open_memory_card(mem)
+
+# 记忆卡片 UI —— "可见的诚实"：AI 推测=浅灰+问号；家人确认=正常深色。
+func _open_memory_card(mem: Dictionary) -> void:
+	_close_active_panel()
+	var card: Dictionary = mem.get("card", {})
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 120)
+	panel.size = Vector2(560, 484)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = String(card.get("title", "记忆"))
+	title.position = Vector2(34, 24)
+	title.size = Vector2(490, 34)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var desc := Label.new()
+	desc.text = String(card.get("description", ""))
+	desc.position = Vector2(34, 68)
+	desc.size = Vector2(492, 70)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 15)
+	desc.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(desc)
+
+	# AI 推测：浅灰 + ✎ + 问号，明确区别于家人确认的事实（可见的诚实）。
+	var guess := Label.new()
+	guess.text = "✎ AI 推测：" + String(card.get("guess", "")) + "  ？（待家人确认）"
+	guess.position = Vector2(34, 144)
+	guess.size = Vector2(492, 24)
+	guess.add_theme_font_size_override("font_size", 13)
+	guess.add_theme_color_override("font_color", Color(0.60, 0.57, 0.52, 1.0))
+	panel.add_child(guess)
+
+	var q := Label.new()
+	q.text = String(card.get("question", ""))
+	q.position = Vector2(34, 182)
+	q.size = Vector2(492, 50)
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.add_theme_font_size_override("font_size", 16)
+	q.add_theme_color_override("font_color", Color(0.20, 0.30, 0.24, 1.0))
+	panel.add_child(q)
+
+	if String(mem.get("state", "new")) == "new":
+		var input := TextEdit.new()
+		input.placeholder_text = "写下你的回忆…"
+		input.position = Vector2(34, 244)
+		input.size = Vector2(492, 112)
+		panel.add_child(input)
+		_add_panel_button(panel, "取消", Vector2(150, 376), Vector2(120, 40), "close")
+		var submit := Button.new()
+		submit.text = "回答"
+		submit.position = Vector2(290, 376)
+		submit.size = Vector2(120, 40)
+		submit.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_button_style(submit, false)
+		submit.pressed.connect(_submit_memory_answer.bind(String(mem.get("id", "")), input))
+		panel.add_child(submit)
+	else:
+		var ans_title := Label.new()
+		ans_title.text = "家人的回答（已确认）"
+		ans_title.position = Vector2(34, 244)
+		ans_title.size = Vector2(492, 22)
+		ans_title.add_theme_font_size_override("font_size", 13)
+		ans_title.add_theme_color_override("font_color", Color(0.35, 0.45, 0.35, 1.0))
+		panel.add_child(ans_title)
+		var ans := Label.new()
+		ans.text = String(mem.get("answer", ""))
+		ans.position = Vector2(34, 270)
+		ans.size = Vector2(492, 88)
+		ans.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ans.add_theme_font_size_override("font_size", 16)
+		ans.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
+		panel.add_child(ans)
+		_add_panel_button(panel, "关闭", Vector2(220, 376), Vector2(120, 40), "close")
+
+func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
+	var mem := _find_demo_memory(mem_id)
+	if mem.is_empty():
+		return
+	var text: String = input.text.strip_edges()
+	if text == "":
+		_show_toast("写点什么再回答吧～")
+		return
+	mem["answer"] = text
+	mem["state"] = "grown"
+	MemoryManager.answer_memory(String(mem.get("memory_id", "")), text)  # 持久化：存 answer + 标节点 grown + 存档
+	# 跨成员互动计数（回答别人上传的记忆）→ 升温则刷新分季背景。
+	var bumped := MemoryManager.register_cross_member_answer(String(mem.get("memory_id", "")), MemoryManager.selected_role_key)
+	_close_active_panel()
+	_grow_memory_node(mem.get("node"))
+	if bumped:
+		_update_season_overlay()
+		_show_toast("记忆长大了 🌱 → 🌸 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
+	else:
+		_show_toast("记忆长大了 🌱 → 🌸")
+	if MemoryManager.maybe_recompute_family_portrait():  # 参与成员变化 → 重画家庭画像木牌
+		_render_family_portrait()
+
+func _season_cn(season: String) -> String:
+	match season:
+		"autumn": return "秋"
+		"summer": return "夏"
+		_: return "春"
+
+# 生长动画：花苞 → 开放（≤3 秒）。占位单贴图用缩放近似 seed→bud→bloom。
+func _grow_memory_node(node: Variant) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var n: Node2D = node
+	if n.has_node("DemoTag"):
+		n.get_node("DemoTag").queue_free()
+	n.scale = Vector2(0.25, 0.25)
+	var t := create_tween()
+	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+# ── 全局导航地图（导航页 / World Map）──────────────────────────────
+# 一张拍平的世界插画，四个抠图图层正好压在底图对应区域上。鼠标悬浮时该图层
+# 抬起（高亮 + 下方柔和阴影），点击进入对应场景（走统一入口 goto_scene）。
+const GLOBAL_MAP_REGIONS := [
+	{"id": "farm", "asset": "globalmap_farm", "label": "农场", "target": "farm"},
+	{"id": "garden", "asset": "globalmap_garden", "label": "花园", "target": "garden"},
+	{"id": "house", "asset": "globalmap_house", "label": "小屋", "target": "house"},
+	{"id": "pond", "asset": "globalmap_pond", "label": "鱼塘", "target": "fishpond"},
+]
+
+func _show_global_map() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "global_map"
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = "世界地图"
+	AudioManager.play_music("globalmap")
+	AudioManager.play_sfx("打开地图")
+
+	# 整张导航页放在 ui_layer（在 world 之上），但移到底部导航栏之后，保证那些按钮仍可点。
+	var view := Control.new()
+	view.name = "GlobalMapView"
+	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(view)
+	ui_layer.move_child(view, 0)
+	global_map_ui = view
+
+	# 美术没导入时的柔色兜底。
+	var fallback := ColorRect.new()
+	fallback.name = "GlobalMapFallback"
+	fallback.color = Color(0.80, 0.88, 0.70, 1.0)
+	fallback.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(fallback)
+
+	# 拍平底图。
+	var bg_tex := _safe_texture(ASSETS["globalmap_background"])
+	if bg_tex:
+		var bg := TextureRect.new()
+		bg.name = "GlobalMapBackground"
+		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.stretch_mode = TextureRect.STRETCH_SCALE
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		bg.texture = bg_tex
+		view.add_child(bg)
+
+	var loaded := 0
+	for region in GLOBAL_MAP_REGIONS:
+		if _add_global_map_region(view, region):
+			loaded += 1
+
+	if loaded == 0:
+		_show_toast("世界地图美术还没导入 — 用 Godot 打开一次项目即可。")
+	else:
+		_show_toast("把鼠标移到某个地点，点击即可进入。")
+
+func _add_global_map_region(view: Control, region: Dictionary) -> bool:
+	var tex := _safe_texture(ASSETS[str(region["asset"])])
+	if tex == null:
+		return false
+
+	# 把缩放轴心放在抠图的视觉中心，悬浮“弹起”才是原地放大。
+	var img := tex.get_image()
+	var pivot: Vector2 = tex.get_size() / 2.0
+	if img != null:
+		var used := img.get_used_rect()
+		pivot = Vector2(used.position) + Vector2(used.size) / 2.0
+
+	# 柔和阴影：同一剪影模糊染黑，平时隐藏，悬浮时出现在图层正下方，模拟被"抬起"投下的影子。
+	var shadow := TextureRect.new()
+	shadow.name = "Shadow_" + str(region["id"])
+	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	shadow.texture = tex
+	shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.modulate = Color(0.0, 0.0, 0.0, 0.0)
+	shadow.pivot_offset = pivot
+	var shadow_mat := ShaderMaterial.new()
+	shadow_mat.shader = load("res://assets/shaders/soft_shadow_blur.gdshader")
+	shadow.material = shadow_mat
+	view.add_child(shadow)
+
+	# 可交互抠图本体。click_mask 让只有画上像素的地方响应，透明处穿透到下面的图层。
+	var button := TextureButton.new()
+	button.name = "Region_" + str(region["id"])
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.ignore_texture_size = true
+	button.stretch_mode = TextureButton.STRETCH_SCALE
+	button.texture_normal = tex
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.pivot_offset = pivot
+	view.add_child(button)
+
+	var hotspot := Button.new()
+	hotspot.name = "Hotspot_" + str(region["id"])
+	hotspot.flat = true
+	hotspot.text = ""
+	hotspot.mouse_filter = Control.MOUSE_FILTER_STOP
+	hotspot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var rect := Rect2(Vector2.ZERO, GAME_SIZE)
+	if img != null:
+		var used_rect := img.get_used_rect()
+		rect = Rect2(Vector2(used_rect.position), Vector2(used_rect.size))
+	hotspot.position = rect.position
+	hotspot.size = rect.size
+	view.add_child(hotspot)
+
+	hotspot.mouse_entered.connect(_on_global_map_region_hover.bind(button, shadow, true))
+	hotspot.mouse_exited.connect(_on_global_map_region_hover.bind(button, shadow, false))
+	hotspot.pressed.connect(_on_global_map_region_pressed.bind(str(region["target"]), str(region["label"])))
+	return true
+
+func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hovering: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	# 把悬浮的图层（连同阴影）抬到其它图层之上。
+	button.z_index = 10 if hovering else 0
+	if is_instance_valid(shadow):
+		shadow.z_index = 9 if hovering else 0
+
+	if hovering:
+		# 悬浮时：图层整体上移(离开地图)+ 轻微放大 + 提亮，用回弹缓动做出"弹起"的体积感；
+		# 阴影同步放大、下移、变模糊变深，靠位移差和模糊制造"离开桌面"的空间感。
+		var lift := Vector2(0, -8)
+		var t := create_tween().set_parallel(true)
+		t.tween_property(button, "position", lift, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(button, "scale", Vector2(1.06, 1.06), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.chain().tween_property(button, "scale", Vector2(1.045, 1.045), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var tint := create_tween()
+		tint.tween_property(button, "modulate", Color(1.18, 1.16, 1.1, 1.0), 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tint.tween_property(button, "modulate", Color(1.10, 1.09, 1.05, 1.0), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		if is_instance_valid(shadow):
+			var st := create_tween().set_parallel(true)
+			st.tween_property(shadow, "scale", Vector2(1.10, 1.10), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			st.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, 0.38), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			st.tween_property(shadow, "position", Vector2(12, 20), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		var t := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(button, "position", Vector2.ZERO, 0.12)
+		t.tween_property(button, "scale", Vector2.ONE, 0.12)
+		t.tween_property(button, "modulate", Color(1, 1, 1, 1), 0.12)
+		if is_instance_valid(shadow):
+			t.tween_property(shadow, "scale", Vector2.ONE, 0.12)
+			t.tween_property(shadow, "modulate", Color(0.0, 0.0, 0.0, 0.0), 0.12)
+			t.tween_property(shadow, "position", Vector2.ZERO, 0.12)
+
+func _on_global_map_region_pressed(target: String, label_text: String) -> void:
+	_show_toast("进入%s…" % label_text)
+	goto_scene(target)
+
+# 把一个自包含的编辑器场景（Farm.tscn / AnnaRoom.tscn）嵌进持久化的 world。
+# 这些场景按 1280×720 屏幕坐标、左上角为原点制作，所以实例放在 (0,0)。
+func _build_embedded_scene(scene_key: String, scene_path: String, title: String, fallback_color: Color, add_player: bool) -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = scene_key
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	_clear_world()
+	info_label.text = title
+
+	var instance: Node = null
+	if ResourceLoader.exists(scene_path):
+		instance = (load(scene_path) as PackedScene).instantiate()
+	if instance != null:
+		if instance is Node2D:
+			(instance as Node2D).position = Vector2.ZERO
+		world.add_child(instance)
+	else:
+		_add_scene_background(scene_key, fallback_color)
+
+	# 场景若不自带主控角色（如静态房间模板），补一个出生点上的玩家。
+	if add_player:
+		_add_player(ScenePortal.get_spawn(scene_key, "default"))
+
+# ── 通用场景切换（ScenePortal 框架）────────────────────────────────
+# 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
+func goto_scene(target: String, spawn_key: String = "default") -> void:
+	if target == POND_AREA_SCENE:
+		_build_fishpond(spawn_key)
+		return
+	if target == "res://scenes/Main.tscn":
+		_show_garden(spawn_key)
+		return
+
+	match target:
+		"garden":
+			_show_garden(spawn_key)
+		"fishpond", "pond":
+			_build_fishpond(spawn_key)
+		"farm":
+			# Farm.tscn 自带玩家（farm.gd 的 _spawn_player），不要再补一个。
+			AudioManager.play_music("farm")
+			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
+			ScenePortal.build_portals("farm", world, _on_portal_travel)
+		"house":
+			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
+			AudioManager.play_music("house")
+			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
+		_:
+			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
+
+# ScenePortal 走入/点按触发的回调；带防抖锁防止刚进场就反复触发。
+func _on_portal_travel(target: String, spawn_key: String) -> void:
+	if _travel_lock:
+		return
+	_travel_lock = true
+	goto_scene(target, spawn_key)
+	var timer := get_tree().create_timer(0.4)
+	timer.timeout.connect(func() -> void: _travel_lock = false)
+
+# 通用场景背景：优先读 manifest bg 真实美术，缺图回退纯色（fallback_color）。
+func _add_scene_background(scene: String, fallback_color: Color) -> void:
+	var backdrop := Sprite2D.new()
+	backdrop.name = "SceneBackdrop"
+	backdrop.centered = true
+	backdrop.position = GAME_SIZE / 2.0
+	backdrop.z_index = -100
+	backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var bg_path := "res://assets/%s/scene_%s_bg_01.png" % [scene, scene]
+	if ResourceLoader.exists(bg_path):
+		var tex: Texture2D = load(bg_path)
+		backdrop.texture = tex
+		var sx := GAME_SIZE.x / float(tex.get_width())
+		var sy := GAME_SIZE.y / float(tex.get_height())
+		backdrop.scale = Vector2(sx, sy)
+	else:
+		backdrop.texture = _solid_texture(int(GAME_SIZE.x), int(GAME_SIZE.y), fallback_color)
+	world.add_child(backdrop)
+
+# ── 爸爸鱼塘 fishpond ──────────────────────────────────────────────
+func _build_fishpond(spawn_key: String = "default") -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	mode = "fishpond"
+	adding_place = false
+	plant_mode = false
+	_update_plant_button()
+	AudioManager.play_music("fishpond")
+	_clear_world()
+	info_label.text = "爸爸鱼塘"
+	var pond_area: Node2D = null
+	if ResourceLoader.exists(POND_AREA_SCENE):
+		pond_area = (load(POND_AREA_SCENE) as PackedScene).instantiate() as Node2D
+		if pond_area != null:
+			pond_area.position = GAME_SIZE / 2.0
+			world.add_child(pond_area)
+	else:
+		_add_scene_background("fishpond", Color(0.42, 0.62, 0.70, 1.0))  # 占位水色，等 A 出背景
+	var spawn: Vector2 = ScenePortal.get_spawn("fishpond", spawn_key)
+	var player_parent: Node = world
+	var player_spawn := spawn
+	if pond_area != null:
+		var ysort_objects := pond_area.get_node_or_null("YSortObjects") as Node2D
+		if ysort_objects != null:
+			player_parent = ysort_objects
+			player_spawn = ysort_objects.to_local(spawn)
+	_add_player(player_spawn, player_parent)
+	_spawn_demo_bottles()
+	_register_scene_message_bottle(pond_area)
+	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
+	_fishpond_memories.clear()
+	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
+	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
+	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
+
+const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
+
+# 阶段1 mock：在水面 slot 上生成可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
+# 问题来自 AIClient（mock，阶段2 换 generate-bottle-question 真调用）。
+func _spawn_demo_bottles() -> void:
+	_demo_bottles.clear()
+	SlotManager.reset("fishpond")
+	SlotManager.load_scene("fishpond")
+	var questions: Array = AIClient.mock_bottle_questions()
+	var spawned := 0
+	for i in range(questions.size()):
+		var slot: Variant = SlotManager.allocate("fishpond", "bottle", "bottle_%d" % i)
+		if slot == null:
+			break
+		var bid := "bottle_%d" % i
+		var card := {"node_type": "bottle", "suggested_scene": "fishpond"}
+		var node := NodeFactory.make_memory_node(card, slot, _on_bottle_clicked.bind(bid))
+		world.add_child(node)
+		_demo_bottles.append({"id": bid, "question": String(questions[i]), "state": "floating", "answer": "", "node": node})
+		spawned += 1
+
+func _register_scene_message_bottle(pond_area: Node2D) -> void:
+	if pond_area == null:
+		return
+	var bottle := pond_area.get_node_or_null("MessageBottle") as Area2D
+	if bottle == null:
+		return
+	bottle.input_pickable = true
+	if not bottle.input_event.is_connected(_on_scene_message_bottle_input):
+		bottle.input_event.connect(_on_scene_message_bottle_input)
+	_demo_bottles.append({"id": "scene_bottle", "question": SCENE_BOTTLE_QUESTION, "state": "floating", "answer": "", "node": bottle})
+
+func _on_scene_message_bottle_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_on_bottle_clicked("scene_bottle")
+
+func _find_demo_bottle(bid: String) -> Dictionary:
+	for b in _demo_bottles:
+		if String(b.get("id", "")) == bid:
+			return b
+	return {}
+
+func _on_bottle_clicked(bid: String) -> void:
+	var b := _find_demo_bottle(bid)
+	if not b.is_empty():
+		_open_bottle_panel(b)
+
+# 漂流瓶问题面板（复用记忆卡片样式）：未答=问题+回答框；已答=显示回答。
+func _open_bottle_panel(b: Dictionary) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 150)
+	panel.size = Vector2(560, 420)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "🍶 漂来一个问题"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(490, 34)
+	title.add_theme_font_size_override("font_size", 23)
+	title.add_theme_color_override("font_color", Color(0.18, 0.30, 0.38, 1.0))
+	panel.add_child(title)
+
+	var q := Label.new()
+	q.text = String(b.get("question", ""))
+	q.position = Vector2(34, 76)
+	q.size = Vector2(492, 70)
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.add_theme_font_size_override("font_size", 17)
+	q.add_theme_color_override("font_color", Color(0.20, 0.28, 0.26, 1.0))
+	panel.add_child(q)
+
+	if String(b.get("state", "floating")) == "floating":
+		var input := TextEdit.new()
+		input.placeholder_text = "写下你的回答…"
+		input.position = Vector2(34, 160)
+		input.size = Vector2(492, 130)
+		panel.add_child(input)
+		_add_panel_button(panel, "取消", Vector2(150, 312), Vector2(120, 40), "close")
+		var submit := Button.new()
+		submit.text = "回答"
+		submit.position = Vector2(290, 312)
+		submit.size = Vector2(120, 40)
+		submit.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_button_style(submit, false)
+		submit.pressed.connect(_submit_bottle_answer.bind(String(b.get("id", "")), input))
+		panel.add_child(submit)
+	else:
+		var ans_title := Label.new()
+		ans_title.text = "你的回答（已生成记忆）"
+		ans_title.position = Vector2(34, 160)
+		ans_title.size = Vector2(492, 22)
+		ans_title.add_theme_font_size_override("font_size", 13)
+		ans_title.add_theme_color_override("font_color", Color(0.30, 0.45, 0.42, 1.0))
+		panel.add_child(ans_title)
+		var ans := Label.new()
+		ans.text = String(b.get("answer", ""))
+		ans.position = Vector2(34, 186)
+		ans.size = Vector2(492, 104)
+		ans.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ans.add_theme_font_size_override("font_size", 16)
+		ans.add_theme_color_override("font_color", Color(0.18, 0.22, 0.20, 1.0))
+		panel.add_child(ans)
+		_add_panel_button(panel, "关闭", Vector2(220, 312), Vector2(120, 40), "close")
+
+func _submit_bottle_answer(bid: String, input: TextEdit) -> void:
+	var b := _find_demo_bottle(bid)
+	if b.is_empty():
+		return
+	var text: String = input.text.strip_edges()
+	if text == "":
+		_show_toast("写点什么再回答吧～")
+		return
+	b["answer"] = text
+	b["state"] = "opened"
+	_close_active_panel()
+	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆），并落库持久化（关游戏重开仍在）。
+	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bid + "_mem")
+	if slot != null:
+		var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
+			"suggested_scene": "fishpond", "question": String(b.get("question", "")),
+			"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
+		var mem := MemoryManager.create_memory(card, "bottle")
+		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
+		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
+		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆 🌊"))
+		mem_node.scale = Vector2(0.25, 0.25)
+		world.add_child(mem_node)
+		_grow_memory_node(mem_node)
+		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
+		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
+			"card": card, "state": "grown", "answer": text, "node": mem_node})
+	_show_toast("漂流瓶被回答了 🍶 → 🌊")
 
 func _clear_world() -> void:
 	for child in world.get_children():
@@ -487,6 +1533,12 @@ func _clear_map_ui() -> void:
 	if map_ui != null and is_instance_valid(map_ui):
 		map_ui.queue_free()
 	map_ui = null
+	_clear_global_map_ui()
+
+func _clear_global_map_ui() -> void:
+	if global_map_ui != null and is_instance_valid(global_map_ui):
+		global_map_ui.queue_free()
+	global_map_ui = null
 
 func _add_background() -> void:
 	var texture := _safe_texture(ASSETS["background"])
@@ -502,6 +1554,42 @@ func _add_background() -> void:
 	else:
 		sprite.texture = _solid_texture(1280, 720, Color(0.72, 0.86, 0.62, 1.0))
 	world.add_child(sprite)
+	_add_season_overlay()
+
+# 分季氛围叠加层（家庭关系温度计）：按跨成员互动数着色，0→春稀疏 / 3-9→夏 / 10+→秋繁茂。
+# 半透明叠在背景之上、记忆花之下；无需新美术，A 的分季层定稿后可替换为真层。
+func _add_season_overlay() -> void:
+	var overlay := ColorRect.new()
+	overlay.name = "SeasonOverlay"
+	overlay.position = Vector2.ZERO
+	overlay.size = GAME_SIZE
+	overlay.z_index = 1  # 背景(0)之上、记忆花(z=pos.y)之下
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.color = _season_overlay_color(MemoryManager.garden_season())
+	world.add_child(overlay)
+
+# 跨成员互动数变化后实时重着色（不重建场景）。
+func _update_season_overlay() -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var ov := world.get_node_or_null("SeasonOverlay")
+	if ov is ColorRect:
+		(ov as ColorRect).color = _season_overlay_color(MemoryManager.garden_season())
+
+func _season_overlay_color(season: String) -> Color:
+	match season:
+		"autumn":
+			return Color(0.86, 0.52, 0.18, 0.20)  # 金黄繁茂
+		"summer":
+			return Color(0.96, 0.80, 0.34, 0.12)  # 暖绿/夏
+		_:
+			return Color(0.45, 0.80, 0.50, 0.06)  # 清新稀疏/春
+
+func _add_garden_spawn_markers() -> void:
+	var marker := Marker2D.new()
+	marker.name = "GardenFromPondSpawnPoint"
+	marker.position = ScenePortal.get_spawn("garden", "GardenFromPondSpawnPoint")
+	world.add_child(marker)
 
 func _add_core_objects() -> void:
 	_add_interactable_sprite(
@@ -738,21 +1826,49 @@ func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> S
 	world.add_child(body)
 	return body
 
-func _add_player(pos: Vector2) -> void:
+func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var asset_key := _current_player_asset_key()
 	var display_name := MemoryManager.player_display_name if MemoryManager.player_display_name != "" else _default_name_for_role(MemoryManager.selected_role_key)
-	player = _create_character(display_name, ASSETS[asset_key], pos, true)
+	# 角色贴图网格(hframes/vframes)以 CharacterDB/characters.json 为准,
+	# 不同角色的行数可能不一样(如 girl 现在是 3x5,多一行待机眨眼帧)。
+	var char_def: Dictionary = CharacterDB.get_def(asset_key)
+	var char_hframes: int = int(char_def.get("hframes", 3))
+	var char_vframes: int = int(char_def.get("vframes", 4))
+	player = _create_character(display_name, ASSETS[asset_key], pos, true, char_hframes, char_vframes)
+	# player.gd 的 apply_character() 是唯一处理 frame_rects(非等分网格精确裁切)的地方,
+	# 这里补调一次,否则 girl 这种手工排版的图集会被上面_create_character 的均分网格逻辑切错。
+	if player.has_method("apply_character"):
+		player.apply_character(asset_key)
 	player.name = "Player_" + MemoryManager.selected_role_key
-	world.add_child(player)
+	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
+	var parent := world if parent_override == null else parent_override
+	parent.add_child(player)
 	_add_online_status_badge(player, true)
+	var parent_canvas := parent as CanvasItem
+	if parent_canvas != null and parent_canvas.y_sort_enabled:
+		var sort_origin_offset := 18.0
+		player.position.y += sort_origin_offset
+		for child in player.get_children():
+			if child is Node2D:
+				(child as Node2D).position.y -= sort_origin_offset
+		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
 	body.collision_layer = 1
 	body.collision_mask = 1
+
+	var shadow := Sprite2D.new()
+	shadow.name = "Shadow"
+	shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shadow.texture = _safe_texture("res://assets/characters/shadow.png")
+	shadow.position = Vector2(0, 30)
+	shadow.scale = Vector2(0.28, 0.16)
+	shadow.modulate = Color(1, 1, 1, 0.8)
+	body.add_child(shadow)
 
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -760,10 +1876,10 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var texture := _safe_texture(path)
 	if texture:
 		sprite.texture = texture
-		sprite.hframes = 3
-		sprite.vframes = 4
-		sprite.frame = 1
-		var frame_height := float(texture.get_height()) / 4.0
+		sprite.hframes = hframes
+		sprite.vframes = vframes
+		sprite.frame = 0
+		var frame_height := float(texture.get_height()) / float(vframes)
 		if frame_height > 0.0:
 			sprite.scale = Vector2.ONE * (82.0 / frame_height)
 	else:
@@ -786,6 +1902,9 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	name_label.position = Vector2(-52, -78)
 	name_label.size = Vector2(104, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.z_as_relative = false
+	name_label.z_index = 10000
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_label.add_theme_font_size_override("font_size", 12)
 	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
 	body.add_child(name_label)
@@ -799,6 +1918,9 @@ func _add_online_status_badge(parent: Node2D, online: bool) -> void:
 	dot.text = "●"
 	dot.position = Vector2(34, -79)
 	dot.size = Vector2(20, 18)
+	dot.z_as_relative = false
+	dot.z_index = 10001
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dot.add_theme_font_size_override("font_size", 14)
 	dot.add_theme_color_override("font_color", Color(0.22, 0.78, 0.36, 1.0) if online else Color(0.55, 0.52, 0.48, 0.88))
 	parent.add_child(dot)
@@ -911,6 +2033,15 @@ func _enter_house(id: String, label_text: String) -> void:
 	var room_label: String = str(room_info.get("label", label_text))
 	info_label.text = room_label
 
+	# 样板（增量迁移 §7）：玩家房间用编辑器场景 AnnaRoom.tscn（静态背景+碰撞），
+	# 玩家/提示面板/返回流程仍复用代码。其他 3 间保持原过程化构建。
+	if id == "player" and ResourceLoader.exists(ANNA_ROOM_SCENE):
+		world.add_child((load(ANNA_ROOM_SCENE) as PackedScene).instantiate())
+		_add_player(room_info.get("spawn", Vector2(640, 560)))
+		_render_room("player")  # 渲染已落库的房间家具（关游戏重开仍在）
+		_add_room_hint_panel(room_label, id)
+		return
+
 	var room_rect: Rect2 = _add_room_background(str(room_info.get("asset", "")))
 	_add_room_collision_zones(id, room_rect)
 
@@ -988,10 +2119,11 @@ func _add_room_foreground_if_exists(foreground_asset_key: String, room_rect: Rec
 
 
 func _add_room_hint_panel(room_label: String, house_id: String) -> void:
+	var is_player := house_id == "player"
 	var panel := Panel.new()
 	room_card = panel
 	panel.position = Vector2(22, 86)
-	panel.size = Vector2(292, 156)
+	panel.size = Vector2(292, 196 if is_player else 156)  # 玩家房间多一行"上传房间照片"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	ui_layer.add_child(panel)
@@ -1014,9 +2146,44 @@ Use Back Garden to return."
 	body.add_theme_color_override("font_color", Color(0.36, 0.30, 0.23, 0.90))
 	panel.add_child(body)
 
-	_add_panel_button(panel, "Note", Vector2(18, 104), Vector2(78, 34), "house_note:" + house_id)
-	_add_panel_button(panel, "Cards", Vector2(106, 104), Vector2(82, 34), "MemoryManager.postcards")
-	_add_panel_button(panel, "Back", Vector2(198, 104), Vector2(76, 34), "back_garden")
+	var btn_y := 150 if is_player else 104
+	if is_player:
+		_add_panel_button(panel, "上传房间照片(mock)", Vector2(18, 104), Vector2(256, 34), "generate_room:" + house_id)
+	_add_panel_button(panel, "Note", Vector2(18, btn_y), Vector2(78, 34), "house_note:" + house_id)
+	_add_panel_button(panel, "Cards", Vector2(106, btn_y), Vector2(82, 34), "MemoryManager.postcards")
+	_add_panel_button(panel, "Back", Vector2(198, btn_y), Vector2(76, 34), "back_garden")
+
+# 上传房间照片 → AI 识别(AIClient，mock/真后端+回退) → 落库 + 布局 → 渲染。已生成则不重复。
+func _on_generate_room(house_id: String) -> void:
+	if house_id != "player":
+		return
+	if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty():
+		_show_toast("房间已经布置过了 🏠")
+		return
+	var src := MemoryManager.create_memory({}, "room_photo")  # 房间照片来源记忆
+	var image_url := String(src.get("image_url", ""))
+	var analysis: Dictionary = await AIClient.analyze_room_photo(image_url)  # 真后端优先，失败回退 mock
+	RoomLayoutManager.generate(analysis, String(src.get("id", "")))
+	_render_room("player")
+	_show_toast("房间生成好了 🛋️")
+
+# 渲染玩家房间已落库的家具（重入/重启后重建）。
+func _render_room(house_id: String) -> void:
+	_room_objects.clear()
+	if house_id != "player":
+		return
+	var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
+	if room.is_empty():
+		return
+	var n := RoomLayoutManager.render(String(room.get("id", "")), world, _on_room_object_clicked)
+	print("[Stage1] room 家具 rendered=", n, " zone 用量=", ZoneManager.usage("room"))
+
+func _on_room_object_clicked(obj_id: String) -> void:
+	for o in MemoryManager.room_objects:
+		if o is Dictionary and String(o.get("id", "")) == obj_id:
+			_show_toast("这是 " + String(o.get("object_type", "物件")) + " 🪑")
+			return
+	_show_toast("房间里的物件 🪑")
 
 
 func _add_room_collision_zones(room_id: String, room_rect: Rect2) -> void:
@@ -1889,6 +3056,7 @@ func _save_new_message(author_input: LineEdit, message_input: TextEdit) -> void:
 	MemoryManager.garden_messages.append(message)
 	MemoryManager.notify_family_activity()
 	MemoryManager.save_game()
+	_refresh_world_chat_feed()
 	_open_message_board_panel()
 	_show_toast("New note added.")
 
@@ -2269,6 +3437,8 @@ func _on_panel_button(action: String) -> void:
 		_open_add_message_form()
 	elif action.begins_with("house_photos:"):
 		_open_postcards_panel()
+	elif action.begins_with("generate_room:"):
+		_on_generate_room(action.split(":")[1])
 
 func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):

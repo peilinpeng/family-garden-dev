@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" uid="uid://cc5bkd5t5nnk6" path="res://scripts/player.gd" id="1_player"]
+[ext_resource type="Texture2D" uid="uid://depttw5rep662" path="res://assets/characters/papa.png" id="2_sheet"]
+[ext_resource type="Texture2D" uid="uid://itkpyqeqtqa3" path="res://assets/characters/shadow.png" id="3_shadow"]
+
+[sub_resource type="RectangleShape2D" id="foot"]
+size = Vector2(28, 22)
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 1
+script = ExtResource("1_player")
+
+[node name="Shadow" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("3_shadow")
+position = Vector2(0, 30)
+scale = Vector2(0.28, 0.16)
+modulate = Color(1, 1, 1, 0.8)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("2_sheet")
+hframes = 3
+vframes = 4
+frame = 0
+scale = Vector2(0.2733, 0.2733)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 18)
+shape = SubResource("foot")

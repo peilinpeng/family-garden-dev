@@ -1,0 +1,88 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Texture2D" uid="uid://bc2lj8r6iu2sk" path="res://assets/rooms/anna_room.png" id="1_bg"]
+
+[sub_resource type="RectangleShape2D" id="s1"]
+size = Vector2(1280, 57)
+
+[sub_resource type="RectangleShape2D" id="s2"]
+size = Vector2(1280, 29)
+
+[sub_resource type="RectangleShape2D" id="s3"]
+size = Vector2(32, 714)
+
+[sub_resource type="RectangleShape2D" id="s4"]
+size = Vector2(32, 714)
+
+[sub_resource type="RectangleShape2D" id="s5"]
+size = Vector2(486, 179)
+
+[sub_resource type="RectangleShape2D" id="s6"]
+size = Vector2(307, 179)
+
+[sub_resource type="RectangleShape2D" id="s7"]
+size = Vector2(410, 186)
+
+[sub_resource type="RectangleShape2D" id="s8"]
+size = Vector2(346, 179)
+
+[sub_resource type="RectangleShape2D" id="s9"]
+size = Vector2(218, 171)
+
+[sub_resource type="RectangleShape2D" id="s10"]
+size = Vector2(1300, 23)
+
+[sub_resource type="RectangleShape2D" id="s11"]
+size = Vector2(1300, 23)
+
+[node name="AnnaRoom" type="Node2D"]
+
+[node name="Backdrop" type="ColorRect" parent="."]
+z_index = -100
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0.72, 0.66, 0.54, 1)
+
+[node name="RoomBackground" type="Sprite2D" parent="."]
+texture_filter = 1
+z_index = -80
+position = Vector2(640, 360)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("1_bg")
+
+[node name="RoomCollision" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+[node name="C_wall_top" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(640, 31)
+shape = SubResource("s1")
+[node name="C_wall_bottom" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(640, 706)
+shape = SubResource("s2")
+[node name="C_wall_left" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(16, 360)
+shape = SubResource("s3")
+[node name="C_wall_right" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(1264, 360)
+shape = SubResource("s4")
+[node name="C_anna_study" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(294, 128)
+shape = SubResource("s5")
+[node name="C_anna_bed" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(1075, 135)
+shape = SubResource("s6")
+[node name="C_anna_kitchen" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(256, 539)
+shape = SubResource("s7")
+[node name="C_anna_sofa" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(1043, 478)
+shape = SubResource("s8")
+[node name="C_anna_stairs" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(646, 331)
+shape = SubResource("s9")
+[node name="C_outside_top" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(640, 1)
+shape = SubResource("s10")
+[node name="C_outside_bottom" type="CollisionShape2D" parent="RoomCollision"]
+position = Vector2(640, 719)
+shape = SubResource("s11")

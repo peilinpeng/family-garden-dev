@@ -28,10 +28,18 @@
 
 ## 角色默认负责人（软边界，允许交叉救火，不作硬权限）
 
+> **当前实际分工（2026-06）**：原 B+C（游戏系统 / 数据 / 后端 / **AI 模块端到端**）由
+> **xiongweiluo 一人全权负责**——含游戏客户端调用 → Serverless 云函数 → 接混元 → 藏 Key →
+> 拼 prompt → 校验 JSON → 内容安全，以及功能链路上的功能性 UI/动画；
+> **两位搭档当前都在「场景设计 + 搭建」线**（`.tscn`、美术、Y-Sort、碰撞、场景内布局）。
+> 详细边界与灰色地带见 `docs/dev/37_role_boundaries_and_grey_zones.md`。
+> 下表为**初始规划模型**（A/B/C），保留作参考。
+
 | 角色 | 职责 | 默认负责人 |
 |---|---|---|
-| A | 产品统筹 + 美术体验（docs/、game/assets/） | peilinpeng |
+| A | 产品策划 + 美术资产（docs/、game/assets/） | 待定 |
 | B | AI 模块 + 内容安全（backend/ai/、backend/mocks/） | 待定 |
 | C | 游戏系统 + 后端稳定（game/scripts/、game/scenes/） | 待定 |
 
-详见 `docs/dev/30_task_breakdown.md` 与 `docs/dev/31_handoff_rules.md`。
+详见 `docs/dev/30_task_breakdown.md`、`docs/dev/31_handoff_rules.md` 与
+`docs/dev/37_role_boundaries_and_grey_zones.md`。
