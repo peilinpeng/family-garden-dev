@@ -1042,6 +1042,8 @@ func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hov
 			t.tween_property(shadow, "position", Vector2.ZERO, 0.12)
 
 func _on_global_map_region_pressed(target: String, label_text: String) -> void:
+	# TextureButton 不走 _apply_button_style，点击音效单独补在这里。
+	AudioManager.play_sfx("按钮")
 	_show_toast("进入%s…" % label_text)
 	goto_scene(target)
 
@@ -3216,6 +3218,13 @@ func _apply_button_style(button: Button, selected: bool = false) -> void:
 	button.add_theme_font_size_override("font_size", 13)
 	button.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
 	button.add_theme_color_override("font_hover_color", Color(0.22, 0.17, 0.12, 1.0))
+	# 所有走这个统一样式函数的 Button 都顺带接上点击音效；toggle 类按钮(如种植开关)会
+	# 反复调用 _apply_button_style 刷新选中态样式，用 is_connected 防止重复挂信号导致连响多次。
+	if not button.pressed.is_connected(_play_button_click_sfx):
+		button.pressed.connect(_play_button_click_sfx)
+
+func _play_button_click_sfx() -> void:
+	AudioManager.play_sfx("按钮")
 
 func _button_style(asset_key: String, fallback_color: Color, border_color: Color) -> StyleBox:
 	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
