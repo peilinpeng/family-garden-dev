@@ -94,12 +94,12 @@ Godot 功能入口
 ### 2.2 当前明确欠账
 
 - [x] 当前最新提交已绑定到 `feature/garden-mvp-loop`，不再处于 detached HEAD；
-- [ ] `backend/ai/` 尚无真实 Serverless AI 实现；
-- [ ] Godot 尚无实现 `AIClient.set_backend()` 契约的真实 HTTP backend；
-- [ ] AI 校验目前只判断返回非空，未按接口做 Schema 校验；
+- [x] `backend/ai/` 已部署真实 Serverless AI 实现；
+- [x] Godot 已实现 `AIClient.set_backend()` 契约的真实 HTTP backend；
+- [x] AI 客户端已按四接口执行轻量 Schema 等价校验；
 - [ ] 记忆卡片、漂流瓶问题和跨记忆关联仍直接使用 mock；
 - [ ] 房间按钮虽调用异步接口，但没有真实选图、上传和有效 `image_url`；
-- [ ] fallback 结果没有记录来源、原因、模型版本和 prompt 版本；
+- [x] fallback 与真实结果均保留来源、原因、request ID、模型和 prompt 版本；
 - [ ] 旧 Supabase 数据与图片路径尚未全部迁移到统一后端；
 - [ ] 共享仓仍缺少并发裁决；
 - [ ] CloudBase 目前主要是冷同步，尚无完整实时多人；
@@ -443,26 +443,26 @@ TMS/IMS 子用户凭据分离，旧 SDK 已退出生产依赖。
 
 ### 7.2 HTTP Backend
 
-- [ ] 新增实现 `request(endpoint, payload)` 的 backend；
-- [ ] 从可提交配置读取 endpoint 和开关；
-- [ ] 使用 `HTTPRequest` 发送 JSON；
-- [ ] 添加必要身份信息，但不包含云服务密钥；
-- [ ] 设置连接和总请求超时；
-- [ ] 检查 Godot 请求结果和 HTTP 状态码；
-- [ ] 解析统一响应包络；
-- [ ] 请求结束后释放临时节点；
-- [ ] 支持场景切换时取消或忽略旧回调；
-- [ ] 在启动时安全注入 `AIClient.set_backend()`。
+- [x] 新增实现 `request(endpoint, payload)` 的 backend；
+- [x] 从可提交配置读取 endpoint 和开关；
+- [x] 使用 `HTTPRequest` 发送 JSON；
+- [x] 添加必要身份信息，但不包含云服务密钥；
+- [x] 设置连接和总请求超时；
+- [x] 检查 Godot 请求结果和 HTTP 状态码；
+- [x] 解析统一响应包络；
+- [x] 请求结束后释放临时节点；
+- [x] 支持场景切换时取消或忽略旧回调；
+- [x] 在启动时安全注入 `AIClient.set_backend()`。
 
 ### 7.3 分接口验证器
 
-- [ ] `_validate_memory_card()`；
-- [ ] `_validate_bottle_questions()`；
-- [ ] `_validate_room_analysis()`；
-- [ ] `_validate_memory_link()`；
-- [ ] 复用固定枚举和长度限制；
-- [ ] 校验失败记录明确原因；
-- [ ] mock 也必须通过相同验证器。
+- [x] 记忆卡片 request/data 校验；
+- [x] 漂流瓶问题 request/data 校验；
+- [x] 房间分析 request/data 校验；
+- [x] 跨记忆 request/data 与语义校验；
+- [x] 复用固定枚举和长度限制；
+- [x] 校验失败记录明确原因；
+- [x] mock 也必须通过相同验证器。
 
 ### 7.4 状态机
 
@@ -477,30 +477,30 @@ idle → loading → success
 
 工作项：
 
-- [ ] 定义统一结果对象；
-- [ ] 记录 `source`（ai / fallback）；
-- [ ] 记录 `fallback_reason`；
-- [ ] 记录 request ID、模型和 prompt 版本；
-- [ ] UI 可订阅加载、完成和错误状态；
-- [ ] 用户可重试可重试错误；
-- [ ] 同一按钮快速点击不会创建重复请求。
+- [x] 定义统一结果对象；
+- [x] 记录 `source`（ai / fallback）；
+- [x] 记录 `fallback_reason`；
+- [x] 记录 request ID、模型和 prompt 版本；
+- [x] UI 可订阅加载、完成和错误状态；
+- [x] 用户可再次调用可重试错误；
+- [x] 同一按钮快速点击不会创建重复请求。
 
 ### 7.5 缓存与去重
 
-- [ ] 为图片和文字输入生成内容 hash；
-- [ ] 相同输入的并发请求合并；
-- [ ] 对稳定分析结果使用有限缓存；
-- [ ] 缓存可按 prompt / model 版本失效；
-- [ ] 不长期缓存不必要的私人原始输入。
+- [x] 为图片和文字输入生成 SHA-256 内容 hash；
+- [x] 相同输入的并发请求合并；
+- [x] 对稳定分析结果使用有限缓存；
+- [x] 缓存可按配置 namespace 失效；
+- [x] 只使用进程内短期缓存，不持久化私人原始输入。
 
 ### 7.6 退出条件
 
-- [ ] 四个接口均可通过真实 HTTP backend 调用；
-- [ ] 四个接口均可独立 fallback；
-- [ ] UI 能区分真实 AI 与 fallback；
-- [ ] 非法输出不会进入数据层；
-- [ ] 场景切换和重复点击不会产生脏数据；
-- [ ] 无 backend 时保持完全离线可玩。
+- [x] 四个接口均可通过真实 HTTP backend 调用；
+- [x] 四个接口均可独立 fallback；
+- [x] UI 可通过统一信号区分真实 AI 与 fallback；
+- [x] 非法输出不会进入数据层；
+- [x] 场景切换和重复点击不会产生脏数据；
+- [x] 无 backend 时保持完全离线可玩。
 
 ---
 
