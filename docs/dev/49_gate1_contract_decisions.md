@@ -1,8 +1,8 @@
 # 49｜Gate 1 契约决策与兼容迁移
 
 > 日期：2026-07-05
-> 契约版本：`1.0.0`
-> 状态：已冻结，待 Gate 2 / Gate 3 实现
+> 契约版本：`1.1.0`
+> 状态：已由 Gate 2 Serverless 与 Gate 3 Godot 客户端实现
 > 关联：`docs/04_ai_interfaces.md`、`docs/05_backend_data_model.md`、`docs/dev/46_cloudbase_storage_handoff.md`
 
 ---
@@ -26,11 +26,11 @@ Gate 1 只冻结接口、字段、错误和兼容策略，不重做已上线 Clo
 | CloudBase 通用 upsert | 服务端强制 `family_id`，但尚未强制 `created_by` | `created_by` 定义为服务端字段，网关增强留到 Gate 5 |
 | MemoryManager 身份字段 | `user_id` 当前保存角色 key | 作为 legacy 字段兼容；新审计字段使用 `created_by=member_id` |
 | 时间字段 | 多数由 Godot 客户端生成 `created_at` | 新契约以服务端时间为准；旧值继续读取 |
-| AI 包络 | 当前 AIClient 直接消费裸 payload | Gate 3 新增包络适配，不在 Gate 1 破坏客户端 |
-| 漂流瓶 | 文档是对象，AIClient 异步方法返回数组 | 正式接口固定单对象；场景批量种子与网络接口分离 |
+| AI 包络 | AIClient 已解析统一包络并保留 meta/error | 场景只消费通过客户端验证的 data |
+| 漂流瓶 | 网络接口返回单对象，演示种子仍使用数组 | 场景批量种子与网络接口分离 |
 | 房间 objects | 旧文档为字符串数组，代码/mock 为对象数组 | 正式固定 `{object_type, zone}` 对象数组 |
-| 跨记忆 | AIClient 返回单个关系，旧规划建议 links | 正式固定 `links` 数组，0～3 项 |
-| Schema 校验 | AIClient 只判断非空 | Gate 3 增加分接口验证器；Serverless 在 Gate 2 使用同一约束 |
+| 跨记忆 | 契约 1.1 补齐新记忆内容并返回 links | 正式固定 `links` 数组，0～3 项 |
+| Schema 校验 | Serverless 严格校验 + Godot 轻量等价校验 | 非法输出不得进入数据层 |
 | AI mock | 三个文件 + 四套内联常量，缺 cross-link 文件 | 补齐四个文件并通过统一契约测试 |
 | 旧 Supabase 约束 | `nodes.node_type` 未包含 `memory_seed` | CloudBase 当前无该 CHECK；旧 SQL 仅作历史参考，迁移时需同步 |
 
