@@ -206,6 +206,7 @@ var plant_nodes: Dictionary = {}
 var room_card: Panel = null
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
+var game_hud: GameHUD = null   ## 常驻 HUD(角色卡/图标导航/设置/背包),setup 时创建
 var map_ui: Control = null
 var global_map_ui: Control = null
 var adding_place := false
@@ -240,6 +241,9 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 	MemoryManager.mailbox_alert_changed.connect(_on_mailbox_alert_changed)
 	_setup_custom_cursor()
 	_build_ui()
+	# 常驻 HUD 作为独立 CanvasLayer 挂到 main 根(ui_layer 的兄弟),整局常驻、不随场景切换重建。
+	game_hud = GameHUD.new()
+	ui_layer.get_parent().add_child(game_hud)
 
 ## 自定义猫爪鼠标指针(默认箭头 + 悬浮可点击时的指示手型),整局只需设一次。
 func _setup_custom_cursor() -> void:
@@ -283,11 +287,8 @@ func _build_ui() -> void:
 	help.modulate = Color(0.25, 0.22, 0.18, 0.85)
 	root.add_child(help)
 
-	# Bottom navigation. Kept compact and centered under the garden.
-	_add_button(root, "World", Vector2(248, 672), Vector2(86, 32), "global_map")
-	_add_button(root, "Tree", Vector2(338, 672), Vector2(82, 32), "family_tree")
-	_add_button(root, "Map", Vector2(430, 672), Vector2(76, 32), "travel_map")
-	_add_button(root, "Postcards", Vector2(516, 672), Vector2(120, 32), "MemoryManager.postcards")
+	# 底部原有的 World/Tree/Map/Postcards 文字按钮已迁移到常驻 HUD 的左右侧图标导航(GameHUD),
+	# 这里不再创建;保留世界聊天条(输入框 + 预览 + Chat 历史)在底部原位置不动。
 	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
 	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
 	_add_button(root, "Chat", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
@@ -738,6 +739,8 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 		MemoryManager.player_display_name = _default_name_for_role(role_key)
 	MemoryManager.save_game()
 	_close_active_panel()
+	if game_hud != null:
+		game_hud.refresh_profile()   # 昵称/头像定了,刷新左上角色卡
 	_show_garden()
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
@@ -3524,6 +3527,25 @@ func _close_active_panel() -> void:
 	active_modal = null
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
+
+# ---- 供 GameHUD 图标导航接回的 public 包装(转调现有打开逻辑,不重写业务)----
+func open_global_map() -> void:
+	_show_global_map()
+
+func open_travel_map() -> void:
+	_show_travel_map()
+
+func open_family_tree() -> void:
+	_open_family_tree_panel()
+
+func open_postcards() -> void:
+	_open_postcards_panel()
+
+## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
+## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。
+func set_player_input_locked(locked: bool) -> void:
+	if player != null and is_instance_valid(player) and player.has_method("set_movement_locked"):
+		player.set_movement_locked(locked)
 
 func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
 	var item_id := existing_id if existing_id != "" else "plant_" + str(Time.get_ticks_msec())
