@@ -80,6 +80,33 @@ Left-drag planted item: move
 Right-click planted item: delete
 ```
 
+## AI 客户端（Gate 3）
+
+`config/ai.json` 只包含公开的 CloudBase endpoint 和客户端行为开关。个人 `member_token` 仍只
+保存在 `user://cloud_identity.json`；TokenHub 与腾讯云密钥不会进入 Godot 工程。
+
+启用 AI 后，`AIClient` 会自动安装 `AIHttpBackend`。四个接口统一具备：
+
+- 兼容 Gate 1 的请求/响应校验；
+- `idle/loading/success/fallback/error/cancelled` 状态；
+- 只对技术错误 fallback，不掩盖鉴权、非法输入或内容安全错误；
+- 并发请求合并与短期纯内存缓存；
+- 切换场景时取消旧请求，以及离线 mock 可玩性。
+
+本地 Gate 3 测试：
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+  --script res://tests/ai_gate3_test.gd
+```
+
+真实冒烟测试必须显式启用，避免意外计费；脚本自动读取设备身份且不会输出身份内容：
+
+```bash
+FG_AI_REAL_SMOKE=1 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+  --script res://tests/ai_gate3_real_smoke.gd
+```
+
 ## Current scope
 
 This project is intentionally minimal. It is the playable skeleton for the gift-game MVP.

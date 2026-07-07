@@ -8,5 +8,6 @@
     { "object_type": "lamp", "zone": "back_left" },
     { "object_type": "plant", "zone": "right_side" },
     { "object_type": "photo_wall", "zone": "back_wall" }
-  ]
+  ],
+  "safety_note": "仅描述可见空间与物件，没有推断居住者身份。"
 }
