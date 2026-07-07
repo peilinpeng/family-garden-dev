@@ -34,6 +34,24 @@ const TABLES = new Set([
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
 const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
+const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+
+// CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
+// 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
+function hasUnsafeObjectShape(root) {
+  const stack = [{ value: root, depth: 0 }];
+  let inspected = 0;
+  while (stack.length > 0) {
+    const { value, depth } = stack.pop();
+    if (value === null || typeof value !== 'object') continue;
+    if (depth > 32 || ++inspected > 10000) return true;
+    for (const key of Object.keys(value)) {
+      if (FORBIDDEN_OBJECT_KEYS.has(key)) return true;
+      stack.push({ value: value[key], depth: depth + 1 });
+    }
+  }
+  return false;
+}
 
 function parseBody(event) {
   if (event && typeof event.body === 'string') {
@@ -110,6 +128,9 @@ async function upsertInventories(row, familyId, memberId) {
 
 exports.main = async (event) => {
   const body = parseBody(event);
+  if (hasUnsafeObjectShape(body)) {
+    return { ok: false, code: 400, error: 'invalid object structure' };
+  }
   const action = body.action || '';
 
   // —— join_family:自助加入,不需要令牌(这一步本身就是发令牌) ——
