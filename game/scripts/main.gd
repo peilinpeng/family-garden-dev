@@ -22,6 +22,14 @@ func _ready() -> void:
 	if MemoryManager.selected_role_key == "":
 		SceneManager._show_role_select()
 	else:
+		# 兼容先在离线模式创建角色、后来才启用 CloudBase 的旧存档。
+		# ensure_cloud_identity 内部按本地令牌幂等判断：首次联网只注册一次，
+		# 已有身份或未配置远端时均不会重复创建成员或破坏离线玩法。
+		var canonical_role := CharacterDB.resolve(MemoryManager.selected_role_key)
+		var display_name := MemoryManager.player_display_name.strip_edges()
+		if display_name == "":
+			display_name = CharacterDB.display_name(canonical_role)
+		await CloudManager.ensure_cloud_identity(canonical_role, display_name)
 		SceneManager._show_garden()
 
 func _unhandled_input(event: InputEvent) -> void:

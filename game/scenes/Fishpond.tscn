@@ -1,0 +1,336 @@
+[gd_scene load_steps=35 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/fishpond/background/pond_background.png" id="1_background"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/water/water_ripple_01.png" id="2_water_ripple"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/fishing_platform.png" id="3_fishing_platform"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/lotus_flower_01.png" id="4_lotus_flower_01"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/lotus_flower_02.png" id="5_lotus_flower_02"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/lotus_flower_03.png" id="6_lotus_flower_03"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/fence_section.png" id="7_fence_section"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/pond_hut_01.png" id="8_pond_hut_01"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/pond_hut_02.png" id="9_pond_hut_02"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/bench_seat.png" id="10_bench_seat"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/stone_lantern.png" id="11_stone_lantern"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/wooden_sign.png" id="12_wooden_sign"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/flower_bed.png" id="13_flower_bed"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/flower_pot.png" id="14_flower_pot"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/water_bucket.png" id="15_water_bucket"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/metal_bucket.png" id="16_metal_bucket"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/metal_crate.png" id="17_metal_crate"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/items/rope_coil.png" id="18_rope_coil"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/fish/koi_fish_01/koi_fish_swim_right_01.png" id="19_koi_right"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/fish/koi_fish_02/koi_fish_swim_left_01.png" id="20_koi_left"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/fish/koi_fish_03/koi_fish_swim_down_right_01.png" id="21_koi_down_right"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/fish/koi_fish_04/koi_fish_swim_up_left_01.png" id="22_koi_up_left"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/frog/frog_unknown_01.png" id="23_frog_01"]
+[ext_resource type="Texture2D" path="res://assets/fishpond/frog/frog_unknown_02.png" id="24_frog_02"]
+
+[sub_resource type="RectangleShape2D" id="boundary_top"]
+size = Vector2(1280, 24)
+
+[sub_resource type="RectangleShape2D" id="boundary_bottom"]
+size = Vector2(1280, 24)
+
+[sub_resource type="RectangleShape2D" id="boundary_left"]
+size = Vector2(24, 720)
+
+[sub_resource type="RectangleShape2D" id="boundary_right"]
+size = Vector2(24, 720)
+
+[sub_resource type="RectangleShape2D" id="platform_collision"]
+size = Vector2(150, 68)
+
+[sub_resource type="RectangleShape2D" id="hut_collision"]
+size = Vector2(140, 62)
+
+[sub_resource type="RectangleShape2D" id="bench_collision"]
+size = Vector2(82, 34)
+
+[sub_resource type="RectangleShape2D" id="small_prop_collision"]
+size = Vector2(48, 36)
+
+[sub_resource type="RectangleShape2D" id="sign_interaction"]
+size = Vector2(104, 104)
+
+[sub_resource type="RectangleShape2D" id="platform_interaction"]
+size = Vector2(180, 120)
+
+[node name="Fishpond" type="Node2D"]
+
+[node name="Background" type="Node2D" parent="."]
+z_index = -300
+
+[node name="BackgroundSprite" type="Sprite2D" parent="Background"]
+texture_filter = 1
+centered = false
+texture = ExtResource("1_background")
+
+[node name="GroundProps" type="Node2D" parent="."]
+z_index = -200
+
+[node name="WaterRipple" type="Sprite2D" parent="GroundProps"]
+texture_filter = 1
+position = Vector2(640, 384)
+modulate = Color(1, 1, 1, 0.74)
+texture = ExtResource("2_water_ripple")
+
+[node name="LotusFlower01" type="Sprite2D" parent="GroundProps"]
+texture_filter = 1
+position = Vector2(368, 472)
+scale = Vector2(0.72, 0.72)
+texture = ExtResource("4_lotus_flower_01")
+
+[node name="LotusFlower02" type="Sprite2D" parent="GroundProps"]
+texture_filter = 1
+position = Vector2(782, 510)
+scale = Vector2(0.86, 0.86)
+texture = ExtResource("5_lotus_flower_02")
+
+[node name="LotusFlower03" type="Sprite2D" parent="GroundProps"]
+texture_filter = 1
+position = Vector2(930, 438)
+scale = Vector2(0.78, 0.78)
+texture = ExtResource("6_lotus_flower_03")
+
+[node name="FishLayer" type="Node2D" parent="GroundProps"]
+
+[node name="KoiRight" type="Sprite2D" parent="GroundProps/FishLayer"]
+texture_filter = 1
+position = Vector2(514, 384)
+scale = Vector2(0.58, 0.58)
+texture = ExtResource("19_koi_right")
+
+[node name="KoiLeft" type="Sprite2D" parent="GroundProps/FishLayer"]
+texture_filter = 1
+position = Vector2(762, 438)
+scale = Vector2(0.54, 0.54)
+texture = ExtResource("20_koi_left")
+
+[node name="KoiDownRight" type="Sprite2D" parent="GroundProps/FishLayer"]
+texture_filter = 1
+position = Vector2(622, 512)
+scale = Vector2(0.48, 0.48)
+texture = ExtResource("21_koi_down_right")
+
+[node name="KoiUpLeft" type="Sprite2D" parent="GroundProps/FishLayer"]
+texture_filter = 1
+position = Vector2(862, 350)
+scale = Vector2(0.48, 0.48)
+texture = ExtResource("22_koi_up_left")
+
+[node name="FixedBackVisuals" type="Node2D" parent="."]
+z_index = -100
+
+[node name="FenceSection" type="Sprite2D" parent="FixedBackVisuals"]
+texture_filter = 1
+position = Vector2(656, 152)
+texture = ExtResource("7_fence_section")
+
+[node name="WorldYSort" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="PondHut01" type="Node2D" parent="WorldYSort"]
+position = Vector2(196, 372)
+z_index = 372
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/PondHut01"]
+texture_filter = 1
+position = Vector2(0, -143.5)
+texture = ExtResource("8_pond_hut_01")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="WorldYSort/PondHut01"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldYSort/PondHut01/StaticBody2D"]
+position = Vector2(0, -31)
+shape = SubResource("hut_collision")
+
+[node name="PondHut02" type="Node2D" parent="WorldYSort"]
+position = Vector2(1086, 356)
+z_index = 356
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/PondHut02"]
+texture_filter = 1
+position = Vector2(0, -112.5)
+texture = ExtResource("9_pond_hut_02")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="WorldYSort/PondHut02"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldYSort/PondHut02/StaticBody2D"]
+position = Vector2(0, -31)
+shape = SubResource("hut_collision")
+
+[node name="FishingPlatform" type="Node2D" parent="WorldYSort"]
+position = Vector2(970, 598)
+z_index = 598
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/FishingPlatform"]
+texture_filter = 1
+position = Vector2(0, -75.5)
+texture = ExtResource("3_fishing_platform")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="WorldYSort/FishingPlatform"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldYSort/FishingPlatform/StaticBody2D"]
+position = Vector2(0, -34)
+shape = SubResource("platform_collision")
+
+[node name="BenchSeat" type="Node2D" parent="WorldYSort"]
+position = Vector2(746, 628)
+z_index = 628
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/BenchSeat"]
+texture_filter = 1
+position = Vector2(0, -43.5)
+texture = ExtResource("10_bench_seat")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="WorldYSort/BenchSeat"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldYSort/BenchSeat/StaticBody2D"]
+position = Vector2(0, -17)
+shape = SubResource("bench_collision")
+
+[node name="WoodenSign" type="Node2D" parent="WorldYSort"]
+position = Vector2(150, 626)
+z_index = 626
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/WoodenSign"]
+texture_filter = 1
+position = Vector2(0, -47)
+texture = ExtResource("12_wooden_sign")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="WorldYSort/WoodenSign"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldYSort/WoodenSign/StaticBody2D"]
+position = Vector2(0, -18)
+shape = SubResource("small_prop_collision")
+
+[node name="StoneLantern" type="Node2D" parent="WorldYSort"]
+position = Vector2(1136, 628)
+z_index = 628
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/StoneLantern"]
+texture_filter = 1
+position = Vector2(0, -40)
+texture = ExtResource("11_stone_lantern")
+
+[node name="FlowerBed" type="Node2D" parent="WorldYSort"]
+position = Vector2(414, 632)
+z_index = 632
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/FlowerBed"]
+texture_filter = 1
+position = Vector2(0, -73)
+texture = ExtResource("13_flower_bed")
+
+[node name="FlowerPot" type="Node2D" parent="WorldYSort"]
+position = Vector2(1032, 642)
+z_index = 642
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/FlowerPot"]
+texture_filter = 1
+position = Vector2(0, -44)
+texture = ExtResource("14_flower_pot")
+
+[node name="WaterBucket" type="Node2D" parent="WorldYSort"]
+position = Vector2(860, 628)
+z_index = 628
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/WaterBucket"]
+texture_filter = 1
+position = Vector2(0, -23)
+texture = ExtResource("15_water_bucket")
+
+[node name="MetalBucket" type="Node2D" parent="WorldYSort"]
+position = Vector2(908, 630)
+z_index = 630
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/MetalBucket"]
+texture_filter = 1
+position = Vector2(0, -22)
+texture = ExtResource("16_metal_bucket")
+
+[node name="MetalCrate" type="Node2D" parent="WorldYSort"]
+position = Vector2(242, 626)
+z_index = 626
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/MetalCrate"]
+texture_filter = 1
+position = Vector2(0, -20)
+texture = ExtResource("17_metal_crate")
+
+[node name="RopeCoil" type="Node2D" parent="WorldYSort"]
+position = Vector2(1018, 642)
+z_index = 642
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/RopeCoil"]
+texture_filter = 1
+position = Vector2(0, -21)
+texture = ExtResource("18_rope_coil")
+
+[node name="Frog01" type="Node2D" parent="WorldYSort"]
+position = Vector2(314, 608)
+z_index = 608
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/Frog01"]
+texture_filter = 1
+position = Vector2(0, -14.5)
+scale = Vector2(2, 2)
+texture = ExtResource("23_frog_01")
+
+[node name="Frog02" type="Node2D" parent="WorldYSort"]
+position = Vector2(1114, 536)
+z_index = 536
+
+[node name="Sprite2D" type="Sprite2D" parent="WorldYSort/Frog02"]
+texture_filter = 1
+position = Vector2(0, -14.5)
+scale = Vector2(2, 2)
+texture = ExtResource("24_frog_02")
+
+[node name="WorldCollision" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="C_top" type="CollisionShape2D" parent="WorldCollision"]
+position = Vector2(640, -12)
+shape = SubResource("boundary_top")
+
+[node name="C_bottom" type="CollisionShape2D" parent="WorldCollision"]
+position = Vector2(640, 732)
+shape = SubResource("boundary_bottom")
+
+[node name="C_left" type="CollisionShape2D" parent="WorldCollision"]
+position = Vector2(-12, 360)
+shape = SubResource("boundary_left")
+
+[node name="C_right" type="CollisionShape2D" parent="WorldCollision"]
+position = Vector2(1292, 360)
+shape = SubResource("boundary_right")
+
+[node name="InteractionAreas" type="Node2D" parent="."]
+
+[node name="FishingPlatformArea" type="Area2D" parent="InteractionAreas"]
+position = Vector2(970, 536)
+metadata/interact_action = "fishpond_fishing_platform"
+metadata/prompt = "Check the fishing platform"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionAreas/FishingPlatformArea"]
+shape = SubResource("platform_interaction")
+
+[node name="WoodenSignArea" type="Area2D" parent="InteractionAreas"]
+position = Vector2(150, 576)
+metadata/interact_action = "fishpond_wooden_sign"
+metadata/prompt = "Return to garden"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionAreas/WoodenSignArea"]
+shape = SubResource("sign_interaction")

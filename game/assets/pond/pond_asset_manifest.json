@@ -1,0 +1,86 @@
+{
+  "pond_background": {
+    "type": "background",
+    "path": "res://assets/pond/background/pond_background.png"
+  },
+  "koi_fish": {
+    "type": "animated_sprite_collection",
+    "path": "res://assets/pond/fish/koi_fish",
+    "directions": [
+      "up",
+      "up_right",
+      "right",
+      "down_right",
+      "down",
+      "down_left",
+      "left",
+      "up_left"
+    ],
+    "variants": [
+      {
+        "name": "koi_fish_01",
+        "type": "animated_sprite_8_direction",
+        "path": "res://assets/pond/fish/koi_fish/koi_fish_01"
+      },
+      {
+        "name": "koi_fish_02",
+        "type": "animated_sprite_8_direction",
+        "path": "res://assets/pond/fish/koi_fish/koi_fish_02"
+      },
+      {
+        "name": "koi_fish_03",
+        "type": "animated_sprite_8_direction",
+        "path": "res://assets/pond/fish/koi_fish/koi_fish_03"
+      },
+      {
+        "name": "koi_fish_04",
+        "type": "animated_sprite_8_direction",
+        "path": "res://assets/pond/fish/koi_fish/koi_fish_04"
+      }
+    ]
+  },
+  "frog": {
+    "type": "sprite_or_animation",
+    "path": "res://assets/pond/frog",
+    "note": "Frog actions are not identified yet; filenames remain frog_unknown_##."
+  },
+  "water_ripple": {
+    "type": "animation",
+    "path": "res://assets/pond/water"
+  },
+  "props": {
+    "type": "static_or_interactive_sprites",
+    "path": "res://assets/pond/props",
+    "files": [
+      "res://assets/pond/props/bench_seat.png",
+      "res://assets/pond/props/fishing_platform.png",
+      "res://assets/pond/props/metal_bucket.png",
+      "res://assets/pond/props/metal_crate.png",
+      "res://assets/pond/props/rope_coil.png",
+      "res://assets/pond/props/water_bucket.png",
+      "res://assets/pond/props/wooden_sign.png"
+    ]
+  },
+  "decorations": {
+    "type": "static_sprites",
+    "path": "res://assets/pond/decorations",
+    "files": [
+      "res://assets/pond/decorations/fence_section.png",
+      "res://assets/pond/decorations/flower_bed.png",
+      "res://assets/pond/decorations/flower_pot.png",
+      "res://assets/pond/decorations/lotus_flower_01.png",
+      "res://assets/pond/decorations/lotus_flower_02.png",
+      "res://assets/pond/decorations/lotus_flower_03.png",
+      "res://assets/pond/decorations/pond_hut_01.png",
+      "res://assets/pond/decorations/pond_hut_02.png",
+      "res://assets/pond/decorations/stone_lantern.png"
+    ]
+  },
+  "unsorted": {
+    "type": "needs_review",
+    "path": "res://assets/pond/unsorted",
+    "files": [
+      "res://assets/pond/unsorted/object_unknown_01.gif"
+    ]
+  }
+}

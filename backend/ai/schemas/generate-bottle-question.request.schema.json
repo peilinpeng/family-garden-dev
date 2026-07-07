@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/generate-bottle-question.request.schema.json",
+  "title": "generate-bottle-question 请求",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scene", "target_memory_type", "tone", "language"],
+  "properties": {
+    "scene": { "$ref": "common.schema.json#/$defs/scene" },
+    "target_memory_type": {
+      "type": "string",
+      "enum": ["shared_memory", "travel", "childhood", "home", "daily_life", "family_event", "personal_room", "old_memory"]
+    },
+    "tone": { "type": "string", "enum": ["warm"] },
+    "target_member_id": { "$ref": "common.schema.json#/$defs/id" },
+    "memory_stats": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memory_type", "count"],
+        "properties": {
+          "memory_type": { "$ref": "common.schema.json#/$defs/memoryType" },
+          "count": { "type": "integer", "minimum": 0, "maximum": 10000 }
+        }
+      }
+    },
+    "avoid_topics": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": { "type": "string", "enum": ["conflict", "trauma", "health", "politics", "religion", "grief"] }
+    },
+    "language": { "$ref": "common.schema.json#/$defs/language" }
+  }
+}

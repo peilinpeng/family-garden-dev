@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+; 动态记忆/物件节点预制体（记忆花、漂流瓶等运行时生成的可点击节点）。
+; 结构在此可视化编辑；NodeFactory 实例化后按 manifest 配置贴图/点击区。
+; 节点名约定：Sprite / ClickArea / ClickArea/Shape —— NodeFactory 依赖这些名字。
+
+[sub_resource type="RectangleShape2D" id="click_shape"]
+size = Vector2(96, 96)
+
+[node name="DynamicNode" type="Node2D"]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture_filter = 1
+
+[node name="ClickArea" type="Area2D" parent="."]
+input_pickable = true
+
+[node name="Shape" type="CollisionShape2D" parent="ClickArea"]
+shape = SubResource("click_shape")

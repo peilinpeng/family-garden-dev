@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "characters": [
+    { "id": "father",  "name": "爸爸",   "sheet": "papa", "hframes": 3, "vframes": 4, "scale": 0.2733 },
+    { "id": "mother",  "name": "妈妈",   "sheet": "mama", "hframes": 3, "vframes": 4, "scale": 0.2733 },
+    { "id": "partner", "name": "伙伴",   "sheet": "boy",  "hframes": 3, "vframes": 4, "scale": 0.46 },
+    { "id": "player",  "name": "主角",   "sheet": "girl", "hframes": 3, "vframes": 5, "scale": 0.28,
+      "frame_rects": [
+        [166, 27, 149, 281], [403, 27, 149, 281], [643, 27, 149, 281],
+        [163, 336, 146, 271], [408, 336, 146, 271], [640.5, 334, 146, 271],
+        [164.5, 630, 146, 271], [397, 632, 146, 271], [642, 632, 146, 271],
+        [171, 942, 134, 281], [409.5, 940.5, 134, 281], [648.5, 942, 134, 281],
+        [165, 1269, 151, 294], [401.5, 1269, 151, 294], [640, 1269, 151, 294]
+      ]
+    }
+  ],
+  "aliases": { "papa": "father", "mama": "mother", "boy": "partner", "girl": "player" }
+}

@@ -1,5 +1,8 @@
 # Mock JSON 示例
 
+> 正式文件位于 `backend/mocks/`，机器约束位于 `backend/ai/schemas/`。
+> 本页只作快速阅读，不是独立契约真源。
+
 ## 1. memory_card_mock.json
 
 ```json
@@ -10,7 +13,8 @@
   "suggested_scene": "garden",
   "question": "你还记得这次旅行中最开心的一件事吗？",
   "node_type": "memory_flower",
-  "confidence": 1.0
+  "confidence": 1.0,
+  "safety_note": "仅整理用户提供的信息，没有推断具体人物关系。"
 }
 ```
 
@@ -22,7 +26,8 @@
   "target_memory_type": "shared_memory",
   "suggested_scene": "fishpond",
   "prompt_type": "shared_memory",
-  "tone": "warm"
+  "tone": "warm",
+  "safety_note": "问题保持开放和低压力，不预设家庭经历。"
 }
 ```
 
@@ -32,8 +37,34 @@
 {
   "room_type": "bedroom",
   "style": "warm_cozy",
-  "objects": ["desk", "lamp", "plant", "photo_wall"],
   "suggested_room_theme": "study_corner",
-  "description": "这个房间适合生成一个温暖的学习角落。"
+  "description": "这个房间适合生成一个温暖的学习角落。",
+  "objects": [
+    { "object_type": "desk", "zone": "back_left" },
+    { "object_type": "lamp", "zone": "back_left" },
+    { "object_type": "plant", "zone": "right_side" },
+    { "object_type": "photo_wall", "zone": "back_wall" }
+  ],
+  "safety_note": "仅描述可见空间与物件，没有推断居住者身份。"
 }
 ```
+
+## 4. cross_memory_link_mock.json
+
+```json
+{
+  "links": [
+    {
+      "memory_id_a": "mem_new",
+      "memory_id_b": "mem_007",
+      "relation_type": "same_place",
+      "confidence": 0.78,
+      "question": "这两段记忆看起来都与水边有关，它们是在同一个地方吗？",
+      "node_type": "memory_link"
+    }
+  ],
+  "safety_note": "仅依据已提供内容的可见重叠，没有推断人物关系。"
+}
+```
+
+HTTP 返回时，以上对象放入统一响应的 `data`；同时返回 `ok` 和 `meta`。完整格式见 `docs/04_ai_interfaces.md`。

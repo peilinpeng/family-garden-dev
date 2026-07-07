@@ -1,0 +1,26 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://ivo4higddm5h"]
+
+[ext_resource type="Texture2D" uid="uid://ds1mak4muhbfn" path="res://assets/pond/bottle/bottle_float_01.png" id="1_bottle_float_01"]
+[ext_resource type="Texture2D" uid="uid://cx1up10bvgn41" path="res://assets/pond/bottle/bottle_float_02.png" id="2_bottle_float_02"]
+[ext_resource type="Texture2D" uid="uid://bn0bed116mtpc" path="res://assets/pond/bottle/bottle_float_03.png" id="3_bottle_float_03"]
+[ext_resource type="Texture2D" uid="uid://bpc6uy5absbjn" path="res://assets/pond/bottle/bottle_float_05.png" id="5_bottle_float_05"]
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 2.0,
+"texture": ExtResource("3_bottle_float_03")
+}, {
+"duration": 2.0,
+"texture": ExtResource("2_bottle_float_02")
+}, {
+"duration": 2.0,
+"texture": ExtResource("1_bottle_float_01")
+}, {
+"duration": 2.0,
+"texture": ExtResource("5_bottle_float_05")
+}],
+"loop": true,
+"name": &"float_loop",
+"speed": 6.0
+}]

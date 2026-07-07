@@ -1,0 +1,597 @@
+[gd_scene format=3 uid="uid://bu1gx15ab3nur"]
+
+[ext_resource type="Texture2D" uid="uid://6qkrqeudvesf" path="res://assets/pond/background/pond_background.png" id="1_background"]
+[ext_resource type="Texture2D" uid="uid://cb1bajmhqkkjs" path="res://assets/pond/water/water_ripple_01.png" id="2_water_ripple_01"]
+[ext_resource type="Texture2D" uid="uid://4iwsvayq7hqt" path="res://assets/pond/water/water_ripple_02.png" id="3_water_ripple_02"]
+[ext_resource type="Texture2D" uid="uid://bktxbw4awlfqh" path="res://assets/pond/water/water_ripple_03.png" id="4_water_ripple_03"]
+[ext_resource type="Texture2D" uid="uid://c0xbmonwuk6el" path="res://assets/pond/water/water_ripple_04.png" id="5_water_ripple_04"]
+[ext_resource type="Texture2D" uid="uid://b6aumyfbm0n7c" path="res://assets/pond/frog/frog_unknown_01.png" id="10_frog_01"]
+[ext_resource type="Texture2D" uid="uid://mk7l7f5ws6uc" path="res://assets/pond/frog/frog_unknown_02.png" id="11_frog_02"]
+[ext_resource type="Texture2D" uid="uid://diha7k1u3h16a" path="res://assets/pond/frog/frog_unknown_03.png" id="12_frog_03"]
+[ext_resource type="Texture2D" uid="uid://cmnlaecpk651d" path="res://assets/pond/frog/frog_unknown_04.png" id="13_frog_04"]
+[ext_resource type="Texture2D" uid="uid://bb8liinvwfu2n" path="res://assets/pond/props/fishing_platform.png" id="14_fishing_platform"]
+[ext_resource type="Texture2D" uid="uid://d2hh7hxnom1d8" path="res://assets/pond/props/bench_seat.png" id="15_bench_seat"]
+[ext_resource type="Texture2D" uid="uid://c1oyga53oyyso" path="res://assets/pond/props/wooden_sign.png" id="16_wooden_sign"]
+[ext_resource type="Texture2D" uid="uid://bgq8op6yxwae5" path="res://assets/pond/props/water_bucket.png" id="17_water_bucket"]
+[ext_resource type="Texture2D" uid="uid://6leaep7h6nm8" path="res://assets/pond/props/metal_bucket.png" id="18_metal_bucket"]
+[ext_resource type="Texture2D" uid="uid://dynm5wchtycee" path="res://assets/pond/props/metal_crate.png" id="19_metal_crate"]
+[ext_resource type="Texture2D" uid="uid://cikvq8j74fpww" path="res://assets/pond/props/rope_coil.png" id="20_rope_coil"]
+[ext_resource type="Texture2D" uid="uid://bjjnttbnsbl15" path="res://assets/pond/decorations/flower_bed.png" id="22_flower_bed"]
+[ext_resource type="Texture2D" uid="uid://k6674isv1wt5" path="res://assets/pond/decorations/flower_pot.png" id="23_flower_pot"]
+[ext_resource type="Texture2D" uid="uid://bn6l5t5wb0s67" path="res://assets/pond/decorations/lotus_flower_01.png" id="24_lotus_flower_01"]
+[ext_resource type="Texture2D" uid="uid://d1682w6di11xc" path="res://assets/pond/decorations/lotus_flower_02.png" id="25_lotus_flower_02"]
+[ext_resource type="Texture2D" uid="uid://baw60bsi27klv" path="res://assets/pond/decorations/lotus_flower_03.png" id="26_lotus_flower_03"]
+[ext_resource type="Texture2D" uid="uid://dfuwbfuge22if" path="res://assets/pond/decorations/pond_hut_01.png" id="27_pond_hut_01"]
+[ext_resource type="Texture2D" uid="uid://41bt7kpdayqb" path="res://assets/pond/decorations/pond_hut_02.png" id="28_pond_hut_02"]
+[ext_resource type="Texture2D" uid="uid://bwailosf67icw" path="res://assets/pond/decorations/stone_lantern.png" id="29_stone_lantern"]
+[ext_resource type="Script" uid="uid://inffx8qysmkx" path="res://scripts/pond/frog_idle_controller.gd" id="31_frog_idle_controller"]
+[ext_resource type="SpriteFrames" uid="uid://ddxjhwf5v7ftc" path="res://assets/pond/fish/fish_05/fish_05_sprite_frames.tres" id="32_fish_05_frames"]
+[ext_resource type="Script" uid="uid://b3w3jr8adbvkg" path="res://scripts/pond/fish_path_swim_controller.gd" id="33_fish_path_swim_controller"]
+[ext_resource type="SpriteFrames" uid="uid://ivo4higddm5h" path="res://assets/pond/bottle/bottle_float_sprite_frames.tres" id="34_bottle_float_frames"]
+[ext_resource type="Script" uid="uid://dyrwgl75hrjfh" path="res://scripts/pond/duck_route_controller.gd" id="35_duck_route_controller"]
+[ext_resource type="SpriteFrames" path="res://assets/pond/duck/duck_sprite_frames.tres" id="36_duck_frames"]
+[ext_resource type="Script" path="res://scripts/pond/bottle_float_controller.gd" id="37_bottle_float_controller"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_yaflx"]
+radius = 187.79343
+height = 751.1737
+
+[sub_resource type="ConvexPolygonShape2D" id="water_collision_polygon"]
+points = PackedVector2Array(-245, -169, 256, -158, 364, -53, 366, 87, 237, 216, -234, 213, -380, 92, -378, -64)
+
+[sub_resource type="RectangleShape2D" id="air_wall_top_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_bottom_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_side_shape"]
+size = Vector2(48, 720)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_bank_wall_shape"]
+size = Vector2(820, 86)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_right_wall_shape"]
+size = Vector2(270, 100)
+
+[sub_resource type="RectangleShape2D" id="right_fence_inner_wall_shape"]
+size = Vector2(70, 270)
+
+[sub_resource type="RectangleShape2D" id="right_house_lower_wall_shape"]
+size = Vector2(160, 64)
+
+[sub_resource type="RectangleShape2D" id="right_house_side_wall_shape"]
+size = Vector2(56, 236)
+
+[sub_resource type="RectangleShape2D" id="garden_return_shape"]
+size = Vector2(96, 128)
+
+[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
+size = Vector2(96, 96)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_water_loop"]
+animations = [{
+"frames": [{
+"duration": 2.0,
+"texture": ExtResource("2_water_ripple_01")
+}, {
+"duration": 2.0,
+"texture": ExtResource("3_water_ripple_02")
+}, {
+"duration": 2.0,
+"texture": ExtResource("4_water_ripple_03")
+}, {
+"duration": 2.0,
+"texture": ExtResource("5_water_ripple_04")
+}],
+"loop": true,
+"name": &"water_loop",
+"speed": 5.0
+}]
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_01"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -197, 83, 0, 0, 0, 0, -286, 113, 0, 0, 0, 0, -197, 148, 0, 0, 0, 0, -80, 86, 0, 0, 0, 0, 90, 72, 0, 0, 0, 0, 154, 4, 0, 0, 0, 0, -10, -48, 0, 0, 0, 0, -197, 84)
+}
+point_count = 8
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_02"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 142, -64, 0, 0, 0, 0, 260, -22, 0, 0, 0, 0, 202, 86, 0, 0, 0, 0, 42, 104, 0, 0, 0, 0, -24, 10, 0, 0, 0, 0, 142, -64)
+}
+point_count = 6
+
+[sub_resource type="Curve2D" id="Curve2D_fish05_path_03"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -66, -112, 0, 0, 0, 0, 21.319061, -129.07533, 0, 0, 0, 0, 82, -142, 0, 0, 0, 0, 166, -62, 0, 0, 0, 0, 78, 18, 0, 0, 0, 0, -102, -4, 0, 0, 0, 0, -66, -112)
+}
+point_count = 7
+
+[sub_resource type="Curve2D" id="Curve2D_duck_route"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 330, 20, 0, 0, 0, 0, 230, 62, 0, 0, 0, 0, 80, 82, 0, 0, 0, 0, -86, 72, 0, 0, 0, 0, -210, 32, 0, 0, 0, 0, -250, -42, 0, 0, 0, 0, -150, -98, 0, 0, 0, 0, 20, -112, 0, 0, 0, 0, 180, -72, 0, 0, 0, 0, 310, -20, 0, 0, 0, 0, 330, 20)
+}
+point_count = 11
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_u4p1f"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_epg4m"]
+size = Vector2(1.7399998, 2.37)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_spxtl"]
+size = Vector2(1.7799995, 2.1325002)
+
+[sub_resource type="RectangleShape2D" id="platform_collision_shape"]
+size = Vector2(165.25, 124.375)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_00i44"]
+size = Vector2(143, 583)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_u4p1f"]
+size = Vector2(37, 38.1875)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1hesu"]
+size = Vector2(30.75, 24.375)
+
+[sub_resource type="CircleShape2D" id="lotus_collision_shape"]
+radius = 32.0
+
+[sub_resource type="CircleShape2D" id="bottle_collision_shape"]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id="duck_collision_shape"]
+radius = 24.0
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_lyoci"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("10_frog_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_frog_02")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_frog_03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_frog_04")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="PondArea" type="Node2D" unique_id=1357813240]
+
+[node name="Background" type="Node2D" parent="." unique_id=1585894851]
+z_index = -300
+
+[node name="PondBackground" type="Sprite2D" parent="Background" unique_id=1104201607]
+texture_filter = 1
+position = Vector2(-640, -360)
+texture = ExtResource("1_background")
+centered = false
+
+[node name="Collision" type="Node2D" parent="." unique_id=202846744]
+
+[node name="WaterCollision" type="StaticBody2D" parent="Collision" unique_id=1735714110]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collision/WaterCollision" unique_id=1346919308]
+visible = false
+position = Vector2(-6, 22)
+rotation = 4.712389
+scale = Vector2(1.065, 1.065)
+shape = SubResource("CapsuleShape2D_yaflx")
+disabled = true
+
+[node name="WaterCollisionPolygon" type="CollisionShape2D" parent="Collision/WaterCollision" unique_id=1711372782]
+visible = false
+shape = SubResource("water_collision_polygon")
+
+[node name="PondAirWalls" type="StaticBody2D" parent="Collision" unique_id=1784965288]
+collision_mask = 0
+
+[node name="TopBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=510288573]
+visible = false
+position = Vector2(0, -348)
+shape = SubResource("air_wall_top_shape")
+
+[node name="BottomBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1526983303]
+visible = false
+position = Vector2(0, 348)
+shape = SubResource("air_wall_bottom_shape")
+
+[node name="LeftBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=417097837]
+visible = false
+position = Vector2(-628, 0)
+shape = SubResource("air_wall_side_shape")
+
+[node name="RightBoundary" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=2132872214]
+visible = false
+position = Vector2(628, 0)
+shape = SubResource("air_wall_side_shape")
+
+[node name="PondUpperBank" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=205908747]
+visible = false
+position = Vector2(-76, -176)
+shape = SubResource("pond_upper_bank_wall_shape")
+
+[node name="PondUpperRightBank" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=459162468]
+visible = false
+position = Vector2(360, -166)
+shape = SubResource("pond_upper_right_wall_shape")
+
+[node name="RightFenceInner" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1684639299]
+visible = false
+position = Vector2(612, -154)
+shape = SubResource("right_fence_inner_wall_shape")
+
+[node name="RightHouseLower" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=1802285351]
+visible = false
+position = Vector2(520, -66)
+shape = SubResource("right_house_lower_wall_shape")
+
+[node name="RightHouseSide" type="CollisionShape2D" parent="Collision/PondAirWalls" unique_id=318226272]
+visible = false
+position = Vector2(604, -148)
+shape = SubResource("right_house_side_wall_shape")
+
+[node name="PondSpawnPoint" type="Marker2D" parent="." unique_id=1257032741]
+position = Vector2(440, 4)
+
+[node name="GardenReturnArea" type="Area2D" parent="." unique_id=203321299]
+position = Vector2(592, 4)
+metadata/target_scene = "res://scenes/Main.tscn"
+metadata/target_spawn_point = "GardenFromPondSpawnPoint"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="GardenReturnArea" unique_id=1168962107]
+shape = SubResource("garden_return_shape")
+
+[node name="MessageBottle" type="Area2D" parent="." unique_id=1223938100]
+position = Vector2(-76, 67.66102)
+metadata/interact_action = "pond_message_bottle"
+metadata/prompt = "Check the drifting bottle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MessageBottle" unique_id=1302818272]
+shape = SubResource("bottle_interact_shape")
+
+[node name="FishingSpot" type="Area2D" parent="." unique_id=1934565884]
+position = Vector2(330, 176)
+metadata/interact_action = "pond_fishing_spot"
+metadata/prompt = "Fish by the pond"
+
+[node name="YSortObjects" type="Node2D" parent="." unique_id=2117004001]
+y_sort_enabled = true
+
+[node name="WaterRipple01" type="Sprite2D" parent="YSortObjects" unique_id=647598197]
+visible = false
+modulate = Color(1, 1, 1, 0.72)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("2_water_ripple_01")
+
+[node name="WaterRipple02" type="Sprite2D" parent="YSortObjects" unique_id=2006438827]
+visible = false
+modulate = Color(1, 1, 1, 0.48)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("3_water_ripple_02")
+
+[node name="WaterRipple03" type="Sprite2D" parent="YSortObjects" unique_id=94446271]
+visible = false
+modulate = Color(1, 1, 1, 0.44)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("4_water_ripple_03")
+
+[node name="WaterRipple04" type="Sprite2D" parent="YSortObjects" unique_id=974890440]
+visible = false
+modulate = Color(1, 1, 1, 0.4)
+texture_filter = 1
+position = Vector2(-8, 5)
+texture = ExtResource("5_water_ripple_04")
+
+[node name="WaterLoop" type="AnimatedSprite2D" parent="YSortObjects" unique_id=517155954]
+modulate = Color(1, 1, 1, 0.72)
+texture_filter = 1
+position = Vector2(-8, 5)
+sprite_frames = SubResource("SpriteFrames_water_loop")
+animation = &"water_loop"
+autoplay = "water_loop"
+
+[node name="Fish05Path01" type="Path2D" parent="YSortObjects" unique_id=1635649366]
+curve = SubResource("Curve2D_fish05_path_01")
+
+[node name="Fish05Follow01" type="PathFollow2D" parent="YSortObjects/Fish05Path01" unique_id=1398039717]
+position = Vector2(-197, 83)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 18.0
+fish_node_path = NodePath("../../Fish05_01")
+
+[node name="Fish05_01" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1912126510]
+z_index = -20
+texture_filter = 1
+position = Vector2(-197, 83)
+scale = Vector2(0.78, 0.78)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_left"
+autoplay = "swim_right"
+frame_progress = 0.10039557
+
+[node name="Fish05Path02" type="Path2D" parent="YSortObjects" unique_id=3349240]
+curve = SubResource("Curve2D_fish05_path_02")
+
+[node name="Fish05Follow02" type="PathFollow2D" parent="YSortObjects/Fish05Path02" unique_id=700844256]
+position = Vector2(142, -64)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 14.0
+fish_node_path = NodePath("../../Fish05_02")
+
+[node name="Fish05_02" type="AnimatedSprite2D" parent="YSortObjects" unique_id=62013584]
+z_index = -20
+texture_filter = 1
+position = Vector2(142, -64)
+scale = Vector2(0.72, 0.72)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_down_left"
+autoplay = "swim_left"
+frame_progress = 0.48933223
+
+[node name="Fish05Path03" type="Path2D" parent="YSortObjects" unique_id=1101627299]
+curve = SubResource("Curve2D_fish05_path_03")
+
+[node name="Fish05Follow03" type="PathFollow2D" parent="YSortObjects/Fish05Path03" unique_id=807773791]
+position = Vector2(-66, -112)
+rotates = false
+script = ExtResource("33_fish_path_swim_controller")
+speed = 12.0
+fish_node_path = NodePath("../../Fish05_03")
+
+[node name="Fish05_03" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1574914212]
+z_index = -20
+texture_filter = 1
+position = Vector2(-66, -112)
+scale = Vector2(0.68, 0.68)
+sprite_frames = ExtResource("32_fish_05_frames")
+animation = &"swim_up_left"
+autoplay = "swim_down_right"
+
+[node name="DuckRoute" type="Path2D" parent="YSortObjects" unique_id=1286904617]
+curve = SubResource("Curve2D_duck_route")
+
+[node name="DuckFollow" type="PathFollow2D" parent="YSortObjects/DuckRoute" unique_id=1546729308]
+position = Vector2(330, 20)
+rotates = false
+script = ExtResource("35_duck_route_controller")
+speed = 18.0
+water_move_seconds = Vector2(6, 10)
+water_action_seconds = Vector2(0.55, 0.9)
+duck_node_path = NodePath("../../DuckSprite")
+water_shape_path = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
+
+[node name="DuckSprite" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1440150349]
+z_index = 10
+texture_filter = 1
+position = Vector2(330, 20)
+scale = Vector2(0.36, 0.36)
+sprite_frames = ExtResource("36_duck_frames")
+animation = &"water_swim"
+autoplay = "water_swim"
+offset = Vector2(0, -54)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/DuckSprite"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/DuckSprite/StaticBody2D"]
+position = Vector2(0, -8)
+shape = SubResource("duck_collision_shape")
+
+[node name="PondHutLeft" type="Node2D" parent="YSortObjects" unique_id=1556571010]
+position = Vector2(-444, 260)
+
+[node name="Sprite2D" type="Sprite2D" parent="YSortObjects/PondHutLeft" unique_id=1902360459]
+texture_filter = 1
+position = Vector2(932, -143)
+texture = ExtResource("27_pond_hut_01")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/PondHutLeft" unique_id=634103747]
+position = Vector2(0, -248)
+collision_mask = 0
+physics_material_override = SubResource("PhysicsMaterial_u4p1f")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/PondHutLeft/StaticBody2D" unique_id=1836539163]
+position = Vector2(930, 189.5)
+scale = Vector2(100, 100)
+shape = SubResource("RectangleShape2D_epg4m")
+
+[node name="PondHutRight" type="Node2D" parent="YSortObjects" unique_id=1710699959]
+z_index = -1
+position = Vector2(446, -4)
+
+[node name="Sprite2D" type="Sprite2D" parent="YSortObjects/PondHutRight" unique_id=42313060]
+texture_filter = 1
+position = Vector2(83, -131)
+texture = ExtResource("28_pond_hut_02")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/PondHutRight" unique_id=539561206]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/PondHutRight/StaticBody2D" unique_id=2024133986]
+position = Vector2(78, -124.375)
+scale = Vector2(100, 100)
+shape = SubResource("RectangleShape2D_spxtl")
+
+[node name="FishingPlatform" type="Node2D" parent="YSortObjects" unique_id=1398988904]
+position = Vector2(330, 238)
+
+[node name="Sprite2D" type="Sprite2D" parent="YSortObjects/FishingPlatform" unique_id=1818185910]
+texture_filter = 1
+position = Vector2(-333, -46)
+texture = ExtResource("14_fishing_platform")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/FishingPlatform" unique_id=76202978]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/FishingPlatform/StaticBody2D" unique_id=1636667438]
+position = Vector2(-334.625, -36.1875)
+shape = SubResource("platform_collision_shape")
+
+[node name="BenchSeat" type="Node2D" parent="YSortObjects" unique_id=2067446121]
+position = Vector2(106, 268)
+
+[node name="Sprite2D" type="Sprite2D" parent="YSortObjects/BenchSeat" unique_id=193292704]
+texture_filter = 1
+position = Vector2(-441, -502)
+texture = ExtResource("15_bench_seat")
+
+[node name="WoodenSign" type="Node2D" parent="YSortObjects" unique_id=1198863273]
+position = Vector2(-490, 266)
+
+[node name="Sprite2D" type="Sprite2D" parent="YSortObjects/WoodenSign" unique_id=135968253]
+texture_filter = 1
+position = Vector2(-46, -72)
+texture = ExtResource("16_wooden_sign")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/WoodenSign" unique_id=435604618]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/WoodenSign/StaticBody2D" unique_id=579814451]
+position = Vector2(-54.5, -302.5)
+shape = SubResource("RectangleShape2D_00i44")
+
+[node name="LotusFlower01" type="Sprite2D" parent="YSortObjects" unique_id=425334740]
+z_index = 10
+texture_filter = 1
+position = Vector2(-211, -9.360007)
+scale = Vector2(0.80396694, 0.8039669)
+texture = ExtResource("24_lotus_flower_01")
+offset = Vector2(0, -60.5)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower01"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower01/StaticBody2D"]
+position = Vector2(-4, -12)
+shape = SubResource("lotus_collision_shape")
+
+[node name="LotusFlower02" type="Sprite2D" parent="YSortObjects" unique_id=544391272]
+z_index = 10
+texture_filter = 1
+position = Vector2(197.60251, 182.23825)
+scale = Vector2(0.8541216, 0.8541216)
+texture = ExtResource("25_lotus_flower_02")
+offset = Vector2(0, -43)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower02"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower02/StaticBody2D"]
+position = Vector2(0, -10)
+shape = SubResource("lotus_collision_shape")
+
+[node name="LotusFlower03" type="Sprite2D" parent="YSortObjects" unique_id=1521018776]
+z_index = 10
+texture_filter = 1
+position = Vector2(290, 111.93)
+scale = Vector2(0.78, 0.78)
+texture = ExtResource("26_lotus_flower_03")
+offset = Vector2(0, -43.5)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower03"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower03/StaticBody2D"]
+position = Vector2(0, -10)
+shape = SubResource("lotus_collision_shape")
+
+[node name="StoneLantern" type="Sprite2D" parent="YSortObjects" unique_id=124704570]
+texture_filter = 1
+position = Vector2(496, 308)
+texture = ExtResource("29_stone_lantern")
+offset = Vector2(0, -40)
+
+[node name="FlowerBed" type="Sprite2D" parent="YSortObjects" unique_id=349467915]
+texture_filter = 1
+position = Vector2(-501.6507, -176)
+scale = Vector2(1.0068494, 1.0068493)
+texture = ExtResource("22_flower_bed")
+offset = Vector2(0, -12)
+
+[node name="FlowerPot" type="Sprite2D" parent="YSortObjects" unique_id=382852485]
+texture_filter = 1
+position = Vector2(392, 326)
+texture = ExtResource("23_flower_pot")
+offset = Vector2(0, -44)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/FlowerPot" unique_id=1678233249]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/FlowerPot/StaticBody2D" unique_id=2137713395]
+position = Vector2(0.5, 24.09375)
+shape = SubResource("RectangleShape2D_u4p1f")
+
+[node name="WaterBucket" type="Sprite2D" parent="YSortObjects" unique_id=1190353196]
+texture_filter = 1
+position = Vector2(396, -70)
+texture = ExtResource("17_water_bucket")
+offset = Vector2(0, -23)
+
+[node name="MetalBucket" type="Sprite2D" parent="YSortObjects" unique_id=1027197588]
+texture_filter = 1
+position = Vector2(268, 292)
+texture = ExtResource("18_metal_bucket")
+offset = Vector2(0, -22)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/MetalBucket" unique_id=653959374]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/MetalBucket/StaticBody2D" unique_id=1501484751]
+position = Vector2(-2, 10.1875)
+shape = SubResource("RectangleShape2D_1hesu")
+
+[node name="MetalCrate" type="Sprite2D" parent="YSortObjects" unique_id=1858937511]
+texture_filter = 1
+position = Vector2(428, 234)
+texture = ExtResource("19_metal_crate")
+offset = Vector2(0, -20)
+
+[node name="RopeCoil" type="Sprite2D" parent="YSortObjects" unique_id=39721903]
+texture_filter = 1
+position = Vector2(469, -21)
+texture = ExtResource("20_rope_coil")
+offset = Vector2(0, -21)
+
+[node name="FrogIdle" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1338881457]
+z_index = 12
+texture_filter = 1
+position = Vector2(-156, -52.846153)
+scale = Vector2(0.7692309, 0.76923084)
+sprite_frames = SubResource("SpriteFrames_lyoci")
+frame_progress = 0.43147728
+offset = Vector2(0, -14.5)
+script = ExtResource("31_frog_idle_controller")
+
+[node name="BottleFloat" type="AnimatedSprite2D" parent="YSortObjects" unique_id=426752641]
+z_index = 10
+texture_filter = 1
+position = Vector2(-76, 67.66102)
+scale = Vector2(0.6779661, 0.6779661)
+sprite_frames = ExtResource("34_bottle_float_frames")
+animation = &"float_loop"
+autoplay = "float_loop"
+frame_progress = 0.022527007
+offset = Vector2(0, -29)
+script = ExtResource("37_bottle_float_controller")
+interaction_area_path = NodePath("../../MessageBottle")
+push_source_path = NodePath("../DuckSprite")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/BottleFloat"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/BottleFloat/StaticBody2D"]
+position = Vector2(0, -12)
+shape = SubResource("bottle_collision_shape")
