@@ -30,6 +30,44 @@
 [ext_resource type="SpriteFrames" uid="uid://ivo4higddm5h" path="res://assets/pond/bottle/bottle_float_sprite_frames.tres" id="34_bottle_float_frames"]
 [ext_resource type="Script" uid="uid://dyrwgl75hrjfh" path="res://scripts/pond/duck_route_controller.gd" id="35_duck_route_controller"]
 [ext_resource type="SpriteFrames" path="res://assets/pond/duck/duck_sprite_frames.tres" id="36_duck_frames"]
+[ext_resource type="Script" path="res://scripts/pond/bottle_float_controller.gd" id="37_bottle_float_controller"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_yaflx"]
+radius = 187.79343
+height = 751.1737
+
+[sub_resource type="ConvexPolygonShape2D" id="water_collision_polygon"]
+points = PackedVector2Array(-245, -169, 256, -158, 364, -53, 366, 87, 237, 216, -234, 213, -380, 92, -378, -64)
+
+[sub_resource type="RectangleShape2D" id="air_wall_top_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_bottom_shape"]
+size = Vector2(1280, 48)
+
+[sub_resource type="RectangleShape2D" id="air_wall_side_shape"]
+size = Vector2(48, 720)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_bank_wall_shape"]
+size = Vector2(820, 86)
+
+[sub_resource type="RectangleShape2D" id="pond_upper_right_wall_shape"]
+size = Vector2(270, 100)
+
+[sub_resource type="RectangleShape2D" id="right_fence_inner_wall_shape"]
+size = Vector2(70, 270)
+
+[sub_resource type="RectangleShape2D" id="right_house_lower_wall_shape"]
+size = Vector2(160, 64)
+
+[sub_resource type="RectangleShape2D" id="right_house_side_wall_shape"]
+size = Vector2(56, 236)
+
+[sub_resource type="RectangleShape2D" id="garden_return_shape"]
+size = Vector2(96, 128)
+
+[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
+size = Vector2(96, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_water_loop"]
 animations = [{
@@ -71,20 +109,38 @@ point_count = 7
 
 [sub_resource type="Curve2D" id="Curve2D_duck_route"]
 _data = {
-"points": PackedVector2Array(0, 0, 0, 0, 520, 24, 0, 0, 0, 0, 448, 82, 0, 0, 0, 0, 330, 118, 0, 0, 0, 0, 160, 96, 0, 0, 0, 0, -30, 112, 0, 0, 0, 0, -190, 176, 0, 0, 0, 0, -110, 232, 0, 0, 0, 0, 80, 246, 0, 0, 0, 0, 275, 202, 0, 0, 0, 0, 410, 122, 0, 0, 0, 0, 520, 24)
+"points": PackedVector2Array(0, 0, 0, 0, 330, 20, 0, 0, 0, 0, 230, 62, 0, 0, 0, 0, 80, 82, 0, 0, 0, 0, -86, 72, 0, 0, 0, 0, -210, 32, 0, 0, 0, 0, -250, -42, 0, 0, 0, 0, -150, -98, 0, 0, 0, 0, 20, -112, 0, 0, 0, 0, 180, -72, 0, 0, 0, 0, 310, -20, 0, 0, 0, 0, 330, 20)
 }
 point_count = 11
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_u4p1f"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_epg4m"]
-size = Vector2(1.2800002, 2.3799999)
+size = Vector2(1.7399998, 2.37)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_spxtl"]
 size = Vector2(1.7799995, 2.1325002)
 
+[sub_resource type="RectangleShape2D" id="platform_collision_shape"]
+size = Vector2(165.25, 124.375)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_00i44"]
+size = Vector2(143, 583)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_u4p1f"]
 size = Vector2(37, 38.1875)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1hesu"]
+size = Vector2(30.75, 24.375)
+
+[sub_resource type="CircleShape2D" id="lotus_collision_shape"]
+radius = 32.0
+
+[sub_resource type="CircleShape2D" id="bottle_collision_shape"]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id="duck_collision_shape"]
+radius = 24.0
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_lyoci"]
 animations = [{
@@ -105,55 +161,6 @@ animations = [{
 "name": &"default",
 "speed": 5.0
 }]
-
-[sub_resource type="RectangleShape2D" id="platform_collision_shape"]
-size = Vector2(165.25, 124.375)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_00i44"]
-size = Vector2(143, 583)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_1hesu"]
-size = Vector2(30.75, 24.375)
-
-[sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
-size = Vector2(96, 96)
-
-[sub_resource type="RectangleShape2D" id="fishing_spot_shape"]
-size = Vector2(104, 195.5)
-
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_yaflx"]
-radius = 187.79343
-height = 751.1737
-
-[sub_resource type="ConvexPolygonShape2D" id="water_collision_polygon"]
-points = PackedVector2Array(-245, -169, 256, -158, 364, -53, 366, 87, 237, 216, -234, 213, -380, 92, -378, -64)
-
-[sub_resource type="RectangleShape2D" id="air_wall_top_shape"]
-size = Vector2(1280, 48)
-
-[sub_resource type="RectangleShape2D" id="air_wall_bottom_shape"]
-size = Vector2(1280, 48)
-
-[sub_resource type="RectangleShape2D" id="air_wall_side_shape"]
-size = Vector2(48, 720)
-
-[sub_resource type="RectangleShape2D" id="pond_upper_bank_wall_shape"]
-size = Vector2(820, 86)
-
-[sub_resource type="RectangleShape2D" id="pond_upper_right_wall_shape"]
-size = Vector2(270, 100)
-
-[sub_resource type="RectangleShape2D" id="right_fence_inner_wall_shape"]
-size = Vector2(70, 270)
-
-[sub_resource type="RectangleShape2D" id="right_house_lower_wall_shape"]
-size = Vector2(160, 64)
-
-[sub_resource type="RectangleShape2D" id="right_house_side_wall_shape"]
-size = Vector2(56, 236)
-
-[sub_resource type="RectangleShape2D" id="garden_return_shape"]
-size = Vector2(96, 128)
 
 [node name="PondArea" type="Node2D" unique_id=1357813240]
 
@@ -243,7 +250,7 @@ metadata/target_spawn_point = "GardenFromPondSpawnPoint"
 shape = SubResource("garden_return_shape")
 
 [node name="MessageBottle" type="Area2D" parent="." unique_id=1223938100]
-position = Vector2(-76, 48)
+position = Vector2(-76, 67.66102)
 metadata/interact_action = "pond_message_bottle"
 metadata/prompt = "Check the drifting bottle"
 
@@ -302,17 +309,18 @@ position = Vector2(-197, 83)
 rotates = false
 script = ExtResource("33_fish_path_swim_controller")
 speed = 18.0
-
 fish_node_path = NodePath("../../Fish05_01")
+
 [node name="Fish05_01" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1912126510]
+z_index = -20
 texture_filter = 1
+position = Vector2(-197, 83)
 scale = Vector2(0.78, 0.78)
 sprite_frames = ExtResource("32_fish_05_frames")
 animation = &"swim_left"
 autoplay = "swim_right"
 frame_progress = 0.10039557
 
-position = Vector2(-197, 83)
 [node name="Fish05Path02" type="Path2D" parent="YSortObjects" unique_id=3349240]
 curve = SubResource("Curve2D_fish05_path_02")
 
@@ -324,14 +332,15 @@ speed = 14.0
 fish_node_path = NodePath("../../Fish05_02")
 
 [node name="Fish05_02" type="AnimatedSprite2D" parent="YSortObjects" unique_id=62013584]
+z_index = -20
 texture_filter = 1
+position = Vector2(142, -64)
 scale = Vector2(0.72, 0.72)
 sprite_frames = ExtResource("32_fish_05_frames")
 animation = &"swim_down_left"
 autoplay = "swim_left"
 frame_progress = 0.48933223
 
-position = Vector2(142, -64)
 [node name="Fish05Path03" type="Path2D" parent="YSortObjects" unique_id=1101627299]
 curve = SubResource("Curve2D_fish05_path_03")
 
@@ -343,54 +352,64 @@ speed = 12.0
 fish_node_path = NodePath("../../Fish05_03")
 
 [node name="Fish05_03" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1574914212]
+z_index = -20
 texture_filter = 1
+position = Vector2(-66, -112)
 scale = Vector2(0.68, 0.68)
 sprite_frames = ExtResource("32_fish_05_frames")
 animation = &"swim_up_left"
 autoplay = "swim_down_right"
 
-position = Vector2(-66, -112)
 [node name="DuckRoute" type="Path2D" parent="YSortObjects" unique_id=1286904617]
 curve = SubResource("Curve2D_duck_route")
 
 [node name="DuckFollow" type="PathFollow2D" parent="YSortObjects/DuckRoute" unique_id=1546729308]
-position = Vector2(520, 24)
+position = Vector2(330, 20)
 rotates = false
 script = ExtResource("35_duck_route_controller")
 speed = 18.0
-land_move_seconds = Vector2(5, 9)
-land_rest_seconds = Vector2(2, 4)
 water_move_seconds = Vector2(6, 10)
-water_rest_seconds = Vector2(1.8, 3.5)
-
+water_action_seconds = Vector2(0.55, 0.9)
 duck_node_path = NodePath("../../DuckSprite")
 water_shape_path = NodePath("../../../Collision/WaterCollision/WaterCollisionPolygon")
+
 [node name="DuckSprite" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1440150349]
+z_index = 10
 texture_filter = 1
+position = Vector2(330, 20)
 scale = Vector2(0.36, 0.36)
 sprite_frames = ExtResource("36_duck_frames")
-animation = &"land_walk"
-autoplay = "land_walk"
+animation = &"water_swim"
+autoplay = "water_swim"
+offset = Vector2(0, -54)
 
-position = Vector2(520, 24)
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/DuckSprite"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/DuckSprite/StaticBody2D"]
+position = Vector2(0, -8)
+shape = SubResource("duck_collision_shape")
+
 [node name="PondHutLeft" type="Node2D" parent="YSortObjects" unique_id=1556571010]
-position = Vector2(-444, 12)
+position = Vector2(-444, 260)
 
 [node name="Sprite2D" type="Sprite2D" parent="YSortObjects/PondHutLeft" unique_id=1902360459]
 texture_filter = 1
-position = Vector2(932, 105)
+position = Vector2(932, -143)
 texture = ExtResource("27_pond_hut_01")
 
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/PondHutLeft" unique_id=634103747]
+position = Vector2(0, -248)
 collision_mask = 0
 physics_material_override = SubResource("PhysicsMaterial_u4p1f")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/PondHutLeft/StaticBody2D" unique_id=1836539163]
-position = Vector2(953, 189)
+position = Vector2(930, 189.5)
 scale = Vector2(100, 100)
 shape = SubResource("RectangleShape2D_epg4m")
 
 [node name="PondHutRight" type="Node2D" parent="YSortObjects" unique_id=1710699959]
+z_index = -1
 position = Vector2(446, -4)
 
 [node name="Sprite2D" type="Sprite2D" parent="YSortObjects/PondHutRight" unique_id=42313060]
@@ -445,45 +464,69 @@ position = Vector2(-54.5, -302.5)
 shape = SubResource("RectangleShape2D_00i44")
 
 [node name="LotusFlower01" type="Sprite2D" parent="YSortObjects" unique_id=425334740]
+z_index = 10
 texture_filter = 1
 position = Vector2(-211, -9.360007)
 scale = Vector2(0.80396694, 0.8039669)
 texture = ExtResource("24_lotus_flower_01")
-
 offset = Vector2(0, -60.5)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower01"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower01/StaticBody2D"]
+position = Vector2(-4, -12)
+shape = SubResource("lotus_collision_shape")
+
 [node name="LotusFlower02" type="Sprite2D" parent="YSortObjects" unique_id=544391272]
+z_index = 10
 texture_filter = 1
-position = Vector2(197.60251, 182.238249)
+position = Vector2(197.60251, 182.23825)
 scale = Vector2(0.8541216, 0.8541216)
 texture = ExtResource("25_lotus_flower_02")
-
 offset = Vector2(0, -43)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower02"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower02/StaticBody2D"]
+position = Vector2(0, -10)
+shape = SubResource("lotus_collision_shape")
+
 [node name="LotusFlower03" type="Sprite2D" parent="YSortObjects" unique_id=1521018776]
+z_index = 10
 texture_filter = 1
 position = Vector2(290, 111.93)
 scale = Vector2(0.78, 0.78)
 texture = ExtResource("26_lotus_flower_03")
-
 offset = Vector2(0, -43.5)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower03"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower03/StaticBody2D"]
+position = Vector2(0, -10)
+shape = SubResource("lotus_collision_shape")
+
 [node name="StoneLantern" type="Sprite2D" parent="YSortObjects" unique_id=124704570]
 texture_filter = 1
 position = Vector2(496, 308)
 texture = ExtResource("29_stone_lantern")
-
 offset = Vector2(0, -40)
+
 [node name="FlowerBed" type="Sprite2D" parent="YSortObjects" unique_id=349467915]
 texture_filter = 1
-position = Vector2(-501.6507, -115)
+position = Vector2(-501.6507, -176)
 scale = Vector2(1.0068494, 1.0068493)
 texture = ExtResource("22_flower_bed")
+offset = Vector2(0, -12)
 
-offset = Vector2(0, -73)
 [node name="FlowerPot" type="Sprite2D" parent="YSortObjects" unique_id=382852485]
 texture_filter = 1
 position = Vector2(392, 326)
 texture = ExtResource("23_flower_pot")
-
 offset = Vector2(0, -44)
+
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/FlowerPot" unique_id=1678233249]
 collision_mask = 0
 
@@ -495,14 +538,14 @@ shape = SubResource("RectangleShape2D_u4p1f")
 texture_filter = 1
 position = Vector2(396, -70)
 texture = ExtResource("17_water_bucket")
-
 offset = Vector2(0, -23)
+
 [node name="MetalBucket" type="Sprite2D" parent="YSortObjects" unique_id=1027197588]
 texture_filter = 1
 position = Vector2(268, 292)
 texture = ExtResource("18_metal_bucket")
-
 offset = Vector2(0, -22)
+
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/MetalBucket" unique_id=653959374]
 collision_mask = 0
 
@@ -514,30 +557,41 @@ shape = SubResource("RectangleShape2D_1hesu")
 texture_filter = 1
 position = Vector2(428, 234)
 texture = ExtResource("19_metal_crate")
-
 offset = Vector2(0, -20)
+
 [node name="RopeCoil" type="Sprite2D" parent="YSortObjects" unique_id=39721903]
 texture_filter = 1
 position = Vector2(469, -21)
 texture = ExtResource("20_rope_coil")
-
 offset = Vector2(0, -21)
+
 [node name="FrogIdle" type="AnimatedSprite2D" parent="YSortObjects" unique_id=1338881457]
+z_index = 12
 texture_filter = 1
 position = Vector2(-156, -52.846153)
 scale = Vector2(0.7692309, 0.76923084)
 sprite_frames = SubResource("SpriteFrames_lyoci")
 frame_progress = 0.43147728
+offset = Vector2(0, -14.5)
 script = ExtResource("31_frog_idle_controller")
 
-offset = Vector2(0, -14.5)
 [node name="BottleFloat" type="AnimatedSprite2D" parent="YSortObjects" unique_id=426752641]
+z_index = 10
 texture_filter = 1
+position = Vector2(-76, 67.66102)
 scale = Vector2(0.6779661, 0.6779661)
 sprite_frames = ExtResource("34_bottle_float_frames")
 animation = &"float_loop"
 autoplay = "float_loop"
 frame_progress = 0.022527007
-
-position = Vector2(-76, 67.661017)
 offset = Vector2(0, -29)
+script = ExtResource("37_bottle_float_controller")
+interaction_area_path = NodePath("../../MessageBottle")
+push_source_path = NodePath("../DuckSprite")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/BottleFloat"]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/BottleFloat/StaticBody2D"]
+position = Vector2(0, -12)
+shape = SubResource("bottle_collision_shape")

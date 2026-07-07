@@ -189,7 +189,7 @@ manifest 是三方唯一对账单。表格维护，由 C 导出为 `game/assets/
 
 1. AI **不生成**完整房间图片，**不输出**任何坐标、尺寸、footprint；
 2. AI 允许输出的布局相关字段仅四个：`suggested_scene`、`node_type`（记忆节点），`object_type`、`zone`（房间物件）；
-3. 房间接口在 `04_ai_interfaces.md` 接口三基础上扩展，`objects` 元素从字符串升级为对象（**纯字符串数组必须继续兼容**）：
+3. 房间接口的正式新输出统一为对象数组；Gate 3 可为 Gate 1 前的旧本地存档保留字符串数组兼容，但新 AI、mock 与持久化记录不得再生成字符串数组：
 
 ```json
 {
@@ -202,12 +202,12 @@ manifest 是三方唯一对账单。表格维护，由 C 导出为 `game/assets/
     { "object_type": "lamp",       "zone": "back_left"  },
     { "object_type": "photo_wall", "zone": "back_wall"  },
     { "object_type": "plant",      "zone": "right_side" },
-    { "object_type": "bed" }
+    { "object_type": "bed",        "zone": "front_right" }
   ]
 }
 ```
 
-4. `zone` 为可选建议：缺省或非法时，用 manifest 中该物件的 `default_zone`；
+4. Gate 1 正式输出要求合法 `zone`；旧存档缺省或非法时，客户端可用 manifest 中该物件的 `default_zone` 兼容恢复；
 5. **footprint 一律由 manifest 按 `object_type` 查表**，AI 输出中出现的任何坐标/尺寸/footprint 字段一律忽略。
 
 ### 8.2 房间 zone 定义（逻辑坐标，房间背景定稿后 A+C 校准一次并冻结）
@@ -313,7 +313,7 @@ Framing requirements for pixelation:
 | 角色 | 职责 |
 |---|---|
 | A（产品+美术） | 维护调色板与密度纪律；按第 4/5/11 节生产资产；填 manifest 的 A 列字段；与 C 核对 slot 落点和 zone rect |
-| B（AI+内容安全） | 保证 AI 输出符合第 8.1 节（含字符串数组兼容）；zone 枚举校验进 prompt；mock 与正式输出同构；不输出坐标/尺寸/footprint |
+| B（AI+内容安全） | 保证 AI 新输出符合第 8.1 节对象数组；zone 枚举校验进 prompt；mock 与正式输出同构；不输出坐标/尺寸/footprint |
 | C（游戏系统） | 实现 SlotManager / NodeFactory / RoomLayoutManager / ScenePortal；统一封装 bottom_center 与 2x scale；维护 slots/zones/portals JSON；填 manifest 的 C 列字段；导入测试推进 status |
 
 配合规则：场景文档（10–15 号）管"有什么、什么体验"，本规范管"怎么摆、怎么标、怎么导"，各场景文档补一节 slot/portal 表；字段不互相代填；交接节奏沿用 `31_handoff_rules.md`（当天导入测试、反馈走 manifest 不走口头）；规范冲突当日提出、A 裁决、文档更新。
@@ -343,7 +343,7 @@ Framing requirements for pixelation:
 
 ### 13.3 一次 AI 房间生成合格
 
-1. JSON 通过校验（非法 zone 被纠正而非崩溃；字符串数组与对象数组都能处理）；
+1. 新 JSON 通过 Gate 1 Schema；客户端读取旧存档时，非法 zone 或旧字符串数组可安全降级而不崩溃；
 2. ≥ 3 个物件成功入 zone，互不重叠；≥ 1 个可点击并弹出对应 UI；
 3. footprint 全部来自 manifest，AI 输出中的坐标/尺寸字段被忽略；
 4. AI 失败时预设默认房间正常显示；

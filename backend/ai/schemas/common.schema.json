@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/common.schema.json",
+  "title": "Family Garden AI 公共契约",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["zh-CN", "en-US"]
+    },
+    "memoryType": {
+      "type": "string",
+      "enum": ["travel", "childhood", "home", "daily_life", "family_event", "personal_room", "old_memory"]
+    },
+    "scene": {
+      "type": "string",
+      "enum": ["garden", "fishpond", "farm", "old_street", "room", "travel_area"]
+    },
+    "nodeType": {
+      "type": "string",
+      "enum": ["memory_flower", "memory_seed", "photo_board", "bottle", "room_object", "postcard", "memory_link"]
+    },
+    "relationType": {
+      "type": "string",
+      "enum": ["same_place", "same_people", "same_theme", "same_era"]
+    },
+    "roomType": {
+      "type": "string",
+      "enum": ["bedroom", "study", "living_room", "kitchen_corner", "unknown"]
+    },
+    "roomStyle": {
+      "type": "string",
+      "enum": ["warm_cozy", "simple", "nostalgic", "bright", "quiet"]
+    },
+    "roomTheme": {
+      "type": "string",
+      "enum": ["study_corner", "reading_corner", "rest_corner", "family_corner", "memory_corner"]
+    },
+    "roomObjectType": {
+      "type": "string",
+      "enum": ["desk", "lamp", "plant", "photo_wall", "bed", "chair"]
+    },
+    "roomZone": {
+      "type": "string",
+      "enum": ["back_wall", "back_left", "back_center", "back_right", "left_side", "right_side", "front_left", "front_center", "front_right", "floor_center"]
+    },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_REQUEST",
+        "UNAUTHORIZED",
+        "FORBIDDEN",
+        "RATE_LIMITED",
+        "UPLOAD_FAILED",
+        "IMAGE_UNSUPPORTED",
+        "CONTENT_UNSAFE",
+        "AI_TIMEOUT",
+        "AI_UPSTREAM_ERROR",
+        "AI_INVALID_OUTPUT",
+        "DATA_CONFLICT",
+        "DATA_NOT_FOUND",
+        "NETWORK_OFFLINE",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "successMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "provider", "model", "prompt_version", "source", "result"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "model": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "prompt_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "source": { "type": "string", "enum": ["ai", "fallback", "mock"] },
+        "result": { "type": "string", "enum": ["complete", "empty"] },
+        "fallback_reason": { "$ref": "#/$defs/errorCode" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "source": { "const": "fallback" } }, "required": ["source"] },
+          "then": { "required": ["fallback_reason"] },
+          "else": { "not": { "required": ["fallback_reason"] } }
+        }
+      ]
+    },
+    "failureEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "error", "meta"],
+      "properties": {
+        "ok": { "const": false },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": { "$ref": "#/$defs/errorCode" },
+            "message": { "type": "string", "minLength": 1, "maxLength": 240 },
+            "retryable": { "type": "boolean" },
+            "details": {
+              "type": "array",
+              "maxItems": 10,
+              "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+            }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request_id"],
+          "properties": {
+            "request_id": { "$ref": "#/$defs/id" }
+          }
+        }
+      }
+    }
+  }
+}

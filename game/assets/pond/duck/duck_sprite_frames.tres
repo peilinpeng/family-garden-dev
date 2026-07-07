@@ -24,13 +24,10 @@ animations = [{
 "texture": ExtResource("2_land_walk_02")
 }, {
 "duration": 1.0,
+"texture": ExtResource("4_land_walk_04")
+}, {
+"duration": 1.0,
 "texture": ExtResource("5_land_walk_05")
-}, {
-"duration": 1.0,
-"texture": ExtResource("6_land_walk_06")
-}, {
-"duration": 1.0,
-"texture": ExtResource("7_land_walk_07")
 }, {
 "duration": 1.0,
 "texture": ExtResource("8_land_walk_08")
@@ -45,7 +42,38 @@ animations = [{
 }],
 "loop": true,
 "name": &"water_swim",
-"speed": 1.0
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("9_water_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_water_03")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_water_01")
+}],
+"loop": true,
+"name": &"water_splash",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("9_water_01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_water_04")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_water_04")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_water_01")
+}],
+"loop": false,
+"name": &"water_dive",
+"speed": 3.5
 }, {
 "frames": [{
 "duration": 1.0,

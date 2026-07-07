@@ -42,19 +42,21 @@ func set_persistence_backend(backend: Object) -> void:
 ## 首次选角色后调用:若配置了 CloudBase 但本设备还没自助加入过,
 ## 用选中的角色+昵称注册一个云身份,再补跑一次 bootstrap 把数据同步起来。
 ## 已经加入过的设备(has_identity()==true)直接跳过,不会重复注册。
-func ensure_cloud_identity(role: String, display_name: String) -> void:
+func ensure_cloud_identity(role: String, display_name: String) -> bool:
 	if _persist_backend == null or not _persist_backend.has_method("has_identity"):
-		return
+		return false
 	if _persist_backend.has_identity():
-		return
+		return true
 	var fam_id: String = _persist_backend.family_id() if _persist_backend.family_id() != "" \
 		else str(CloudBaseBackend.load_config().get("family_id", ""))
 	if fam_id == "":
 		push_warning("[CloudBase] 未配置 family_id,无法自助加入")
-		return
+		return false
 	var joined: bool = await _persist_backend.join_family(fam_id, role, display_name)
 	if joined:
 		await _persist_backend.bootstrap()
+		return true
+	return false
 
 func persist_record(table: String, row: Dictionary) -> void:
 	if _persist_backend != null and _persist_backend.has_method("persist_record"):

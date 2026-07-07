@@ -24,7 +24,7 @@ texture_filter = 1
 texture = ExtResource("2_sheet")
 hframes = 3
 vframes = 4
-frame = 1
+frame = 0
 scale = Vector2(0.2733, 0.2733)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
