@@ -3,7 +3,7 @@
 > 日期：2026-07-07
 > 分支：`feature/ai-godot-client`
 > 依赖：AI 契约 `1.1.0`、已部署 `ai_gateway`、设备私有 CloudBase 身份
-> 状态：本地验收通过；真实文字三接口通过，图片接口待新临时链接补测
+> 状态：本地验收与四个真实 AI 接口全部通过
 
 ## 1. 交付范围
 
@@ -70,7 +70,9 @@ fallback。服务端已经返回合法 `source=fallback` 时客户端保留其 m
 | `generate-memory-card` | `godot_342_26172203` | success | ai |
 | `generate-bottle-question` | `godot_6204_1d14e06d` | success | ai |
 | `cross-memory-link` | `godot_8998_0c0e8fbd` | success | ai |
-| `analyze-room-photo` | 待有效 CloudBase 临时图片 URL | 待验收 | - |
+| `analyze-room-photo` | `godot_488_1e360693` | success | ai |
+
+图片验收使用 CloudBase 临时下载链接，仅通过进程环境变量传入；链接本身未进入仓库、文档或日志。
 
 ## 7. 影响范围与后续边界
 
