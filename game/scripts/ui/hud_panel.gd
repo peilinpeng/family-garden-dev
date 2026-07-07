@@ -103,3 +103,9 @@ static func _soft_box(bg: Color, border: Color, w: int) -> StyleBoxFlat:
 	box.set_border_width_all(w)
 	box.set_corner_radius_all(10)
 	return box
+
+## 把一个已 _style_soft_button 的按钮标为"选中态"(列表当前项/tab)。非选中则维持默认样式。
+static func _mark_active(b: Button, active: bool) -> void:
+	if active:
+		b.add_theme_stylebox_override("normal", _soft_box(Color(0.98, 0.90, 0.66, 0.98), Color(0.80, 0.55, 0.25, 1.0), 2))
+		b.add_theme_color_override("font_color", Color(0.20, 0.15, 0.10, 1.0))
