@@ -11,6 +11,7 @@ signal settings_changed
 var music_volume: float = 0.8   ## 0.0~1.0 线性
 var sfx_volume: float = 0.9     ## 0.0~1.0 线性
 var fullscreen: bool = false
+var day_night_filter: bool = true   ## 昼夜滤镜(整屏染色);关掉不影响时间
 
 func _ready() -> void:
 	_load()
@@ -22,6 +23,7 @@ func apply_all() -> void:
 	AudioManager.set_music_volume(music_volume)
 	AudioManager.set_sfx_volume(sfx_volume)
 	_apply_fullscreen()
+	GameClock.set_filter_enabled(day_night_filter)
 	settings_changed.emit()
 
 func set_music_volume(v: float) -> void:
@@ -39,6 +41,12 @@ func set_sfx_volume(v: float) -> void:
 func set_fullscreen(on: bool) -> void:
 	fullscreen = on
 	_apply_fullscreen()
+	_save()
+	settings_changed.emit()
+
+func set_day_night_filter(on: bool) -> void:
+	day_night_filter = on
+	GameClock.set_filter_enabled(on)
 	_save()
 	settings_changed.emit()
 
@@ -60,6 +68,7 @@ func _load() -> void:
 	music_volume = clampf(float(parsed.get("music_volume", music_volume)), 0.0, 1.0)
 	sfx_volume = clampf(float(parsed.get("sfx_volume", sfx_volume)), 0.0, 1.0)
 	fullscreen = bool(parsed.get("fullscreen", fullscreen))
+	day_night_filter = bool(parsed.get("day_night_filter", day_night_filter))
 
 func _save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -70,4 +79,5 @@ func _save() -> void:
 		"music_volume": music_volume,
 		"sfx_volume": sfx_volume,
 		"fullscreen": fullscreen,
+		"day_night_filter": day_night_filter,
 	}))

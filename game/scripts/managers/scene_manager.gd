@@ -198,6 +198,8 @@ var world_chat_input: LineEdit = null
 var world_chat_feed_panel: Panel = null
 var world_chat_feed: Label = null
 var world_chat_fade_tween: Tween = null
+var _chat_panel_list: VBoxContainer = null   ## 打开的完整聊天面板的消息容器(发送后实时刷新)
+var _chat_panel_scroll: ScrollContainer = null
 var plant_mode := false
 var selected_plant_type := "tree"
 var mode := "garden"
@@ -290,7 +292,8 @@ func _build_ui() -> void:
 	# 底部原有的 World/Tree/Map/Postcards 文字按钮已迁移到常驻 HUD 的左右侧图标导航(GameHUD),
 	# 这里不再创建;保留世界聊天条(输入框 + 预览 + Chat 历史)在底部原位置不动。
 	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
-	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
+	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(238, 32))
+	_add_button(root, "Send", Vector2(892, 672), Vector2(62, 32), "world_chat_send")
 	_add_button(root, "Chat", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
 	_refresh_world_chat_feed()
 
@@ -384,16 +387,17 @@ func _on_world_chat_preview_input(event: InputEvent) -> void:
 		_open_world_chat_history_panel()
 
 func _on_world_chat_submitted(submitted_text: String) -> void:
-	var text := submitted_text.strip_edges()
+	_send_world_chat_message(submitted_text, world_chat_input)
+
+## 发送世界聊天消息。source_input:发起发送的输入框(底部栏或聊天面板内嵌),发送期间禁用、
+## 完成后清空并重新聚焦。回车键与 Send 按钮、聊天面板发送都走这里。
+func _send_world_chat_message(raw_text: String, source_input: LineEdit = null) -> void:
+	var text := raw_text.strip_edges()
 	if text == "":
 		return
-	_send_world_chat_message(text)
-
-func _send_world_chat_message(text: String) -> void:
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = false
-		world_chat_input.text = ""
-		world_chat_input.placeholder_text = "Sending..."
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = false
+		source_input.text = ""
 
 	var author := _get_world_chat_author()
 	var message_id := "message_" + str(Time.get_ticks_msec())
@@ -413,11 +417,11 @@ func _send_world_chat_message(text: String) -> void:
 	MemoryManager.notify_family_activity()
 	MemoryManager.save_game()
 	_refresh_world_chat_feed(true)
+	_refresh_chat_panel_messages()
 
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = true
-		world_chat_input.placeholder_text = "Send a family message..."
-		world_chat_input.grab_focus()
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = true
+		source_input.grab_focus()
 	_show_toast("Message sent.")
 
 func _get_world_chat_author() -> String:
@@ -470,84 +474,140 @@ func _show_world_chat_preview() -> void:
 			world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	)
 
+## 完整家庭聊天面板:滚动消息流(旧→新,气泡按自己/家人左右对齐)+ 内嵌输入框/发送。
+## 底部栏"Chat"按钮或点消息预览都打开这里。发送后实时刷新并自动滚到底。
 func _open_world_chat_history_panel() -> void:
 	_close_active_panel()
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 
 	var panel := Panel.new()
-	panel.position = Vector2(360, 96)
-	panel.size = Vector2(560, 520)
+	panel.position = Vector2(340, 70)
+	panel.size = Vector2(600, 580)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "World Chat"
-	title.position = Vector2(34, 24)
-	title.size = Vector2(470, 30)
+	title.text = "家庭聊天 / Family Chat"
+	title.position = Vector2(34, 22)
+	title.size = Vector2(500, 32)
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
 
+	# 消息流
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(34, 70)
-	scroll.size = Vector2(492, 360)
+	scroll.position = Vector2(28, 66)
+	scroll.size = Vector2(544, 436)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(scroll)
+	_chat_panel_scroll = scroll
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 10)
+	list.custom_minimum_size = Vector2(544, 0)
+	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
+	_chat_panel_list = list
 
+	# 内嵌输入 + 发送
+	var input := LineEdit.new()
+	input.name = "ChatPanelInput"
+	input.placeholder_text = "Send a family message..."
+	input.position = Vector2(28, 514)
+	input.size = Vector2(456, 40)
+	input.mouse_filter = Control.MOUSE_FILTER_STOP
+	input.add_theme_font_size_override("font_size", 14)
+	input.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	panel.add_child(input)
+
+	var send_btn := Button.new()
+	send_btn.text = "Send"
+	send_btn.position = Vector2(492, 514)
+	send_btn.size = Vector2(80, 40)
+	send_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(send_btn, false)
+	send_btn.pressed.connect(func() -> void: _send_world_chat_message(input.text, input))
+	panel.add_child(send_btn)
+	input.text_submitted.connect(func(t: String) -> void: _send_world_chat_message(t, input))
+
+	_refresh_chat_panel_messages()
+	input.grab_focus()
+
+## 重建聊天面板的消息气泡(打开时 + 每次发送后)。面板已关则安全跳过。
+func _refresh_chat_panel_messages() -> void:
+	if _chat_panel_list == null or not is_instance_valid(_chat_panel_list):
+		return
+	for c in _chat_panel_list.get_children():
+		c.queue_free()
 	if MemoryManager.garden_messages.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "No messages yet."
-		empty_label.custom_minimum_size = Vector2(460, 48)
-		empty_label.add_theme_font_size_override("font_size", 15)
-		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
-		list.add_child(empty_label)
+		var empty := Label.new()
+		empty.text = "还没有消息,发一条打个招呼吧~"
+		empty.add_theme_font_size_override("font_size", 14)
+		empty.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+		_chat_panel_list.add_child(empty)
 	else:
-		for i in range(MemoryManager.garden_messages.size() - 1, -1, -1):
-			var raw_message: Variant = MemoryManager.garden_messages[i]
-			if raw_message is Dictionary:
-				list.add_child(_make_world_chat_history_card(raw_message))
+		for raw in MemoryManager.garden_messages:
+			if raw is Dictionary:
+				_chat_panel_list.add_child(_make_chat_bubble(raw))
+	# 布局完成后滚到底(超大值自动夹到 max)
+	if _chat_panel_scroll != null and is_instance_valid(_chat_panel_scroll):
+		_chat_panel_scroll.set_deferred("scroll_vertical", 1000000)
 
-	_add_panel_button(panel, "Close", Vector2(218, 456), Vector2(124, 38), "close")
+## 单条聊天气泡:自己发的靠右(暖绿),家人的靠左(米色);含作者 + 时间。
+func _make_chat_bubble(message: Dictionary) -> Control:
+	var is_self := str(message.get("role", "")) == str(MemoryManager.selected_role_key)
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-func _make_world_chat_history_card(message: Dictionary) -> Control:
-	var card := Panel.new()
-	card.custom_minimum_size = Vector2(470, 78)
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bubble := PanelContainer.new()
+	bubble.size_flags_horizontal = Control.SIZE_SHRINK_END if is_self else Control.SIZE_SHRINK_BEGIN
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.95, 0.82, 0.82)
-	style.border_color = Color(0.62, 0.48, 0.32, 0.70)
+	style.bg_color = Color(0.86, 0.93, 0.72, 0.96) if is_self else Color(1.0, 0.95, 0.82, 0.94)
+	style.border_color = Color(0.58, 0.62, 0.36, 0.7) if is_self else Color(0.62, 0.48, 0.32, 0.65)
 	style.set_border_width_all(1)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	card.add_theme_stylebox_override("panel", style)
+	style.set_corner_radius_all(12)
+	bubble.add_theme_stylebox_override("panel", style)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	bubble.add_child(margin)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	margin.add_child(vb)
 
 	var meta := Label.new()
-	meta.text = str(message.get("author", "Family")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
-	meta.position = Vector2(14, 10)
-	meta.size = Vector2(442, 20)
-	meta.add_theme_font_size_override("font_size", 12)
-	meta.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.86))
-	card.add_child(meta)
+	meta.text = str(message.get("author", "Family")) + "  ·  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.add_theme_font_size_override("font_size", 11)
+	meta.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+	vb.add_child(meta)
 
 	var body := Label.new()
 	body.text = str(message.get("text", ""))
-	body.position = Vector2(14, 32)
-	body.size = Vector2(442, 38)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(320, 0)
 	body.add_theme_font_size_override("font_size", 14)
-	body.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
-	card.add_child(body)
-	return card
+	body.add_theme_color_override("font_color", Color(0.20, 0.16, 0.12, 1.0))
+	vb.add_child(body)
+
+	if is_self:
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+		row.add_child(bubble)
+	else:
+		row.add_child(bubble)
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+	return row
 
 func _format_world_chat_time(raw_time: String) -> String:
 	if raw_time == "":
@@ -571,6 +631,9 @@ func _on_ui_button(action: String) -> void:
 			_show_travel_map()
 		"MemoryManager.postcards":
 			_open_postcards_panel()
+		"world_chat_send":
+			if world_chat_input != null and is_instance_valid(world_chat_input):
+				_send_world_chat_message(world_chat_input.text, world_chat_input)
 		"world_chat_history":
 			_open_world_chat_history_panel()
 		"save":
@@ -3525,6 +3588,8 @@ func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):
 		active_modal.queue_free()
 	active_modal = null
+	_chat_panel_list = null   ## 聊天面板随 overlay 一起释放,清引用避免悬空
+	_chat_panel_scroll = null
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
 
