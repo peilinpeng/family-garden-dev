@@ -27,6 +27,17 @@ func _build_content() -> void:
 		fs_row.add_child(fs_toggle)
 		content_root.add_child(fs_row)
 
+	# 昼夜滤镜开关(关掉只取消整屏染色,不影响时间/时钟)
+	var dn_row := HBoxContainer.new()
+	dn_row.add_theme_constant_override("separation", 12)
+	dn_row.add_child(_row_label("🌗 昼夜滤镜"))
+	var dn_toggle := CheckButton.new()
+	dn_toggle.button_pressed = SettingsManager.day_night_filter
+	dn_toggle.mouse_filter = Control.MOUSE_FILTER_STOP
+	dn_toggle.toggled.connect(func(on: bool) -> void: SettingsManager.set_day_night_filter(on))
+	dn_row.add_child(dn_toggle)
+	content_root.add_child(dn_row)
+
 	# UI 缩放 —— 占位(后续接 content_scale_factor)
 	var scale_row := HBoxContainer.new()
 	scale_row.add_theme_constant_override("separation", 12)
