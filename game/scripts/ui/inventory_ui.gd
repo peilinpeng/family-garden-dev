@@ -134,6 +134,7 @@ func _make_slot(id: String, n: int, db: Object, is_backpack: bool) -> Control:
 func _on_slot(id: String, is_backpack: bool) -> void:
 	if _inv == null:
 		return
+	AudioManager.play_sfx("按钮")
 	var whole := Input.is_key_pressed(KEY_SHIFT)
 	var src: Object = _inv.backpack if is_backpack else _inv.storehouse
 	var amount: int = src.count(id) if whole else 1
