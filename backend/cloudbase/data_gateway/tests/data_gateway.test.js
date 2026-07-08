@@ -259,6 +259,40 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.get('memories', result.id).family_id, 'family_a');
   });
 
+  await scenario('家庭共享记录强制成员审计字段', async () => {
+    const created = await invoke({
+      action: 'upsert',
+      table: 'travel_places',
+      row: {
+        id: 'place_a',
+        family_id: 'family_b',
+        created_by_member_id: 'forged_creator',
+        updated_by_member_id: 'forged_updater',
+        title: '家庭旅行',
+      },
+    }, 'token_a');
+    assert.equal(created.ok, true);
+    assert.equal(db.get('travel_places', 'place_a').family_id, 'family_a');
+    assert.equal(db.get('travel_places', 'place_a').created_by_member_id, 'member_a');
+    assert.equal(db.get('travel_places', 'place_a').updated_by_member_id, 'member_a');
+
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
+    });
+    await invoke({
+      action: 'upsert',
+      table: 'travel_places',
+      row: {
+        id: 'place_a',
+        created_by_member_id: 'forged_again',
+        updated_by_member_id: 'forged_again',
+        title: '家庭旅行更新',
+      },
+    }, 'token_a2');
+    assert.equal(db.get('travel_places', 'place_a').created_by_member_id, 'member_a');
+    assert.equal(db.get('travel_places', 'place_a').updated_by_member_id, 'member_a2');
+  });
+
   await scenario('通用 upsert 保留已有服务端字段', async () => {
     db.seed('memories', 'memory_a', { family_id: 'family_a', server_only: 'keep', title: '旧' });
     await invoke({ action: 'upsert', table: 'memories', row: { id: 'memory_a', title: '新' } }, 'token_a');
