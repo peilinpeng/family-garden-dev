@@ -906,7 +906,8 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var link_color := _memory_link_color(relation_type)
 	var link_label := _memory_link_label(relation_type)
 	var confidence := float(link.get("confidence", 1.0))
-	var alpha := clampf(0.58 + confidence * 0.34, 0.58, 0.92)
+	var answered := MemoryManager.is_memory_link_answered(link)
+	var alpha := clampf(0.54 + confidence * 0.30 + (0.12 if answered else 0.0), 0.54, 0.96)
 
 	var shadow := Line2D.new()
 	shadow.name = "MemoryLinkShadow"
@@ -922,7 +923,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var line := Line2D.new()
 	line.name = "MemoryLink"
 	line.points = PackedVector2Array([a + head, arc, b + head])
-	line.width = 5.0
+	line.width = 6.0 if answered else 5.0
 	line.default_color = Color(link_color.r, link_color.g, link_color.b, alpha)
 	line.z_index = 5000  # 盖在记忆花(z=pos.y)之上，保证可见
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
@@ -933,8 +934,8 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var pulse := Line2D.new()
 	pulse.name = "MemoryLinkPulse"
 	pulse.points = PackedVector2Array([a + head, arc, b + head])
-	pulse.width = 2.0
-	pulse.default_color = Color(1.0, 0.96, 0.78, 0.72)
+	pulse.width = 3.0 if answered else 2.0
+	pulse.default_color = Color(1.0, 0.96, 0.78, 0.86 if answered else 0.58)
 	pulse.z_index = 5001
 	pulse.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.end_cap_mode = Line2D.LINE_CAP_ROUND
@@ -949,31 +950,45 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	area.input_pickable = true
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(142, 48)
+	rect.size = Vector2(162, 54)
 	shape.shape = rect
 	area.add_child(shape)
 
 	var tag_panel := Panel.new()
-	tag_panel.position = Vector2(-66, -18)
-	tag_panel.size = Vector2(132, 36)
+	tag_panel.position = Vector2(-76, -20)
+	tag_panel.size = Vector2(152, 40)
 	tag_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tag_style := StyleBoxFlat.new()
-	tag_style.bg_color = Color(1.0, 0.96, 0.82, 0.94)
+	tag_style.bg_color = Color(0.92, 1.0, 0.84, 0.96) if answered else Color(1.0, 0.96, 0.82, 0.94)
 	tag_style.border_color = Color(link_color.r, link_color.g, link_color.b, 0.95)
 	tag_style.set_border_width_all(2)
-	tag_style.set_corner_radius_all(8)
+	tag_style.set_corner_radius_all(14)
 	tag_panel.add_theme_stylebox_override("panel", tag_style)
 	area.add_child(tag_panel)
 
 	var tag := Label.new()
-	tag.text = link_label
-	tag.position = Vector2(8, 7)
-	tag.size = Vector2(116, 20)
+	tag.text = link_label + (" · 已补写" if answered else " · 待补写")
+	tag.position = Vector2(10, 9)
+	tag.size = Vector2(132, 20)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_theme_font_size_override("font_size", 12)
 	tag.add_theme_color_override("font_color", Color(0.20, 0.17, 0.12, 0.96))
 	tag_panel.add_child(tag)
+
+	if answered:
+		var bloom := Panel.new()
+		bloom.name = "MemoryLinkBloom"
+		bloom.position = Vector2(58, -31)
+		bloom.size = Vector2(22, 22)
+		bloom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bloom_style := StyleBoxFlat.new()
+		bloom_style.bg_color = Color(1.0, 0.82, 0.62, 0.96)
+		bloom_style.border_color = Color(0.78, 0.42, 0.35, 0.92)
+		bloom_style.set_border_width_all(2)
+		bloom_style.set_corner_radius_all(11)
+		bloom.add_theme_stylebox_override("panel", bloom_style)
+		area.add_child(bloom)
 
 	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
@@ -1012,7 +1027,10 @@ func _memory_link_label(relation_type: String) -> String:
 			return "相似主题"
 
 func _open_memory_link_panel(link: Dictionary) -> void:
-	var endpoints := MemoryManager.get_memory_link_endpoints(link)
+	var live_link := MemoryManager.get_memory_link_by_id(String(link.get("id", "")))
+	if live_link.is_empty():
+		live_link = link
+	var endpoints := MemoryManager.get_memory_link_endpoints(live_link)
 	if not bool(endpoints.get("ok", false)):
 		_show_toast("这条关联的记忆已经不存在。")
 		return
@@ -1021,65 +1039,67 @@ func _open_memory_link_panel(link: Dictionary) -> void:
 	var memory_b: Dictionary = endpoints.get("memory_b", {})
 	var card_a: Dictionary = memory_a.get("ai_card", {})
 	var card_b: Dictionary = memory_b.get("ai_card", {})
-	var relation_type := String(link.get("relation_type", "same_theme"))
+	var relation_type := String(live_link.get("relation_type", "same_theme"))
 	var relation_label := _memory_link_label(relation_type)
-	var meta: Dictionary = link.get("generation_meta", {})
+	var meta: Dictionary = live_link.get("generation_meta", {})
+	var answered := MemoryManager.is_memory_link_answered(live_link)
 
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 	var panel := Panel.new()
-	panel.position = Vector2(300, 92)
-	panel.size = Vector2(680, 536)
+	panel.position = Vector2(250, 46)
+	panel.size = Vector2(780, 628)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "两段记忆之间的线索"
+	title.text = "记忆藤蔓"
 	title.position = Vector2(34, 24)
-	title.size = Vector2(612, 34)
-	title.add_theme_font_size_override("font_size", 24)
+	title.size = Vector2(712, 34)
+	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
 
 	var relation := Label.new()
-	relation.text = "%s · 可信度 %d%%" % [relation_label, roundi(float(link.get("confidence", 1.0)) * 100.0)]
+	relation.text = "%s · 可信度 %d%% · %s" % [
+		relation_label,
+		roundi(float(live_link.get("confidence", 1.0)) * 100.0),
+		"家人已补写" if answered else "等待家人补写",
+	]
 	relation.position = Vector2(34, 64)
-	relation.size = Vector2(612, 24)
+	relation.size = Vector2(712, 24)
 	relation.add_theme_font_size_override("font_size", 14)
 	relation.add_theme_color_override("font_color", Color(0.34, 0.29, 0.22, 0.88))
 	panel.add_child(relation)
 
-	var question := Label.new()
-	question.text = String(link.get("question", ""))
-	question.position = Vector2(34, 104)
-	question.size = Vector2(612, 62)
-	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	question.add_theme_font_size_override("font_size", 17)
-	question.add_theme_color_override("font_color", Color(0.18, 0.28, 0.22, 1.0))
-	panel.add_child(question)
+	_add_memory_link_summary_card(panel, Vector2(34, 106), Vector2(306, 144), "记忆 A", card_a)
+	_add_memory_link_summary_card(panel, Vector2(440, 106), Vector2(306, 144), "记忆 B", card_b)
 
-	_add_memory_link_summary_card(panel, Vector2(34, 186), Vector2(292, 170), "记忆 A", card_a)
-	_add_memory_link_summary_card(panel, Vector2(354, 186), Vector2(292, 170), "记忆 B", card_b)
+	var vine := ColorRect.new()
+	vine.position = Vector2(350, 174)
+	vine.size = Vector2(80, 4)
+	vine.color = Color(_memory_link_color(relation_type).r, _memory_link_color(relation_type).g, _memory_link_color(relation_type).b, 0.68)
+	vine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(vine)
 
-	var trace := Label.new()
-	trace.text = "AI 来源：%s · 模型：%s · Prompt：%s" % [
-		String(meta.get("source", meta.get("provider", "unknown"))),
-		String(meta.get("model", "unknown")),
-		String(meta.get("prompt_version", "unknown")),
-	]
-	trace.position = Vector2(34, 378)
-	trace.size = Vector2(612, 42)
-	trace.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	trace.add_theme_font_size_override("font_size", 12)
-	trace.add_theme_color_override("font_color", Color(0.43, 0.36, 0.28, 0.78))
-	panel.add_child(trace)
+	var bud := Panel.new()
+	bud.position = Vector2(378, 162)
+	bud.size = Vector2(26, 26)
+	bud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bud_style := StyleBoxFlat.new()
+	bud_style.bg_color = Color(0.92, 1.0, 0.82, 0.96) if answered else Color(1.0, 0.92, 0.72, 0.96)
+	bud_style.border_color = Color(_memory_link_color(relation_type).r, _memory_link_color(relation_type).g, _memory_link_color(relation_type).b, 0.95)
+	bud_style.set_border_width_all(2)
+	bud_style.set_corner_radius_all(13)
+	bud.add_theme_stylebox_override("panel", bud_style)
+	panel.add_child(bud)
 
 	var open_a := Button.new()
 	open_a.text = "打开记忆 A"
-	open_a.position = Vector2(112, 452)
-	open_a.size = Vector2(140, 40)
+	open_a.position = Vector2(118, 262)
+	open_a.size = Vector2(138, 34)
 	open_a.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_button_style(open_a, false)
 	open_a.pressed.connect(_open_memory_from_link.bind(String(memory_a.get("id", ""))))
@@ -1087,16 +1107,85 @@ func _open_memory_link_panel(link: Dictionary) -> void:
 
 	var open_b := Button.new()
 	open_b.text = "打开记忆 B"
-	open_b.position = Vector2(270, 452)
-	open_b.size = Vector2(140, 40)
+	open_b.position = Vector2(524, 262)
+	open_b.size = Vector2(138, 34)
 	open_b.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_button_style(open_b, false)
 	open_b.pressed.connect(_open_memory_from_link.bind(String(memory_b.get("id", ""))))
 	panel.add_child(open_b)
 
+	var question_box := Panel.new()
+	question_box.position = Vector2(34, 312)
+	question_box.size = Vector2(712, 78)
+	question_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_small_card_style(question_box)
+	panel.add_child(question_box)
+
+	var question_title := Label.new()
+	question_title.text = "这根藤想问"
+	question_title.position = Vector2(16, 10)
+	question_title.size = Vector2(680, 18)
+	question_title.add_theme_font_size_override("font_size", 12)
+	question_title.add_theme_color_override("font_color", Color(0.44, 0.36, 0.26, 0.86))
+	question_box.add_child(question_title)
+
+	var question := Label.new()
+	question.text = String(live_link.get("question", ""))
+	question.position = Vector2(16, 30)
+	question.size = Vector2(680, 38)
+	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	question.add_theme_font_size_override("font_size", 15)
+	question.add_theme_color_override("font_color", Color(0.18, 0.28, 0.22, 1.0))
+	question_box.add_child(question)
+
+	var answer_title := Label.new()
+	answer_title.text = "家人的补写" if answered else "补上这段关系"
+	answer_title.position = Vector2(34, 404)
+	answer_title.size = Vector2(712, 22)
+	answer_title.add_theme_font_size_override("font_size", 14)
+	answer_title.add_theme_color_override("font_color", Color(0.28, 0.35, 0.24, 0.94))
+	panel.add_child(answer_title)
+
+	var answer_input := TextEdit.new()
+	answer_input.text = String(live_link.get("followup_answer", ""))
+	answer_input.placeholder_text = "写下这两段记忆之间还没有说完的话..."
+	answer_input.position = Vector2(34, 430)
+	answer_input.size = Vector2(712, 84)
+	answer_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(answer_input)
+
+	var status := _make_status_label(
+		panel,
+		Vector2(34, 520),
+		Vector2(712, 24),
+		"已保存的补写可以继续编辑。" if answered else "保存后，这根藤会在场景里点亮。"
+	)
+
+	var trace := Label.new()
+	trace.text = "AI 来源：%s · 模型：%s · Prompt：%s" % [
+		String(meta.get("source", meta.get("provider", "unknown"))),
+		String(meta.get("model", "unknown")),
+		String(meta.get("prompt_version", "unknown")),
+	]
+	trace.position = Vector2(34, 546)
+	trace.size = Vector2(712, 22)
+	trace.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trace.add_theme_font_size_override("font_size", 12)
+	trace.add_theme_color_override("font_color", Color(0.43, 0.36, 0.28, 0.78))
+	panel.add_child(trace)
+
+	var save := Button.new()
+	save.text = "更新补写" if answered else "保存补写"
+	save.position = Vector2(242, 580)
+	save.size = Vector2(140, 38)
+	save.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(save, false)
+	save.pressed.connect(_save_memory_link_followup.bind(String(live_link.get("id", "")), answer_input, save, status))
+	panel.add_child(save)
+
 	var close := Button.new()
 	close.text = "关闭"
-	close.position = Vector2(428, 452)
+	close.position = Vector2(400, 580)
 	close.size = Vector2(140, 40)
 	close.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_button_style(close, false)
@@ -1152,6 +1241,32 @@ func _find_rendered_memory_by_memory_id(memory_id: String) -> Dictionary:
 		if String(mem.get("memory_id", "")) == memory_id:
 			return mem
 	return {}
+
+func _save_memory_link_followup(link_id: String, input: TextEdit, button: Button, status: Label) -> void:
+	var text := input.text.strip_edges()
+	if text == "":
+		_set_status(status, "先写一点补充，再保存。", true)
+		return
+	_set_button_busy(button, "正在保存...")
+	_set_status(status, "正在把这段补写长到藤蔓上...")
+	var result := MemoryManager.answer_memory_link(link_id, text)
+	if not bool(result.get("ok", false)):
+		_set_button_ready(button)
+		_set_status(status, _result_error_message(result, "保存失败，请重试。"), true)
+		return
+	_refresh_memory_link_visuals(mode)
+	var updated := bool(result.get("updated", false))
+	_show_toast("记忆藤蔓已更新。" if updated else "记忆藤蔓已点亮。")
+	_open_memory_link_panel(result.get("link", {}))
+
+func _refresh_memory_link_visuals(scene: String) -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	for child in world.get_children():
+		var child_name := String(child.name)
+		if child_name.begins_with("MemoryLink"):
+			child.queue_free()
+	_render_memory_links(scene)
 
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
