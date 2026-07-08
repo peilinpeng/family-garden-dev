@@ -146,6 +146,28 @@ func get_memory_links(scene_id: String) -> Array:
 		and String(n.get("node_type", "")) == "memory_link" \
 		and String(n.get("scene_id", "")) == scene_id)
 
+func get_memory_link_endpoints(link: Dictionary) -> Dictionary:
+	var memory_a := get_memory(String(link.get("memory_id", "")))
+	var memory_b := get_memory(String(link.get("linked_memory_id", "")))
+	return {
+		"memory_a": memory_a,
+		"memory_b": memory_b,
+		"ok": not memory_a.is_empty() and not memory_b.is_empty(),
+	}
+
+func count_memory_links_for_memory(memory_id: String, scene_id: String = "") -> int:
+	var count := 0
+	for node in nodes:
+		if not (node is Dictionary):
+			continue
+		if String(node.get("node_type", "")) != "memory_link":
+			continue
+		if scene_id != "" and String(node.get("scene_id", "")) != scene_id:
+			continue
+		if String(node.get("memory_id", "")) == memory_id or String(node.get("linked_memory_id", "")) == memory_id:
+			count += 1
+	return count
+
 func update_memory_card(memory_id: String, card: Dictionary) -> bool:
 	var validation := AIContractValidator.validate_data("generate-memory-card", card)
 	if not bool(validation.get("ok", false)):
