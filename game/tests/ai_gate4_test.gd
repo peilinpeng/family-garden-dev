@@ -141,6 +141,10 @@ func _test_memory_draft_and_idempotency() -> void:
 	_assert(duplicate.ok, "重复确认应返回既有结果")
 	_assert(MemoryManager.memories.size() == memory_count and MemoryManager.nodes.size() == node_count, "重复确认不得生成重复 memory/node/link")
 	_assert(MemoryManager.get_memory_links("garden").size() == 1, "新记忆应创建一条合格跨记忆关联")
+	_assert(MemoryManager.count_memory_links_for_memory(String(committed.memory.get("id", "")), "garden") == 1, "新记忆应可统计到自己的关联")
+	var endpoints := MemoryManager.get_memory_link_endpoints(MemoryManager.get_memory_links("garden")[0])
+	_assert(bool(endpoints.get("ok", false)), "关联详情应能查到两端记忆")
+	_assert(String(endpoints.get("memory_a", {}).get("id", "")) != String(endpoints.get("memory_b", {}).get("id", "")), "关联两端不能是同一条记忆")
 	_assert(String(seed.get("id", "")) != String(committed.memory.get("id", "")), "新旧记忆 ID 应不同")
 
 func _test_bottle_recovery_and_answer_idempotency() -> void:
