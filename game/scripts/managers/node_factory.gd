@@ -3,8 +3,7 @@ extends Node
 ## Family Garden 节点工厂（autoload 单例）。
 ## 按 asset_manifest 把记忆节点放到 slot 的落点（bottom_center 近似），
 ## 自动建 ≥80×80 点击区。AI 不输出坐标（docs/09 §5/6/9）。
-## 阶段 1 / feature/garden-mvp-loop。
-## 注：A 的正式美术尚未产出（manifest status=todo），此处贴图回退到程序化占位（_get_placeholder）。
+## 正式美术未覆盖的 AI 节点会回退到程序化 soft pixel 贴图，并带可点击光晕与阴影。
 
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
@@ -12,32 +11,20 @@ const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frame
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
-var _placeholder_tex: Texture2D = null
+var _placeholder_textures: Dictionary = {}
+var _soft_disc_textures: Dictionary = {}
 
 func _ready() -> void:
 	_load_manifest()
 	if ResourceLoader.exists(DYNAMIC_NODE_PREFAB):
 		_prefab = load(DYNAMIC_NODE_PREFAB)
 
-## 占位记忆节点贴图：柔紫圆形 + 描边。真美术（manifest status=imported）到位后改为加载真资产。
-## 用可辨识图形而非背景同款花，避免和花园背景里画的花糊在一起。
-func _get_placeholder() -> Texture2D:
-	if _placeholder_tex != null:
-		return _placeholder_tex
-	var size := 44
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var c := Vector2(size / 2.0, size / 2.0)
-	var r := size / 2.0 - 2.0
-	for y in range(size):
-		for x in range(size):
-			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
-			if d <= r:
-				img.set_pixel(x, y, Color(0.64, 0.48, 0.82))
-			elif d <= r + 1.5:
-				img.set_pixel(x, y, Color(0.34, 0.22, 0.48))
-	_placeholder_tex = ImageTexture.create_from_image(img)
-	return _placeholder_tex
+func _get_placeholder(node_type: String) -> Texture2D:
+	if _placeholder_textures.has(node_type):
+		return _placeholder_textures[node_type]
+	var tex := _make_placeholder_texture(node_type)
+	_placeholder_textures[node_type] = tex
+	return tex
 
 func _load_manifest() -> void:
 	if not FileAccess.file_exists(MANIFEST_PATH):
@@ -76,8 +63,10 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 
 	if node_type == "bottle":
 		_configure_bottle_sprite(root, entry)
+		_decorate_bottle_node(root)
 	else:
 		_configure_sprite(root.get_node("Sprite"), entry, node_type)
+		_decorate_memory_node(root, node_type, float(entry.get("display_height", 96)))
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
 
@@ -92,14 +81,17 @@ func make_room_object(object_type: String, point: Dictionary, on_click: Callable
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
 	root.z_as_relative = false
 	_configure_sprite(root.get_node("Sprite"), entry, object_type)
+	_decorate_room_object(root, object_type, float(entry.get("display_height", 96)))
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	var label := Label.new()
 	label.name = "ObjTag"
-	label.text = object_type
-	label.position = Vector2(-30, -118)
+	label.text = _room_object_label(object_type)
+	label.position = Vector2(-52, -124)
+	label.size = Vector2(104, 22)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 13)
-	label.add_theme_color_override("font_color", Color(0.30, 0.28, 0.40, 0.95))
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(0.22, 0.19, 0.15, 0.92))
 	root.add_child(label)
 	return root
 
@@ -128,7 +120,7 @@ func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String) -
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	var tex := _resolve_texture(entry)  # 真美术优先，缺图回退程序化占位（必非 null）
+	var tex := _resolve_texture(entry, node_type)  # 真美术优先，缺图回退程序化占位（必非 null）
 	sprite.texture = tex
 	if tex.get_height() > 0:
 		sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
@@ -160,14 +152,76 @@ func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
 	animated.position = Vector2(0, -display_h * 0.5)
 	root.add_child(animated)
 
-func _resolve_texture(entry: Dictionary) -> Texture2D:
+func _resolve_texture(entry: Dictionary, node_type: String) -> Texture2D:
 	var scene := String(entry.get("scene", ""))
 	var file_name := String(entry.get("file_name", ""))
 	if scene != "" and file_name != "":
 		var real_path := "res://assets/%s/%s" % [scene, file_name]
 		if ResourceLoader.exists(real_path):
 			return load(real_path)
-	return _get_placeholder()
+	return _get_placeholder(node_type)
+
+func _decorate_memory_node(root: Node2D, node_type: String, display_h: float) -> void:
+	_add_soft_disc(root, "NodeShadow", Vector2(0, -8), Vector2(1.0, 0.30), Color(0.18, 0.12, 0.07, 0.24), 92, -8)
+	if node_type == "memory_flower":
+		var aura := _add_soft_disc(root, "MemoryAura", Vector2(0, -display_h * 0.52), Vector2(1.0, 1.0), Color(0.92, 0.72, 0.94, 0.34), 86, -7)
+		var ring := _add_soft_disc(root, "MemoryRing", Vector2(0, -display_h * 0.52), Vector2(0.62, 0.62), Color(1.0, 0.92, 0.62, 0.36), 70, -6)
+		_pulse_node(aura, 1.0, 1.08, 0.26, 0.42, 1.8)
+		_pulse_node(ring, 0.96, 1.16, 0.20, 0.34, 2.2)
+
+func _decorate_bottle_node(root: Node2D) -> void:
+	_add_soft_disc(root, "BottleShadow", Vector2(0, -8), Vector2(1.10, 0.28), Color(0.06, 0.18, 0.20, 0.28), 90, -8)
+	var ripple := _add_soft_disc(root, "BottleRipple", Vector2(0, -18), Vector2(1.0, 0.36), Color(0.66, 0.90, 0.94, 0.38), 96, -7)
+	_pulse_node(ripple, 0.86, 1.18, 0.18, 0.42, 1.6)
+
+func _decorate_room_object(root: Node2D, object_type: String, display_h: float) -> void:
+	_add_soft_disc(root, "RoomObjectShadow", Vector2(0, -6), Vector2(1.12, 0.30), Color(0.13, 0.10, 0.08, 0.22), 104, -8)
+	var marker_color := _room_object_marker_color(object_type)
+	var marker := _add_soft_disc(root, "RoomObjectAIHalo", Vector2(0, -display_h * 0.54), Vector2(0.72, 0.72), marker_color, 82, -7)
+	_pulse_node(marker, 0.94, 1.08, 0.18, 0.30, 2.6)
+
+func _add_soft_disc(parent: Node2D, node_name: String, pos: Vector2, disc_scale: Vector2, modulate_color: Color, size: int, z: int) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.name = node_name
+	sprite.texture = _soft_disc_texture(size)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.position = pos
+	sprite.scale = disc_scale
+	sprite.modulate = modulate_color
+	sprite.z_index = z
+	parent.add_child(sprite)
+	return sprite
+
+func _soft_disc_texture(size: int) -> Texture2D:
+	if _soft_disc_textures.has(size):
+		return _soft_disc_textures[size]
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := Vector2(size / 2.0, size / 2.0)
+	var r := size / 2.0 - 1.0
+	for y in range(size):
+		for x in range(size):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			if d <= r:
+				var alpha: float = clampf(1.0 - d / r, 0.0, 1.0)
+				alpha = pow(alpha, 0.65)
+				img.set_pixel(x, y, Color(1, 1, 1, alpha))
+	var tex := ImageTexture.create_from_image(img)
+	_soft_disc_textures[size] = tex
+	return tex
+
+func _pulse_node(node: Node2D, from_scale: float, to_scale: float, from_alpha: float, to_alpha: float, duration: float) -> void:
+	if node == null:
+		return
+	node.scale *= from_scale
+	node.modulate.a = from_alpha
+	var tween := create_tween()
+	tween.set_loops()
+	tween.tween_property(node, "scale", node.scale * (to_scale / from_scale), duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(node, "modulate:a", to_alpha, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "scale", node.scale, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(node, "modulate:a", from_alpha, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _make_placeholder_texture(node_type: String) -> Texture2D:
 	var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)
@@ -178,14 +232,58 @@ func _make_placeholder_texture(node_type: String) -> Texture2D:
 		_fill_rect(img, 19, 18, 12, 18, Color(0.70, 0.90, 0.96, 0.78))
 		_fill_rect(img, 20, 6, 9, 3, Color(0.36, 0.22, 0.12, 1.0))
 		_fill_rect(img, 21, 28, 9, 3, Color(0.95, 0.82, 0.52, 1.0))
+	elif node_type in ["desk", "bed", "bookshelf", "lamp", "plant", "photo_wall", "chair", "sofa", "rug", "table"]:
+		_fill_rect(img, 10, 26, 28, 12, Color(0.72, 0.56, 0.38, 1.0))
+		_fill_rect(img, 13, 18, 22, 10, Color(0.92, 0.80, 0.58, 1.0))
+		_fill_rect(img, 16, 38, 4, 6, Color(0.38, 0.28, 0.20, 1.0))
+		_fill_rect(img, 30, 38, 4, 6, Color(0.38, 0.28, 0.20, 1.0))
+		_fill_circle(img, 36, 17, 5, Color(0.95, 0.76, 0.38, 1.0))
+		_fill_rect(img, 35, 22, 2, 14, Color(0.42, 0.34, 0.26, 1.0))
 	else:
-		_fill_rect(img, 23, 24, 3, 17, Color(0.28, 0.54, 0.30, 1.0))
-		_fill_circle(img, 24, 18, 5, Color(0.98, 0.77, 0.84, 1.0))
-		_fill_circle(img, 18, 23, 5, Color(0.98, 0.70, 0.78, 1.0))
-		_fill_circle(img, 30, 23, 5, Color(0.98, 0.70, 0.78, 1.0))
-		_fill_circle(img, 24, 28, 5, Color(0.98, 0.77, 0.84, 1.0))
-		_fill_circle(img, 24, 23, 3, Color(0.96, 0.82, 0.30, 1.0))
+		_fill_rect(img, 23, 25, 3, 17, Color(0.24, 0.50, 0.30, 1.0))
+		_fill_rect(img, 20, 36, 9, 4, Color(0.34, 0.60, 0.38, 1.0))
+		_fill_circle(img, 24, 15, 6, Color(0.92, 0.52, 0.78, 1.0))
+		_fill_circle(img, 17, 22, 6, Color(0.98, 0.68, 0.76, 1.0))
+		_fill_circle(img, 31, 22, 6, Color(0.92, 0.58, 0.86, 1.0))
+		_fill_circle(img, 24, 29, 6, Color(1.0, 0.76, 0.68, 1.0))
+		_fill_circle(img, 24, 23, 4, Color(0.98, 0.86, 0.34, 1.0))
 	return ImageTexture.create_from_image(img)
+
+func _room_object_label(object_type: String) -> String:
+	match object_type:
+		"desk":
+			return "书桌"
+		"bed":
+			return "床"
+		"bookshelf":
+			return "书架"
+		"lamp":
+			return "灯"
+		"plant":
+			return "绿植"
+		"photo_wall":
+			return "照片墙"
+		"chair":
+			return "椅子"
+		"sofa":
+			return "沙发"
+		"rug":
+			return "地毯"
+		"table":
+			return "小桌"
+		_:
+			return "AI 物件"
+
+func _room_object_marker_color(object_type: String) -> Color:
+	match object_type:
+		"lamp":
+			return Color(1.0, 0.82, 0.38, 0.28)
+		"plant":
+			return Color(0.58, 0.82, 0.46, 0.28)
+		"photo_wall":
+			return Color(0.78, 0.58, 0.92, 0.28)
+		_:
+			return Color(0.78, 0.88, 1.0, 0.24)
 
 func _fill_rect(img: Image, x0: int, y0: int, w: int, h: int, color: Color) -> void:
 	for y in range(maxi(0, y0), mini(img.get_height(), y0 + h)):
