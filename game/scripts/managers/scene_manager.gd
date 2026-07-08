@@ -844,7 +844,7 @@ func _render_memory_links(scene: String) -> void:
 		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
 		if a == Vector2.INF or b == Vector2.INF:
 			continue
-		_draw_link_line(a, b, String(link.get("question", "")))
+		_draw_link_line(a, b, link)
 
 # 渲染家庭画像木牌（入口处）：占位画板 + 版本/成员/记忆数；版本变化时重画。
 # 挂载点(645,200)为临时位置，待搭档定稿花园木牌位后校准。
@@ -898,41 +898,260 @@ func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
 					return Vector2(float(p[0]), float(p[1]))
 	return Vector2.INF
 
-# 一条连线：两花之间拱起的藤蔓线（盖在记忆花之上，避免被花遮住）+ 中点可点的 🔗 关联问题。
-func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
+# 一条连线：两花之间拱起的藤蔓线（盖在记忆花之上，避免被花遮住）+ 中点可点的关联详情。
+func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var head := Vector2(0, -100)  # 连到花头上方，越过花顶
 	var arc := ((a + b) * 0.5 + head) + Vector2(0, -40)  # 中点再抬高 → 轻微拱形
+	var relation_type := String(link.get("relation_type", "same_theme"))
+	var link_color := _memory_link_color(relation_type)
+	var link_label := _memory_link_label(relation_type)
+	var confidence := float(link.get("confidence", 1.0))
+	var alpha := clampf(0.58 + confidence * 0.34, 0.58, 0.92)
+
+	var shadow := Line2D.new()
+	shadow.name = "MemoryLinkShadow"
+	shadow.points = PackedVector2Array([a + head + Vector2(0, 4), arc + Vector2(0, 4), b + head + Vector2(0, 4)])
+	shadow.width = 7.0
+	shadow.default_color = Color(0.12, 0.10, 0.08, 0.18)
+	shadow.z_index = 4999
+	shadow.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	shadow.end_cap_mode = Line2D.LINE_CAP_ROUND
+	shadow.joint_mode = Line2D.LINE_JOINT_ROUND
+	world.add_child(shadow)
+
 	var line := Line2D.new()
 	line.name = "MemoryLink"
 	line.points = PackedVector2Array([a + head, arc, b + head])
-	line.width = 4.0
-	line.default_color = Color(0.46, 0.66, 0.36, 0.9)
+	line.width = 5.0
+	line.default_color = Color(link_color.r, link_color.g, link_color.b, alpha)
 	line.z_index = 5000  # 盖在记忆花(z=pos.y)之上，保证可见
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
 	world.add_child(line)
-	# 中点：🔗 图标 + 可点区域，点击弹关联问题。
+
+	var pulse := Line2D.new()
+	pulse.name = "MemoryLinkPulse"
+	pulse.points = PackedVector2Array([a + head, arc, b + head])
+	pulse.width = 2.0
+	pulse.default_color = Color(1.0, 0.96, 0.78, 0.72)
+	pulse.z_index = 5001
+	pulse.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	pulse.end_cap_mode = Line2D.LINE_CAP_ROUND
+	pulse.joint_mode = Line2D.LINE_JOINT_ROUND
+	world.add_child(pulse)
+
 	var mid := arc
 	var area := Area2D.new()
+	area.name = "MemoryLinkHotspot"
 	area.position = mid
-	area.z_index = 5001
+	area.z_index = 5002
+	area.input_pickable = true
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(40, 40)
+	rect.size = Vector2(142, 48)
 	shape.shape = rect
 	area.add_child(shape)
+
+	var tag_panel := Panel.new()
+	tag_panel.position = Vector2(-66, -18)
+	tag_panel.size = Vector2(132, 36)
+	tag_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tag_style := StyleBoxFlat.new()
+	tag_style.bg_color = Color(1.0, 0.96, 0.82, 0.94)
+	tag_style.border_color = Color(link_color.r, link_color.g, link_color.b, 0.95)
+	tag_style.set_border_width_all(2)
+	tag_style.set_corner_radius_all(8)
+	tag_panel.add_theme_stylebox_override("panel", tag_style)
+	area.add_child(tag_panel)
+
 	var tag := Label.new()
-	tag.text = "🔗"
-	tag.position = Vector2(-12, -16)
+	tag.text = link_label
+	tag.position = Vector2(8, 7)
+	tag.size = Vector2(116, 20)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.add_theme_font_size_override("font_size", 22)
-	area.add_child(tag)
+	tag.add_theme_font_size_override("font_size", 12)
+	tag.add_theme_color_override("font_color", Color(0.20, 0.17, 0.12, 0.96))
+	tag_panel.add_child(tag)
+
 	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			get_viewport().set_input_as_handled()
-			_show_toast("🔗 " + question))
+			_open_memory_link_panel(link))
 	world.add_child(area)
+
+func _memory_link_color(relation_type: String) -> Color:
+	match relation_type:
+		"same_person":
+			return Color(0.74, 0.38, 0.50, 1.0)
+		"same_place":
+			return Color(0.35, 0.55, 0.74, 1.0)
+		"time_sequence":
+			return Color(0.70, 0.55, 0.28, 1.0)
+		"cause_effect":
+			return Color(0.58, 0.45, 0.76, 1.0)
+		"contrast":
+			return Color(0.72, 0.46, 0.34, 1.0)
+		_:
+			return Color(0.46, 0.66, 0.36, 1.0)
+
+func _memory_link_label(relation_type: String) -> String:
+	match relation_type:
+		"same_person":
+			return "同一家人"
+		"same_place":
+			return "同一地点"
+		"time_sequence":
+			return "时间线索"
+		"cause_effect":
+			return "前因后果"
+		"contrast":
+			return "对照记忆"
+		_:
+			return "相似主题"
+
+func _open_memory_link_panel(link: Dictionary) -> void:
+	var endpoints := MemoryManager.get_memory_link_endpoints(link)
+	if not bool(endpoints.get("ok", false)):
+		_show_toast("这条关联的记忆已经不存在。")
+		return
+	_close_active_panel()
+	var memory_a: Dictionary = endpoints.get("memory_a", {})
+	var memory_b: Dictionary = endpoints.get("memory_b", {})
+	var card_a: Dictionary = memory_a.get("ai_card", {})
+	var card_b: Dictionary = memory_b.get("ai_card", {})
+	var relation_type := String(link.get("relation_type", "same_theme"))
+	var relation_label := _memory_link_label(relation_type)
+	var meta: Dictionary = link.get("generation_meta", {})
+
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(300, 92)
+	panel.size = Vector2(680, 536)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "两段记忆之间的线索"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(612, 34)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var relation := Label.new()
+	relation.text = "%s · 可信度 %d%%" % [relation_label, roundi(float(link.get("confidence", 1.0)) * 100.0)]
+	relation.position = Vector2(34, 64)
+	relation.size = Vector2(612, 24)
+	relation.add_theme_font_size_override("font_size", 14)
+	relation.add_theme_color_override("font_color", Color(0.34, 0.29, 0.22, 0.88))
+	panel.add_child(relation)
+
+	var question := Label.new()
+	question.text = String(link.get("question", ""))
+	question.position = Vector2(34, 104)
+	question.size = Vector2(612, 62)
+	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	question.add_theme_font_size_override("font_size", 17)
+	question.add_theme_color_override("font_color", Color(0.18, 0.28, 0.22, 1.0))
+	panel.add_child(question)
+
+	_add_memory_link_summary_card(panel, Vector2(34, 186), Vector2(292, 170), "记忆 A", card_a)
+	_add_memory_link_summary_card(panel, Vector2(354, 186), Vector2(292, 170), "记忆 B", card_b)
+
+	var trace := Label.new()
+	trace.text = "AI 来源：%s · 模型：%s · Prompt：%s" % [
+		String(meta.get("source", meta.get("provider", "unknown"))),
+		String(meta.get("model", "unknown")),
+		String(meta.get("prompt_version", "unknown")),
+	]
+	trace.position = Vector2(34, 378)
+	trace.size = Vector2(612, 42)
+	trace.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trace.add_theme_font_size_override("font_size", 12)
+	trace.add_theme_color_override("font_color", Color(0.43, 0.36, 0.28, 0.78))
+	panel.add_child(trace)
+
+	var open_a := Button.new()
+	open_a.text = "打开记忆 A"
+	open_a.position = Vector2(112, 452)
+	open_a.size = Vector2(140, 40)
+	open_a.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(open_a, false)
+	open_a.pressed.connect(_open_memory_from_link.bind(String(memory_a.get("id", ""))))
+	panel.add_child(open_a)
+
+	var open_b := Button.new()
+	open_b.text = "打开记忆 B"
+	open_b.position = Vector2(270, 452)
+	open_b.size = Vector2(140, 40)
+	open_b.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(open_b, false)
+	open_b.pressed.connect(_open_memory_from_link.bind(String(memory_b.get("id", ""))))
+	panel.add_child(open_b)
+
+	var close := Button.new()
+	close.text = "关闭"
+	close.position = Vector2(428, 452)
+	close.size = Vector2(140, 40)
+	close.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(close, false)
+	close.pressed.connect(_close_active_panel)
+	panel.add_child(close)
+
+func _add_memory_link_summary_card(parent: Control, pos: Vector2, card_size: Vector2, heading: String, card: Dictionary) -> void:
+	var box := Panel.new()
+	box.position = pos
+	box.size = card_size
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_small_card_style(box)
+	parent.add_child(box)
+
+	var label := Label.new()
+	label.text = heading
+	label.position = Vector2(16, 12)
+	label.size = Vector2(card_size.x - 32, 20)
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(0.45, 0.36, 0.25, 0.86))
+	box.add_child(label)
+
+	var title := Label.new()
+	title.text = String(card.get("title", "记忆"))
+	title.position = Vector2(16, 38)
+	title.size = Vector2(card_size.x - 32, 28)
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", Color(0.23, 0.18, 0.13, 1.0))
+	box.add_child(title)
+
+	var desc := Label.new()
+	desc.text = String(card.get("description", ""))
+	desc.position = Vector2(16, 76)
+	desc.size = Vector2(card_size.x - 32, 72)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 13)
+	desc.add_theme_color_override("font_color", Color(0.32, 0.27, 0.21, 0.92))
+	box.add_child(desc)
+
+func _open_memory_from_link(memory_id: String) -> void:
+	var mem := _find_rendered_memory_by_memory_id(memory_id)
+	if mem.is_empty():
+		_show_toast("这段记忆不在当前场景里。")
+		return
+	_open_memory_card(mem)
+
+func _find_rendered_memory_by_memory_id(memory_id: String) -> Dictionary:
+	for mem in _demo_memories:
+		if String(mem.get("memory_id", "")) == memory_id:
+			return mem
+	for mem in _fishpond_memories:
+		if String(mem.get("memory_id", "")) == memory_id:
+			return mem
+	return {}
 
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
@@ -1390,6 +1609,7 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
 	_fishpond_memories.clear()
 	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
+	_render_memory_links("fishpond")
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
 
@@ -3088,7 +3308,10 @@ func _commit_memory_preview(draft: Dictionary, original_card: Dictionary, title_
 		return
 	_close_active_panel()
 	var scene := String(card.get("suggested_scene", "garden"))
-	_show_toast("记忆已保存到%s。" % ("爸爸鱼塘" if scene == "fishpond" else "家庭花园"))
+	var saved_memory: Dictionary = result.get("memory", {})
+	var link_count := MemoryManager.count_memory_links_for_memory(String(saved_memory.get("id", "")), scene)
+	var link_text := "，发现 %d 条记忆关联" % link_count if link_count > 0 else ""
+	_show_toast("记忆已保存到%s%s。" % [("爸爸鱼塘" if scene == "fishpond" else "家庭花园"), link_text])
 	if scene == "garden":
 		_show_garden()
 
