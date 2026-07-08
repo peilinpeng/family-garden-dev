@@ -774,14 +774,11 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_render_family_portrait()                         # 挂到入口木牌
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
 
-# 记忆卡片 / 房间识别 / 漂流瓶问题 / 关联连线的 mock 已统一收到 AIClient（docs/04 接口）。
-# 阶段2 真调用到位后只换 AIClient 实现层，本文件调用点不变。
-
-# 阶段1 mock 演示用的记忆列表。真实流程将由 MemoryManager + AI 客户端填充并持久化。
-# 每项：{ id, card, state(new/grown), answer, node }。当前不落库，离开花园后重置。
+# 场景层只负责渲染和交互；AI 生成、草稿确认和持久化由 AIClient / AIWorkflowManager / MemoryManager 处理。
+# 这里缓存当前场景已渲染的节点 view model，离场后可由数据层重建。
 var _demo_memories: Array = []
 
-# 鱼塘漂流瓶 demo 列表（mock-first，离场重置）。每项：{ id, question, state, answer, node }。
+# 鱼塘漂流瓶当前场景 view model；已保存问题来自 MemoryManager，缺口由 AIWorkflowManager 后台补齐。
 var _demo_bottles: Array = []
 # 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
 var _fishpond_memories: Array = []
@@ -803,7 +800,7 @@ func _demo_other_members() -> Array:
 func _spawn_demo_memory_nodes() -> void:
 	_demo_memories.clear()
 	SlotManager.load_scene("garden")
-	# 首次进入：把 3 张演示卡片落库（create_memory + create_node）；之后统一从数据层读，实现持久化。
+	# 兼容空存档：首次进入花园时写入 3 条演示种子记忆；之后统一从数据层渲染。
 	if MemoryManager.get_nodes_for_scene("garden").is_empty():
 		# 种子记忆归属给其他家庭成员（≠当前玩家），这样玩家回答它们才算"跨成员互动"，分季背景才会随之升温。
 		var uploaders := _demo_other_members()
@@ -818,12 +815,11 @@ func _spawn_demo_memory_nodes() -> void:
 		MemoryManager.save_game()  # 落盘改过的 user_id
 	# 统一从数据层渲染（首次/再次进入一致）。
 	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
-	_spawn_demo_memory_link()       # ≥2 条记忆时生成 mock 关联（阶段2 换 cross-memory-link 真调用）
+	_spawn_demo_memory_link()       # 空存档演示种子没有真实关联时补一条藤蔓
 	_render_memory_links("garden")  # 画连线
-	print("[Stage1] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
+	print("[SceneManager] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
 
-# 阶段1 mock：花园里 ≥2 条记忆且尚无连线时，给前两条造一条关联连线。
-# 阶段2 换 cross-memory-link 接口：每上传新记忆增量算关联，relation_type/question 由 AI 给。
+# 兼容演示种子：没有任何关联时补一条演示藤蔓；真实新记忆的关联由 AIWorkflowManager 增量创建。
 func _spawn_demo_memory_link() -> void:
 	if not MemoryManager.get_memory_links("garden").is_empty():
 		return
@@ -833,7 +829,7 @@ func _spawn_demo_memory_link() -> void:
 	var b := String(_demo_memories[-1].get("memory_id", ""))  # 连最分散的一对，连线更清晰
 	if a == "" or b == "" or a == b:
 		return
-	var link: Dictionary = AIClient.mock_link()  # 阶段2 换 await AIClient.cross_memory_link(a, candidates)
+	var link: Dictionary = AIClient.mock_link()  # 仅用于空存档演示种子；真实 link 已由 Gate 4 工作流生成。
 	MemoryManager.create_memory_link(a, b, "garden",
 		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
 
@@ -1726,7 +1722,7 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
 	_render_memory_links("fishpond")
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
-	print("[Stage1] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
+	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
 
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
 
@@ -2746,7 +2742,7 @@ func _render_room(house_id: String) -> void:
 	if room.is_empty():
 		return
 	var n := RoomLayoutManager.render(String(room.get("id", "")), world, _on_room_object_clicked)
-	print("[Stage1] room 家具 rendered=", n, " zone 用量=", ZoneManager.usage("room"))
+	print("[SceneManager] room 家具 rendered=", n, " zone 用量=", ZoneManager.usage("room"))
 
 func _on_room_object_clicked(obj_id: String) -> void:
 	for o in MemoryManager.room_objects:
@@ -3025,7 +3021,7 @@ func _open_add_place_form(pos: Vector2) -> void:
 	panel.add_child(choose_photo_button)
 
 	selected_photo_label = Label.new()
-	selected_photo_label.text = "No photo selected"
+	selected_photo_label.text = "未选择照片"
 	selected_photo_label.position = Vector2(198, 320)
 	selected_photo_label.size = Vector2(328, 28)
 	selected_photo_label.add_theme_font_size_override("font_size", 13)
@@ -3058,7 +3054,7 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 
 	if selected_photo_from_web and selected_photo_bytes.size() > 0:
 		if CloudManager != null:
-			_show_toast("Uploading photo...")
+			_show_toast("正在上传照片...")
 			uploaded_photo_path = await CloudManager.upload_photo_bytes_with_name(
 				selected_photo_bytes,
 				selected_photo_filename,
@@ -3066,24 +3062,24 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 				selected_photo_content_type
 			)
 			if uploaded_photo_path == "":
-				_show_toast("Photo upload failed. Saving without photo.")
+				_show_toast("照片上传失败，将不带照片保存。")
 			else:
-				_show_toast("Photo uploaded.")
+				_show_toast("照片已上传。")
 		else:
-			_show_toast("Cloud is not ready. Saving without photo.")
+			_show_toast("云端尚未就绪，将不带照片保存。")
 	elif selected_photo_path != "":
 		if CloudManager != null:
-			_show_toast("Uploading photo...")
+			_show_toast("正在上传照片...")
 			uploaded_photo_path = await CloudManager.upload_photo_from_path(selected_photo_path, place_title)
 			if uploaded_photo_path == "":
-				_show_toast("Photo upload failed. Saving without photo.")
+				_show_toast("照片上传失败，将不带照片保存。")
 			else:
-				_show_toast("Photo uploaded.")
+				_show_toast("照片已上传。")
 		else:
-			_show_toast("Cloud is not ready. Saving without photo.")
+			_show_toast("云端尚未就绪，将不带照片保存。")
 
 	if CloudManager != null:
-		_show_toast("Saving to family cloud...")
+		_show_toast("正在保存到家庭云端...")
 		var created: Dictionary = await CloudManager.create_place_with_postcard(
 			place_title,
 			place_note,
@@ -3198,11 +3194,11 @@ func _choose_photo_for_place() -> void:
 		photo_file_dialog.queue_free()
 
 	photo_file_dialog = FileDialog.new()
-	photo_file_dialog.title = "Choose a photo"
+	photo_file_dialog.title = "选择照片"
 	photo_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	photo_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	photo_file_dialog.filters = PackedStringArray([
-		"*.png, *.jpg, *.jpeg, *.webp ; Image Files"
+		"*.png, *.jpg, *.jpeg, *.webp ; 图片文件"
 	])
 	photo_file_dialog.file_selected.connect(_on_place_photo_selected)
 	ui_layer.add_child(photo_file_dialog)
@@ -3574,21 +3570,21 @@ func _choose_photo_for_place_web() -> void:
 	if web_photo_callback == null:
 		_setup_web_photo_bridge()
 
-	_show_toast("Choose a photo from your device...")
+	_show_toast("请选择设备中的照片...")
 
 	if selected_photo_label != null and is_instance_valid(selected_photo_label):
-		selected_photo_label.text = "Choose a photo from your device..."
+		selected_photo_label.text = "请选择设备中的照片..."
 
 	var js_result = JavaScriptBridge.eval("""
 		window.familyGardenChoosePhoto ? window.familyGardenChoosePhoto() : false;
 	""", true)
 	if not bool(js_result):
-		_show_toast("Photo picker is not ready. Please try again.")
+		_show_toast("照片选择器还没准备好，请重试。")
 
 
 func _on_web_photo_selected(args: Array) -> void:
 	if args.size() < 3:
-		_show_toast("Photo selection failed.")
+		_show_toast("照片选择失败。")
 		return
 
 	var base64_text: String = str(args[0])
@@ -3597,7 +3593,7 @@ func _on_web_photo_selected(args: Array) -> void:
 
 	var bytes: PackedByteArray = Marshalls.base64_to_raw(base64_text)
 	if bytes.is_empty():
-		_show_toast("Could not read selected photo.")
+		_show_toast("无法读取所选照片。")
 		return
 
 	selected_photo_bytes = bytes
