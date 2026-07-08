@@ -35,6 +35,7 @@ AudioManager="*res://scripts/managers/audio_manager.gd"
 SettingsManager="*res://scripts/managers/settings_manager.gd"
 RecipeDB="*res://scripts/managers/recipe_db.gd"
 KitchenManager="*res://scripts/managers/kitchen_manager.gd"
+FarmManager="*res://scripts/managers/farm_manager.gd"
 
 [display]
 
