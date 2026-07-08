@@ -88,8 +88,34 @@ func delete_ai_image(upload_id: String) -> bool:
 		return false
 	return await _persist_backend.delete_image(upload_id)
 
+func _use_cloudbase_records() -> bool:
+	return _persist_backend != null \
+		and _persist_backend.has_method("has_identity") \
+		and _persist_backend.has_identity() \
+		and _persist_backend.has_method("load_table") \
+		and _persist_backend.has_method("persist_record")
+
+func _cloudbase_row_id(prefix: String) -> String:
+	return "%s_%d_%d" % [prefix, Time.get_ticks_msec(), randi() % 1000000]
+
 
 func load_family_data() -> Dictionary:
+	if _use_cloudbase_records():
+		return {
+			"travel_places": load_table("travel_places"),
+			"postcards": load_table("postcards"),
+			"messages": load_table("messages"),
+			"mailbox_events": load_table("mailbox_events"),
+		}
+
+	if _persist_backend != null and _persist_backend.has_method("has_identity"):
+		return {
+			"travel_places": [],
+			"postcards": [],
+			"messages": [],
+			"mailbox_events": [],
+		}
+
 	var places: Array = await select_table("travel_places", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
 	var postcards: Array = await select_table("postcards", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
 	var messages: Array = await select_table("messages", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
@@ -167,6 +193,46 @@ func delete_row(table_name: String, row_id: String) -> bool:
 
 
 func create_place_with_postcard(title: String, note: String, map_x: float, map_y: float, member_id: String = "", photo_path: String = "") -> Dictionary:
+	if _use_cloudbase_records():
+		var stamp := Time.get_datetime_string_from_system()
+		var place_id := _cloudbase_row_id("place")
+		var postcard_id := _cloudbase_row_id("postcard")
+		var event_id := _cloudbase_row_id("mailbox_event")
+		var member_value := member_id
+		var place := {
+			"id": place_id,
+			"member_id": member_value,
+			"title": title,
+			"note": note,
+			"map_x": map_x,
+			"map_y": map_y,
+			"photo_path": photo_path,
+			"created_at": stamp,
+		}
+		var postcard := {
+			"id": postcard_id,
+			"place_id": place_id,
+			"member_id": member_value,
+			"title": "来自%s的明信片" % title,
+			"message": note,
+			"photo_path": photo_path,
+			"is_new": true,
+			"created_at": stamp,
+		}
+		var event := {
+			"id": event_id,
+			"type": "postcard",
+			"title": "来自%s的新明信片" % title,
+			"message": note,
+			"target_id": postcard_id,
+			"is_read": false,
+			"created_at": stamp,
+		}
+		persist_record("travel_places", place)
+		persist_record("postcards", postcard)
+		persist_record("mailbox_events", event)
+		return {"place": place, "postcard": postcard}
+
 	var member_value: Variant = null
 	if member_id != "":
 		member_value = member_id
@@ -192,7 +258,7 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 	var postcard: Dictionary = await insert_row("postcards", {
 		"place_id": place_id,
 		"member_id": member_value,
-		"title": "Postcard from " + title,
+		"title": "来自%s的明信片" % title,
 		"message": note,
 		"photo_path": photo_value,
 		"is_new": true,
@@ -204,7 +270,7 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 
 	await insert_row("mailbox_events", {
 		"type": "postcard",
-		"title": "New postcard from " + title,
+		"title": "来自%s的新明信片" % title,
 		"message": note,
 		"target_id": target_value,
 		"is_read": false,
@@ -217,12 +283,52 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 
 
 func delete_place_and_postcards(place_id: String) -> void:
+	if _use_cloudbase_records():
+		var postcard_ids: Array[String] = []
+		for postcard in load_table("postcards"):
+			if postcard is Dictionary and str(postcard.get("place_id", "")) == place_id:
+				var pid := str(postcard.get("id", ""))
+				if pid != "":
+					postcard_ids.append(pid)
+					delete_record("postcards", pid)
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and str(event.get("target_id", "")) in postcard_ids:
+				var eid := str(event.get("id", ""))
+				if eid != "":
+					delete_record("mailbox_events", eid)
+		delete_record("travel_places", place_id)
+		return
+
 	var postcard_url: String = REST_BASE + "/postcards?place_id=eq." + _url_encode(place_id)
 	await _request_json(HTTPClient.METHOD_DELETE, postcard_url, {}, ["Prefer: return=minimal"])
 	await delete_row("travel_places", place_id)
 
 
 func create_message(author_name: String, body: String, member_id: String = "") -> Dictionary:
+	if _use_cloudbase_records():
+		var stamp := Time.get_datetime_string_from_system()
+		var message_id := _cloudbase_row_id("message")
+		var event_id := _cloudbase_row_id("mailbox_event")
+		var message := {
+			"id": message_id,
+			"member_id": member_id,
+			"author_name": author_name,
+			"body": body,
+			"created_at": stamp,
+		}
+		var event := {
+			"id": event_id,
+			"type": "message",
+			"title": "新的花园留言",
+			"message": body,
+			"target_id": message_id,
+			"is_read": false,
+			"created_at": stamp,
+		}
+		persist_record("messages", message)
+		persist_record("mailbox_events", event)
+		return message
+
 	var member_value: Variant = null
 	if member_id != "":
 		member_value = member_id
@@ -239,7 +345,7 @@ func create_message(author_name: String, body: String, member_id: String = "") -
 
 	await insert_row("mailbox_events", {
 		"type": "message",
-		"title": "New garden note",
+		"title": "新的花园留言",
 		"message": body,
 		"target_id": target_value,
 		"is_read": false,
@@ -249,6 +355,14 @@ func create_message(author_name: String, body: String, member_id: String = "") -
 
 
 func mark_mailbox_read() -> bool:
+	if _use_cloudbase_records():
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and not bool(event.get("is_read", true)):
+				var updated := (event as Dictionary).duplicate(true)
+				updated["is_read"] = true
+				persist_record("mailbox_events", updated)
+		return true
+
 	var url: String = REST_BASE + "/mailbox_events?family_id=eq.%s&is_read=eq.false" % _url_encode(FAMILY_ID)
 	var result: Dictionary = await _request_json(
 		HTTPClient.METHOD_PATCH,
@@ -260,6 +374,12 @@ func mark_mailbox_read() -> bool:
 
 
 func has_unread_mailbox_events() -> bool:
+	if _use_cloudbase_records():
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and not bool(event.get("is_read", true)):
+				return true
+		return false
+
 	var events: Array = await select_table(
 		"mailbox_events",
 		"family_id=eq.%s&is_read=eq.false&select=id&type=neq.none&limit=1" % _url_encode(FAMILY_ID)

@@ -24,7 +24,10 @@ extends Node
 const CONFIG_PATH := "res://config/cloudbase.json"      ## 项目级,可提交:endpoint / family_id
 const IDENTITY_PATH := "user://cloud_identity.json"      ## 设备级,不提交:member_token
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
-const SNAPSHOT_TABLES := ["memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories"]
+const SNAPSHOT_TABLES := [
+	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
+	"travel_places", "postcards", "messages", "mailbox_events",
+]
 
 var _cfg: Dictionary = {}
 

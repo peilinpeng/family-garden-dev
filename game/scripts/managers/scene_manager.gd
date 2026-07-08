@@ -3263,7 +3263,7 @@ func _open_add_place_form(pos: Vector2) -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "Add a Place"
+	title.text = "添加旅行地点"
 	title.position = Vector2(34, 24)
 	title.size = Vector2(492, 34)
 	title.add_theme_font_size_override("font_size", 26)
@@ -3271,7 +3271,7 @@ func _open_add_place_form(pos: Vector2) -> void:
 	panel.add_child(title)
 
 	var name_label := Label.new()
-	name_label.text = "City / place name"
+	name_label.text = "城市 / 地点名"
 	name_label.position = Vector2(34, 76)
 	name_label.size = Vector2(492, 22)
 	name_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
@@ -3284,27 +3284,27 @@ func _open_add_place_form(pos: Vector2) -> void:
 	panel.add_child(title_input)
 
 	var note_label := Label.new()
-	note_label.text = "Memory note"
+	note_label.text = "记忆留言"
 	note_label.position = Vector2(34, 150)
 	note_label.size = Vector2(492, 22)
 	note_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
 	panel.add_child(note_label)
 
 	var note_input := TextEdit.new()
-	note_input.placeholder_text = "A quiet memory from this place..."
+	note_input.placeholder_text = "写下这个地方带回来的小记忆..."
 	note_input.position = Vector2(34, 176)
 	note_input.size = Vector2(492, 92)
 	panel.add_child(note_input)
 
 	var photo_label_title := Label.new()
-	photo_label_title.text = "Photo"
+	photo_label_title.text = "照片"
 	photo_label_title.position = Vector2(34, 286)
 	photo_label_title.size = Vector2(492, 22)
 	photo_label_title.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
 	panel.add_child(photo_label_title)
 
 	var choose_photo_button := Button.new()
-	choose_photo_button.text = "Choose Photo"
+	choose_photo_button.text = "选择照片"
 	choose_photo_button.position = Vector2(34, 314)
 	choose_photo_button.size = Vector2(150, 38)
 	choose_photo_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -3322,23 +3322,23 @@ func _open_add_place_form(pos: Vector2) -> void:
 	panel.add_child(selected_photo_label)
 
 	var hint := Label.new()
-	hint.text = "Desktop uses FileDialog. Web uses browser photo picker."
+	hint.text = "桌面端会打开文件选择器，Web 端会打开浏览器照片选择器。"
 	hint.position = Vector2(34, 360)
 	hint.size = Vector2(492, 24)
 	hint.add_theme_font_size_override("font_size", 12)
 	hint.add_theme_color_override("font_color", Color(0.45, 0.38, 0.30, 0.75))
 	panel.add_child(hint)
 
-	_add_panel_button(panel, "Save Place", Vector2(126, 404), Vector2(140, 40), "save_new_place", [title_input, note_input])
-	_add_panel_button(panel, "Cancel", Vector2(300, 404), Vector2(120, 40), "close")
+	_add_panel_button(panel, "保存地点", Vector2(126, 404), Vector2(140, 40), "save_new_place", [title_input, note_input])
+	_add_panel_button(panel, "取消", Vector2(300, 404), Vector2(120, 40), "close")
 
 func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 	var place_title: String = title_input.text.strip_edges()
 	if place_title == "":
-		place_title = "Untitled Place"
+		place_title = "未命名地点"
 	var place_note: String = note_input.text.strip_edges()
 	if place_note == "":
-		place_note = "A small memory arrived from this place."
+		place_note = "这个地方带回来一段小小的记忆。"
 
 	var place_id: String = "place_" + str(Time.get_ticks_msec())
 	var postcard_id: String = "postcard_" + str(Time.get_ticks_msec())
@@ -3408,7 +3408,7 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 	var postcard := {
 		"id": postcard_id,
 		"place_id": place_id,
-		"title": "Postcard from " + place_title,
+		"title": "来自%s的明信片" % place_title,
 		"message": place_note,
 		"is_new": true,
 		"created_by": MemoryManager.player_display_name,
@@ -3421,7 +3421,7 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 	_reset_selected_photo_state()
 	_close_active_panel()
 	_show_travel_map()
-	_show_toast("New postcard from " + place_title + ".")
+	_show_toast("来自%s的新明信片已寄回花园。" % place_title)
 
 func _rebuild_travel_pins() -> void:
 	for place in MemoryManager.travel_places:
@@ -3471,7 +3471,7 @@ func _open_postcard_for_place(place_id: String) -> void:
 	if place.is_empty():
 		return
 	var postcard := MemoryManager.find_postcard_by_place(place_id)
-	var title_text := str(postcard.get("title", "Postcard from " + str(place.get("title", "Place"))))
+	var title_text := str(postcard.get("title", "来自%s的明信片" % str(place.get("title", "地点"))))
 	var message := str(postcard.get("message", place.get("note", "A small memory.")))
 	var photo_path := str(postcard.get("photo_path", ""))
 	if photo_path == "":
