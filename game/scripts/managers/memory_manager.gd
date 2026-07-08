@@ -24,12 +24,12 @@ var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
 var player_display_name: String = ""
 
-# 阶段1：记忆/节点/回答数据（字段对齐 backend/supabase/memory_schema.sql）。
-# 当前本地持久化（存档 JSON）；后续增量接 CloudManager 写 Supabase。
+# 记忆/节点/回答数据（字段对齐 backend/supabase/memory_schema.sql）。
+# 本地存档和 CloudManager 同步并行存在；UI 层只通过本管理器读写。
 var memories: Array = []
 var nodes: Array = []
 var answers: Array = []
-# 阶段1：房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
+# AI 房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
 var rooms: Array = []
 var room_objects: Array = []
 # 跨成员互动计数（= 家庭关系温度计，对齐 families.cross_member_interaction_count）。
@@ -37,7 +37,7 @@ var room_objects: Array = []
 var cross_member_interaction_count: int = 0
 var cross_member_pairs: Array = []  # 去重键 "memory_id|answerer"
 # 家庭画像（family-portrait）：新成员首次参与 或 记忆数翻倍(2→4→8→16) 时重算版本，挂到入口木牌。
-# 阶段1 用 version 占位代表"重算了一版画像"；阶段2 换 AI 真画像，version 用于触发重画/缓存失效。
+# 当前用 version 表示画像摘要重算；未来接真实 AI 画像时继续用 version 触发重画/缓存失效。
 var family_portrait: Dictionary = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
 
 ## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
@@ -108,7 +108,7 @@ func get_node_by_id(node_id: String) -> Dictionary:
 func get_nodes_for_scene(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
 
-## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link，阶段1 用 mock）。
+## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link 或空存档演示种子）。
 func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String, confidence: float = 1.0, generation_meta: Dictionary = {}) -> Dictionary:
 	if memory_id == "" or linked_memory_id == "" or memory_id == linked_memory_id:
 		return {}
