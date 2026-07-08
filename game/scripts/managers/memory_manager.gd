@@ -531,7 +531,7 @@ func apply_cloud_data(data: Dictionary) -> void:
 				postcards.append({
 					"id": postcard_id,
 					"place_id": place_id,
-					"title": str(row.get("title", "New postcard")),
+					"title": str(row.get("title", "新明信片")),
 					"message": str(row.get("message", "")),
 					"is_new": bool(row.get("is_new", false)),
 					"created_by": "",
@@ -631,16 +631,27 @@ func _family_row() -> Dictionary:
 
 # 从远端拉取并覆盖本地缓存（迭代1b 启动时调用）。无后端时各表返回空 → 保留本地存档。
 func pull_remote() -> void:
+	var pulled := false
 	var t_mem := CloudManager.load_table("memories")
-	if not t_mem.is_empty(): memories = t_mem
+	if not t_mem.is_empty():
+		memories = t_mem
+		pulled = true
 	var t_node := CloudManager.load_table("nodes")
-	if not t_node.is_empty(): nodes = t_node
+	if not t_node.is_empty():
+		nodes = t_node
+		pulled = true
 	var t_ans := CloudManager.load_table("answers")
-	if not t_ans.is_empty(): answers = t_ans
+	if not t_ans.is_empty():
+		answers = t_ans
+		pulled = true
 	var t_room := CloudManager.load_table("rooms")
-	if not t_room.is_empty(): rooms = t_room
+	if not t_room.is_empty():
+		rooms = t_room
+		pulled = true
 	var t_obj := CloudManager.load_table("room_objects")
-	if not t_obj.is_empty(): room_objects = t_obj
+	if not t_obj.is_empty():
+		room_objects = t_obj
+		pulled = true
 	var t_fam := CloudManager.load_table("families")
 	if not t_fam.is_empty() and t_fam[0] is Dictionary:
 		var row: Dictionary = t_fam[0]
@@ -648,6 +659,21 @@ func pull_remote() -> void:
 		var fp: Variant = row.get("family_portrait", null)
 		if fp is Dictionary:
 			family_portrait = fp
+		pulled = true
+	var t_places := CloudManager.load_table("travel_places")
+	var t_postcards := CloudManager.load_table("postcards")
+	var t_messages := CloudManager.load_table("messages")
+	var t_mailbox := CloudManager.load_table("mailbox_events")
+	if not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
+		apply_cloud_data({
+			"travel_places": t_places,
+			"postcards": t_postcards,
+			"messages": t_messages,
+			"mailbox_events": t_mailbox,
+		})
+		pulled = true
+	if pulled:
+		save_game()
 
 func save_game() -> void:
 	var data := {
@@ -741,6 +767,8 @@ func mark_postcards_read(save_after_change: bool = true) -> void:
 			postcard["is_new"] = false
 			changed = true
 	if changed:
+		for postcard in postcards:
+			_sync("postcards", postcard)
 		clear_mailbox_alert()
 		if save_after_change:
 			save_game()

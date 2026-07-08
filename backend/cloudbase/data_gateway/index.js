@@ -31,6 +31,10 @@ const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
 ]);
+const AUDITED_TABLES = new Set([
+  'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
+  'travel_places', 'postcards', 'messages', 'mailbox_events',
+]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
 const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
@@ -317,7 +321,18 @@ exports.main = async (event) => {
           existing = got.data[0];
         }
       }
-      const merged = Object.assign({}, existing, incoming, { family_id: familyId });
+      const cleanIncoming = Object.assign({}, incoming);
+      delete cleanIncoming.family_id;
+      delete cleanIncoming.created_by_member_id;
+      delete cleanIncoming.updated_by_member_id;
+      const audit = AUDITED_TABLES.has(body.table)
+        ? {
+            created_by_member_id: existing.created_by_member_id || memberId,
+            updated_by_member_id: memberId,
+            updated_at: new Date().toISOString(),
+          }
+        : {};
+      const merged = Object.assign({}, existing, cleanIncoming, { family_id: familyId }, audit);
       if (id) {
         await db.collection(body.table).doc(id).set(merged);
         return { ok: true, id };
