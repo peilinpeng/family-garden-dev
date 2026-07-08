@@ -2,8 +2,7 @@ extends Node
 
 ## Family Garden 房间布局管理器（autoload 单例）。
 ## 吃 AI 房间识别结果（room_analysis），把每件物件按 zone 分配落点、落库、生成家具节点。
-## 阶段1：room_analysis 来自内联 mock（见 SceneManager.ROOM_ANALYSIS_MOCK）；
-## 阶段2 换 CloudManager.analyze_room_photo 真调用，本管理器逻辑不变。
+## Gate 4：room_analysis 来自 AIWorkflowManager 的草稿预览，确认后才进入这里落库。
 ## AI 只给 object_type / zone，落点由 ZoneManager 分配（docs/09 §8.2）。
 
 const ROOM_SCENE := "room"
