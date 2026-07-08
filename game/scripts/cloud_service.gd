@@ -28,6 +28,8 @@ var _persist_backend: Object = null
 ## scene_manager 会调 ensure_cloud_identity() 自助注册 + 补上这次 bootstrap。
 ## 未配置 endpoint 则保持纯本地(接缝全 no-op),游戏照常离线运行。
 func _ready() -> void:
+	if OS.has_environment("FAMILY_GARDEN_TEST"):
+		return
 	if CloudBaseBackend.is_configured():
 		var backend := CloudBaseBackend.new()
 		add_child(backend)
@@ -70,6 +72,21 @@ func load_table(table: String, query: String = "") -> Array:
 func delete_record(table: String, row_id: String) -> void:
 	if _persist_backend != null and _persist_backend.has_method("delete_record"):
 		_persist_backend.delete_record(table, row_id)
+
+func upload_ai_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+	if _persist_backend == null or not _persist_backend.has_method("upload_image"):
+		return {"ok": false, "error": "CloudBase 图片上传未配置"}
+	return await _persist_backend.upload_image(bytes, content_type)
+
+func resolve_ai_image(upload_id: String) -> Dictionary:
+	if _persist_backend == null or not _persist_backend.has_method("resolve_image"):
+		return {"ok": false, "error": "CloudBase 图片解析未配置"}
+	return await _persist_backend.resolve_image(upload_id)
+
+func delete_ai_image(upload_id: String) -> bool:
+	if _persist_backend == null or not _persist_backend.has_method("delete_image"):
+		return false
+	return await _persist_backend.delete_image(upload_id)
 
 
 func load_family_data() -> Dictionary:
