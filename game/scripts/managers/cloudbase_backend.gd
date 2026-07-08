@@ -96,6 +96,24 @@ func delete_record(table: String, row_id: String) -> void:
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
 	_post({"action": "delete", "table": table, "id": row_id})
 
+## Gate 4 图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
+## 临时 image_url 只用于本次 AI 调用，不应当作永久地址写入业务数据。
+func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+	if bytes.is_empty():
+		return {"ok": false, "error": "empty image"}
+	return await _request({
+		"action": "upload_image",
+		"content_type": content_type,
+		"base64_data": Marshalls.raw_to_base64(bytes),
+	})
+
+func resolve_image(upload_id: String) -> Dictionary:
+	return await _request({"action": "resolve_image", "upload_id": upload_id})
+
+func delete_image(upload_id: String) -> bool:
+	var result: Dictionary = await _request({"action": "delete_image", "upload_id": upload_id})
+	return bool(result.get("ok", false))
+
 func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
 

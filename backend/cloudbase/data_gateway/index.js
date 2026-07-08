@@ -35,6 +35,13 @@ const TABLES = new Set([
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
 const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const IMAGE_MIME_TO_EXT = new Map([
+  ['image/jpeg', 'jpg'],
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+]);
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const TEMP_URL_TTL_SECONDS = 10 * 60;
 
 // CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
 // 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
@@ -65,6 +72,49 @@ function bearerToken(event) {
   const raw = h.authorization || h.Authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(raw);
   return m ? m[1].trim() : '';
+}
+
+function stableScope(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 20);
+}
+
+function uploadDocumentId() {
+  return 'upload_' + crypto.randomBytes(16).toString('hex');
+}
+
+function decodeImage(body) {
+  const contentType = String(body.content_type || '').toLowerCase().trim();
+  const extension = IMAGE_MIME_TO_EXT.get(contentType);
+  if (!extension) return { error: 'unsupported image type' };
+  const encoded = String(body.base64_data || '');
+  // base64 理论上约为原文件的 4/3；先做字符串上限，避免在解码前分配超大 Buffer。
+  if (!encoded || encoded.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8) {
+    return { error: 'image too large' };
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) {
+    return { error: 'invalid base64 image' };
+  }
+  const bytes = Buffer.from(encoded, 'base64');
+  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return { error: 'image too large' };
+  return { bytes, contentType, extension };
+}
+
+async function temporaryImageUrl(fileId) {
+  const result = await app.getTempFileURL({
+    fileList: [{ fileID: fileId, maxAge: TEMP_URL_TTL_SECONDS }],
+  });
+  const first = result && Array.isArray(result.fileList) ? result.fileList[0] : null;
+  const url = String(first && (first.tempFileURL || first.download_url) || '');
+  if (!url) throw new Error('temporary image URL unavailable');
+  return url;
+}
+
+async function findUpload(uploadId, familyId) {
+  if (!/^upload_[a-f0-9]{32}$/.test(uploadId)) return null;
+  const got = await db.collection('uploads').doc(uploadId).get().catch(() => ({ data: [] }));
+  const row = got.data && got.data[0];
+  if (!row || String(row.family_id) !== familyId) return null;
+  return row;
 }
 
 // 用 member_token 解析身份;返回 {member_id, family_id, role, display_name} 或 null。
@@ -163,6 +213,70 @@ exports.main = async (event) => {
   try {
     if (action === 'whoami') {
       return { ok: true, member_id: memberId, family_id: familyId, role: identity.role, display_name: identity.display_name };
+    }
+
+    if (action === 'upload_image') {
+      const decoded = decodeImage(body);
+      if (decoded.error) return { ok: false, code: 400, error: decoded.error };
+      const uploadId = uploadDocumentId();
+      const cloudPath = [
+        'ai_uploads', stableScope(familyId), stableScope(memberId),
+        uploadId + '.' + decoded.extension,
+      ].join('/');
+      const uploaded = await app.uploadFile({ cloudPath, fileContent: decoded.bytes });
+      const fileId = String(uploaded && (uploaded.fileID || uploaded.fileId) || '');
+      if (!fileId) throw new Error('upload did not return fileID');
+      const row = {
+        id: uploadId,
+        family_id: familyId,
+        owner_member_id: memberId,
+        file_id: fileId,
+        cloud_path: cloudPath,
+        content_type: decoded.contentType,
+        size_bytes: decoded.bytes.length,
+        created_at: new Date().toISOString(),
+      };
+      try {
+        await db.collection('uploads').doc(uploadId).set(row);
+      } catch (err) {
+        await app.deleteFile({ fileList: [fileId] }).catch(() => {});
+        throw err;
+      }
+      const imageUrl = await temporaryImageUrl(fileId);
+      return {
+        ok: true,
+        upload_id: uploadId,
+        image_url: imageUrl,
+        content_type: decoded.contentType,
+        size_bytes: decoded.bytes.length,
+        expires_in: TEMP_URL_TTL_SECONDS,
+      };
+    }
+
+    if (action === 'resolve_image') {
+      const uploadId = String(body.upload_id || '');
+      const upload = await findUpload(uploadId, familyId);
+      if (!upload) return { ok: false, code: 404, error: 'image not found' };
+      return {
+        ok: true,
+        upload_id: uploadId,
+        image_url: await temporaryImageUrl(String(upload.file_id)),
+        content_type: String(upload.content_type || ''),
+        size_bytes: Number(upload.size_bytes || 0),
+        expires_in: TEMP_URL_TTL_SECONDS,
+      };
+    }
+
+    if (action === 'delete_image') {
+      const uploadId = String(body.upload_id || '');
+      const upload = await findUpload(uploadId, familyId);
+      if (!upload) return { ok: false, code: 404, error: 'image not found' };
+      if (String(upload.owner_member_id) !== memberId) {
+        return { ok: false, code: 403, error: 'forbidden' };
+      }
+      await app.deleteFile({ fileList: [String(upload.file_id)] });
+      await db.collection('uploads').doc(uploadId).remove();
+      return { ok: true };
     }
 
     if (action === 'snapshot') {

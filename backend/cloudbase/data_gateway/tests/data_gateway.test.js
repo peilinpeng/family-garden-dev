@@ -67,12 +67,32 @@ function createMemoryDatabase() {
 }
 
 const db = createMemoryDatabase();
+const storage = new Map();
 const originalLoad = Module._load;
 Module._load = function mockCloudBase(request, parent, isMain) {
   if (request === '@cloudbase/node-sdk') {
     return {
       SYMBOL_CURRENT_ENV: Symbol('test-env'),
-      init: () => ({ database: () => db }),
+      init: () => ({
+        database: () => db,
+        async uploadFile({ cloudPath, fileContent }) {
+          const fileID = `cloud://test-env.${cloudPath}`;
+          storage.set(fileID, Buffer.from(fileContent));
+          return { fileID };
+        },
+        async getTempFileURL({ fileList }) {
+          return {
+            fileList: fileList.map(({ fileID }) => ({
+              fileID,
+              tempFileURL: storage.has(fileID) ? `https://example.test/${encodeURIComponent(fileID)}` : '',
+            })),
+          };
+        },
+        async deleteFile({ fileList }) {
+          for (const fileID of fileList) storage.delete(fileID);
+          return { fileList };
+        },
+      }),
     };
   }
   return originalLoad.call(this, request, parent, isMain);
@@ -98,6 +118,7 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
   async function scenario(name, run) {
     await t.test(name, async () => {
       db.reset();
+      storage.clear();
       seedMembers();
       await run();
     });
@@ -136,6 +157,59 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
   await scenario('whoami 只返回当前成员身份', async () => {
     const result = await invoke({ action: 'whoami' }, 'token_a');
     assert.deepEqual(result, { ok: true, member_id: 'member_a', family_id: 'family_a', role: 'father', display_name: 'A' });
+  });
+
+  await scenario('受控图片上传、家庭内解析与上传者删除', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image',
+      content_type: 'image/png',
+      base64_data: Buffer.from('fake-png').toString('base64'),
+    }, 'token_a');
+    assert.equal(uploaded.ok, true);
+    assert.match(uploaded.upload_id, /^upload_[a-f0-9]{32}$/);
+    assert.match(uploaded.image_url, /^https:\/\/example\.test\//);
+    const row = db.get('uploads', uploaded.upload_id);
+    assert.equal(row.family_id, 'family_a');
+    assert.equal(row.owner_member_id, 'member_a');
+    assert.match(row.cloud_path, /^ai_uploads\/[a-f0-9]{20}\/[a-f0-9]{20}\//);
+
+    const resolved = await invoke({ action: 'resolve_image', upload_id: uploaded.upload_id }, 'token_a');
+    assert.equal(resolved.ok, true);
+    assert.equal(resolved.content_type, 'image/png');
+    assert.equal((await invoke({ action: 'delete_image', upload_id: uploaded.upload_id }, 'token_a')).ok, true);
+    assert.equal(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 0);
+  });
+
+  await scenario('图片记录不能跨家庭解析', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image', content_type: 'image/jpeg', base64_data: Buffer.from('jpeg').toString('base64'),
+    }, 'token_a');
+    const result = await invoke({ action: 'resolve_image', upload_id: uploaded.upload_id }, 'token_b');
+    assert.equal(result.code, 404);
+  });
+
+  await scenario('图片只能由上传成员删除', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
+    });
+    const uploaded = await invoke({
+      action: 'upload_image', content_type: 'image/webp', base64_data: Buffer.from('webp').toString('base64'),
+    }, 'token_a');
+    const result = await invoke({ action: 'delete_image', upload_id: uploaded.upload_id }, 'token_a2');
+    assert.equal(result.code, 403);
+  });
+
+  await scenario('图片上传拒绝不支持类型、非法 base64 与超限输入', async () => {
+    assert.equal((await invoke({
+      action: 'upload_image', content_type: 'image/gif', base64_data: 'YWJjZA==',
+    }, 'token_a')).code, 400);
+    assert.equal((await invoke({
+      action: 'upload_image', content_type: 'image/png', base64_data: '***',
+    }, 'token_a')).code, 400);
+    assert.equal((await invoke({
+      action: 'upload_image', content_type: 'image/png', base64_data: 'A'.repeat(8 * 1024 * 1024 + 16),
+    }, 'token_a')).code, 400);
   });
 
   await scenario('snapshot 忽略非白名单集合', async () => {
