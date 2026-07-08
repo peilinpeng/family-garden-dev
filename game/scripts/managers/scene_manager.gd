@@ -567,7 +567,7 @@ func _open_world_chat_history_panel() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "World Chat"
+	title.text = "家庭聊天"
 	title.position = Vector2(34, 24)
 	title.size = Vector2(470, 30)
 	title.add_theme_font_size_override("font_size", 24)
@@ -587,7 +587,7 @@ func _open_world_chat_history_panel() -> void:
 
 	if MemoryManager.garden_messages.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "No messages yet."
+		empty_label.text = "还没有留言。"
 		empty_label.custom_minimum_size = Vector2(460, 48)
 		empty_label.add_theme_font_size_override("font_size", 15)
 		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
@@ -598,7 +598,7 @@ func _open_world_chat_history_panel() -> void:
 			if raw_message is Dictionary:
 				list.add_child(_make_world_chat_history_card(raw_message))
 
-	_add_panel_button(panel, "Close", Vector2(218, 456), Vector2(124, 38), "close")
+	_add_panel_button(panel, "关闭", Vector2(218, 456), Vector2(124, 38), "close")
 
 func _make_world_chat_history_card(message: Dictionary) -> Control:
 	var card := Panel.new()
@@ -615,7 +615,7 @@ func _make_world_chat_history_card(message: Dictionary) -> Control:
 	card.add_theme_stylebox_override("panel", style)
 
 	var meta := Label.new()
-	meta.text = str(message.get("author", "Family")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.text = str(message.get("author", "家人")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
 	meta.position = Vector2(14, 10)
 	meta.size = Vector2(442, 20)
 	meta.add_theme_font_size_override("font_size", 12)
@@ -634,7 +634,7 @@ func _make_world_chat_history_card(message: Dictionary) -> Control:
 
 func _format_world_chat_time(raw_time: String) -> String:
 	if raw_time == "":
-		return "No time"
+		return "未记录时间"
 	return raw_time.replace("T", " ").replace("Z", "")
 
 func _on_ui_button(action: String) -> void:
@@ -660,18 +660,18 @@ func _on_ui_button(action: String) -> void:
 			_open_memory_creator()
 		"save":
 			MemoryManager.save_game()
-			_show_toast("Saved.")
+			_show_toast("已保存。")
 		"back_garden":
 			_show_garden()
 		"reset":
-			_show_toast("Reset is disabled in the online version.")
+			_show_toast("线上版本已关闭重置。")
 
 func _show_role_select() -> void:
 	_close_active_panel()
 	_clear_map_ui()
 	_clear_world()
 	mode = "role_select"
-	info_label.text = "Choose your character"
+	info_label.text = "选择角色"
 	_add_background()
 
 	var overlay := _create_modal_overlay()
@@ -686,7 +686,7 @@ func _show_role_select() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "Who are you in the garden?"
+	title.text = "你想以谁的身份进入花园？"
 	title.position = Vector2(40, 28)
 	title.size = Vector2(900, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -695,7 +695,7 @@ func _show_role_select() -> void:
 	panel.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Choose one family member as yourself. The others will stay in the garden as visitors."
+	subtitle.text = "选择一位家人成为自己，其他家人会作为访客留在花园里。"
 	subtitle.position = Vector2(70, 72)
 	subtitle.size = Vector2(840, 28)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -704,7 +704,7 @@ func _show_role_select() -> void:
 	panel.add_child(subtitle)
 
 	var name_label := Label.new()
-	name_label.text = "Display name"
+	name_label.text = "显示名字"
 	name_label.position = Vector2(360, 112)
 	name_label.size = Vector2(260, 22)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2141,16 +2141,16 @@ func _add_core_objects() -> void:
 	_add_interactable_sprite(
 		"family_tree",
 		ASSETS["tree"],
-		Vector2(645, 280),
-		390.0,
-		"tree",
-		"Family Tree",
-		Vector2(190, 170),
-		Vector2(0, 95)
-	)
-	# The mailbox is painted in the garden background. This invisible hotspot makes it interactive.
+			Vector2(645, 280),
+			390.0,
+			"tree",
+			"家庭树",
+			Vector2(190, 170),
+			Vector2(0, 95)
+		)
+	# 邮箱画在花园背景里，这里用不可见热点补交互。
 	_add_mailbox_hotspot(Vector2(402, 104), Vector2(120, 120))
-	# The wooden board in the lower-right background acts as an invisible message-board button.
+	# 右下角木牌画在背景里，这里用不可见热点作为留言板按钮。
 	_add_message_board_hotspot(Vector2(1162, 584), Vector2(190, 120))
 
 func _add_mailbox_hotspot(pos: Vector2, hotspot_size: Vector2) -> void:
@@ -3194,7 +3194,7 @@ func _show_travel_map() -> void:
 	plant_mode = false
 	_update_plant_button()
 	_clear_world()
-	info_label.text = "Travel Map"
+	info_label.text = "旅行地图"
 	_add_travel_map_background()
 	_rebuild_travel_pins()
 	_build_map_ui()
@@ -3961,7 +3961,7 @@ func _open_postcard_detail_panel(title_text: String, message: String, photo_path
 	photo_frame.add_child(photo_rect)
 
 	var photo_status := Label.new()
-	photo_status.text = "No photo attached"
+	photo_status.text = "未附加照片。"
 	photo_status.position = Vector2(20, 108)
 	photo_status.size = Vector2(528, 28)
 	photo_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -3982,22 +3982,22 @@ func _open_postcard_detail_panel(title_text: String, message: String, photo_path
 	panel.add_child(body)
 
 	# Add all controls before loading the photo, so the user can close the panel while the image is loading.
-	_add_panel_button(panel, "Delete", Vector2(96, 490), Vector2(120, 40), "delete_place:" + place_id)
-	_add_panel_button(panel, "Back to Map", Vector2(246, 490), Vector2(150, 40), "close")
-	_add_panel_button(panel, "Postcards", Vector2(426, 490), Vector2(130, 40), "MemoryManager.postcards")
+	_add_panel_button(panel, "删除", Vector2(96, 490), Vector2(120, 40), "delete_place:" + place_id)
+	_add_panel_button(panel, "返回地图", Vector2(246, 490), Vector2(150, 40), "close")
+	_add_panel_button(panel, "明信片", Vector2(426, 490), Vector2(130, 40), "MemoryManager.postcards")
 
 	var clean_photo_path: String = photo_path.strip_edges()
 	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
-		photo_status.text = "No photo attached."
+		photo_status.text = "未附加照片。"
 	else:
-		photo_status.text = "Loading photo..."
+		photo_status.text = "正在加载照片..."
 		_load_photo_into_rect(clean_photo_path, photo_rect, photo_status)
 
 func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_status: Label) -> void:
 	var clean_photo_path: String = photo_path.strip_edges()
 	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
 		if is_instance_valid(photo_status):
-			photo_status.text = "No photo attached."
+			photo_status.text = "未附加照片。"
 		return
 
 	if is_instance_valid(photo_rect):
@@ -4015,7 +4015,7 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 		return
 
 	if is_instance_valid(photo_status):
-		photo_status.text = "Loading photo..."
+		photo_status.text = "正在加载照片..."
 
 	var texture: Texture2D = await _download_photo_texture(photo_url)
 	if texture != null:
@@ -4026,7 +4026,7 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 			photo_status.visible = false
 	else:
 		if is_instance_valid(photo_status):
-			photo_status.text = "Could not load photo."
+			photo_status.text = "照片加载失败。"
 
 
 func _photo_public_url(photo_path: String) -> String:
@@ -4101,32 +4101,32 @@ func _delete_place(place_id: String) -> void:
 	if mode == "map":
 		_show_travel_map()
 	else:
-		_show_toast("Place deleted.")
+		_show_toast("地点已删除。")
 
 func _open_animal_dialog(animal_id: String, display_name: String) -> void:
-	var line := "A tiny garden friend is resting here."
+	var line := "花园里的小伙伴正在这里休息。"
 	match animal_id:
 		"cat":
-			line = "Mimi blinks slowly. She may walk a little, then curl up for a nap."
+			line = "Mimi 慢慢眨了眨眼，走几步，又准备蜷起来打个小盹。"
 		"bird":
-			line = "The bluebird hops softly near the garden and watches the family tree."
+			line = "蓝色小鸟在花园边轻轻跳着，望着家庭树。"
 		"dog":
-			line = "Biscuit wiggles happily, then flops down for a tiny nap."
-	_show_cozy_panel(display_name, line, [{"text": "Close", "action": "close"}])
+			line = "Biscuit 开心地晃了晃，然后趴下来休息一会儿。"
+	_show_cozy_panel(display_name, line, [{"text": "关闭", "action": "close"}])
 
 func _open_message_board_panel() -> void:
-	var body := "Family notes are pinned here.\n\n"
+	var body := "家人的留言都贴在这里。\n\n"
 	if MemoryManager.garden_messages.is_empty():
-		body += "No notes yet. Add the first small message for the family."
+		body += "还没有留言。给家人写下第一句话吧。"
 	else:
 		for message in MemoryManager.garden_messages:
-			body += "• " + str(message.get("author", "Family")) + ": " + str(message.get("text", "")) + "\n\n"
+			body += "• " + str(message.get("author", "家人")) + ": " + str(message.get("text", "")) + "\n\n"
 	_show_cozy_panel(
-		"Message Board",
+		"留言板",
 		body,
 		[
-			{"text": "+ Note", "action": "add_message"},
-			{"text": "Close", "action": "close"}
+			{"text": "+ 留言", "action": "add_message"},
+			{"text": "关闭", "action": "close"}
 		]
 	)
 
@@ -4144,7 +4144,7 @@ func _open_add_message_form() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "Add a Note"
+	title.text = "新增留言"
 	title.position = Vector2(30, 24)
 	title.size = Vector2(440, 34)
 	title.add_theme_font_size_override("font_size", 26)
@@ -4152,7 +4152,7 @@ func _open_add_message_form() -> void:
 	panel.add_child(title)
 
 	var author_label := Label.new()
-	author_label.text = "From"
+	author_label.text = "来自"
 	author_label.position = Vector2(32, 78)
 	author_label.size = Vector2(420, 22)
 	author_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
@@ -4166,28 +4166,28 @@ func _open_add_message_form() -> void:
 	panel.add_child(author_input)
 
 	var message_label := Label.new()
-	message_label.text = "Message"
+	message_label.text = "留言"
 	message_label.position = Vector2(32, 154)
 	message_label.size = Vector2(420, 22)
 	message_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
 	panel.add_child(message_label)
 
 	var message_input := TextEdit.new()
-	message_input.placeholder_text = "Leave a small note for the family..."
+	message_input.placeholder_text = "给家人留一句小小的话..."
 	message_input.position = Vector2(32, 180)
 	message_input.size = Vector2(430, 90)
 	panel.add_child(message_input)
 
-	_add_panel_button(panel, "Save Note", Vector2(96, 296), Vector2(130, 40), "save_new_message", [author_input, message_input])
-	_add_panel_button(panel, "Cancel", Vector2(274, 296), Vector2(120, 40), "message_board")
+	_add_panel_button(panel, "保存留言", Vector2(96, 296), Vector2(130, 40), "save_new_message", [author_input, message_input])
+	_add_panel_button(panel, "取消", Vector2(274, 296), Vector2(120, 40), "message_board")
 
 func _save_new_message(author_input: LineEdit, message_input: TextEdit) -> void:
 	var author: String = author_input.text.strip_edges()
 	if author == "":
-		author = "Family"
+		author = "家人"
 	var text: String = message_input.text.strip_edges()
 	if text == "":
-		text = "A small note was left in the garden."
+		text = "花园里留下了一句小小的话。"
 
 	var message_id: String = "message_" + str(Time.get_ticks_msec())
 	if CloudManager != null:
@@ -4207,7 +4207,7 @@ func _save_new_message(author_input: LineEdit, message_input: TextEdit) -> void:
 	MemoryManager.save_game()
 	_refresh_world_chat_feed()
 	_open_message_board_panel()
-	_show_toast("New note added.")
+	_show_toast("新留言已保存。")
 
 func _open_postcards_panel() -> void:
 	_close_active_panel()
@@ -4223,7 +4223,7 @@ func _open_postcards_panel() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "Postcards"
+	title.text = "家庭明信片"
 	title.position = Vector2(36, 26)
 	title.size = Vector2(608, 34)
 	title.add_theme_font_size_override("font_size", 26)
@@ -4231,7 +4231,7 @@ func _open_postcards_panel() -> void:
 	panel.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Open a postcard to view its memory photo."
+	subtitle.text = "打开明信片，查看它带回来的照片和记忆。"
 	subtitle.position = Vector2(36, 62)
 	subtitle.size = Vector2(608, 24)
 	subtitle.add_theme_font_size_override("font_size", 14)
@@ -4251,7 +4251,7 @@ func _open_postcards_panel() -> void:
 
 	if MemoryManager.postcards.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "No MemoryManager.postcards yet. Open the Travel Map and add a place to create the first one."
+		empty_label.text = "还没有明信片。打开旅行地图，添加一个地点，就能寄回第一张。"
 		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty_label.custom_minimum_size = Vector2(570, 90)
 		empty_label.add_theme_font_size_override("font_size", 16)
@@ -4270,10 +4270,10 @@ func _open_postcards_panel() -> void:
 			list.add_child(card)
 
 			var card_title := Label.new()
-			var badge := "NEW · " if bool(postcard.get("is_new", false)) else ""
+			var badge := "新 · " if bool(postcard.get("is_new", false)) else ""
 			var has_photo := str(postcard.get("photo_path", "")) != ""
-			var photo_label := "Photo attached · " if has_photo else "No photo · "
-			card_title.text = badge + photo_label + str(postcard.get("title", "Postcard"))
+			var photo_label := "有照片 · " if has_photo else "无照片 · "
+			card_title.text = badge + photo_label + str(postcard.get("title", "明信片"))
 			card_title.position = Vector2(18, 12)
 			card_title.size = Vector2(420, 26)
 			card_title.add_theme_font_size_override("font_size", 16)
@@ -4290,7 +4290,7 @@ func _open_postcards_panel() -> void:
 			card.add_child(card_body)
 
 			var open_button := Button.new()
-			open_button.text = "Open"
+			open_button.text = "打开"
 			open_button.position = Vector2(462, 29)
 			open_button.size = Vector2(86, 36)
 			open_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -4299,8 +4299,8 @@ func _open_postcards_panel() -> void:
 			open_button.pressed.connect(_open_postcard_detail_from_id.bind(postcard_id))
 			card.add_child(open_button)
 
-	_add_panel_button(panel, "Travel Map", Vector2(96, 520), Vector2(150, 40), "travel_map")
-	_add_panel_button(panel, "Close", Vector2(432, 520), Vector2(150, 40), "close")
+	_add_panel_button(panel, "旅行地图", Vector2(96, 520), Vector2(150, 40), "travel_map")
+	_add_panel_button(panel, "关闭", Vector2(432, 520), Vector2(150, 40), "close")
 	MemoryManager.mark_postcards_read()
 	MemoryManager.save_game()
 
@@ -4308,13 +4308,13 @@ func _open_postcards_panel() -> void:
 func _open_postcard_detail_from_id(postcard_id: String) -> void:
 	var postcard := MemoryManager.find_postcard(postcard_id)
 	if postcard.is_empty():
-		_show_toast("Postcard not found.")
+		_show_toast("没有找到这张明信片。")
 		return
 
 	var place_id: String = str(postcard.get("place_id", ""))
 	var place := MemoryManager.find_place(place_id)
-	var title_text := str(postcard.get("title", "Postcard"))
-	var message := str(postcard.get("message", "A small memory."))
+	var title_text := str(postcard.get("title", "明信片"))
+	var message := str(postcard.get("message", "一段小小的记忆。"))
 	var photo_path := str(postcard.get("photo_path", ""))
 
 	if photo_path == "" and not place.is_empty():
@@ -4324,25 +4324,25 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 
 
 func _open_family_tree_panel() -> void:
-	var body := "This tree grows with family memories.\n\nFamily members:\n"
+	var body := "这棵树会随着家庭记忆一起长大。\n\n家庭成员：\n"
 	for role_data in CHARACTER_DATA:
 		var role_key := str(role_data.get("role", ""))
-		var member_name := MemoryManager.player_display_name if role_key == MemoryManager.selected_role_key else str(role_data.get("default_name", role_data.get("label", "Family")))
-		var status := "online" if role_key == MemoryManager.selected_role_key else "offline"
+		var member_name := MemoryManager.player_display_name if role_key == MemoryManager.selected_role_key else str(role_data.get("default_name", role_data.get("label", "家人")))
+		var status := "当前玩家" if role_key == MemoryManager.selected_role_key else "花园访客"
 		body += "• " + member_name + " — " + status + "\n"
-	body += "\nPostcards on the tree:\n"
+	body += "\n树上的明信片：\n"
 	if MemoryManager.postcards.is_empty():
-		body += "• No MemoryManager.postcards yet. Open the Travel Map to send one.\n"
+		body += "• 还没有明信片。打开旅行地图寄回一张吧。\n"
 	else:
 		for postcard in MemoryManager.postcards:
-			body += "• " + str(postcard.get("title", "Postcard")) + "\n"
+			body += "• " + str(postcard.get("title", "明信片")) + "\n"
 	_show_cozy_panel(
-		"Family Tree",
+		"家庭树",
 		body,
 		[
-			{"text": "Postcards", "action": "MemoryManager.postcards"},
-			{"text": "Board", "action": "message_board"},
-			{"text": "Close", "action": "close"}
+			{"text": "明信片", "action": "MemoryManager.postcards"},
+			{"text": "留言板", "action": "message_board"},
+			{"text": "关闭", "action": "close"}
 		]
 	)
 
@@ -4350,39 +4350,39 @@ func _open_mailbox_panel() -> void:
 	var unread_count: int = MemoryManager.count_unread_postcards()
 	var body := ""
 	if unread_count > 0:
-		body = "New mail has arrived.\n\n"
+		body = "有新的家人来信。\n\n"
 		for postcard in MemoryManager.postcards:
 			if bool(postcard.get("is_new", false)):
-				body += "• " + str(postcard.get("title", "New postcard")) + "\n"
+				body += "• " + str(postcard.get("title", "新明信片")) + "\n"
 	else:
-		body = "No new mail right now.\n\nAdd a place on the Travel Map to send a new postcard to the garden."
+		body = "现在没有新来信。\n\n在旅行地图添加地点，就能寄一张新的明信片回花园。"
 	MemoryManager.mark_postcards_read(false)
 	MemoryManager.clear_mailbox_alert()
 	if CloudManager != null:
 		await CloudManager.mark_mailbox_read()
 	MemoryManager.save_game()
 	_show_cozy_panel(
-		"Mailbox",
+		"邮箱",
 		body,
 		[
-			{"text": "View Postcards", "action": "MemoryManager.postcards"},
-			{"text": "Travel Map", "action": "travel_map"},
-			{"text": "Close", "action": "close"}
+			{"text": "查看明信片", "action": "MemoryManager.postcards"},
+			{"text": "旅行地图", "action": "travel_map"},
+			{"text": "关闭", "action": "close"}
 		]
 	)
 
 func _open_npc_dialog(npc_id: String, display_name: String) -> void:
-	var line := "It's peaceful in the garden today."
+	var line := "今天的花园很安静。"
 	match npc_id:
 		"papa":
-			line = "The garden looks peaceful today. It feels good to see everyone here."
+			line = "今天花园很安静，能在这里看到大家，感觉很好。"
 		"mama":
-			line = "The flowers are growing beautifully. This place feels like a small home."
+			line = "花开得很好，这里像一个小小的家。"
 		"boy":
-			line = "I found a quiet corner here. Maybe we can leave a postcard together."
+			line = "我找到一个很安静的角落。也许我们可以一起留下一张明信片。"
 		"girl":
-			line = "I brought a small memory back to the garden."
-	_show_cozy_panel(display_name, line, [{"text": "Close", "action": "close"}])
+			line = "我把一段小小的记忆带回了花园。"
+	_show_cozy_panel(display_name, line, [{"text": "关闭", "action": "close"}])
 
 func _show_cozy_panel(panel_title: String, body_text: String, buttons: Array) -> void:
 	_close_active_panel()
@@ -4729,17 +4729,17 @@ func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
 func _get_house_intro(id: String) -> String:
 	match id:
 		"father":
-			return "A warm little room for Papa. Books, coffee, and family MemoryManager.postcards will live here."
+			return "爸爸温暖的小房间。书、咖啡和家人的明信片都会慢慢住进来。"
 		"mother":
-			return "A gentle cottage for flowers, notes, and quiet family memories."
+			return "一个适合花、留言和安静家庭记忆的小屋。"
 		"player":
-			return "Peilin's cottage keeps travel notes, photos, and small discoveries from the road."
+			return "这里收藏旅行笔记、照片和路上的小发现。"
 		"partner":
-			return "Louis's cottage is waiting for shared MemoryManager.postcards and soft garden visits."
-	return "A small family cottage."
+			return "这里等着家人共享明信片，也等着温柔的花园拜访。"
+	return "一间小小的家庭房间。"
 
 func _show_toast(toast_text: String) -> void:
-	info_label.text = "Family Garden   —   " + toast_text
+	info_label.text = "家庭花园   —   " + toast_text
 
 func _safe_texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
