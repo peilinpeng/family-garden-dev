@@ -130,6 +130,10 @@ func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: S
 		"question": question,
 		"confidence": confidence,
 		"generation_meta": generation_meta.duplicate(true),
+		"followup_answer": "",
+		"followup_answered_by": "",
+		"followup_answered_at": "",
+		"followup_updated_at": "",
 		"pair_key": pair_key,
 		"slot_id": "",
 		"state": "new",
@@ -145,6 +149,50 @@ func get_memory_links(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary \
 		and String(n.get("node_type", "")) == "memory_link" \
 		and String(n.get("scene_id", "")) == scene_id)
+
+func get_memory_link_by_id(link_id: String) -> Dictionary:
+	for node in nodes:
+		if node is Dictionary and String(node.get("node_type", "")) == "memory_link" \
+			and String(node.get("id", "")) == link_id:
+			return node
+	return {}
+
+func is_memory_link_answered(link: Dictionary) -> bool:
+	return String(link.get("followup_answer", "")).strip_edges() != ""
+
+func answer_memory_link(link_id: String, answer_text: String) -> Dictionary:
+	var link := get_memory_link_by_id(link_id)
+	if link.is_empty():
+		return {"ok": false, "error": {"code": "LINK_NOT_FOUND", "message": "这条记忆藤蔓已经不存在。"}}
+	var text := answer_text.strip_edges()
+	if text == "":
+		return {"ok": false, "error": {"code": "EMPTY_ANSWER", "message": "先写一点补充，再保存。"}}
+	if text.length() > 1200:
+		return {"ok": false, "error": {"code": "ANSWER_TOO_LONG", "message": "补充内容不能超过 1200 个字。"}}
+	var now := Time.get_datetime_string_from_system()
+	var was_answered := is_memory_link_answered(link)
+	link["followup_answer"] = text
+	link["followup_answered_by"] = selected_role_key
+	if not was_answered or String(link.get("followup_answered_at", "")) == "":
+		link["followup_answered_at"] = now
+	link["followup_updated_at"] = now
+	link["state"] = "grown"
+	save_game()
+	_sync("nodes", link)
+	return {"ok": true, "link": link, "updated": was_answered}
+
+func clear_memory_link_answer(link_id: String) -> bool:
+	var link := get_memory_link_by_id(link_id)
+	if link.is_empty():
+		return false
+	link["followup_answer"] = ""
+	link["followup_answered_by"] = ""
+	link["followup_answered_at"] = ""
+	link["followup_updated_at"] = Time.get_datetime_string_from_system()
+	link["state"] = "new"
+	save_game()
+	_sync("nodes", link)
+	return true
 
 func get_memory_link_endpoints(link: Dictionary) -> Dictionary:
 	var memory_a := get_memory(String(link.get("memory_id", "")))

@@ -145,6 +145,16 @@ func _test_memory_draft_and_idempotency() -> void:
 	var endpoints := MemoryManager.get_memory_link_endpoints(MemoryManager.get_memory_links("garden")[0])
 	_assert(bool(endpoints.get("ok", false)), "关联详情应能查到两端记忆")
 	_assert(String(endpoints.get("memory_a", {}).get("id", "")) != String(endpoints.get("memory_b", {}).get("id", "")), "关联两端不能是同一条记忆")
+	var link_id := String(MemoryManager.get_memory_links("garden")[0].get("id", ""))
+	var answered: Dictionary = MemoryManager.answer_memory_link(link_id, "这两段记忆都和一家人在花园里的陪伴有关。")
+	_assert(answered.ok and not bool(answered.get("updated", false)), "关联回答应可首次保存")
+	_assert(MemoryManager.is_memory_link_answered(answered.link), "保存后关联应进入已回答状态")
+	var link_count := MemoryManager.get_memory_links("garden").size()
+	var updated: Dictionary = MemoryManager.answer_memory_link(link_id, "更新后的补充：它们都在讲一家人的陪伴。")
+	_assert(updated.ok and bool(updated.get("updated", false)), "关联回答应可更新")
+	_assert(MemoryManager.get_memory_links("garden").size() == link_count, "更新关联回答不得创建新 link")
+	_assert(String(updated.link.get("followup_answer", "")) == "更新后的补充：它们都在讲一家人的陪伴。", "关联回答应保存最新文本")
+	_assert(not MemoryManager.answer_memory_link(link_id, "").ok, "空关联回答必须拒绝")
 	_assert(String(seed.get("id", "")) != String(committed.memory.get("id", "")), "新旧记忆 ID 应不同")
 
 func _test_bottle_recovery_and_answer_idempotency() -> void:
