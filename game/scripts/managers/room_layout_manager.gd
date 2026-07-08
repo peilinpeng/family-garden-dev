@@ -10,23 +10,66 @@ const ROOM_SCENE := "room"
 # 挂墙物件（进 kind=wall 的 zone）；其余按地面物件处理。
 const WALL_OBJECTS := ["photo_wall", "picture", "painting", "clock", "window"]
 
-## 根据 room_analysis 生成一个房间 + 其物件（落库持久化）。返回 room dict。
-func generate(analysis: Dictionary, source_memory_id: String = "") -> Dictionary:
-	var room := MemoryManager.create_room(analysis, source_memory_id)
-	var room_id := String(room.get("id", ""))
-	ZoneManager.load_scene(ROOM_SCENE)  # 重置占用，从干净布局开始
-	for obj in analysis.get("objects", []):
-		if not (obj is Dictionary):
-			continue
-		var object_type := String(obj.get("object_type", ""))
-		var zone := String(obj.get("zone", ""))
+## 只规划、不落库。返回的 objects 已经过契约、zone 容量和墙面类型校验。
+func plan(analysis: Dictionary) -> Dictionary:
+	var validation := AIContractValidator.validate_data("analyze-room-photo", analysis)
+	if not bool(validation.get("ok", false)):
+		return {"ok": false, "errors": validation.get("errors", [])}
+	ZoneManager.load_scene(ROOM_SCENE)
+	var planned: Array = []
+	var rejected: Array = []
+	for raw_object in analysis.get("objects", []):
+		var object := raw_object as Dictionary
+		var object_type := String(object.get("object_type", ""))
+		var zone := String(object.get("zone", ""))
 		var footprint := "wall_object" if object_type in WALL_OBJECTS else "floor_object"
 		var point: Variant = ZoneManager.allocate_zone(ROOM_SCENE, zone, footprint)
 		if point == null:
-			push_warning("[RoomLayout] 无法为 %s 分配 zone %s（满或 footprint 不符）" % [object_type, zone])
+			rejected.append({"object_type": object_type, "zone": zone, "reason": "zone_unavailable"})
 			continue
-		MemoryManager.create_room_object(room_id, object_type, zone, String(point.get("slot_id", "")))
+		planned.append({
+			"object_type": object_type,
+			"zone": zone,
+			"slot_id": String(point.get("slot_id", "")),
+		})
+	return {"ok": not planned.is_empty(), "objects": planned, "rejected": rejected}
+
+## 根据 room_analysis 生成一个房间 + 其物件（落库持久化）。返回 room dict。
+func generate(analysis: Dictionary, source_memory_id: String = "", workflow_key: String = "", generation_meta: Dictionary = {}) -> Dictionary:
+	var layout := plan(analysis)
+	if not bool(layout.get("ok", false)):
+		return {}
+	var room := MemoryManager.create_room(analysis, source_memory_id, workflow_key, generation_meta)
+	var room_id := String(room.get("id", ""))
+	for object in layout.get("objects", []):
+		MemoryManager.create_room_object(room_id, String(object.get("object_type", "")), String(object.get("zone", "")), String(object.get("slot_id", "")))
 	return room
+
+func replace(room_id: String, analysis: Dictionary, source_memory_id: String, workflow_key: String, generation_meta: Dictionary = {}) -> Dictionary:
+	var layout := plan(analysis)
+	if not bool(layout.get("ok", false)):
+		return {}
+	MemoryManager.delete_room(room_id)
+	return generate(analysis, source_memory_id, workflow_key, generation_meta)
+
+func move_object(object_id: String, target_zone: String) -> bool:
+	var target: Dictionary = {}
+	for object in MemoryManager.room_objects:
+		if object is Dictionary and String(object.get("id", "")) == object_id:
+			target = object
+			break
+	if target.is_empty():
+		return false
+	ZoneManager.load_scene(ROOM_SCENE)
+	for object in MemoryManager.get_room_objects(String(target.get("room_id", ""))):
+		if String(object.get("id", "")) != object_id:
+			ZoneManager.occupy(ROOM_SCENE, String(object.get("slot_id", "")), String(object.get("id", "")))
+	var object_type := String(target.get("object_type", ""))
+	var footprint := "wall_object" if object_type in WALL_OBJECTS else "floor_object"
+	var point: Variant = ZoneManager.allocate_zone(ROOM_SCENE, target_zone, footprint)
+	if point == null:
+		return false
+	return MemoryManager.update_room_object(object_id, target_zone, String(point.get("slot_id", "")))
 
 ## 渲染某房间已落库的物件到 world（重入/重启后重建，回填 zone 占用）。
 ## on_click 绑 room_object id。返回渲染数量。
