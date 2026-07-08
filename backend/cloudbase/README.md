@@ -10,7 +10,7 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    写入时自动创建,必须提前建好,否则 `snapshot`/`query` 会直接报
    `ResourceNotFound: Db or Table not exist`):
    ```
-   members, families, memories, nodes, answers, rooms, room_objects, inventories
+   members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。
@@ -99,6 +99,14 @@ db.collection('members').add({
 | `query` | `{table}` | `{ok, rows}` | 需要 |
 | `upsert` | `{table, row}` | `{ok, id}` | 需要 |
 | `delete` | `{table, id}` | `{ok}` | 需要 |
+| `upload_image` | `{content_type, base64_data}` | `{ok, upload_id, image_url, expires_in}` | 需要 |
+| `resolve_image` | `{upload_id}` | `{ok, image_url, expires_in}` | 需要 |
+| `delete_image` | `{upload_id}` | `{ok}` | 需要，且仅上传者可删 |
+
+`uploads` 是网关内部元数据集合，不在通用表白名单中。客户端只持久化 `upload_id`；
+`image_url` 是短期签名地址，只用于预览和本次 AI 调用，重启后通过 `resolve_image` 刷新。
+上传只接受 JPEG/PNG/WebP，解码前后均限制为 6 MB；存储路径由服务端按家庭与成员生成，
+不接受客户端自定义路径。
 
 除 `join_family` 外,无效/缺失令牌 → `{ok:false, code:401}`。
 
@@ -113,11 +121,12 @@ db.collection('members').add({
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
 - ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/partner/player` 四个合法角色,乱传会被拒绝。
 - ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
+- ✅ **AI 图片受控上传**:服务端生成隔离路径；元数据表不对 CRUD 白名单开放；家庭外不可解析、非上传者不可删除。
 - **轮换/吊销**:删/换某成员的 member_token 行即可让其失效,不影响其他成员。
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
 
-以上边界已落成 `tests/data_gateway.test.js` 的 23 项可重复逻辑测试。
+以上边界已落成 `tests/data_gateway.test.js` 的 27 项可重复逻辑测试。
 
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，

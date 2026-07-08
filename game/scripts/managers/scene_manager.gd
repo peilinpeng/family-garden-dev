@@ -200,6 +200,9 @@ var web_photo_callback: Variant = null
 var photo_texture_cache: Dictionary = {}
 
 func _load_cloud_data() -> void:
+	if OS.has_environment("FAMILY_GARDEN_TEST"):
+		cloud_load_finished = true
+		return
 	if CloudManager == null:
 		return
 
@@ -251,6 +254,7 @@ func _build_ui() -> void:
 	root.add_child(help)
 
 	# Bottom navigation. Kept compact and centered under the garden.
+	_add_button(root, "记忆", Vector2(148, 672), Vector2(90, 32), "create_memory")
 	_add_button(root, "World", Vector2(248, 672), Vector2(86, 32), "global_map")
 	_add_button(root, "Tree", Vector2(338, 672), Vector2(82, 32), "family_tree")
 	_add_button(root, "Map", Vector2(430, 672), Vector2(76, 32), "travel_map")
@@ -539,6 +543,8 @@ func _on_ui_button(action: String) -> void:
 			_open_postcards_panel()
 		"world_chat_history":
 			_open_world_chat_history_panel()
+		"create_memory":
+			_open_memory_creator()
 		"save":
 			MemoryManager.save_game()
 			_show_toast("Saved.")
@@ -1385,24 +1391,39 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
 
-# 阶段1 mock：在水面 slot 上生成可点击漂流瓶。点击 → 问题面板 → 回答 → 岸边生记忆节点。
-# 问题来自 AIClient（mock，阶段2 换 generate-bottle-question 真调用）。
+# Gate 4：先同步渲染已落库漂流瓶，再后台补齐真实 AI 问题；进入场景不等待网络。
 func _spawn_demo_bottles() -> void:
 	_demo_bottles.clear()
 	SlotManager.reset("fishpond")
 	SlotManager.load_scene("fishpond")
-	var questions: Array = AIClient.mock_bottle_questions()
-	var spawned := 0
-	for i in range(questions.size()):
-		var slot: Variant = SlotManager.allocate("fishpond", "bottle", "bottle_%d" % i)
-		if slot == null:
-			break
-		var bid := "bottle_%d" % i
-		var card := {"node_type": "bottle", "suggested_scene": "fishpond"}
-		var node := NodeFactory.make_memory_node(card, slot, _on_bottle_clicked.bind(bid))
-		world.add_child(node)
-		_demo_bottles.append({"id": bid, "question": String(questions[i]), "state": "floating", "answer": "", "node": node})
-		spawned += 1
+	for bottle in MemoryManager.get_bottles():
+		var slot_id := String(bottle.get("slot_id", ""))
+		if slot_id == "":
+			continue
+		SlotManager.occupy("fishpond", slot_id, String(bottle.get("id", "")))
+		_render_bottle_record(bottle)
+	_generate_missing_bottles()
+
+func _generate_missing_bottles() -> void:
+	var bottles: Array = await AIWorkflowManager.ensure_bottles(2)
+	if mode != "fishpond" or world == null or not is_instance_valid(world):
+		return
+	for bottle in bottles:
+		var bid := String(bottle.get("id", ""))
+		if not _demo_bottles.any(func(item): return String(item.get("id", "")) == bid):
+			_render_bottle_record(bottle)
+
+func _render_bottle_record(bottle: Dictionary) -> void:
+	var slot := SlotManager.get_slot("fishpond", String(bottle.get("slot_id", "")))
+	if slot.is_empty():
+		return
+	var bid := String(bottle.get("id", ""))
+	var card := {"node_type": "bottle", "suggested_scene": "fishpond"}
+	var node := NodeFactory.make_memory_node(card, slot, _on_bottle_clicked.bind(bid))
+	world.add_child(node)
+	var view_model := bottle.duplicate(true)
+	view_model["node"] = node
+	_demo_bottles.append(view_model)
 
 func _register_scene_message_bottle(pond_area: Node2D) -> void:
 	if pond_area == null:
@@ -1502,6 +1523,15 @@ func _submit_bottle_answer(bid: String, input: TextEdit) -> void:
 	var text: String = input.text.strip_edges()
 	if text == "":
 		_show_toast("写点什么再回答吧～")
+		return
+	if bid != "scene_bottle":
+		var result: Dictionary = await AIWorkflowManager.answer_bottle(bid, text)
+		if not bool(result.get("ok", false)):
+			_show_toast(String(result.get("error", {}).get("message", "回答保存失败。")))
+			return
+		_close_active_panel()
+		_build_fishpond()
+		_show_toast("漂流瓶被回答了 🍶 → 🌊")
 		return
 	b["answer"] = text
 	b["state"] = "opened"
@@ -2149,25 +2179,201 @@ Use Back Garden to return."
 
 	var btn_y := 150 if is_player else 104
 	if is_player:
-		_add_panel_button(panel, "上传房间照片(mock)", Vector2(18, 104), Vector2(256, 34), "generate_room:" + house_id)
+		_add_panel_button(panel, "分析房间照片", Vector2(18, 104), Vector2(256, 34), "generate_room:" + house_id)
 	_add_panel_button(panel, "Note", Vector2(18, btn_y), Vector2(78, 34), "house_note:" + house_id)
 	_add_panel_button(panel, "Cards", Vector2(106, btn_y), Vector2(82, 34), "MemoryManager.postcards")
 	_add_panel_button(panel, "Back", Vector2(198, btn_y), Vector2(76, 34), "back_garden")
 
-# 上传房间照片 → AI 识别(AIClient，mock/真后端+回退) → 落库 + 布局 → 渲染。已生成则不重复。
+# 上传房间照片 → 本地压缩 → 受控上传 → AI 草稿 → 用户确认后布局。
 func _on_generate_room(house_id: String) -> void:
 	if house_id != "player":
 		return
 	if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty():
-		_show_toast("房间已经布置过了 🏠")
+		_open_room_management()
 		return
-	var src := MemoryManager.create_memory({}, "room_photo")  # 房间照片来源记忆
-	var image_url := String(src.get("image_url", ""))
-	# Gate 4 接入真实选图/上传前，这个按钮仍明确保持 mock，不发送空 image_url 浪费请求。
-	var analysis: Dictionary = AIClient.mock_room_analysis() if image_url == "" \
-		else await AIClient.analyze_room_photo(image_url, String(src.get("id", "")))
-	RoomLayoutManager.generate(analysis, String(src.get("id", "")))
-	_render_room("player")
+	_open_room_photo_form()
+
+func _open_room_management() -> void:
+	_close_active_panel()
+	var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(370, 190)
+	panel.size = Vector2(540, 330)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "管理我的 AI 房间"
+	title.position = Vector2(34, 26)
+	title.size = Vector2(460, 34)
+	title.add_theme_font_size_override("font_size", 24)
+	panel.add_child(title)
+	var summary := Label.new()
+	summary.text = "%s · %s · %d 件家具" % [String(room.get("room_name", "我的房间")), String(room.get("style", "")), MemoryManager.get_room_objects(String(room.get("id", ""))).size()]
+	summary.position = Vector2(34, 82)
+	summary.size = Vector2(470, 50)
+	panel.add_child(summary)
+	var reanalyze := Button.new()
+	reanalyze.text = "换照片重新分析"
+	reanalyze.position = Vector2(70, 188)
+	reanalyze.size = Vector2(180, 42)
+	_apply_button_style(reanalyze, false)
+	reanalyze.pressed.connect(_open_room_photo_form)
+	panel.add_child(reanalyze)
+	var remove := Button.new()
+	remove.text = "删除房间"
+	remove.position = Vector2(290, 188)
+	remove.size = Vector2(180, 42)
+	_apply_button_style(remove, false)
+	remove.pressed.connect(_delete_current_ai_room.bind(remove))
+	panel.add_child(remove)
+
+func _delete_current_ai_room(button: Button) -> void:
+	var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
+	if room.is_empty():
+		return
+	button.disabled = true
+	var source_id := String(room.get("source_memory_id", ""))
+	var source := MemoryManager.get_memory(source_id)
+	var upload_id := String(source.get("upload_id", ""))
+	MemoryManager.delete_room(String(room.get("id", "")))
+	if source_id != "":
+		MemoryManager.delete_memory(source_id)
+	if upload_id != "":
+		await CloudManager.delete_ai_image(upload_id)
+	_close_active_panel()
+	_enter_house("player", "我的房间")
+	_show_toast("AI 房间及照片已删除。")
+
+func _open_room_photo_form() -> void:
+	_reset_selected_photo_state()
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(330, 135)
+	panel.size = Vector2(620, 450)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "用照片生成我的房间"
+	title.position = Vector2(34, 26)
+	title.size = Vector2(550, 34)
+	title.add_theme_font_size_override("font_size", 24)
+	panel.add_child(title)
+	var info := Label.new()
+	info.text = "支持 JPEG、PNG、WebP，原图不超过 12 MB。确认布局前不会创建房间。"
+	info.position = Vector2(34, 78)
+	info.size = Vector2(550, 54)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(info)
+	var choose := Button.new()
+	choose.text = "选择房间照片"
+	choose.position = Vector2(34, 160)
+	choose.size = Vector2(180, 42)
+	_apply_button_style(choose, false)
+	choose.pressed.connect(_choose_photo_for_place)
+	panel.add_child(choose)
+	selected_photo_label = Label.new()
+	selected_photo_label.text = "未选择照片"
+	selected_photo_label.position = Vector2(230, 168)
+	selected_photo_label.size = Vector2(350, 28)
+	panel.add_child(selected_photo_label)
+	var analyze := Button.new()
+	analyze.text = "上传并分析"
+	analyze.position = Vector2(210, 310)
+	analyze.size = Vector2(200, 44)
+	_apply_button_style(analyze, false)
+	analyze.pressed.connect(_analyze_selected_room_photo.bind(analyze))
+	panel.add_child(analyze)
+
+func _analyze_selected_room_photo(button: Button) -> void:
+	var photo := _selected_gate4_photo()
+	if (photo.get("bytes", PackedByteArray()) as PackedByteArray).is_empty():
+		_show_toast("请先选择一张房间照片。")
+		return
+	button.disabled = true
+	button.text = "压缩、上传并分析中…"
+	var draft: Dictionary = await AIWorkflowManager.prepare_room_draft(photo.get("bytes", PackedByteArray()), String(photo.get("content_type", "")))
+	if not bool(draft.get("ok", false)):
+		button.disabled = false
+		button.text = "重试分析"
+		_show_toast(String(draft.get("error", {}).get("message", "房间分析失败。")))
+		return
+	_open_room_draft_preview(draft)
+
+func _open_room_draft_preview(draft: Dictionary) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(300, 82)
+	panel.size = Vector2(680, 556)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	var analysis: Dictionary = draft.get("analysis", {})
+	var title := Label.new()
+	title.text = "房间识别预览" + (" · 示例回退布局" if bool(draft.get("used_fallback", false)) else "")
+	title.position = Vector2(34, 24)
+	title.size = Vector2(612, 34)
+	title.add_theme_font_size_override("font_size", 24)
+	panel.add_child(title)
+	var description := Label.new()
+	description.text = String(analysis.get("description", ""))
+	description.position = Vector2(34, 74)
+	description.size = Vector2(612, 64)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(description)
+	var object_lines: Array[String] = []
+	for object in draft.get("layout", {}).get("objects", []):
+		object_lines.append("• %s → %s" % [String(object.get("object_type", "")), String(object.get("zone", ""))])
+	var objects := Label.new()
+	objects.text = "将摆放的家具：\n" + "\n".join(object_lines)
+	objects.position = Vector2(34, 154)
+	objects.size = Vector2(612, 210)
+	objects.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(objects)
+	var meta: Dictionary = draft.get("generation_meta", {})
+	var trace := Label.new()
+	trace.text = "来源 %s · %s · %s" % [String(meta.get("source", "unknown")), String(meta.get("model", "unknown")), String(meta.get("prompt_version", "unknown"))]
+	trace.position = Vector2(34, 382)
+	trace.size = Vector2(612, 36)
+	trace.add_theme_font_size_override("font_size", 12)
+	panel.add_child(trace)
+	var cancel := Button.new()
+	cancel.text = "取消并清理照片"
+	cancel.position = Vector2(86, 458)
+	cancel.size = Vector2(180, 42)
+	_apply_button_style(cancel, false)
+	cancel.pressed.connect(func() -> void:
+		AIWorkflowManager.discard_draft(draft)
+		_close_active_panel())
+	panel.add_child(cancel)
+	var confirm := Button.new()
+	confirm.text = "确认布局"
+	confirm.position = Vector2(414, 458)
+	confirm.size = Vector2(180, 42)
+	_apply_button_style(confirm, false)
+	confirm.pressed.connect(_commit_room_preview.bind(draft, confirm))
+	panel.add_child(confirm)
+
+func _commit_room_preview(draft: Dictionary, button: Button) -> void:
+	button.disabled = true
+	button.text = "正在保存布局…"
+	var result: Dictionary = await AIWorkflowManager.commit_room_draft(draft)
+	if not bool(result.get("ok", false)):
+		button.disabled = false
+		button.text = "确认布局"
+		_show_toast(String(result.get("error", {}).get("message", "房间保存失败。")))
+		return
+	_close_active_panel()
+	_enter_house("player", "我的房间")
 	_show_toast("房间生成好了 🛋️")
 
 # 渲染玩家房间已落库的家具（重入/重启后重建）。
@@ -2184,9 +2390,67 @@ func _render_room(house_id: String) -> void:
 func _on_room_object_clicked(obj_id: String) -> void:
 	for o in MemoryManager.room_objects:
 		if o is Dictionary and String(o.get("id", "")) == obj_id:
-			_show_toast("这是 " + String(o.get("object_type", "物件")) + " 🪑")
+			_open_room_object_editor(o)
 			return
 	_show_toast("房间里的物件 🪑")
+
+func _open_room_object_editor(object: Dictionary) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(400, 190)
+	panel.size = Vector2(480, 350)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "调整家具：" + String(object.get("object_type", "物件"))
+	title.position = Vector2(30, 26)
+	title.size = Vector2(400, 34)
+	title.add_theme_font_size_override("font_size", 22)
+	panel.add_child(title)
+	var zone_select := OptionButton.new()
+	zone_select.position = Vector2(30, 100)
+	zone_select.size = Vector2(420, 40)
+	var zones: Array = ["back_wall"] if String(object.get("object_type", "")) == "photo_wall" else AIContractValidator.ROOM_ZONES.filter(func(zone): return zone != "back_wall")
+	for zone in zones:
+		zone_select.add_item(String(zone))
+		zone_select.set_item_metadata(zone_select.item_count - 1, String(zone))
+		if String(zone) == String(object.get("zone", "")):
+			zone_select.select(zone_select.item_count - 1)
+	panel.add_child(zone_select)
+	var move := Button.new()
+	move.text = "移动到所选区域"
+	move.position = Vector2(40, 210)
+	move.size = Vector2(180, 42)
+	_apply_button_style(move, false)
+	move.pressed.connect(_move_room_object.bind(String(object.get("id", "")), zone_select, move))
+	panel.add_child(move)
+	var remove := Button.new()
+	remove.text = "删除这件家具"
+	remove.position = Vector2(260, 210)
+	remove.size = Vector2(180, 42)
+	_apply_button_style(remove, false)
+	remove.pressed.connect(_delete_room_object.bind(String(object.get("id", ""))))
+	panel.add_child(remove)
+
+func _move_room_object(object_id: String, zone_select: OptionButton, button: Button) -> void:
+	button.disabled = true
+	if not RoomLayoutManager.move_object(object_id, String(zone_select.get_selected_metadata())):
+		button.disabled = false
+		_show_toast("这个区域没有合适的空位，请换一个区域。")
+		return
+	_close_active_panel()
+	_enter_house("player", "我的房间")
+	_show_toast("家具位置已更新。")
+
+func _delete_room_object(object_id: String) -> void:
+	if MemoryManager.delete_room_object(object_id):
+		_close_active_panel()
+		_enter_house("player", "我的房间")
+		_show_toast("家具已删除。")
 
 
 func _add_room_collision_zones(room_id: String, room_rect: Rect2) -> void:
@@ -2574,6 +2838,185 @@ func _choose_photo_for_place() -> void:
 	photo_file_dialog.file_selected.connect(_on_place_photo_selected)
 	ui_layer.add_child(photo_file_dialog)
 	photo_file_dialog.popup_centered(Vector2i(900, 620))
+
+func _selected_gate4_photo() -> Dictionary:
+	var bytes := selected_photo_bytes
+	if bytes.is_empty() and selected_photo_path != "":
+		bytes = FileAccess.get_file_as_bytes(selected_photo_path)
+	return {
+		"bytes": bytes,
+		"content_type": selected_photo_content_type if selected_photo_content_type != "" else _content_type_for_filename(selected_photo_filename),
+		"filename": selected_photo_filename,
+	}
+
+func _open_memory_creator(preserve_selection: bool = false, initial_text: String = "") -> void:
+	if not preserve_selection:
+		_reset_selected_photo_state()
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(290, 70)
+	panel.size = Vector2(700, 590)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "创建一段家庭记忆"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(620, 36)
+	title.add_theme_font_size_override("font_size", 26)
+	panel.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "可以只写文字、只选照片，或图文一起提交。生成草稿前不会保存记忆。"
+	hint.position = Vector2(34, 66)
+	hint.size = Vector2(620, 40)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(hint)
+
+	var text_input := TextEdit.new()
+	text_input.name = "MemoryTextInput"
+	text_input.placeholder_text = "例如：今天和家人一起种了一棵树……"
+	text_input.text = initial_text
+	text_input.position = Vector2(34, 118)
+	text_input.size = Vector2(632, 190)
+	panel.add_child(text_input)
+
+	var choose := Button.new()
+	choose.text = "选择照片（可选）"
+	choose.position = Vector2(34, 330)
+	choose.size = Vector2(180, 40)
+	_apply_button_style(choose, false)
+	choose.pressed.connect(_choose_photo_for_place)
+	panel.add_child(choose)
+	selected_photo_label = Label.new()
+	selected_photo_label.text = "未选择照片" if selected_photo_filename == "" else "已选择：" + selected_photo_filename
+	selected_photo_label.position = Vector2(230, 338)
+	selected_photo_label.size = Vector2(420, 28)
+	panel.add_child(selected_photo_label)
+
+	var privacy := Label.new()
+	privacy.text = "照片会先在本机压缩并去除元数据，再上传到家庭隔离的 CloudBase 路径。"
+	privacy.position = Vector2(34, 390)
+	privacy.size = Vector2(632, 44)
+	privacy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	privacy.add_theme_font_size_override("font_size", 13)
+	panel.add_child(privacy)
+
+	var generate := Button.new()
+	generate.text = "生成可编辑草稿"
+	generate.position = Vector2(250, 476)
+	generate.size = Vector2(200, 44)
+	_apply_button_style(generate, false)
+	generate.pressed.connect(_generate_memory_draft.bind(text_input, generate))
+	panel.add_child(generate)
+
+func _generate_memory_draft(text_input: TextEdit, button: Button) -> void:
+	button.disabled = true
+	button.text = "正在准备与生成…"
+	var photo := _selected_gate4_photo()
+	var draft: Dictionary = await AIWorkflowManager.prepare_memory_draft(text_input.text, photo.get("bytes", PackedByteArray()), String(photo.get("content_type", "")))
+	if not bool(draft.get("ok", false)):
+		button.disabled = false
+		button.text = "重试生成"
+		_show_toast(String(draft.get("error", {}).get("message", "生成失败，请重试。")))
+		return
+	_open_memory_draft_preview(draft)
+
+func _open_memory_draft_preview(draft: Dictionary) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(260, 46)
+	panel.size = Vector2(760, 628)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+
+	var heading := Label.new()
+	heading.text = "记忆卡草稿" + (" · 已使用安全回退" if bool(draft.get("used_fallback", false)) else " · AI 已生成")
+	heading.position = Vector2(34, 20)
+	heading.size = Vector2(690, 34)
+	heading.add_theme_font_size_override("font_size", 24)
+	panel.add_child(heading)
+	var card: Dictionary = draft.get("card", {})
+	var title_input := LineEdit.new()
+	title_input.text = String(card.get("title", ""))
+	title_input.position = Vector2(34, 72)
+	title_input.size = Vector2(692, 38)
+	panel.add_child(title_input)
+	var description_input := TextEdit.new()
+	description_input.text = String(card.get("description", ""))
+	description_input.position = Vector2(34, 126)
+	description_input.size = Vector2(692, 145)
+	panel.add_child(description_input)
+	var question_input := TextEdit.new()
+	question_input.text = String(card.get("question", ""))
+	question_input.position = Vector2(34, 288)
+	question_input.size = Vector2(692, 100)
+	panel.add_child(question_input)
+	var scene_label := Label.new()
+	scene_label.text = "放到哪里"
+	scene_label.position = Vector2(34, 410)
+	scene_label.size = Vector2(100, 28)
+	panel.add_child(scene_label)
+	var scene_select := OptionButton.new()
+	scene_select.position = Vector2(140, 404)
+	scene_select.size = Vector2(220, 38)
+	scene_select.add_item("家庭花园", 0)
+	scene_select.set_item_metadata(0, "garden")
+	scene_select.add_item("爸爸鱼塘", 1)
+	scene_select.set_item_metadata(1, "fishpond")
+	if String(card.get("suggested_scene", "garden")) == "fishpond":
+		scene_select.select(1)
+	panel.add_child(scene_select)
+	var source := Label.new()
+	var meta: Dictionary = draft.get("generation_meta", {})
+	source.text = "来源：%s · 模型：%s · Prompt：%s" % [String(meta.get("source", "unknown")), String(meta.get("model", "unknown")), String(meta.get("prompt_version", "unknown"))]
+	source.position = Vector2(34, 462)
+	source.size = Vector2(692, 48)
+	source.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	source.add_theme_font_size_override("font_size", 12)
+	panel.add_child(source)
+	var cancel := Button.new()
+	cancel.text = "取消并清理照片"
+	cancel.position = Vector2(116, 542)
+	cancel.size = Vector2(170, 42)
+	_apply_button_style(cancel, false)
+	cancel.pressed.connect(func() -> void:
+		AIWorkflowManager.discard_draft(draft)
+		_close_active_panel())
+	panel.add_child(cancel)
+	var confirm := Button.new()
+	confirm.text = "确认创建"
+	confirm.position = Vector2(474, 542)
+	confirm.size = Vector2(170, 42)
+	_apply_button_style(confirm, false)
+	confirm.pressed.connect(_commit_memory_preview.bind(draft, card, title_input, description_input, question_input, scene_select, confirm))
+	panel.add_child(confirm)
+
+func _commit_memory_preview(draft: Dictionary, original_card: Dictionary, title_input: LineEdit, description_input: TextEdit, question_input: TextEdit, scene_select: OptionButton, button: Button) -> void:
+	var card := original_card.duplicate(true)
+	card["title"] = title_input.text.strip_edges()
+	card["description"] = description_input.text.strip_edges()
+	card["question"] = question_input.text.strip_edges()
+	card["suggested_scene"] = String(scene_select.get_selected_metadata())
+	button.disabled = true
+	button.text = "正在保存…"
+	var result: Dictionary = await AIWorkflowManager.commit_memory_draft(draft, card)
+	if not bool(result.get("ok", false)):
+		button.disabled = false
+		button.text = "确认创建"
+		_show_toast(String(result.get("error", {}).get("message", "保存失败。")))
+		return
+	_close_active_panel()
+	_show_toast("记忆已经种进家庭花园 🌱")
+	if String(card.get("suggested_scene", "garden")) == "garden":
+		_show_garden()
 
 
 func _on_place_photo_selected(path: String) -> void:

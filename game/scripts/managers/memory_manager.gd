@@ -8,6 +8,7 @@ extends Node
 signal mailbox_alert_changed(state: String)
 
 const SAVE_PATH := "user://family_garden_save_v2.json"
+const TEST_SAVE_PATH := "user://family_garden_save_v2.test.json"
 const FAMILY_ID := "Happy_birthday_David"
 
 const MAILBOX_ALERT_NONE := "none"
@@ -40,16 +41,25 @@ var cross_member_pairs: Array = []  # 去重键 "memory_id|answerer"
 var family_portrait: Dictionary = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
 
 ## 用 AI 记忆卡片创建一条 memory。返回该 memory dict。
-func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "") -> Dictionary:
+func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: String = "", image_url: String = "", generation_meta: Dictionary = {}, workflow_key: String = "", upload_id: String = "") -> Dictionary:
+	if workflow_key != "":
+		for existing in memories:
+			if existing is Dictionary and String(existing.get("workflow_key", "")) == workflow_key:
+				return existing
+	var memory_id := "mem_" + workflow_key.sha256_text().left(24) if workflow_key != "" \
+		else "mem_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000)
 	var mem := {
-		"id": "mem_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"id": memory_id,
 		"family_id": FAMILY_ID,
 		"user_id": selected_role_key,
 		"input_type": input_type,
 		"raw_text": raw_text,
 		"image_url": image_url,
+		"upload_id": upload_id,
 		"status": "ai_done" if not ai_card.is_empty() else "uploaded",
 		"ai_card": ai_card,
+		"generation_meta": generation_meta.duplicate(true),
+		"workflow_key": workflow_key,
 		"created_at": Time.get_datetime_string_from_system()
 	}
 	memories.append(mem)
@@ -58,9 +68,14 @@ func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: 
 	return mem
 
 ## 为某条 memory 在场景里创建一个节点（slot_id 由游戏系统分配，AI 不输出坐标）。
-func create_node(memory_id: String, scene_id: String, node_type: String, slot_id: String, asset_key: String = "") -> Dictionary:
+func create_node(memory_id: String, scene_id: String, node_type: String, slot_id: String, asset_key: String = "", workflow_key: String = "") -> Dictionary:
+	if workflow_key != "":
+		for existing in nodes:
+			if existing is Dictionary and String(existing.get("workflow_key", "")) == workflow_key:
+				return existing
 	var node := {
-		"id": "node_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"id": "node_" + workflow_key.sha256_text().left(24) if workflow_key != "" \
+			else "node_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 		"family_id": FAMILY_ID,
 		"memory_id": memory_id,
 		"scene_id": scene_id,
@@ -69,6 +84,7 @@ func create_node(memory_id: String, scene_id: String, node_type: String, slot_id
 		"slot_id": slot_id,
 		"state": "new",
 		"clickable": true,
+		"workflow_key": workflow_key,
 		"created_at": Time.get_datetime_string_from_system()
 	}
 	nodes.append(node)
@@ -93,9 +109,18 @@ func get_nodes_for_scene(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
 
 ## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link，阶段1 用 mock）。
-func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String) -> Dictionary:
+func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String, confidence: float = 1.0, generation_meta: Dictionary = {}) -> Dictionary:
+	if memory_id == "" or linked_memory_id == "" or memory_id == linked_memory_id:
+		return {}
+	var pair := [memory_id, linked_memory_id]
+	pair.sort()
+	var pair_key := String(pair[0]) + "|" + String(pair[1])
+	for existing in nodes:
+		if existing is Dictionary and String(existing.get("node_type", "")) == "memory_link" \
+			and String(existing.get("pair_key", "")) == pair_key:
+			return existing
 	var node := {
-		"id": "link_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"id": "link_" + pair_key.sha256_text().left(24),
 		"family_id": FAMILY_ID,
 		"memory_id": memory_id,
 		"linked_memory_id": linked_memory_id,
@@ -103,6 +128,9 @@ func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: S
 		"node_type": "memory_link",
 		"relation_type": relation_type,
 		"question": question,
+		"confidence": confidence,
+		"generation_meta": generation_meta.duplicate(true),
+		"pair_key": pair_key,
 		"slot_id": "",
 		"state": "new",
 		"clickable": true,
@@ -117,6 +145,43 @@ func get_memory_links(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary \
 		and String(n.get("node_type", "")) == "memory_link" \
 		and String(n.get("scene_id", "")) == scene_id)
+
+func update_memory_card(memory_id: String, card: Dictionary) -> bool:
+	var validation := AIContractValidator.validate_data("generate-memory-card", card)
+	if not bool(validation.get("ok", false)):
+		return false
+	var memory := get_memory(memory_id)
+	if memory.is_empty():
+		return false
+	memory["ai_card"] = card.duplicate(true)
+	memory["updated_at"] = Time.get_datetime_string_from_system()
+	save_game()
+	_sync("memories", memory)
+	return true
+
+func delete_memory(memory_id: String) -> bool:
+	var memory := get_memory(memory_id)
+	if memory.is_empty():
+		return false
+	var deleted_node_ids: Array = []
+	for node in nodes:
+		if node is Dictionary and (String(node.get("memory_id", "")) == memory_id \
+			or String(node.get("linked_memory_id", "")) == memory_id):
+			deleted_node_ids.append(String(node.get("id", "")))
+	nodes = nodes.filter(func(node): return not (node is Dictionary and (String(node.get("memory_id", "")) == memory_id or String(node.get("linked_memory_id", "")) == memory_id)))
+	var deleted_answer_ids: Array = []
+	for answer in answers:
+		if answer is Dictionary and String(answer.get("memory_id", "")) == memory_id:
+			deleted_answer_ids.append(String(answer.get("id", "")))
+	answers = answers.filter(func(answer): return not (answer is Dictionary and String(answer.get("memory_id", "")) == memory_id))
+	memories = memories.filter(func(item): return not (item is Dictionary and String(item.get("id", "")) == memory_id))
+	for node_id in deleted_node_ids:
+		CloudManager.delete_record("nodes", node_id)
+	for answer_id in deleted_answer_ids:
+		CloudManager.delete_record("answers", answer_id)
+	CloudManager.delete_record("memories", memory_id)
+	save_game()
+	return true
 
 func get_answer_for_memory(memory_id: String) -> String:
 	var result := ""
@@ -147,9 +212,14 @@ func answer_memory(memory_id: String, answer_text: String) -> void:
 		_sync("nodes", n)  # 节点状态变 grown，同步
 
 ## 用 AI 房间识别结果创建一个房间（room_analysis：room_type/style/suggested_room_theme/...）。
-func create_room(analysis: Dictionary, source_memory_id: String = "") -> Dictionary:
+func create_room(analysis: Dictionary, source_memory_id: String = "", workflow_key: String = "", generation_meta: Dictionary = {}) -> Dictionary:
+	if workflow_key != "":
+		for existing in rooms:
+			if existing is Dictionary and String(existing.get("workflow_key", "")) == workflow_key:
+				return existing
 	var room := {
-		"id": "room_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+		"id": "room_" + workflow_key.sha256_text().left(24) if workflow_key != "" \
+			else "room_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 		"family_id": FAMILY_ID,
 		"user_id": selected_role_key,
 		"room_name": String(analysis.get("suggested_room_theme", "")),
@@ -157,6 +227,8 @@ func create_room(analysis: Dictionary, source_memory_id: String = "") -> Diction
 		"style": String(analysis.get("style", "")),
 		"background_asset": "",
 		"source_memory_id": source_memory_id,
+		"workflow_key": workflow_key,
+		"generation_meta": generation_meta.duplicate(true),
 		"created_at": Time.get_datetime_string_from_system()
 	}
 	rooms.append(room)
@@ -166,6 +238,10 @@ func create_room(analysis: Dictionary, source_memory_id: String = "") -> Diction
 
 ## 在房间里摆一件物件（slot_id 由 ZoneManager 分配，AI 只给 object_type / zone）。
 func create_room_object(room_id: String, object_type: String, zone: String, slot_id: String, asset_key: String = "") -> Dictionary:
+	for existing in room_objects:
+		if existing is Dictionary and String(existing.get("room_id", "")) == room_id \
+			and String(existing.get("slot_id", "")) == slot_id:
+			return existing
 	var obj := {
 		"id": "obj_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 		"family_id": FAMILY_ID,
@@ -192,6 +268,92 @@ func get_room_for_user(user_id: String) -> Dictionary:
 
 func get_room_objects(room_id: String) -> Array:
 	return room_objects.filter(func(o): return o is Dictionary and String(o.get("room_id", "")) == room_id)
+
+func delete_room(room_id: String) -> bool:
+	var found := false
+	for room in rooms:
+		if room is Dictionary and String(room.get("id", "")) == room_id:
+			found = true
+			break
+	if not found:
+		return false
+	var object_ids: Array = []
+	for object in room_objects:
+		if object is Dictionary and String(object.get("room_id", "")) == room_id:
+			object_ids.append(String(object.get("id", "")))
+	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("room_id", "")) == room_id))
+	rooms = rooms.filter(func(room): return not (room is Dictionary and String(room.get("id", "")) == room_id))
+	for object_id in object_ids:
+		CloudManager.delete_record("room_objects", object_id)
+	CloudManager.delete_record("rooms", room_id)
+	save_game()
+	return true
+
+func update_room_object(object_id: String, zone: String, slot_id: String) -> bool:
+	for object in room_objects:
+		if object is Dictionary and String(object.get("id", "")) == object_id:
+			object["zone"] = zone
+			object["slot_id"] = slot_id
+			object["updated_at"] = Time.get_datetime_string_from_system()
+			save_game()
+			_sync("room_objects", object)
+			return true
+	return false
+
+func delete_room_object(object_id: String) -> bool:
+	var previous_size := room_objects.size()
+	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("id", "")) == object_id))
+	if room_objects.size() == previous_size:
+		return false
+	CloudManager.delete_record("room_objects", object_id)
+	save_game()
+	return true
+
+func create_bottle(question_card: Dictionary, slot_id: String, generation_meta: Dictionary = {}) -> Dictionary:
+	var question := String(question_card.get("question", "")).strip_edges()
+	if question == "":
+		return {}
+	var question_key := question.to_lower().sha256_text()
+	for existing in nodes:
+		if existing is Dictionary and String(existing.get("node_type", "")) == "bottle" \
+			and String(existing.get("question_key", "")) == question_key:
+			return existing
+	var bottle := {
+		"id": "bottle_" + question_key.left(24),
+		"family_id": FAMILY_ID,
+		"scene_id": "fishpond",
+		"node_type": "bottle",
+		"slot_id": slot_id,
+		"question": question,
+		"question_key": question_key,
+		"question_card": question_card.duplicate(true),
+		"generation_meta": generation_meta.duplicate(true),
+		"state": "floating",
+		"answer": "",
+		"answer_memory_id": "",
+		"clickable": true,
+		"created_at": Time.get_datetime_string_from_system(),
+	}
+	nodes.append(bottle)
+	save_game()
+	_sync("nodes", bottle)
+	return bottle
+
+func get_bottles() -> Array:
+	return nodes.filter(func(node): return node is Dictionary and String(node.get("node_type", "")) == "bottle" and String(node.get("scene_id", "")) == "fishpond")
+
+func mark_bottle_answered(bottle_id: String, answer_text: String, memory_id: String) -> bool:
+	for bottle in nodes:
+		if bottle is Dictionary and String(bottle.get("id", "")) == bottle_id:
+			if String(bottle.get("answer_memory_id", "")) != "":
+				return false
+			bottle["state"] = "opened"
+			bottle["answer"] = answer_text
+			bottle["answer_memory_id"] = memory_id
+			save_game()
+			_sync("nodes", bottle)
+			return true
+	return false
 
 ## 登记一次跨成员回答：回答者≠上传者 且 同一 (memory, 回答者) 未计过 → 计数 +1。
 ## 返回是否真正计数（用于触发分季背景刷新）。
@@ -436,15 +598,15 @@ func save_game() -> void:
 		"selected_role_key": selected_role_key,
 		"player_display_name": player_display_name
 	}
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(_save_path(), FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
 
 func load_save() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(_save_path()):
 		_reset_all()
 		return
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var file := FileAccess.open(_save_path(), FileAccess.READ)
 	if not file:
 		_reset_all()
 		return
@@ -473,6 +635,9 @@ func load_save() -> void:
 		player_display_name = str(parsed.get("player_display_name", ""))
 	else:
 		_reset_all()
+
+func _save_path() -> String:
+	return TEST_SAVE_PATH if OS.has_environment("FAMILY_GARDEN_TEST") else SAVE_PATH
 
 func find_place(place_id: String) -> Dictionary:
 	for place in travel_places:
