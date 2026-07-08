@@ -253,7 +253,7 @@ func _upload_if_present(workflow: String, bytes: PackedByteArray, content_type: 
 	_emit(workflow, "uploading", {"output_bytes": prepared.get("output_bytes", 0)})
 	var uploaded: Dictionary = await CloudManager.upload_ai_image(prepared.get("bytes", PackedByteArray()), String(prepared.get("content_type", "")))
 	if not bool(uploaded.get("ok", false)):
-		return _failure("UPLOAD_FAILED", String(uploaded.get("error", "图片上传失败。")))
+		return _failure("UPLOAD_FAILED", _cloud_upload_error_message(uploaded.get("error", "")))
 	return uploaded
 
 func _prepare_slots(scene: String) -> void:
@@ -301,6 +301,18 @@ func _failure_from_ai(route: String) -> Dictionary:
 
 func _failure(code: String, message: String) -> Dictionary:
 	return {"ok": false, "error": {"code": code, "message": message}}
+
+func _cloud_upload_error_message(raw_error: Variant) -> String:
+	var text := String(raw_error).strip_edges()
+	if text == "":
+		return "图片上传失败，请检查网络后重试。"
+	if text.contains("未配置"):
+		return "图片上传还没有连接到 CloudBase，请先完成云端配置。"
+	if text.contains("401") or text.contains("invalid") or text.contains("token"):
+		return "云端身份已失效，请重新进入角色身份后再试。"
+	if text.contains("too large") or text.contains("over size") or text.contains("payload"):
+		return "图片上传失败，文件仍然过大，请换一张照片。"
+	return "图片上传失败，请检查网络后重试。"
 
 func _emit(workflow: String, state: String, detail: Dictionary) -> void:
 	workflow_state_changed.emit(workflow, state, detail.duplicate(true))
