@@ -178,9 +178,12 @@ npm test
 云托管部署时设置环境变量：
 
 ```bash
-DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
 PORT=8080
+DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
 ```
+
+`DATA_GATEWAY_URL` 可省略；relay 已内置当前项目公开 `data_gateway` 地址作为默认值。迁移到
+其他 CloudBase 环境时再显式覆盖。
 
 部署成功后，把云托管 WebSocket 地址填入 `game/config/cloudbase.json` 的
 `presence_endpoint`。为空时客户端不会连接实时服务，农场仍保持离线占位演示。
