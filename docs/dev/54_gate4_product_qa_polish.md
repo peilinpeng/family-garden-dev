@@ -74,3 +74,32 @@ cd backend/ai && npm test
 - 本轮不替换视觉资源，仍使用现有 Godot 原生面板、线条和贴图；
 - 旅行地图仍保留一部分英文表单文案，本轮只统一会被 Gate 4 共用的照片选择与上传提示；
 - 真实 Web 照片选择需要导出 Web 包后人工验收，headless 测试只能覆盖 Godot 逻辑侧。
+
+## 8. 2026-07-10 演示前全链路 bug bash
+
+本轮覆盖 Gate 6、Gate 7 和主演示入口，不新增大功能，专门处理“明天录屏会直接看见或
+直接报错”的问题：
+
+- 修复主场景启动时 `z_index` 超出 Godot 4.7 允许范围的错误；
+- 修复玩家节点入树前访问 `/root/CharacterDB` 导致的外观初始化报错；
+- 修复无头验收退出时 BGM 资源仍被持有的问题；headless 环境跳过音频播放；
+- 复跑 `Main.tscn`、`Farm.tscn`、Gate 4 房间链路、Gate 7 语义房间链路；
+- 复跑 `backend/ai`、`data_gateway`、`presence_relay` 自动化测试；
+- 更新 `docs/07_demo_script.md`，把家庭入口、成员面板、共享农场和语义房间纳入 5 分钟演示节奏。
+
+自动化验收命令：
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://scenes/Main.tscn --quit-after 20
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://scenes/Farm.tscn --quit-after 20
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://tests/ai_gate4_test.tscn
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://tests/gate7_room_scene_test.tscn
+
+cd backend/ai && npm test
+cd backend/cloudbase/data_gateway && npm test
+cd backend/cloudbase/presence_relay && npm test && npm run smoke:local
+```
+
+已知非阻塞项：
+
+- Web 端真实文件选择仍需导出后人工点选一次，headless 只能验证通用逻辑。

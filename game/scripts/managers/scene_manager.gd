@@ -1082,7 +1082,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	shadow.points = PackedVector2Array([a + head + Vector2(0, 4), arc + Vector2(0, 4), b + head + Vector2(0, 4)])
 	shadow.width = 7.0
 	shadow.default_color = Color(0.12, 0.10, 0.08, 0.18)
-	shadow.z_index = 4999
+	shadow.z_index = 3989
 	shadow.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	shadow.end_cap_mode = Line2D.LINE_CAP_ROUND
 	shadow.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -1093,7 +1093,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	line.points = PackedVector2Array([a + head, arc, b + head])
 	line.width = 6.0 if answered else 5.0
 	line.default_color = Color(link_color.r, link_color.g, link_color.b, alpha)
-	line.z_index = 5000  # 盖在记忆花(z=pos.y)之上，保证可见
+	line.z_index = 3990  # 盖在记忆花(z=pos.y)之上，保证可见
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -1104,7 +1104,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	pulse.points = PackedVector2Array([a + head, arc, b + head])
 	pulse.width = 3.0 if answered else 2.0
 	pulse.default_color = Color(1.0, 0.96, 0.78, 0.86 if answered else 0.58)
-	pulse.z_index = 5001
+	pulse.z_index = 3991
 	pulse.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.end_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -1121,7 +1121,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var area := Area2D.new()
 	area.name = "MemoryLinkHotspot"
 	area.position = mid
-	area.z_index = 5002
+	area.z_index = 3992
 	area.input_pickable = true
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -1165,7 +1165,7 @@ func _add_memory_link_leaf(pos: Vector2, color: Color, rotation: float, answered
 	leaf.name = "MemoryLinkLeaf"
 	leaf.position = pos
 	leaf.rotation = rotation
-	leaf.z_index = 5001
+	leaf.z_index = 3991
 	leaf.polygon = PackedVector2Array([
 		Vector2(0, -8),
 		Vector2(12, -2),
@@ -2470,14 +2470,14 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var char_hframes: int = int(char_def.get("hframes", 3))
 	var char_vframes: int = int(char_def.get("vframes", 4))
 	player = _create_character(display_name, ASSETS[asset_key], pos, true, char_hframes, char_vframes)
-	# player.gd 的 apply_character() 是唯一处理 frame_rects(非等分网格精确裁切)的地方,
-	# 这里补调一次,否则 girl 这种手工排版的图集会被上面_create_character 的均分网格逻辑切错。
-	if player.has_method("apply_character"):
-		player.apply_character(asset_key)
 	player.name = "Player_" + MemoryManager.selected_role_key
 	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
 	var parent := world if parent_override == null else parent_override
 	parent.add_child(player)
+	# player.gd 的 apply_character() 是唯一处理 frame_rects(非等分网格精确裁切)的地方。
+	# 节点入树后再调用，避免从树外访问 /root/CharacterDB。
+	if player.has_method("apply_character"):
+		player.apply_character(asset_key)
 	_add_online_status_badge(player, true)
 	var parent_canvas := parent as CanvasItem
 	if parent_canvas != null and parent_canvas.y_sort_enabled:
@@ -2538,7 +2538,7 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	name_label.size = Vector2(104, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.z_as_relative = false
-	name_label.z_index = 10000
+	name_label.z_index = 3900
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_label.add_theme_font_size_override("font_size", 12)
 	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
@@ -2554,7 +2554,7 @@ func _add_online_status_badge(parent: Node2D, online: bool) -> void:
 	dot.position = Vector2(34, -79)
 	dot.size = Vector2(20, 18)
 	dot.z_as_relative = false
-	dot.z_index = 10001
+	dot.z_index = 3901
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dot.add_theme_font_size_override("font_size", 14)
 	dot.add_theme_color_override("font_color", Color(0.22, 0.78, 0.36, 1.0) if online else Color(0.55, 0.52, 0.48, 0.88))
@@ -2763,7 +2763,7 @@ func _add_room_foreground_if_exists(foreground_asset_key: String, room_rect: Rec
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
 	sprite.position = room_rect.position + room_rect.size * 0.5
-	sprite.z_index = 10000
+	sprite.z_index = 3900
 	var scale_factor: float = minf(room_rect.size.x / float(texture.get_width()), room_rect.size.y / float(texture.get_height()))
 	sprite.scale = Vector2.ONE * scale_factor
 	world.add_child(sprite)
