@@ -67,11 +67,13 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 云托管环境变量：
 
 ```bash
-DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
 PORT=8080
+DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
 PRESENCE_HEARTBEAT_MS=15000
 PRESENCE_STALE_MS=45000
 ```
+
+`DATA_GATEWAY_URL` 可省略；relay 已内置当前项目公开 `data_gateway` 地址作为默认值。其他环境部署时再用环境变量覆盖。
 
 ## 4. 自动化验收
 
@@ -106,3 +108,27 @@ git diff --check
 - 不做农场种植/收获的实时世界事件；
 - 不做正式登录、邀请码、成员管理后台；
 - 不引入权威游戏服务器，仍按家庭协作游戏的轻量中继方案推进。
+
+## 7. 2026-07-09 真实部署记录
+
+本地已恢复 CloudBase CLI 登录态，Docker daemon 可用，并尝试部署：
+
+```bash
+cd backend/cloudbase/presence_relay
+npx --yes -p @cloudbase/cli cloudbase cloudrun deploy \
+  -e familygarden-d7gy18huh87fd41d2 \
+  --serviceName presence-relay \
+  --source . \
+  --port 8080 \
+  --force
+```
+
+CloudBase 返回：
+
+```text
+[CreateCloudRunServer] 云托管资源未开通
+```
+
+结论：代码、Dockerfile、CLI 登录和本地 Docker 均已就绪；当前阻塞是目标 CloudBase 环境尚未
+开通云托管资源。开通云托管后重跑上述命令即可继续真实部署。WebSocket 长连接不应降级到
+云函数，云函数适合短请求，不能承载 Gate 6 Presence 的常驻连接。
