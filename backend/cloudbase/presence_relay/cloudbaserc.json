@@ -1,0 +1,8 @@
+{
+  "version": "2.0",
+  "envId": "familygarden-d7gy18huh87fd41d2",
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "cloudrun": {
+    "name": "presence-relay"
+  }
+}
