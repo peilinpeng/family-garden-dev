@@ -146,6 +146,26 @@ test('presence relay broadcasts world changes only inside the same family', asyn
   }
 });
 
+test('presence relay replaces old sockets for the same member', async () => {
+  const { relay, url } = await makeRelay();
+  try {
+    const first = await openClient(url);
+    await hello(first, 'token_a');
+    const replacedForFirst = onceMessage(first);
+
+    const second = await openClient(url);
+    const helloSecond = await hello(second, 'token_a');
+    assert.equal(helloSecond.type, 'hello_ok');
+
+    const replaced = await replacedForFirst;
+    assert.equal(replaced.type, 'error');
+    assert.equal(replaced.code, 'REPLACED');
+    assert.equal(relay.clients.size, 1);
+  } finally {
+    await relay.close();
+  }
+});
+
 test('presence relay rejects unsupported world change tables', async () => {
   const { relay, url } = await makeRelay();
   try {

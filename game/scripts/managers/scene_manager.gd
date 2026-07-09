@@ -307,6 +307,7 @@ func _build_ui() -> void:
 	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
 	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
 	_add_button(root, "聊天", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
+	_add_button(root, "家人", Vector2(1042, 672), Vector2(76, 32), "family_members")
 	_refresh_world_chat_feed()
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
@@ -681,6 +682,8 @@ func _on_ui_button(action: String) -> void:
 	match action:
 		"family_tree":
 			_open_family_tree_panel()
+		"family_members":
+			_open_family_members_panel()
 		"message_board":
 			_open_message_board_panel()
 		"role_select":
@@ -759,6 +762,22 @@ func _show_role_select() -> void:
 	name_input.size = Vector2(280, 38)
 	panel.add_child(name_input)
 
+	var family_label := Label.new()
+	family_label.text = "家庭邀请码"
+	family_label.position = Vector2(650, 112)
+	family_label.size = Vector2(230, 22)
+	family_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	family_label.add_theme_font_size_override("font_size", 15)
+	family_label.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
+	panel.add_child(family_label)
+
+	var family_input := LineEdit.new()
+	family_input.placeholder_text = "Family code"
+	family_input.text = CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
+	family_input.position = Vector2(630, 140)
+	family_input.size = Vector2(270, 38)
+	panel.add_child(family_input)
+
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.position = Vector2(75, 205)
@@ -769,9 +788,9 @@ func _show_role_select() -> void:
 
 	for i in range(CHARACTER_DATA.size()):
 		var role_data: Dictionary = CHARACTER_DATA[i]
-		_add_role_card(grid, role_data, Vector2.ZERO, Vector2(185, 260), name_input)
+		_add_role_card(grid, role_data, Vector2.ZERO, Vector2(185, 260), name_input, family_input)
 
-func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_size: Vector2, name_input: LineEdit) -> void:
+func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_size: Vector2, name_input: LineEdit, family_input: LineEdit) -> void:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = card_size
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -845,7 +864,7 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	choose_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	choose_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_button_style(choose_btn, false)
-	choose_btn.pressed.connect(_confirm_role_selection.bind(str(role_data.get("role", "girl")), name_input))
+	choose_btn.pressed.connect(_confirm_role_selection.bind(str(role_data.get("role", "girl")), name_input, family_input))
 	vbox.add_child(choose_btn)
 
 func _make_character_preview_texture(source: Texture2D) -> Texture2D:
@@ -857,7 +876,7 @@ func _make_character_preview_texture(source: Texture2D) -> Texture2D:
 	return atlas
 
 
-func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
+func _confirm_role_selection(role_key: String, name_input: LineEdit, family_input: LineEdit = null) -> void:
 	MemoryManager.selected_role_key = role_key
 	MemoryManager.player_display_name = name_input.text.strip_edges()
 	if MemoryManager.player_display_name == "":
@@ -868,7 +887,8 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
 	var canonical_role: String = CharacterDB.resolve(role_key)
-	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name)
+	var family_code := family_input.text.strip_edges() if family_input != null else ""
+	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name, family_code)
 
 
 func _default_name_for_role(role_key: String) -> String:
@@ -4413,6 +4433,91 @@ func _open_family_tree_panel() -> void:
 			{"text": "关闭", "action": "close"}
 		]
 	)
+
+func _open_family_members_panel() -> void:
+	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
+	var members: Array = []
+	if CloudManager != null and CloudManager.has_method("list_family_members"):
+		members = await CloudManager.list_family_members()
+	var online := _online_family_members()
+	var body := "家庭邀请码：" + (family_code if family_code != "" else "离线家庭") + "\n\n"
+	if members.is_empty():
+		body += "还没有从云端同步到家庭成员。\n"
+		if GameIdentity != null and GameIdentity.is_ready():
+			members.append({
+				"member_id": GameIdentity.member_id,
+				"role": GameIdentity.role,
+				"display_name": GameIdentity.display_name,
+			})
+		else:
+			members.append({
+				"member_id": "local",
+				"role": MemoryManager.selected_role_key,
+				"display_name": MemoryManager.player_display_name,
+			})
+	body += "家庭成员：\n"
+	for raw in members:
+		if not (raw is Dictionary):
+			continue
+		var member: Dictionary = raw
+		var member_id := str(member.get("member_id", ""))
+		var display_name := str(member.get("display_name", "")).strip_edges()
+		if display_name == "":
+			display_name = _role_display_name(str(member.get("role", "")))
+		var role := _role_display_name(str(member.get("role", "")))
+		var online_text := "在线" if online.has(member_id) else "离线"
+		var scene_text := ""
+		if online.has(member_id):
+			var peer: Dictionary = online[member_id]
+			scene_text = " · " + _scene_display_name(str(peer.get("scene_id", "")))
+		body += "• %s（%s） — %s%s\n" % [display_name, role, online_text, scene_text]
+	body += "\n同一成员在多台设备同时进入时，会优先显示最新连接；旧连接会自动退出。"
+	_show_cozy_panel(
+		"家庭成员",
+		body,
+		[
+			{"text": "留言板", "action": "message_board"},
+			{"text": "家庭树", "action": "family_tree"},
+			{"text": "关闭", "action": "close"}
+		]
+	)
+
+func _online_family_members() -> Dictionary:
+	var result: Dictionary = {}
+	if GameIdentity != null and GameIdentity.is_ready():
+		result[GameIdentity.member_id] = {
+			"member_id": GameIdentity.member_id,
+			"role": GameIdentity.role,
+			"display_name": GameIdentity.display_name,
+			"scene_id": mode,
+		}
+	if PresenceChannel != null and PresenceChannel.has_method("peers"):
+		for raw_peer in PresenceChannel.peers():
+			if raw_peer is Dictionary:
+				var peer: Dictionary = raw_peer
+				var member_id := str(peer.get("member_id", ""))
+				if member_id != "":
+					result[member_id] = peer
+	return result
+
+func _role_display_name(role_key: String) -> String:
+	var resolved := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
+	if CharacterDB != null:
+		return CharacterDB.display_name(resolved)
+	return resolved
+
+func _scene_display_name(scene_id: String) -> String:
+	match scene_id:
+		"farm":
+			return "农场"
+		"garden":
+			return "花园"
+		"fishpond":
+			return "鱼塘"
+		"room":
+			return "房间"
+		_:
+			return "花园"
 
 func _open_mailbox_panel() -> void:
 	var unread_count: int = MemoryManager.count_unread_postcards()
