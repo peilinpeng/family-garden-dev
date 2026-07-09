@@ -143,6 +143,16 @@ async function resolveMember(token) {
   };
 }
 
+async function listFamilyMembers(familyId) {
+  const res = await db.collection('members').where({ family_id: familyId }).limit(100).get();
+  return (res.data || []).map((doc) => ({
+    member_id: String(doc._id || doc.id),
+    family_id: String(doc.family_id || ''),
+    role: String(doc.role || ''),
+    display_name: String(doc.display_name || ''),
+  }));
+}
+
 // 单个集合查询失败(如集合还没手动创建)不应拖垮整批 snapshot——降级返回空数组,
 // 让其它已就绪的集合仍能正常同步。
 async function queryGeneric(table, familyId) {
@@ -291,6 +301,10 @@ exports.main = async (event) => {
   try {
     if (action === 'whoami') {
       return { ok: true, member_id: memberId, family_id: familyId, role: identity.role, display_name: identity.display_name };
+    }
+
+    if (action === 'list_family_members') {
+      return { ok: true, family_id: familyId, members: await listFamilyMembers(familyId) };
     }
 
     if (action === 'upload_image') {
