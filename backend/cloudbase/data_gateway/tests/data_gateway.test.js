@@ -188,6 +188,21 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.deepEqual(result, { ok: true, member_id: 'member_a', family_id: 'family_a', role: 'father', display_name: 'A' });
   });
 
+  await scenario('list_family_members 只返回同家庭公开成员信息', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'secret_token_a2', role: 'player', display_name: 'A2',
+    });
+    const result = await invoke({ action: 'list_family_members' }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(result.family_id, 'family_a');
+    assert.deepEqual(
+      new Set(result.members.map((member) => member.member_id)),
+      new Set(['member_a', 'member_a2'])
+    );
+    assert.equal(result.members.some((member) => Object.hasOwn(member, 'member_token')), false);
+    assert.equal(result.members.some((member) => member.member_id === 'member_b'), false);
+  });
+
   await scenario('受控图片上传、家庭内解析与上传者删除', async () => {
     const uploaded = await invoke({
       action: 'upload_image',

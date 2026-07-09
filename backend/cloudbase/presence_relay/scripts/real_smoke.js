@@ -225,6 +225,13 @@ async function main() {
   await leftForA;
   console.log('OK  leave announced');
 
+  const replacedForA = waitFor(a, (msg) => msg.type === 'error' && msg.code === 'REPLACED', 'same member replacement');
+  const duplicateA = await openClient(presenceEndpoint);
+  await hello(duplicateA, memberA);
+  await replacedForA;
+  duplicateA.close();
+  console.log('OK  same member second connection replaced the old socket');
+
   a.close();
   b.close();
   c.close();

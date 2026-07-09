@@ -165,6 +165,16 @@ function createPresenceRelay(options = {}) {
     broadcast(client, { type: 'peer_left', member_id: client.member_id, reason });
   }
 
+  function replaceExistingMember(identity) {
+    for (const client of [...clients.values()]) {
+      if (client.member_id === identity.member_id && client.family_id === identity.family_id) {
+        clients.delete(client.ws);
+        send(client.ws, { type: 'error', code: 'REPLACED', message: 'same member connected from another device' });
+        client.ws.close(1000, 'replaced');
+      }
+    }
+  }
+
   async function handleHello(ws, msg) {
     if (!msg.token) {
       send(ws, { type: 'error', code: 'UNAUTHORIZED', message: 'missing token' });
@@ -179,6 +189,7 @@ function createPresenceRelay(options = {}) {
       ws.close(1008, 'unauthorized');
       return;
     }
+    replaceExistingMember(identity);
     const client = {
       ws,
       member_id: safeString(identity.member_id, 80),

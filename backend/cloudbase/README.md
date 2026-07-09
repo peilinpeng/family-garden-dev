@@ -96,6 +96,7 @@ db.collection('members').add({
 |---|---|---|---|
 | `join_family` | `{family_id, role, display_name}` | `{ok, member_token, member_id}` | **不需要**(这一步就是发令牌) |
 | `whoami` | 无 | `{ok, member_id, family_id, role, display_name}` | 需要 |
+| `list_family_members` | 无 | `{ok, family_id, members:[{member_id, family_id, role, display_name}]}` | 需要 |
 | `snapshot` | `{tables:[...]}` | `{ok, tables:{table:rows}}`(inventories 只含**本人**背包 + 共享仓) | 需要 |
 | `query` | `{table}` | `{ok, rows}` | 需要 |
 | `upsert` | `{table, row}` | `{ok, id}` | 需要 |
@@ -118,7 +119,8 @@ db.collection('members').add({
 - ✅ **伪造 id 无效**:客户端传什么 id 都会被服务端按自己的 member_id 重新计算,验证过"伪造别人 id 去写"会被纠正、不污染对方数据。
 - ✅ **跨家庭隔离**:通用表(families/memories/...)按 `family_id` 过滤;试图覆盖别家已存在的行 → 403。
 - ✅ **未鉴权拒绝**:无有效令牌 → 401(`join_family` 除外,那是发令牌本身)。
-- ✅ **members 表完全不可达**:不在 action 白名单,客户端无法查询/写入/回传 member_token。
+- ✅ **members 表不可通用访问**:不在 CRUD 白名单,客户端无法查询/写入/回传 member_token；
+  只开放 `list_family_members` 只读动作,且只返回同家庭公开字段。
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
 - ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/partner/player` 四个合法角色,乱传会被拒绝。
 - ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
@@ -127,7 +129,7 @@ db.collection('members').add({
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
 
-以上边界已落成 `tests/data_gateway.test.js` 的 29 项可重复逻辑测试。
+以上边界已落成 `tests/data_gateway.test.js` 的可重复逻辑测试。
 
 Gate 5 真实云端联调可用以下命令显式触发。它会自助加入两个同家庭测试成员和一个隔离
 家庭测试成员，验证旅行地点、明信片、留言、邮箱事件的真实写入、跨成员读取、审计字段、
@@ -157,6 +159,17 @@ FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
 
 测试会清理 `farm_plots` 业务记录；`join_family` 生成的测试成员记录没有客户端删除入口，
 会留在 `members` 集合中，显示名带 `Gate6 Farm` 前缀。
+
+Gate 6 成员入口真实联调可用以下命令显式触发。它会自助加入两个同家庭成员和一个隔离成员，
+验证家庭成员列表只返回同家庭公开字段，且不会泄漏 `member_token`：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
+```
+
+该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在 `members`
+集合中，显示名带 `Gate6 Members` 前缀。
 
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
@@ -216,7 +229,8 @@ curl https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbas
 ```
 
 真实云端 smoke 需要显式打开开关，脚本会临时自助加入两个同家庭测试成员和一个隔离成员，
-验证无效 token、移动广播、`world_changed` 同家庭转发、跨家庭隔离和离开通知：
+验证无效 token、移动广播、`world_changed` 同家庭转发、跨家庭隔离、离开通知和同一成员
+多设备替换：
 
 ```bash
 cd backend/cloudbase/presence_relay

@@ -65,13 +65,15 @@ func set_persistence_backend(backend: Object) -> void:
 ## 首次选角色后调用:若配置了 CloudBase 但本设备还没自助加入过,
 ## 用选中的角色+昵称注册一个云身份,再补跑一次 bootstrap 把数据同步起来。
 ## 已经加入过的设备(has_identity()==true)直接跳过,不会重复注册。
-func ensure_cloud_identity(role: String, display_name: String) -> bool:
+func ensure_cloud_identity(role: String, display_name: String, family_code: String = "") -> bool:
 	if _persist_backend == null or not _persist_backend.has_method("has_identity"):
 		return false
 	if _persist_backend.has_identity():
 		return true
 	var fam_id: String = _persist_backend.family_id() if _persist_backend.family_id() != "" \
 		else str(CloudBaseBackend.load_config().get("family_id", ""))
+	if family_code.strip_edges() != "":
+		fam_id = family_code.strip_edges()
 	if fam_id == "":
 		push_warning("[CloudBase] 未配置 family_id,无法自助加入")
 		return false
@@ -80,6 +82,20 @@ func ensure_cloud_identity(role: String, display_name: String) -> bool:
 		await _persist_backend.bootstrap()
 		return true
 	return false
+
+func family_code() -> String:
+	if GameIdentity != null and GameIdentity.is_ready():
+		return str(GameIdentity.family_id)
+	if _persist_backend != null and _persist_backend.has_method("family_id"):
+		var fam_id := str(_persist_backend.family_id())
+		if fam_id != "":
+			return fam_id
+	return str(CloudBaseBackend.load_config().get("family_id", ""))
+
+func list_family_members() -> Array:
+	if _persist_backend != null and _persist_backend.has_method("list_family_members"):
+		return await _persist_backend.list_family_members()
+	return []
 
 func persist_record(table: String, row: Dictionary) -> void:
 	if _persist_backend != null and _persist_backend.has_method("persist_record"):
