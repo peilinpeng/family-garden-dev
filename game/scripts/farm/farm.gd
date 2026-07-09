@@ -33,17 +33,26 @@ const FEET_OFFSET := Vector2(0, 18)  ## 玩家脚底相对其原点的偏移(同
 const DOOR_PATHS := ["Objects/DoorChickenHouse", "Objects/DoorCowHouse"]
 const DOOR_REACH := 110.0   ## 玩家离门多近才能开
 const DOOR_CLICK := 44.0    ## 点击离门多近算点到门
+const FARM_TABLE := "farm_plots"
+const FARM_SYNC_DEBOUNCE := 0.35
 
 var walk_img: Image
 var player: CharacterBody2D
 var last_safe: Vector2
 var crops: Dictionary = {}   ## plot_index -> Crop
+var crop_rows: Dictionary = {} ## plot_index -> 云端 farm_plots 行
 var selected: int = 0        ## 当前选中的作物种类(按数字键 1-9 切换)
 var doors: Array = []        ## [{node, point}] 门节点 + 其参考点(SortAnchor 全局位置)
 var remote_players: Dictionary = {}      ## member_id -> RemotePlayer
 var placeholder_players: Dictionary = {} ## role_key -> RemotePlayer
 var presence_hud: CanvasLayer
 var presence_label: Label
+var farm_hud: CanvasLayer
+var seed_label: Label
+var farm_status_label: Label
+var _farm_refresh_pending := false
+var _farm_refresh_running := false
+var _farm_busy := false
 
 func _ready() -> void:
 	_sync_object_z()
@@ -52,8 +61,11 @@ func _ready() -> void:
 	# 行走遮罩只当数据读,不显示:
 	walk_img = load("res://assets/farm/walkable_area.png").get_image()
 	_build_presence_hud()
+	_build_farm_hud()
 	_spawn_player()
 	_setup_doors()
+	_setup_shared_farm()
+	_update_seed_label()
 
 func _exit_tree() -> void:
 	if not Engine.is_editor_hint() and PresenceChannel != null:
@@ -179,6 +191,115 @@ func _build_presence_hud() -> void:
 	presence_label.add_theme_font_size_override("font_size", 14)
 	panel.add_child(presence_label)
 
+func _build_farm_hud() -> void:
+	farm_hud = CanvasLayer.new()
+	farm_hud.name = "FarmHUD"
+	farm_hud.layer = 19
+	add_child(farm_hud)
+
+	var panel := PanelContainer.new()
+	panel.position = Vector2(18, 18)
+	panel.custom_minimum_size = Vector2(330, 70)
+	farm_hud.add_child(panel)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.98, 0.95, 0.84, 0.92)
+	style.border_color = Color(0.43, 0.34, 0.20, 0.86)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(306, 56)
+	box.add_theme_constant_override("separation", 2)
+	panel.add_child(box)
+
+	seed_label = Label.new()
+	seed_label.text = "种子"
+	seed_label.add_theme_font_size_override("font_size", 15)
+	seed_label.add_theme_color_override("font_color", Color(0.20, 0.16, 0.10, 1.0))
+	box.add_child(seed_label)
+
+	farm_status_label = Label.new()
+	farm_status_label.text = "家庭农场同步中..."
+	farm_status_label.add_theme_font_size_override("font_size", 13)
+	farm_status_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.18, 0.92))
+	box.add_child(farm_status_label)
+
+func _setup_shared_farm() -> void:
+	if CloudManager != null and CloudManager.has_signal("cloud_world_changed") \
+		and not CloudManager.cloud_world_changed.is_connected(_on_cloud_world_changed):
+		CloudManager.cloud_world_changed.connect(_on_cloud_world_changed)
+	_load_shared_farm_plots()
+
+func _on_cloud_world_changed(event: Dictionary) -> void:
+	if str(event.get("table", "")) != FARM_TABLE:
+		return
+	_schedule_farm_refresh("家人的农场更新已同步。")
+
+func _schedule_farm_refresh(message: String = "") -> void:
+	if message != "":
+		_set_farm_status(message)
+	_farm_refresh_pending = true
+	if _farm_refresh_running:
+		return
+	_farm_refresh_running = true
+	call_deferred("_run_farm_refresh")
+
+func _run_farm_refresh() -> void:
+	while _farm_refresh_pending:
+		_farm_refresh_pending = false
+		await get_tree().create_timer(FARM_SYNC_DEBOUNCE).timeout
+		_load_shared_farm_plots()
+	_farm_refresh_running = false
+
+func _load_shared_farm_plots() -> void:
+	if CloudManager == null or not CloudManager.has_method("load_farm_plots"):
+		_set_farm_status("离线农场")
+		return
+	var rows: Array = CloudManager.load_farm_plots()
+	_render_farm_rows(rows)
+	_set_farm_status("家庭农场已同步" if _farm_cloud_ready() else "离线农场")
+
+func _render_farm_rows(rows: Array) -> void:
+	for plot_index in crops.keys():
+		var crop: Node = crops[plot_index]
+		if crop != null and is_instance_valid(crop):
+			crop.queue_free()
+	crops.clear()
+	crop_rows.clear()
+	for raw in rows:
+		if raw is Dictionary:
+			_render_farm_row(raw)
+
+func _render_farm_row(row: Dictionary) -> void:
+	var plot_index := int(row.get("plot_index", -1))
+	if plot_index < 0 or plot_index >= PLOTS.size():
+		return
+	var crop_id := str(row.get("crop_id", ""))
+	var data := CropDB.get_crop_by_id(crop_id)
+	if data.is_empty():
+		return
+	if crops.has(plot_index):
+		var old_crop: Node = crops[plot_index]
+		if old_crop != null and is_instance_valid(old_crop):
+			old_crop.queue_free()
+	var crop := Crop.new()
+	add_child(crop)
+	crop.setup(
+		int(data.get("panel", 0)),
+		int(data.get("row", 0)),
+		PLOTS[plot_index],
+		crop_id,
+		int(row.get("planted_at_unix", 0)))
+	crops[plot_index] = crop
+	crop_rows[plot_index] = row.duplicate(true)
+
 func _on_presence_snapshot(peers: Array) -> void:
 	for member_id in remote_players.keys():
 		_remove_remote_player(str(member_id))
@@ -297,7 +418,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var k: int = event.keycode
 		if k >= KEY_1 and k <= KEY_9:
 			selected = (k - KEY_1) % CropDB.CROPS.size()
-			print("选中作物: ", CropDB.get_crop(selected).id)
+			_update_seed_label()
+			_set_farm_status("已选择 " + _selected_seed_name())
 	elif event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		var click := get_global_mouse_position()
@@ -320,6 +442,8 @@ func _try_doors(click: Vector2) -> bool:
 	return false
 
 func _try_plant(click: Vector2) -> void:
+	if _farm_busy:
+		return
 	# 找离点击最近的种植点
 	var best := -1
 	var best_d := INF
@@ -331,33 +455,115 @@ func _try_plant(click: Vector2) -> void:
 	if best == -1 or best_d > CLICK_SNAP:
 		return  # 没点在任何种植点附近
 
-	# 已有作物:成熟则收获(产出进背包),未熟则忽略
+	if not _can_reach_plot(best):
+		_set_farm_status("再走近一点。")
+		return
+
+	# 已有作物:成熟则收获,未熟则提示剩余时间
 	if crops.has(best):
 		var c: Crop = crops[best]
 		if c.is_mature():
-			_harvest(c)
-			c.queue_free()
-			crops.erase(best)
-		return
-
-	# 必须走近才能种
-	if player.global_position.distance_to(PLOTS[best]) > PLANT_REACH:
-		print("离种植点太远,走近些再种")
+			await _harvest_plot(best, c)
+		else:
+			_set_farm_status("还要 " + _format_wait(c.seconds_until_mature()) + " 才能收获。")
 		return
 
 	var data := CropDB.get_crop(selected)
+	var crop_id := str(data.get("id", ""))
 	# 种植消耗一颗对应种子
 	var inv := get_node_or_null("/root/InventoryManager")
 	if inv != null:
-		if not inv.has("seed_" + data.id):
-			print("没有 ", data.id, " 的种子")
+		if not inv.has("seed_" + crop_id):
+			_set_farm_status("没有 " + _item_name("seed_" + crop_id) + "。")
 			return
-		inv.take("seed_" + data.id, 1)
-	var crop := Crop.new()
-	add_child(crop)
-	crop.setup(data.panel, data.row, PLOTS[best])
-	crops[best] = crop
-	print("种下 ", data.id, " @ ", PLOTS[best])
+	await _plant_plot(best, data)
+
+func _plant_plot(plot_index: int, data: Dictionary) -> void:
+	var crop_id := str(data.get("id", ""))
+	var planted_unix := int(Time.get_unix_time_from_system())
+	var row := {
+		"id": _farm_plot_id(plot_index),
+		"plot_index": plot_index,
+		"crop_id": crop_id,
+		"planted_at": Time.get_datetime_string_from_system(),
+		"planted_at_unix": planted_unix,
+	}
+	_farm_busy = true
+	_set_farm_status("正在种下 " + _item_name("seed_" + crop_id) + "...")
+	if _farm_cloud_ready() and CloudManager.has_method("save_farm_plot_confirmed"):
+		var result: Dictionary = await CloudManager.save_farm_plot_confirmed(row)
+		if not bool(result.get("ok", false)):
+			_farm_busy = false
+			_schedule_farm_refresh("这块地刚被家人使用了。")
+			return
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv != null:
+		inv.take("seed_" + crop_id, 1)
+	row["id"] = str(row.get("id", _farm_plot_id(plot_index)))
+	_render_farm_row(row)
+	_farm_busy = false
+	_set_farm_status("种下了 " + _item_name("seed_" + crop_id) + "。")
+
+func _harvest_plot(plot_index: int, c: Crop) -> void:
+	var crop_id := _crop_id_of(c)
+	var row: Dictionary = crop_rows.get(plot_index, {})
+	var row_id := str(row.get("id", _farm_plot_id(plot_index)))
+	_farm_busy = true
+	_set_farm_status("正在收获 " + _item_name("produce_" + crop_id) + "...")
+	if _farm_cloud_ready() and CloudManager.has_method("delete_farm_plot_confirmed"):
+		var result: Dictionary = await CloudManager.delete_farm_plot_confirmed(row_id)
+		if not bool(result.get("ok", false)):
+			_farm_busy = false
+			_schedule_farm_refresh("这株作物已经被家人收走了。")
+			return
+	_harvest(c)
+	if c != null and is_instance_valid(c):
+		c.queue_free()
+	crops.erase(plot_index)
+	crop_rows.erase(plot_index)
+	_farm_busy = false
+
+func _can_reach_plot(plot_index: int) -> bool:
+	return player != null and player.global_position.distance_to(PLOTS[plot_index]) <= PLANT_REACH
+
+func _farm_cloud_ready() -> bool:
+	return CloudManager != null \
+		and CloudManager.has_method("has_cloud_records") \
+		and CloudManager.has_cloud_records()
+
+func _farm_plot_id(plot_index: int) -> String:
+	var family_id := ""
+	if GameIdentity != null and GameIdentity.is_ready():
+		family_id = str(GameIdentity.family_id)
+	if family_id == "":
+		family_id = str(CloudBaseBackend.load_config().get("family_id", "local"))
+	return "farm_plot:%s:%d" % [family_id, plot_index]
+
+func _update_seed_label() -> void:
+	if seed_label == null:
+		return
+	seed_label.text = "种子 " + str(selected + 1) + ": " + _selected_seed_name()
+
+func _selected_seed_name() -> String:
+	var data := CropDB.get_crop(selected)
+	return _item_name("seed_" + str(data.get("id", "")))
+
+func _item_name(item_id: String) -> String:
+	if ItemDB != null and ItemDB.has_method("display_name"):
+		return ItemDB.display_name(item_id)
+	return item_id
+
+func _set_farm_status(text: String) -> void:
+	if farm_status_label != null:
+		farm_status_label.text = text
+
+func _format_wait(seconds: int) -> String:
+	if seconds <= 0:
+		return "很快"
+	var minutes := int(ceil(float(seconds) / 60.0))
+	if minutes <= 1:
+		return "1 分钟"
+	return str(minutes) + " 分钟"
 
 ## 收获:产出 1-3 个对应作物进背包,有概率返还一颗种子。
 func _harvest(c: Crop) -> void:
@@ -369,7 +575,7 @@ func _harvest(c: Crop) -> void:
 	inv.give("produce_" + crop_id, yield_n)
 	if randf() < 0.5:
 		inv.give("seed_" + crop_id, 1)
-	print("收获 ", crop_id, " ×", yield_n)
+	_set_farm_status("收获 " + _item_name("produce_" + crop_id) + " ×" + str(yield_n) + "。")
 
 func _crop_id_of(c: Crop) -> String:
 	for d in CropDB.CROPS:

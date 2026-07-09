@@ -206,8 +206,8 @@ async function main() {
   const changeForB = waitFor(b, (msg) => msg.type === 'world_changed' && msg.event?.event_id === eventId, 'world change for B');
   a.send(JSON.stringify({
     type: 'world_changed',
-    table: 'messages',
-    id: `${runId}_message`,
+    table: 'farm_plots',
+    id: `farm_plot:${familyId}:0`,
     action: 'upsert',
     timestamp: Date.now(),
     event_id: eventId,
@@ -216,7 +216,7 @@ async function main() {
   const changed = await changeForB;
   assert.equal(changed.event.member_id, memberA.member_id);
   assert.equal(changed.event.family_id, familyId);
-  assert.equal(changed.event.table, 'messages');
+  assert.equal(changed.event.table, 'farm_plots');
   await expectNoMessage(c, 'isolated member during world change');
   console.log('OK  world change broadcast stayed inside family');
 

@@ -11,7 +11,7 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    `ResourceNotFound: Db or Table not exist`):
    ```
    members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads,
-   travel_places, postcards, messages, mailbox_events
+   travel_places, postcards, messages, mailbox_events, farm_plots
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。
@@ -146,6 +146,17 @@ FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
 Gate 5 四张共享集合如果在旧环境里尚未手动创建，最新版 `data_gateway` 会在首次查询或
 写入时自动创建并继续执行；旧版云函数仍会返回 `DATABASE_COLLECTION_NOT_EXIST`，此时先
 部署本目录最新代码包。
+
+Gate 6 共享农场真实联调可用以下命令显式触发。它会自助加入两个同家庭测试成员和一个隔离
+家庭测试成员，验证 `farm_plots` 的真实种植、占用冲突、跨成员读取、跨家庭隔离和收获删除：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
+```
+
+测试会清理 `farm_plots` 业务记录；`join_family` 生成的测试成员记录没有客户端删除入口，
+会留在 `members` 集合中，显示名带 `Gate6 Farm` 前缀。
 
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，

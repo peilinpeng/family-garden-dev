@@ -322,6 +322,71 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.get('travel_places', 'place_a').updated_by_member_id, 'member_a2');
   });
 
+  await scenario('农场地块按家庭共享且使用稳定文档 ID', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
+    });
+    const created = await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: {
+        id: 'forged_plot',
+        family_id: 'family_b',
+        plot_index: 2,
+        crop_id: 'corrato',
+        planted_at_unix: 1800000000,
+      },
+    }, 'token_a');
+    assert.equal(created.ok, true);
+    assert.equal(created.id, 'farm_plot:family_a:2');
+    assert.equal(db.get('farm_plots', created.id).family_id, 'family_a');
+    assert.equal(db.get('farm_plots', created.id).plot_index, 2);
+    assert.equal(db.get('farm_plots', created.id).crop_id, 'corrato');
+    assert.equal(db.get('farm_plots', created.id).created_by_member_id, 'member_a');
+
+    const visibleToSameFamily = await invoke({ action: 'query', table: 'farm_plots' }, 'token_a2');
+    assert.deepEqual(visibleToSameFamily.rows.map((row) => row.id), ['farm_plot:family_a:2']);
+
+    const occupied = await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: { plot_index: 2, crop_id: 'tomelone', planted_at_unix: 1800000060 },
+    }, 'token_a2');
+    assert.equal(occupied.code, 409);
+    assert.equal(db.get('farm_plots', 'farm_plot:family_a:2').crop_id, 'corrato');
+
+    const hiddenFromOtherFamily = await invoke({ action: 'query', table: 'farm_plots' }, 'token_b');
+    assert.deepEqual(hiddenFromOtherFamily.rows, []);
+  });
+
+  await scenario('农场地块拒绝非法 plot 与 crop', async () => {
+    assert.equal((await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: { plot_index: -1, crop_id: 'corrato' },
+    }, 'token_a')).code, 400);
+    assert.equal((await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: { plot_index: 2, crop_id: '../bad' },
+    }, 'token_a')).code, 400);
+  });
+
+  await scenario('农场地块不能跨家庭删除', async () => {
+    db.seed('farm_plots', 'farm_plot:family_a:3', {
+      id: 'farm_plot:family_a:3',
+      family_id: 'family_a',
+      plot_index: 3,
+      crop_id: 'corrato',
+    });
+    assert.equal((await invoke({
+      action: 'delete',
+      table: 'farm_plots',
+      id: 'farm_plot:family_a:3',
+    }, 'token_b')).code, 403);
+    assert.equal(db.get('farm_plots', 'farm_plot:family_a:3').crop_id, 'corrato');
+  });
+
   await scenario('Gate5 集合缺失时自动创建并重试写入', async () => {
     db.markMissing('travel_places');
     const result = await invoke({
@@ -333,6 +398,19 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.wasCreated('travel_places'), true);
     assert.equal(db.get('travel_places', 'place_auto_create').family_id, 'family_a');
   });
+
+  await scenario('farm_plots 集合缺失时自动创建并重试写入', async () => {
+    db.markMissing('farm_plots');
+    const result = await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: { plot_index: 4, crop_id: 'corrato' },
+    }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(db.wasCreated('farm_plots'), true);
+    assert.equal(db.get('farm_plots', 'farm_plot:family_a:4').family_id, 'family_a');
+  });
+
 
   await scenario('通用 upsert 保留已有服务端字段', async () => {
     db.seed('memories', 'memory_a', { family_id: 'family_a', server_only: 'keep', title: '旧' });

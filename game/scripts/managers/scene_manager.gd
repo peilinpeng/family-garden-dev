@@ -244,6 +244,8 @@ func _cloud_world_toast(table: String) -> String:
 			return "家人的明信片已同步。"
 		"inventories":
 			return "共享仓已同步。"
+		"farm_plots":
+			return "家庭农场已同步。"
 		"memories", "nodes", "answers", "families":
 			return "家人的记忆已同步。"
 		"rooms", "room_objects":
