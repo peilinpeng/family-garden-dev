@@ -10,7 +10,8 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    写入时自动创建,必须提前建好,否则 `snapshot`/`query` 会直接报
    `ResourceNotFound: Db or Table not exist`):
    ```
-   members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads
+   members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads,
+   travel_places, postcards, messages, mailbox_events
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。
@@ -126,7 +127,25 @@ db.collection('members').add({
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
 
-以上边界已落成 `tests/data_gateway.test.js` 的 27 项可重复逻辑测试。
+以上边界已落成 `tests/data_gateway.test.js` 的 29 项可重复逻辑测试。
+
+Gate 5 真实云端联调可用以下命令显式触发。它会自助加入两个同家庭测试成员和一个隔离
+家庭测试成员，验证旅行地点、明信片、留言、邮箱事件的真实写入、跨成员读取、审计字段、
+跨家庭隔离和删除清理：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
+```
+
+默认使用 `game/config/cloudbase.json` 的公开 endpoint，并创建临时测试家庭，避免污染正式
+`family_id` 的业务内容。若要刻意在配置家庭里验收，可额外设置
+`FG_GATE5_USE_CONFIG_FAMILY=1`。业务测试记录会在脚本结束时清理；`join_family` 生成的
+测试成员记录没有客户端删除入口，会留在 `members` 集合中，显示名带 `Gate5` 前缀。
+
+Gate 5 四张共享集合如果在旧环境里尚未手动创建，最新版 `data_gateway` 会在首次查询或
+写入时自动创建并继续执行；旧版云函数仍会返回 `DATABASE_COLLECTION_NOT_EXIST`，此时先
+部署本目录最新代码包。
 
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，

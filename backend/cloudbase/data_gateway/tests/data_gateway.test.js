@@ -4,11 +4,20 @@ const Module = require('node:module');
 
 function createMemoryDatabase() {
   const tables = new Map();
+  const missingCollections = new Set();
+  const createdCollections = new Set();
   let nextId = 1;
 
   function rows(name) {
     if (!tables.has(name)) tables.set(name, new Map());
     return tables.get(name);
+  }
+
+  function assertCollectionExists(name) {
+    if (!missingCollections.has(name)) return;
+    const err = new Error(`[ResourceNotFound] Db or Table not exist: ${name}`);
+    err.code = 'DATABASE_COLLECTION_NOT_EXIST';
+    throw err;
   }
 
   function collection(name) {
@@ -18,6 +27,7 @@ function createMemoryDatabase() {
           limit() {
             return {
               async get() {
+                assertCollectionExists(name);
                 return {
                   data: [...rows(name).values()].filter((row) =>
                     Object.entries(query).every(([key, value]) => row[key] === value)),
@@ -30,20 +40,25 @@ function createMemoryDatabase() {
       doc(id) {
         return {
           async get() {
+            assertCollectionExists(name);
             const row = rows(name).get(String(id));
             return { data: row ? [structuredClone(row)] : [] };
           },
           async set(value) {
+            assertCollectionExists(name);
+            if (Object.hasOwn(value, '_id')) throw new Error('不能更新_id的值');
             rows(name).set(String(id), { ...structuredClone(value), _id: String(id) });
             return { id: String(id) };
           },
           async remove() {
+            assertCollectionExists(name);
             rows(name).delete(String(id));
             return { deleted: 1 };
           },
         };
       },
       async add(value) {
+        assertCollectionExists(name);
         const id = `doc_${nextId++}`;
         rows(name).set(id, { ...structuredClone(value), _id: id });
         return { id };
@@ -53,9 +68,23 @@ function createMemoryDatabase() {
 
   return {
     collection,
+    async createCollection(name) {
+      missingCollections.delete(String(name));
+      createdCollections.add(String(name));
+      rows(name);
+      return { name };
+    },
     reset() {
       tables.clear();
+      missingCollections.clear();
+      createdCollections.clear();
       nextId = 1;
+    },
+    markMissing(name) {
+      missingCollections.add(String(name));
+    },
+    wasCreated(name) {
+      return createdCollections.has(String(name));
     },
     seed(name, id, value) {
       rows(name).set(String(id), { ...structuredClone(value), _id: String(id) });
@@ -291,6 +320,18 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     }, 'token_a2');
     assert.equal(db.get('travel_places', 'place_a').created_by_member_id, 'member_a');
     assert.equal(db.get('travel_places', 'place_a').updated_by_member_id, 'member_a2');
+  });
+
+  await scenario('Gate5 集合缺失时自动创建并重试写入', async () => {
+    db.markMissing('travel_places');
+    const result = await invoke({
+      action: 'upsert',
+      table: 'travel_places',
+      row: { id: 'place_auto_create', title: '自动建表' },
+    }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(db.wasCreated('travel_places'), true);
+    assert.equal(db.get('travel_places', 'place_auto_create').family_id, 'family_a');
   });
 
   await scenario('通用 upsert 保留已有服务端字段', async () => {

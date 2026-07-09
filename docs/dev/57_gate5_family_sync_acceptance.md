@@ -81,7 +81,99 @@ FAMILY_GARDEN_TEST=1 /Applications/Godot.app/Contents/MacOS/Godot \
 
 cd backend/cloudbase/data_gateway && npm test
 
+cd backend/cloudbase/data_gateway && FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
+
 cd backend/ai && npm test
+```
+
+### 真实云端联调 smoke
+
+`npm run smoke:gate5:real` 默认跳过真实请求，必须显式设置 `FG_GATE5_REAL_SMOKE=1`。
+
+脚本覆盖：
+
+- `join_family` 创建两个同家庭测试成员和一个隔离家庭成员；
+- 缺失/无效 token 返回 401；
+- `travel_places / postcards / messages / mailbox_events` 真实写入 CloudBase；
+- 同家庭成员能通过 `query` 和 `snapshot` 看到彼此写入；
+- 明信片与邮箱事件已读状态能跨成员更新；
+- 服务端覆盖伪造的 `family_id / created_by_member_id / updated_by_member_id`；
+- 同家庭更新保留原创建者、更新最近修改者；
+- 隔离家庭不能读取、覆盖或删除主家庭记录；
+- 结束时清理四张业务表的测试记录。
+
+默认使用 `game/config/cloudbase.json` 的公开 endpoint，并创建临时测试家庭，避免污染正式
+`family_id`。如需刻意在配置家庭里做最终人工前烟测，可额外设置
+`FG_GATE5_USE_CONFIG_FAMILY=1`。`join_family` 生成的测试成员没有客户端删除入口，会在
+`members` 集合留下少量显示名带 `Gate5` 前缀的记录。
+
+为降低部署踩坑，`data_gateway` 已对 Gate 5 四张共享集合增加缺失自愈：旧环境未提前建
+`travel_places / postcards / messages / mailbox_events` 时，最新版云函数会在首次查询或
+写入时自动创建集合并重试。若真实 smoke 仍返回 `DATABASE_COLLECTION_NOT_EXIST`，说明线上
+`data_gateway` 尚未部署本轮代码。
+
+### 2026-07-09 联调记录
+
+- 本地 `data_gateway` 语法检查通过；
+- 本地 `data_gateway` 单元测试通过：29 项；
+- `git diff --check` 通过；
+- 真实 CloudBase smoke 已发起到
+  `https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway`；
+- 真实身份链路通过：缺 token / 无效 token 返回 401，`join_family` 可创建两个同家庭成员
+  与一个隔离家庭成员，`whoami` 可正确解析；
+- 真实 Gate 5 业务表写入阻塞在 `travel_places`：
+  线上返回 `DATABASE_COLLECTION_NOT_EXIST`，说明当前线上 `data_gateway` 仍未部署本轮
+  集合自愈代码，或目标环境尚未手动创建 Gate 5 四张集合；
+- 本机没有有效 CloudBase CLI 登录态，无法自动替用户部署云函数或创建线上集合。
+
+下一步需要先在 CloudBase 控制台上传
+`backend/cloudbase/data_gateway/data_gateway.zip` 并确认依赖安装，或手动创建
+`travel_places / postcards / messages / mailbox_events` 四个集合。完成后重新执行：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
+```
+
+### 2026-07-09 复验记录
+
+上传包含 Gate 5 集合自愈的 `data_gateway.zip` 后，真实 smoke 继续推进：
+
+- 缺 token / 无效 token 返回 401；
+- `join_family` 可创建两个同家庭成员和一个隔离家庭成员；
+- `whoami` 可正确解析同家庭成员；
+- `travel_places` 首次真实写入通过；
+- 同家庭成员可查询到对方写入的 `travel_places`；
+- 测试业务记录可正常清理。
+
+复验暴露出第二个线上兼容问题：CloudBase 读取已有文档时返回内部 `_id`，旧代码更新已有
+文档时会把 `_id` 一起写回，线上拒绝并返回 `不能更新_id的值`。本地已修复为更新前剥离
+`_id`，并把单元测试模拟改成同样拒绝 `_id` 回写。修复后本地 `data_gateway` 29 项测试通过，
+`data_gateway.zip` 已重新生成。需要再次上传最新 zip 后重跑真实 smoke。
+
+### 2026-07-09 最终复验通过
+
+重新上传包含 `_id` 剥离修复的 `data_gateway.zip` 并确认依赖安装后，真实 CloudBase smoke
+完整通过：
+
+- 缺 token / 无效 token 返回 401；
+- 两个同家庭成员与一个隔离家庭成员可通过 `join_family` 创建；
+- `whoami` 可解析成员身份；
+- `travel_places` 可真实创建、跨成员查询、跨成员更新；
+- 伪造 `family_id / created_by_member_id / updated_by_member_id` 会被服务端覆盖；
+- 同家庭更新会保留原创建者，更新最近修改者；
+- `postcards` 可跨成员更新已读状态；
+- `messages` 可跨成员读取；
+- `mailbox_events` 可跨成员更新已读状态；
+- `snapshot` 包含 Gate 5 四张表；
+- 隔离家庭不能读取、覆盖或删除主家庭记录；
+- smoke 结束后四张业务表测试记录已清理。
+
+通过命令：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
 ```
 
 ## 5. 交付边界
