@@ -160,3 +160,27 @@ Gate 5 四张共享集合如果在旧环境里尚未手动创建，最新版 `da
 
 - **实时同步**(看到家人走动、共享仓即时刷新)= CloudBase 实时,建在存储之上,见 `docs/dev/43`。
 - 把旧的 Supabase 直连读路径(`CloudService.load_family_data`)也迁到本网关。
+
+## 7. Gate 6 Presence Relay
+
+`backend/cloudbase/presence_relay/` 是实时同场的第一步：一个部署在 CloudBase 云托管的
+WebSocket 中继。它不保存业务数据，只校验成员身份、按 `family_id` 分房间并转发在线成员
+位置。
+
+本地测试：
+
+```bash
+cd backend/cloudbase/presence_relay
+npm install
+npm test
+```
+
+云托管部署时设置环境变量：
+
+```bash
+DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
+PORT=8080
+```
+
+部署成功后，把云托管 WebSocket 地址填入 `game/config/cloudbase.json` 的
+`presence_endpoint`。为空时客户端不会连接实时服务，农场仍保持离线占位演示。

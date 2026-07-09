@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameIdentity="*res://scripts/managers/game_identity.gd"
+PresenceChannel="*res://scripts/managers/presence_channel.gd"
 CloudManager="*res://scripts/cloud_service.gd"
 MemoryManager="*res://scripts/managers/memory_manager.gd"
 SlotManager="*res://scripts/managers/slot_manager.gd"
