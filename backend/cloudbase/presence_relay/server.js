@@ -2,6 +2,7 @@ const http = require('node:http');
 const { WebSocketServer } = require('ws');
 
 const DEFAULT_PORT = Number(process.env.PORT || 8080);
+const DEFAULT_DATA_GATEWAY_URL = 'https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway';
 const HEARTBEAT_MS = Number(process.env.PRESENCE_HEARTBEAT_MS || 15000);
 const STALE_MS = Number(process.env.PRESENCE_STALE_MS || 45000);
 const MAX_PAYLOAD_BYTES = 4096;
@@ -53,7 +54,7 @@ function sanitizePresenceMessage(raw) {
   return { type };
 }
 
-async function verifyWithDataGateway(token, dataGatewayUrl = process.env.DATA_GATEWAY_URL) {
+async function verifyWithDataGateway(token, dataGatewayUrl = process.env.DATA_GATEWAY_URL || DEFAULT_DATA_GATEWAY_URL) {
   if (!dataGatewayUrl) throw new Error('DATA_GATEWAY_URL is required');
   const response = await fetch(dataGatewayUrl, {
     method: 'POST',
