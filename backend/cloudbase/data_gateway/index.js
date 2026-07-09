@@ -35,6 +35,9 @@ const AUDITED_TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'travel_places', 'postcards', 'messages', 'mailbox_events',
 ]);
+const AUTO_CREATE_TABLES = new Set([
+  'travel_places', 'postcards', 'messages', 'mailbox_events',
+]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
 const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
@@ -143,8 +146,52 @@ async function queryGeneric(table, familyId) {
     const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
     return res.data || [];
   } catch (err) {
+    try {
+      if (await ensureCollectionAfterMissingError(table, err)) return [];
+    } catch (createErr) {
+      console.warn('[data_gateway] auto-create failed for table=' + table + ': ' + (createErr && createErr.message || createErr));
+    }
     console.warn('[data_gateway] query failed for table=' + table + ': ' + (err && err.message || err));
     return [];
+  }
+}
+
+function isMissingCollectionError(err) {
+  const text = String((err && (err.code || err.message)) || err || '');
+  return text.includes('DATABASE_COLLECTION_NOT_EXIST')
+    || text.includes('COLLECTION_NOT_EXIST')
+    || text.includes('Db or Table not exist')
+    || text.includes('collection not exist');
+}
+
+async function ensureCollectionAfterMissingError(table, err) {
+  if (!AUTO_CREATE_TABLES.has(table) || !isMissingCollectionError(err)) return false;
+  try {
+    await db.createCollection(table);
+    console.warn('[data_gateway] auto-created missing collection: ' + table);
+    return true;
+  } catch (createErr) {
+    const text = String((createErr && (createErr.code || createErr.message)) || createErr || '');
+    if (text.includes('already exist') || text.includes('COLLECTION_ALREADY_EXISTS')) return true;
+    throw err;
+  }
+}
+
+async function setGenericDocument(table, id, row) {
+  try {
+    await db.collection(table).doc(id).set(row);
+  } catch (err) {
+    if (!(await ensureCollectionAfterMissingError(table, err))) throw err;
+    await db.collection(table).doc(id).set(row);
+  }
+}
+
+async function addGenericDocument(table, row) {
+  try {
+    return await db.collection(table).add(row);
+  } catch (err) {
+    if (!(await ensureCollectionAfterMissingError(table, err))) throw err;
+    return await db.collection(table).add(row);
   }
 }
 
@@ -332,12 +379,14 @@ exports.main = async (event) => {
             updated_at: new Date().toISOString(),
           }
         : {};
-      const merged = Object.assign({}, existing, cleanIncoming, { family_id: familyId }, audit);
+      const cleanExisting = Object.assign({}, existing);
+      delete cleanExisting._id;
+      const merged = Object.assign({}, cleanExisting, cleanIncoming, { family_id: familyId }, audit);
       if (id) {
-        await db.collection(body.table).doc(id).set(merged);
+        await setGenericDocument(body.table, id, merged);
         return { ok: true, id };
       }
-      const added = await db.collection(body.table).add(merged);
+      const added = await addGenericDocument(body.table, merged);
       return { ok: true, id: added.id };
     }
 
