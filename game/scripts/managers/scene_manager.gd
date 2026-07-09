@@ -201,6 +201,7 @@ var web_photo_callback: Variant = null
 var photo_texture_cache: Dictionary = {}
 var active_ai_workflow: String = ""
 var active_ai_status_label: Label = null
+var _last_world_sync_toast_msec := -100000
 
 func _load_cloud_data() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
@@ -216,11 +217,48 @@ func _load_cloud_data() -> void:
 	MemoryManager.save_game()
 	_refresh_world_chat_feed()
 
+func _on_cloud_world_changed(event: Dictionary) -> void:
+	var table := str(event.get("table", ""))
+	_refresh_world_chat_feed(table == "messages")
+	_refresh_visible_world_after_cloud(table)
+	var now := Time.get_ticks_msec()
+	if now - _last_world_sync_toast_msec < 2200:
+		return
+	_last_world_sync_toast_msec = now
+	_show_toast(_cloud_world_toast(table))
+
+func _refresh_visible_world_after_cloud(table: String) -> void:
+	if table in ["memories", "nodes", "answers", "families"]:
+		if mode == "garden":
+			_refresh_current_memory_scene("garden")
+		elif mode == "fishpond":
+			_refresh_current_memory_scene("fishpond")
+	if table in ["travel_places", "postcards", "mailbox_events"] and mode == "map":
+		_show_travel_map()
+
+func _cloud_world_toast(table: String) -> String:
+	match table:
+		"messages":
+			return "家人的新留言已同步。"
+		"travel_places", "postcards", "mailbox_events":
+			return "家人的明信片已同步。"
+		"inventories":
+			return "共享仓已同步。"
+		"memories", "nodes", "answers", "families":
+			return "家人的记忆已同步。"
+		"rooms", "room_objects":
+			return "家人的房间更新已同步。"
+		_:
+			return "家庭云端已同步。"
+
 
 func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 	world = p_world
 	ui_layer = p_ui_layer
 	MemoryManager.mailbox_alert_changed.connect(_on_mailbox_alert_changed)
+	if CloudManager != null and CloudManager.has_signal("cloud_world_changed") \
+		and not CloudManager.cloud_world_changed.is_connected(_on_cloud_world_changed):
+		CloudManager.cloud_world_changed.connect(_on_cloud_world_changed)
 	if not AIWorkflowManager.workflow_state_changed.is_connected(_on_ai_workflow_state_changed):
 		AIWorkflowManager.workflow_state_changed.connect(_on_ai_workflow_state_changed)
 	_build_ui()
@@ -1406,11 +1444,38 @@ func _save_memory_link_followup(link_id: String, input: TextEdit, button: Button
 func _refresh_memory_link_visuals(scene: String) -> void:
 	if world == null or not is_instance_valid(world):
 		return
+	_clear_memory_link_nodes()
+	_render_memory_links(scene)
+
+func _clear_memory_link_nodes() -> void:
 	for child in world.get_children():
 		var child_name := String(child.name)
 		if child_name.begins_with("MemoryLink"):
 			child.queue_free()
+
+func _refresh_current_memory_scene(scene: String) -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var cache := _demo_memories if scene == "garden" else _fishpond_memories
+	for item in cache:
+		if item is Dictionary:
+			var live: Variant = item.get("node", null)
+			if live != null and is_instance_valid(live):
+				live.queue_free()
+	cache.clear()
+	for child in world.get_children():
+		if child.is_in_group("world_memory_node"):
+			child.queue_free()
+	_clear_memory_link_nodes()
+	SlotManager.reset(scene)
+	if scene == "garden":
+		_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
+	else:
+		_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
 	_render_memory_links(scene)
+	if scene == "garden":
+		MemoryManager.maybe_recompute_family_portrait()
+		_render_family_portrait()
 
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
@@ -1428,6 +1493,7 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 		if slot.is_empty():
 			continue
 		var live := NodeFactory.make_memory_node(card, slot, click_cb.bind(node_id))
+		live.add_to_group("world_memory_node")
 		var state := String(nd.get("state", "new"))
 		if String(nd.get("node_type", "")) == "memory_flower":
 			_add_memory_tag(live, state)

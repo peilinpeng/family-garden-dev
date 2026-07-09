@@ -6,7 +6,21 @@ const DEFAULT_DATA_GATEWAY_URL = 'https://familygarden-d7gy18huh87fd41d2-1449262
 const HEARTBEAT_MS = Number(process.env.PRESENCE_HEARTBEAT_MS || 15000);
 const STALE_MS = Number(process.env.PRESENCE_STALE_MS || 45000);
 const MAX_PAYLOAD_BYTES = 4096;
-const VALID_TYPES = new Set(['hello', 'move', 'leave', 'ping']);
+const VALID_TYPES = new Set(['hello', 'move', 'world_changed', 'leave', 'ping']);
+const WORLD_EVENT_TABLES = new Set([
+  'memories',
+  'nodes',
+  'answers',
+  'rooms',
+  'room_objects',
+  'families',
+  'travel_places',
+  'postcards',
+  'messages',
+  'mailbox_events',
+  'inventories',
+]);
+const WORLD_EVENT_ACTIONS = new Set(['upsert', 'delete', 'refresh']);
 
 function json(data) {
   return JSON.stringify(data);
@@ -49,6 +63,19 @@ function sanitizePresenceMessage(raw) {
       animation_state: safeString(raw.animation_state, 24),
       timestamp: asFiniteNumber(raw.timestamp, Date.now()),
       sequence: Math.max(0, Math.floor(asFiniteNumber(raw.sequence, 0))),
+    };
+  }
+  if (type === 'world_changed') {
+    const table = safeString(raw.table, 48);
+    const action = safeString(raw.action || 'upsert', 16);
+    if (!WORLD_EVENT_TABLES.has(table) || !WORLD_EVENT_ACTIONS.has(action)) return null;
+    return {
+      type,
+      table,
+      id: safeString(raw.id, 120),
+      action,
+      timestamp: asFiniteNumber(raw.timestamp, Date.now()),
+      event_id: safeString(raw.event_id, 120),
     };
   }
   return { type };
@@ -187,6 +214,27 @@ function createPresenceRelay(options = {}) {
     broadcast(client, { type: 'peer_moved', peer: publicPeer(client) });
   }
 
+  function handleWorldChanged(ws, msg) {
+    const client = clients.get(ws);
+    if (!client) {
+      send(ws, { type: 'error', code: 'HELLO_REQUIRED', message: 'send hello first' });
+      return;
+    }
+    client.last_seen = Date.now();
+    const event = {
+      event_id: msg.event_id || `${client.member_id}:${Date.now()}`,
+      table: msg.table,
+      id: msg.id,
+      action: msg.action,
+      timestamp: msg.timestamp || Date.now(),
+      member_id: client.member_id,
+      family_id: client.family_id,
+      server_time: Date.now(),
+    };
+    send(ws, { type: 'world_changed_ack', event_id: event.event_id, server_time: event.server_time });
+    broadcast(client, { type: 'world_changed', event });
+  }
+
   wss.on('connection', (ws) => {
     ws.on('message', async (buffer) => {
       let raw;
@@ -205,6 +253,8 @@ function createPresenceRelay(options = {}) {
         await handleHello(ws, msg);
       } else if (msg.type === 'move') {
         handleMove(ws, msg);
+      } else if (msg.type === 'world_changed') {
+        handleWorldChanged(ws, msg);
       } else if (msg.type === 'ping') {
         const client = clients.get(ws);
         if (client) client.last_seen = Date.now();
