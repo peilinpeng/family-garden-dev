@@ -187,3 +187,15 @@ DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.a
 
 部署成功后，把云托管 WebSocket 地址填入 `game/config/cloudbase.json` 的
 `presence_endpoint`。为空时客户端不会连接实时服务，农场仍保持离线占位演示。
+
+当前 Gate 6 线上地址：
+
+```text
+wss://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay
+```
+
+健康检查：
+
+```bash
+curl https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay/healthz
+```

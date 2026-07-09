@@ -75,6 +75,12 @@ PRESENCE_STALE_MS=45000
 
 `DATA_GATEWAY_URL` 可省略；relay 已内置当前项目公开 `data_gateway` 地址作为默认值。其他环境部署时再用环境变量覆盖。
 
+当前线上 WebSocket 地址：
+
+```text
+wss://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay
+```
+
 ## 4. 自动化验收
 
 ```bash
@@ -111,7 +117,8 @@ git diff --check
 
 ## 7. 2026-07-09 真实部署记录
 
-本地已恢复 CloudBase CLI 登录态，Docker daemon 可用，并尝试部署：
+本地已恢复 CloudBase CLI 登录态，Docker daemon 可用。首次尝试部署时，CloudBase 返回
+`[CreateCloudRunServer] 云托管资源未开通`。开通云托管资源后，重新部署通过：
 
 ```bash
 cd backend/cloudbase/presence_relay
@@ -123,12 +130,26 @@ npx --yes -p @cloudbase/cli cloudbase cloudrun deploy \
   --force
 ```
 
-CloudBase 返回：
+随后创建 HTTP 访问路由：
 
-```text
-[CreateCloudRunServer] 云托管资源未开通
+```bash
+npx --yes -p @cloudbase/cli cloudbase routes add \
+  -e familygarden-d7gy18huh87fd41d2 \
+  --data '{"domain":"familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com","routes":[{"path":"/presence-relay","upstreamResourceType":"CBR","upstreamResourceName":"presence-relay","enable":true,"enableAuth":false,"enableSafeDomain":false,"enablePathTransmission":false}]}'
 ```
 
-结论：代码、Dockerfile、CLI 登录和本地 Docker 均已就绪；当前阻塞是目标 CloudBase 环境尚未
-开通云托管资源。开通云托管后重跑上述命令即可继续真实部署。WebSocket 长连接不应降级到
-云函数，云函数适合短请求，不能承载 Gate 6 Presence 的常驻连接。
+真实验收结果：
+
+- `presence-relay` 云托管服务状态：normal；
+- 公网访问：Allowed；
+- `/presence-relay/healthz` 返回 `{"ok":true}`；
+- WebSocket 握手成功；
+- 无效 token 返回 `UNAUTHORIZED` 并关闭连接；
+- 临时创建两个同家庭成员和一个隔离家庭成员后，真实云端 WebSocket smoke 通过：
+  - A/B 同家庭可互相看见加入；
+  - A 的移动只广播给 B；
+  - 隔离家庭 C 收不到 A 的移动；
+  - B 离开后 A 收到 `peer_left`。
+
+结论：Gate 6 Presence 首闭环已在真实 CloudBase 云托管环境跑通。后续可以进入共享事件
+广播，例如新记忆、农场种植/收获、季节变化和共享仓变化。
