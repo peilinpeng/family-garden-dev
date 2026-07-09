@@ -6,6 +6,7 @@ extends Node
 ## AI 只给 object_type / zone，落点由 ZoneManager 分配（docs/09 §8.2）。
 
 const ROOM_SCENE := "room"
+const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 # 挂墙物件（进 kind=wall 的 zone）；其余按地面物件处理。
 const WALL_OBJECTS := ["photo_wall", "picture", "painting", "clock", "window"]
 
@@ -31,14 +32,23 @@ func plan(analysis: Dictionary) -> Dictionary:
 			"zone": zone,
 			"slot_id": String(point.get("slot_id", "")),
 		})
-	return {"ok": not planned.is_empty(), "objects": planned, "rejected": rejected}
+	var layout := {"ok": not planned.is_empty(), "objects": planned, "rejected": rejected}
+	if not planned.is_empty():
+		var scene: Dictionary = ROOM_SCENE_GENERATOR.build_schema(analysis, layout)
+		if not bool(scene.get("ok", false)):
+			layout["ok"] = false
+			layout["errors"] = scene.get("errors", [])
+		else:
+			layout["scene_schema"] = scene.get("schema", {})
+			layout["scene_warnings"] = scene.get("warnings", [])
+	return layout
 
 ## 根据 room_analysis 生成一个房间 + 其物件（落库持久化）。返回 room dict。
 func generate(analysis: Dictionary, source_memory_id: String = "", workflow_key: String = "", generation_meta: Dictionary = {}) -> Dictionary:
 	var layout := plan(analysis)
 	if not bool(layout.get("ok", false)):
 		return {}
-	var room := MemoryManager.create_room(analysis, source_memory_id, workflow_key, generation_meta)
+	var room := MemoryManager.create_room(analysis, source_memory_id, workflow_key, generation_meta, layout.get("scene_schema", {}))
 	var room_id := String(room.get("id", ""))
 	for object in layout.get("objects", []):
 		MemoryManager.create_room_object(room_id, String(object.get("object_type", "")), String(object.get("zone", "")), String(object.get("slot_id", "")))
@@ -79,10 +89,19 @@ func render(room_id: String, world: Node, on_click: Callable) -> int:
 		var slot_id := String(obj.get("slot_id", ""))
 		var obj_id := String(obj.get("id", ""))
 		ZoneManager.occupy(ROOM_SCENE, slot_id, obj_id)
-		var point := ZoneManager.get_point(ROOM_SCENE, slot_id)
+		var room := _room_by_id(room_id)
+		var point: Dictionary = ROOM_SCENE_GENERATOR.point_for_room_object(room, obj) if not room.is_empty() else {}
+		if point.is_empty():
+			point = ZoneManager.get_point(ROOM_SCENE, slot_id)
 		if point.is_empty():
 			continue
 		var node := NodeFactory.make_room_object(String(obj.get("object_type", "")), point, on_click.bind(obj_id))
 		world.add_child(node)
 		count += 1
 	return count
+
+func _room_by_id(room_id: String) -> Dictionary:
+	for room in MemoryManager.rooms:
+		if room is Dictionary and String(room.get("id", "")) == room_id:
+			return room
+	return {}

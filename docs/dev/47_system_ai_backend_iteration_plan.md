@@ -816,17 +816,18 @@ Scene Schema
   → SceneLoader
 ```
 
-AI 只输出 Schema，不输出像素坐标，不引用 catalog 之外的物件。
+当前安全契约保持为：AI 只输出 `object_type + zone`，不输出像素坐标；Godot 端由
+`RoomSceneGenerator` 生成 Scene Schema，不引用 catalog 之外的物件。
 
 ### 11.2 Scene Schema
 
-- [ ] 房间尺寸与 tile size；
-- [ ] 地板、墙、门和多图层；
-- [ ] 家具 ID、格子坐标与旋转；
-- [ ] 主题与光照；
-- [ ] 可交互点；
+- [x] 房间尺寸与 tile size；
+- [x] 地板、基础墙边和 Furniture 多图层；
+- [x] 家具 ID、受控格子坐标；
+- [x] 主题与 style 元数据；
+- [x] 可交互点；
 - [ ] 出入口；
-- [ ] schema 版本。
+- [x] schema 版本。
 
 ### 11.3 Object Catalog
 
@@ -845,28 +846,28 @@ AI 只输出 Schema，不输出像素坐标，不引用 catalog 之外的物件�
 
 ### 11.4 Validator
 
-- [ ] 未知物件；
-- [ ] 越界；
-- [ ] 重叠；
+- [x] 未知物件；
+- [x] 越界；
+- [x] 重叠；
 - [ ] 堵门；
 - [ ] 不可达区域；
 - [ ] 墙面物件未贴墙；
 - [ ] 家具朝向非法；
-- [ ] 数量超限；
+- [x] 数量超限；
 - [ ] 关键通道宽度不足；
 - [ ] catalog 与 schema 版本不匹配。
 
 ### 11.5 SceneLoader
 
-- [ ] 铺地板；
-- [ ] 建墙与门；
-- [ ] 放 tile stamp；
+- [x] 铺地板；
+- [x] 建基础墙边；
+- [x] 放 tile stamp；
 - [ ] 实例化 prefab；
-- [ ] 自动配置碰撞和 Y-Sort；
+- [x] 自动生成基础碰撞和 Y-Sort 图层；
 - [ ] 建立导航和出口；
-- [ ] 读取交互 metadata；
-- [ ] 保存和重载；
-- [ ] 支持编辑后的增量更新。
+- [x] 读取交互 metadata；
+- [x] 保存和重载；
+- [x] 支持编辑后的增量更新。
 
 ### 11.6 AI 策略
 
