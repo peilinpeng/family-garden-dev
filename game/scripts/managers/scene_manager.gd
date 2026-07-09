@@ -10,6 +10,7 @@ const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁�
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
+const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
 
 const ASSETS := {
@@ -2668,6 +2669,18 @@ func _enter_house(id: String, label_text: String) -> void:
 	var room_label: String = str(room_info.get("label", label_text))
 	info_label.text = room_label
 
+	var saved_room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
+	if id == "player" and not saved_room.is_empty() and ROOM_SCENE_GENERATOR.has_scene_schema(saved_room):
+		var rendered: Dictionary = ROOM_SCENE_GENERATOR.render_scene(saved_room, world)
+		if bool(rendered.get("ok", false)):
+			_add_player(ROOM_SCENE_GENERATOR.spawn_position(saved_room, room_info.get("spawn", Vector2(640, 560))))
+			_render_room("player")
+			_add_room_hint_panel(room_label, id)
+			_show_gate4_scene_guide("room")
+			return
+		else:
+			push_warning("[SceneManager] 语义房间渲染失败: " + str(rendered.get("errors", [])))
+
 	# 样板（增量迁移 §7）：玩家房间用编辑器场景 AnnaRoom.tscn（静态背景+碰撞），
 	# 玩家/提示面板/返回流程仍复用代码。其他 3 间保持原过程化构建。
 	if id == "player" and ResourceLoader.exists(ANNA_ROOM_SCENE):
@@ -2778,7 +2791,8 @@ func _add_room_hint_panel(room_label: String, house_id: String) -> void:
 	if is_player:
 		var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
 		var object_count := 0 if room.is_empty() else MemoryManager.get_room_objects(String(room.get("id", ""))).size()
-		body.text = "拍一张房间照片，AI 会先给出可确认的布局草稿。\n当前：%s" % ("尚未生成 AI 房间" if room.is_empty() else "%d 件物件已摆放" % object_count)
+		var generated := "语义室内已生成" if not room.is_empty() and ROOM_SCENE_GENERATOR.has_scene_schema(room) else "%d 件物件已摆放" % object_count
+		body.text = "拍一张房间照片，AI 会先给出可确认的布局草稿。\n当前：%s" % ("尚未生成 AI 房间" if room.is_empty() else generated)
 	else:
 		body.text = "在房间里走走看看，返回花园时会保留当前位置。"
 	body.position = Vector2(18, 48)
@@ -2824,7 +2838,8 @@ func _open_room_management() -> void:
 	title.add_theme_font_size_override("font_size", 24)
 	panel.add_child(title)
 	var summary := Label.new()
-	summary.text = "%s · %s · %d 件家具" % [String(room.get("room_name", "我的房间")), String(room.get("style", "")), MemoryManager.get_room_objects(String(room.get("id", ""))).size()]
+	var scene_badge := " · 语义室内" if ROOM_SCENE_GENERATOR.has_scene_schema(room) else ""
+	summary.text = "%s · %s · %d 件家具%s" % [String(room.get("room_name", "我的房间")), String(room.get("style", "")), MemoryManager.get_room_objects(String(room.get("id", ""))).size(), scene_badge]
 	summary.position = Vector2(34, 82)
 	summary.size = Vector2(470, 50)
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2945,7 +2960,7 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 	_add_panel_close_button(panel)
 	var analysis: Dictionary = draft.get("analysis", {})
 	var title := Label.new()
-	title.text = "房间识别预览" + (" · 示例回退布局" if bool(draft.get("used_fallback", false)) else "")
+	title.text = "语义房间预览" + (" · 示例回退布局" if bool(draft.get("used_fallback", false)) else "")
 	title.position = Vector2(34, 24)
 	title.size = Vector2(612, 34)
 	title.add_theme_font_size_override("font_size", 24)
@@ -2961,7 +2976,7 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 		object_lines.append("• %s → %s" % [_room_object_display_label(String(object.get("object_type", ""))), _zone_display_label(String(object.get("zone", "")))])
 	if object_lines.is_empty():
 		object_lines.append("没有可安全摆放的家具。")
-	_add_room_preview_map(panel, Vector2(34, 154), Vector2(334, 210), draft.get("layout", {}).get("objects", []))
+	_add_room_preview_map(panel, Vector2(34, 154), Vector2(334, 210), draft.get("layout", {}).get("objects", []), draft.get("layout", {}).get("scene_schema", {}))
 	var objects := Label.new()
 	objects.text = "将摆放的家具\n" + "\n".join(object_lines)
 	objects.position = Vector2(392, 154)
@@ -2977,7 +2992,7 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 	trace.size = Vector2(612, 36)
 	trace.add_theme_font_size_override("font_size", 12)
 	panel.add_child(trace)
-	var status := _make_status_label(panel, Vector2(34, 426), Vector2(612, 24), "这是预览草稿；确认后才会创建或替换你的 AI 房间。")
+	var status := _make_status_label(panel, Vector2(34, 426), Vector2(612, 24), "这是预览草稿；确认后才会创建或替换可探索的语义房间。")
 	var cancel := Button.new()
 	cancel.text = "取消并清理照片"
 	cancel.position = Vector2(86, 458)
@@ -2993,7 +3008,7 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 	confirm.pressed.connect(_commit_room_preview.bind(draft, confirm, status))
 	panel.add_child(confirm)
 
-func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, objects: Array) -> void:
+func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, objects: Array, schema: Dictionary = {}) -> void:
 	var map := Panel.new()
 	map.name = "RoomPreviewMap"
 	map.position = pos
@@ -3006,6 +3021,9 @@ func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, obj
 	style.set_corner_radius_all(8)
 	map.add_theme_stylebox_override("panel", style)
 	parent.add_child(map)
+	if not schema.is_empty():
+		_add_room_schema_preview(map, map_size, schema)
+		return
 
 	var zones := {
 		"back_wall": Rect2(18, 14, 298, 28),
@@ -3049,6 +3067,62 @@ func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, obj
 	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", Color(0.42, 0.32, 0.22, 0.78))
 	map.add_child(title)
+
+func _add_room_schema_preview(map: Control, map_size: Vector2, schema: Dictionary) -> void:
+	var grid: Array = schema.get("grid_size", [34, 22])
+	var grid_size := Vector2(maxf(1.0, float(grid[0])), maxf(1.0, float(grid[1]))) if grid.size() >= 2 else Vector2(34, 22)
+	var scale := minf((map_size.x - 28.0) / grid_size.x, (map_size.y - 34.0) / grid_size.y)
+	var origin := Vector2(14, 12)
+	var floor := ColorRect.new()
+	floor.position = origin
+	floor.size = grid_size * scale
+	floor.color = Color(0.86, 0.72, 0.52, 0.42)
+	floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map.add_child(floor)
+	var wall := ColorRect.new()
+	wall.position = origin
+	wall.size = Vector2(grid_size.x * scale, 2.0 * scale)
+	wall.color = Color(0.56, 0.44, 0.34, 0.40)
+	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map.add_child(wall)
+	for raw in schema.get("objects", []):
+		if not (raw is Dictionary):
+			continue
+		var obj: Dictionary = raw
+		var cell: Array = obj.get("cell", [0, 0])
+		var size: Array = obj.get("size", [1, 1])
+		if cell.size() < 2 or size.size() < 2:
+			continue
+		var marker := ColorRect.new()
+		marker.position = origin + Vector2(float(cell[0]), float(cell[1])) * scale
+		marker.size = Vector2(maxf(1.0, float(size[0]) * scale), maxf(1.0, float(size[1]) * scale))
+		marker.color = _room_preview_color(String(obj.get("id", "")))
+		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(marker)
+	var title := Label.new()
+	title.text = "语义网格"
+	title.position = Vector2(16, 184)
+	title.size = Vector2(140, 18)
+	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_color_override("font_color", Color(0.42, 0.32, 0.22, 0.78))
+	map.add_child(title)
+
+func _room_preview_color(object_id: String) -> Color:
+	match object_id:
+		"bed":
+			return Color(0.58, 0.72, 0.86, 0.72)
+		"desk":
+			return Color(0.64, 0.46, 0.30, 0.72)
+		"lamp":
+			return Color(0.98, 0.78, 0.34, 0.76)
+		"plant":
+			return Color(0.42, 0.68, 0.40, 0.74)
+		"photo_wall":
+			return Color(0.74, 0.54, 0.86, 0.68)
+		"chair":
+			return Color(0.50, 0.60, 0.74, 0.72)
+		_:
+			return Color(0.74, 0.60, 0.42, 0.68)
 
 func _room_object_display_label(object_type: String) -> String:
 	match object_type:
@@ -3112,7 +3186,7 @@ func _commit_room_preview(draft: Dictionary, button: Button, status: Label) -> v
 		return
 	_close_active_panel()
 	_enter_house("player", "我的房间")
-	_show_toast("房间生成好了 🛋️")
+	_show_toast("房间生成好了。")
 
 # 渲染玩家房间已落库的家具（重入/重启后重建）。
 func _render_room(house_id: String) -> void:
