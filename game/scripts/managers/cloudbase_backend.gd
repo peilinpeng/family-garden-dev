@@ -88,6 +88,13 @@ func join_family(fam_id: String, role: String, display_name: String) -> bool:
 		f.store_string(JSON.stringify({"member_token": token}))
 	return true
 
+func list_family_members() -> Array:
+	var res: Dictionary = await _request({"action": "list_family_members"})
+	if not bool(res.get("ok", false)):
+		return []
+	var members: Variant = res.get("members", [])
+	return members if members is Array else []
+
 # ── 接缝实现(family_id 不再需要:服务端从 member_token 解析) ─
 func persist_record(table: String, row: Dictionary) -> void:
 	# 乐观更新缓存(按 id upsert),再异步推云

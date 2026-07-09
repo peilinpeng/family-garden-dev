@@ -1,7 +1,7 @@
 # 58｜Gate 6 Presence 实时同场首闭环验收
 
-更新：2026-07-09
-分支：`feature/gate6-world-events-realtime`
+更新：2026-07-10
+分支：`feature/gate6-family-entry-members`
 
 ## 1. 交付目标
 
@@ -14,6 +14,8 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
   其他客户端收到后自动刷新云端快照并给出轻提示；
 - 共享农场地块 `farm_plots` 进入真实云端模型，种植、收获和占用冲突由 data_gateway
   统一裁决，在线成员通过 `world_changed` 自动刷新；
+- 家庭入口支持输入邀请码式 `family_id`，并提供家庭成员面板显示云端成员与在线状态；
+- 同一成员多设备同时进入时，实时通道保留最新连接并替换旧连接，避免重复角色；
 - 没有配置实时服务时，农场仍保留原占位家人漫步，不影响离线演示。
 
 ## 2. 本轮改动
@@ -31,6 +33,7 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 对 `world_changed` 做表名与动作白名单校验，只允许共享业务表，不允许触碰 `members`
   等身份表；
 - 心跳/超时清理，避免幽灵在线；
+- 同一 `family_id + member_id` 再次连接时，旧连接收到 `REPLACED` 并关闭；
 - `/healthz` 供云托管健康检查。
 
 ### Godot 客户端
@@ -54,6 +57,8 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 云端已就绪时允许空表覆盖本地缓存，保证“最后一条删除”也能同步；
 - `SceneManager` 刷新聊天条、旅行地图和当前记忆场景，并显示节制的同步提示。
 - `Farm` 场景刷新共享地块，种植/收获使用确认式云端写入，避免扣了种子但云端没落库。
+- 角色选择界面新增家庭邀请码输入；未填写时继续使用配置中的默认家庭。
+- 底部导航新增“家人”入口，打开家庭成员面板，合并云端成员列表与实时在线状态。
 
 农场场景接入：
 
@@ -112,6 +117,8 @@ cd backend/cloudbase/presence_relay && FG_GATE6_REAL_SMOKE=1 npm run smoke:real
 
 cd backend/cloudbase/data_gateway && FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
 
+cd backend/cloudbase/data_gateway && FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
+
 /Applications/Godot.app/Contents/MacOS/Godot --headless --editor --path game --quit
 
 /Applications/Godot.app/Contents/MacOS/Godot \
@@ -134,7 +141,10 @@ git diff --check
 10. A 在农场种下作物后，B 在线客户端自动看到作物；
 11. B 收获成熟作物后，A 在线客户端该地块清空；
 12. A/B 同时操作同一空地时，只允许一个人种植成功；
-13. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
+13. 角色选择页输入另一个家庭邀请码后，会作为新的 `family_id` 加入；
+14. 点击底部“家人”按钮，能看到同家庭成员、角色、在线/离线和所在场景；
+15. 同一成员在第二台设备进入后，旧设备连接被替换，不出现重复角色；
+16. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
 
 ## 6. 交付边界
 
@@ -142,7 +152,7 @@ git diff --check
 - `world_changed` 只广播“需要刷新哪张共享表”，业务数据仍由客户端重新走
   `data_gateway` 拉取，不在 WebSocket 消息里传完整数据；
 - 农场种植/收获已接入 data_gateway 的确认式裁决，但不引入复杂交易市场或农作物经济；
-- 不做正式登录、邀请码、成员管理后台；
+- 本轮的“家庭邀请码”是轻量 `family_id` 入口，不做正式邀请码校验、退出家庭或成员管理后台；
 - 不引入权威游戏服务器，仍按家庭协作游戏的轻量中继方案推进。
 
 ## 7. 2026-07-09 真实部署记录
@@ -276,3 +286,64 @@ FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
 - 隔离家庭看不到、也不能删除别家的地块；
 - 同家庭成员收获后，原种植者再次查询时地块已清空；
 - `presence-relay` 真实 WebSocket smoke 已验证 `farm_plots` 的 `world_changed` 同家庭转发。
+
+## 10. 2026-07-10 成员体验与家庭入口收口
+
+新增 `list_family_members` 只读动作：
+
+```json
+{
+  "action": "list_family_members"
+}
+```
+
+返回只包含同家庭公开字段：
+
+```json
+{
+  "ok": true,
+  "family_id": "family1",
+  "members": [
+    {
+      "member_id": "member_x",
+      "family_id": "family1",
+      "role": "father",
+      "display_name": "爸爸"
+    }
+  ]
+}
+```
+
+服务端规则：
+
+- 必须带有效 `member_token`；
+- `family_id` 来自服务端身份解析，不信客户端入参；
+- 只返回当前成员同家庭的成员；
+- 不返回 `member_token`；
+- `members` 仍不在通用 CRUD 白名单中。
+
+客户端收口：
+
+- 角色选择页新增家庭邀请码输入，默认填当前配置或本地身份中的家庭；
+- 成功加入后继续把 `member_token/member_id/family_id/role/display_name` 写入本地身份；
+- 底部导航新增“家人”，弹窗展示家庭邀请码、云端成员和实时在线状态；
+- 在线信息来自 `PresenceChannel.peers()` 与本机身份，离线成员来自 `list_family_members`。
+
+真实云端验收：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
+
+cd backend/cloudbase/presence_relay
+FG_GATE6_REAL_SMOKE=1 npm run smoke:real
+```
+
+本轮真实云端 smoke 已通过：
+
+- `data_gateway` 已部署最新版；
+- 同家庭 A/B 成员互相可见；
+- 隔离家庭 C 只能看到自己；
+- 成员列表不泄漏 `member_token`；
+- `presence-relay` 已部署最新版，健康检查返回 `{"ok":true}`；
+- 同一成员第二次连接后，旧连接收到 `REPLACED` 并被关闭。
