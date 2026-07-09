@@ -165,7 +165,10 @@ Gate 5 四张共享集合如果在旧环境里尚未手动创建，最新版 `da
 
 `backend/cloudbase/presence_relay/` 是实时同场的第一步：一个部署在 CloudBase 云托管的
 WebSocket 中继。它不保存业务数据，只校验成员身份、按 `family_id` 分房间并转发在线成员
-位置。
+位置与轻量共享事件。
+
+`world_changed` 只广播“哪张共享表变了”，不携带完整业务数据。收到事件的客户端会重新
+通过 `data_gateway` 拉取快照，因此权限、隔离和审计仍由 data_gateway 统一负责。
 
 本地测试：
 
@@ -173,6 +176,7 @@ WebSocket 中继。它不保存业务数据，只校验成员身份、按 `famil
 cd backend/cloudbase/presence_relay
 npm install
 npm test
+npm run smoke:local
 ```
 
 云托管部署时设置环境变量：
@@ -199,3 +203,14 @@ wss://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/p
 ```bash
 curl https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay/healthz
 ```
+
+真实云端 smoke 需要显式打开开关，脚本会临时自助加入两个同家庭测试成员和一个隔离成员，
+验证无效 token、移动广播、`world_changed` 同家庭转发、跨家庭隔离和离开通知：
+
+```bash
+cd backend/cloudbase/presence_relay
+FG_GATE6_REAL_SMOKE=1 npm run smoke:real
+```
+
+该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在
+`members` 集合中，显示名带 `Gate6` 前缀。

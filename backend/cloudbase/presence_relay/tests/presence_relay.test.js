@@ -101,6 +101,70 @@ test('presence relay broadcasts movement only inside the same family', async () 
   }
 });
 
+test('presence relay broadcasts world changes only inside the same family', async () => {
+  const { relay, url } = await makeRelay();
+  try {
+    const a = await openClient(url);
+    await hello(a, 'token_a');
+    const b = await openClient(url);
+    const joinedForA = onceMessage(a);
+    await hello(b, 'token_b');
+    await joinedForA;
+    const c = await openClient(url);
+    await hello(c, 'token_c');
+
+    const changeForB = onceMessage(b);
+    let isolatedSawChange = false;
+    c.once('message', () => {
+      isolatedSawChange = true;
+    });
+    a.send(JSON.stringify({
+      type: 'world_changed',
+      table: 'messages',
+      id: 'message_1',
+      action: 'upsert',
+      timestamp: 12345,
+      event_id: 'event_1',
+    }));
+    const ack = await onceMessage(a);
+    assert.equal(ack.type, 'world_changed_ack');
+    assert.equal(ack.event_id, 'event_1');
+
+    const changed = await changeForB;
+    assert.equal(changed.type, 'world_changed');
+    assert.equal(changed.event.event_id, 'event_1');
+    assert.equal(changed.event.table, 'messages');
+    assert.equal(changed.event.id, 'message_1');
+    assert.equal(changed.event.action, 'upsert');
+    assert.equal(changed.event.member_id, 'member_a');
+    assert.equal(changed.event.family_id, 'family_a');
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(isolatedSawChange, false);
+  } finally {
+    await relay.close();
+  }
+});
+
+test('presence relay rejects unsupported world change tables', async () => {
+  const { relay, url } = await makeRelay();
+  try {
+    const a = await openClient(url);
+    await hello(a, 'token_a');
+    a.send(JSON.stringify({
+      type: 'world_changed',
+      table: 'members',
+      id: 'member_a',
+      action: 'upsert',
+    }));
+    const error = await onceMessage(a);
+    assert.equal(error.type, 'error');
+    assert.equal(error.code, 'BAD_MESSAGE');
+  } finally {
+    await relay.close();
+  }
+});
+
 test('presence relay rejects invalid token and announces leave', async () => {
   const { relay, url } = await makeRelay();
   try {

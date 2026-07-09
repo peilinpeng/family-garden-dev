@@ -1,15 +1,17 @@
 # 58｜Gate 6 Presence 实时同场首闭环验收
 
 更新：2026-07-09
-分支：`feature/gate6-presence-realtime`
+分支：`feature/gate6-world-events-realtime`
 
 ## 1. 交付目标
 
 Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在场”：
 
 - 两个真实客户端进入农场后，能看到对方角色、昵称和移动；
-- Presence 只同步瞬时在线状态，不写入 CloudBase 数据库；
-- 持久数据继续走 `data_gateway`，实时通道只做轻量转发；
+- Presence 同步瞬时在线状态，不写入 CloudBase 数据库；
+- 持久数据继续走 `data_gateway`，实时通道只做轻量事件转发；
+- 家人在线时，记忆、明信片、留言、共享仓等持久数据写入后会广播 `world_changed`，
+  其他客户端收到后自动刷新云端快照并给出轻提示；
 - 没有配置实时服务时，农场仍保留原占位家人漫步，不影响离线演示。
 
 ## 2. 本轮改动
@@ -22,8 +24,10 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 首包 `hello` 带本机 `member_token`；
 - 服务端调用 `DATA_GATEWAY_URL` 的 `whoami` 解析成员身份；
 - 按 `family_id` 分房间，只给同家庭成员广播；
-- 支持 `hello_ok / peer_joined / peer_moved / peer_left / error`；
+- 支持 `hello_ok / peer_joined / peer_moved / peer_left / world_changed / error`；
 - 丢弃旧 `sequence`，避免网络乱序造成位置回滚；
+- 对 `world_changed` 做表名与动作白名单校验，只允许共享业务表，不允许触碰 `members`
+  等身份表；
 - 心跳/超时清理，避免幽灵在线；
 - `/healthz` 供云托管健康检查。
 
@@ -37,6 +41,16 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 固定频率约 8Hz 以内发送移动，且有位置/状态变化阈值；
 - 自动重连、指数退避、离线清理；
 - 对外发出 peer snapshot/join/move/left/status 信号。
+- 对外发出 `world_changed` 信号；本机云端写入后通过 `announce_world_changed()` 广播轻量事件。
+
+新增 `CloudManager` 共享事件刷新层：
+
+- `persist_record/delete_record` 成功进入 CloudBase 后广播 `world_changed`；
+- 仅共享仓 `storehouse` 的库存更新会广播，个人背包不触发其他成员刷新；
+- 收到远端事件后合并 0.45 秒内的连续更新，避免请求风暴；
+- 刷新 CloudBase 快照后同步 `MemoryManager` 与 `InventoryManager`；
+- 云端已就绪时允许空表覆盖本地缓存，保证“最后一条删除”也能同步；
+- `SceneManager` 刷新聊天条、旅行地图和当前记忆场景，并显示节制的同步提示。
 
 农场场景接入：
 
@@ -88,6 +102,8 @@ cd backend/cloudbase/presence_relay && npm test
 
 cd backend/cloudbase/presence_relay && npm run smoke:local
 
+cd backend/cloudbase/presence_relay && FG_GATE6_REAL_SMOKE=1 npm run smoke:real
+
 /Applications/Godot.app/Contents/MacOS/Godot --headless --editor --path game --quit
 
 /Applications/Godot.app/Contents/MacOS/Godot \
@@ -105,13 +121,16 @@ git diff --check
 5. A/B 均能看到对方昵称、角色和移动；
 6. 任一设备离开农场或关闭页面，另一端远端角色消失；
 7. 断网/刷新后可重连，不出现重复角色或幽灵角色；
-8. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
+8. A 新增留言、明信片或记忆后，B 在线客户端自动刷新并出现轻提示；
+9. B 更新共享仓后，A 自动刷新共享仓；
+10. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
 
 ## 6. 交付边界
 
-- 本轮只做 Presence 和移动同步；
-- 不做共享事件广播；
-- 不做农场种植/收获的实时世界事件；
+- 本轮做 Presence、移动同步和持久数据轻量刷新事件；
+- `world_changed` 只广播“需要刷新哪张共享表”，业务数据仍由客户端重新走
+  `data_gateway` 拉取，不在 WebSocket 消息里传完整数据；
+- 不做农场种植/收获的实时权威状态裁决；
 - 不做正式登录、邀请码、成员管理后台；
 - 不引入权威游戏服务器，仍按家庭协作游戏的轻量中继方案推进。
 
@@ -153,3 +172,46 @@ npx --yes -p @cloudbase/cli cloudbase routes add \
 
 结论：Gate 6 Presence 首闭环已在真实 CloudBase 云托管环境跑通。后续可以进入共享事件
 广播，例如新记忆、农场种植/收获、季节变化和共享仓变化。
+
+## 8. 2026-07-09 共享事件广播补充
+
+新增 `world_changed` 轻量协议：
+
+```json
+{
+  "type": "world_changed",
+  "table": "messages",
+  "id": "message_123",
+  "action": "upsert",
+  "event_id": "member:timestamp:sequence"
+}
+```
+
+服务端只把事件转发给同 `family_id` 的其他在线成员，并回给发送方
+`world_changed_ack`。接收方不会信任消息里的业务数据，只把它当成“某张共享表变了”的
+刷新提示，然后重新从 `data_gateway` 拉取快照。
+
+已纳入本地自动验收：
+
+- 同家庭 B 收到 A 的 `world_changed`；
+- 隔离家庭 C 收不到；
+- 不在白名单内的表名会被拒绝；
+- 本地 smoke 覆盖 join、move、world_changed、leave。
+
+真实云端验收命令：
+
+```bash
+cd backend/cloudbase/presence_relay
+FG_GATE6_REAL_SMOKE=1 npm run smoke:real
+```
+
+本轮真实云端 smoke 已通过：
+
+- `presence-relay` 服务状态：normal；
+- `/presence-relay/healthz` 返回 `{"ok":true}`；
+- 无效 token 被拒绝；
+- 同家庭 A/B 可互相看见加入；
+- A 的移动只广播给 B；
+- A 的 `world_changed` 只广播给 B；
+- 隔离家庭 C 收不到 A 的移动与共享事件；
+- B 离开后 A 收到 `peer_left`。
