@@ -14,6 +14,22 @@ const SUPABASE_ANON_KEY: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 const FAMILY_ID: String = "Happy_birthday_David"
 const REST_BASE: String = SUPABASE_URL + "/rest/v1"
 const STORAGE_BUCKET: String = "family-photos"
+const WORLD_REFRESH_DEBOUNCE := 0.45
+const WORLD_EVENT_TABLES := {
+	"memories": true,
+	"nodes": true,
+	"answers": true,
+	"rooms": true,
+	"room_objects": true,
+	"families": true,
+	"travel_places": true,
+	"postcards": true,
+	"messages": true,
+	"mailbox_events": true,
+	"inventories": true,
+}
+
+signal cloud_world_changed(event: Dictionary)
 
 # ── 持久化后端接缝（迭代1a · 后端无关接口）─────────────────────────────────
 # 默认无远端后端：persist/load/delete 为 no-op / 空，由 MemoryManager 本地存档兜底。
@@ -21,6 +37,9 @@ const STORAGE_BUCKET: String = "family-photos"
 # （需实现 persist_record(table,row) / load_table(table,query) / delete_record(table,id)），
 # MemoryManager 的写入/读取出入口签名不变。
 var _persist_backend: Object = null
+var _world_refresh_pending := false
+var _world_refresh_running := false
+var _latest_world_event: Dictionary = {}
 
 ## 启动:若 config/cloudbase.json 配了 endpoint,注入 CloudBase 后端;
 ## 若本设备已自助加入过(user://cloud_identity.json 里有令牌)则立刻预拉云端;
@@ -30,6 +49,7 @@ var _persist_backend: Object = null
 func _ready() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
 		return
+	_connect_presence_world_events()
 	if CloudBaseBackend.is_configured():
 		var backend := CloudBaseBackend.new()
 		add_child(backend)
@@ -63,6 +83,7 @@ func ensure_cloud_identity(role: String, display_name: String) -> bool:
 func persist_record(table: String, row: Dictionary) -> void:
 	if _persist_backend != null and _persist_backend.has_method("persist_record"):
 		_persist_backend.persist_record(table, row)
+		_announce_world_changed(table, str(row.get("id", "")), "upsert", row)
 
 func load_table(table: String, query: String = "") -> Array:
 	if _persist_backend != null and _persist_backend.has_method("load_table"):
@@ -72,6 +93,10 @@ func load_table(table: String, query: String = "") -> Array:
 func delete_record(table: String, row_id: String) -> void:
 	if _persist_backend != null and _persist_backend.has_method("delete_record"):
 		_persist_backend.delete_record(table, row_id)
+		_announce_world_changed(table, row_id, "delete", {})
+
+func has_cloud_records() -> bool:
+	return _use_cloudbase_records()
 
 func upload_ai_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
 	if _persist_backend == null or not _persist_backend.has_method("upload_image"):
@@ -97,6 +122,59 @@ func _use_cloudbase_records() -> bool:
 
 func _cloudbase_row_id(prefix: String) -> String:
 	return "%s_%d_%d" % [prefix, Time.get_ticks_msec(), randi() % 1000000]
+
+func _connect_presence_world_events() -> void:
+	if PresenceChannel == null:
+		return
+	if not PresenceChannel.world_changed.is_connected(_on_presence_world_changed):
+		PresenceChannel.world_changed.connect(_on_presence_world_changed)
+
+func _is_world_event_table(table: String) -> bool:
+	return WORLD_EVENT_TABLES.has(table)
+
+func _should_broadcast_world_change(table: String, row_id: String, action: String, row: Dictionary) -> bool:
+	if not _is_world_event_table(table):
+		return false
+	if table == "inventories":
+		var kind := str(row.get("kind", ""))
+		if action == "upsert" and kind != "storehouse":
+			return false
+		if action == "delete" and row_id == "backpack":
+			return false
+	return true
+
+func _announce_world_changed(table: String, row_id: String, action: String, row: Dictionary) -> void:
+	if not _should_broadcast_world_change(table, row_id, action, row):
+		return
+	if PresenceChannel != null and PresenceChannel.has_method("announce_world_changed"):
+		PresenceChannel.announce_world_changed(table, row_id, action)
+
+func _on_presence_world_changed(event: Dictionary) -> void:
+	var table := str(event.get("table", ""))
+	if not _is_world_event_table(table):
+		return
+	_latest_world_event = event.duplicate(true)
+	_world_refresh_pending = true
+	if _world_refresh_running:
+		return
+	_world_refresh_running = true
+	call_deferred("_run_world_refresh")
+
+func _run_world_refresh() -> void:
+	while _world_refresh_pending:
+		_world_refresh_pending = false
+		var event := _latest_world_event.duplicate(true)
+		await get_tree().create_timer(WORLD_REFRESH_DEBOUNCE).timeout
+		if _persist_backend != null and _persist_backend.has_method("refresh"):
+			await _persist_backend.refresh()
+		var mem := get_node_or_null("/root/MemoryManager")
+		if mem != null and mem.has_method("pull_remote"):
+			mem.pull_remote()
+		var inv := get_node_or_null("/root/InventoryManager")
+		if inv != null and inv.has_method("sync_from_cloud"):
+			inv.sync_from_cloud()
+		cloud_world_changed.emit(event)
+	_world_refresh_running = false
 
 
 func load_family_data() -> Dictionary:

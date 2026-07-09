@@ -496,7 +496,7 @@ func garden_season() -> String:
 		return "summer"
 	return "spring"
 
-func apply_cloud_data(data: Dictionary) -> void:
+func apply_cloud_data(data: Dictionary, force: bool = false) -> void:
 	var remote_places: Array = data.get("travel_places", [])
 	var remote_postcards: Array = data.get("postcards", [])
 	var remote_messages: Array = data.get("messages", [])
@@ -504,7 +504,7 @@ func apply_cloud_data(data: Dictionary) -> void:
 
 	var has_remote_content: bool = remote_places.size() > 0 or remote_postcards.size() > 0 or remote_messages.size() > 0
 
-	if has_remote_content:
+	if has_remote_content or force:
 		travel_places = []
 		for raw_place in remote_places:
 			if raw_place is Dictionary:
@@ -632,24 +632,27 @@ func _family_row() -> Dictionary:
 # 从远端拉取并覆盖本地缓存（迭代1b 启动时调用）。无后端时各表返回空 → 保留本地存档。
 func pull_remote() -> void:
 	var pulled := false
+	var cloud_ready := CloudManager != null \
+		and CloudManager.has_method("has_cloud_records") \
+		and CloudManager.has_cloud_records()
 	var t_mem := CloudManager.load_table("memories")
-	if not t_mem.is_empty():
+	if cloud_ready or not t_mem.is_empty():
 		memories = t_mem
 		pulled = true
 	var t_node := CloudManager.load_table("nodes")
-	if not t_node.is_empty():
+	if cloud_ready or not t_node.is_empty():
 		nodes = t_node
 		pulled = true
 	var t_ans := CloudManager.load_table("answers")
-	if not t_ans.is_empty():
+	if cloud_ready or not t_ans.is_empty():
 		answers = t_ans
 		pulled = true
 	var t_room := CloudManager.load_table("rooms")
-	if not t_room.is_empty():
+	if cloud_ready or not t_room.is_empty():
 		rooms = t_room
 		pulled = true
 	var t_obj := CloudManager.load_table("room_objects")
-	if not t_obj.is_empty():
+	if cloud_ready or not t_obj.is_empty():
 		room_objects = t_obj
 		pulled = true
 	var t_fam := CloudManager.load_table("families")
@@ -664,13 +667,13 @@ func pull_remote() -> void:
 	var t_postcards := CloudManager.load_table("postcards")
 	var t_messages := CloudManager.load_table("messages")
 	var t_mailbox := CloudManager.load_table("mailbox_events")
-	if not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
+	if cloud_ready or not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
 		apply_cloud_data({
 			"travel_places": t_places,
 			"postcards": t_postcards,
 			"messages": t_messages,
 			"mailbox_events": t_mailbox,
-		})
+		}, cloud_ready)
 		pulled = true
 	if pulled:
 		save_game()
