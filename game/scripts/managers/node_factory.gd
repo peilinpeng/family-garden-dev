@@ -80,18 +80,25 @@ func make_room_object(object_type: String, point: Dictionary, on_click: Callable
 	root.position = pos
 	root.z_index = int(pos.y)  # ysort 带（docs/09 §10）
 	root.z_as_relative = false
-	_configure_sprite(root.get_node("Sprite"), entry, object_type)
-	_decorate_room_object(root, object_type, float(entry.get("display_height", 96)))
-	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
+	var semantic_scene := bool(point.get("semantic_scene", false))
+	var click_entry := entry.duplicate(true)
+	if semantic_scene:
+		(root.get_node("Sprite") as Sprite2D).visible = false
+		click_entry["click_rect"] = [-42, -86, 84, 104]
+		_decorate_semantic_room_object(root, object_type)
+	else:
+		_configure_sprite(root.get_node("Sprite"), entry, object_type)
+		_decorate_room_object(root, object_type, float(entry.get("display_height", 96)))
+	_configure_click_area(root.get_node("ClickArea"), click_entry, on_click)
 	var label := Label.new()
 	label.name = "ObjTag"
 	label.text = _room_object_label(object_type)
-	label.position = Vector2(-52, -124)
+	label.position = Vector2(-52, -66 if semantic_scene else -124)
 	label.size = Vector2(104, 22)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", Color(0.22, 0.19, 0.15, 0.92))
+	label.add_theme_font_size_override("font_size", 11 if semantic_scene else 12)
+	label.add_theme_color_override("font_color", Color(0.22, 0.19, 0.15, 0.72 if semantic_scene else 0.92))
 	root.add_child(label)
 	return root
 
@@ -179,6 +186,12 @@ func _decorate_room_object(root: Node2D, object_type: String, display_h: float) 
 	var marker_color := _room_object_marker_color(object_type)
 	var marker := _add_soft_disc(root, "RoomObjectAIHalo", Vector2(0, -display_h * 0.54), Vector2(0.72, 0.72), marker_color, 82, -7)
 	_pulse_node(marker, 0.94, 1.08, 0.18, 0.30, 2.6)
+
+func _decorate_semantic_room_object(root: Node2D, object_type: String) -> void:
+	var marker_color := _room_object_marker_color(object_type)
+	_add_soft_disc(root, "RoomObjectFocus", Vector2(0, -34), Vector2(0.46, 0.18), Color(0.13, 0.10, 0.08, 0.18), 74, -7)
+	var marker := _add_soft_disc(root, "RoomObjectSemanticHalo", Vector2(0, -42), Vector2(0.34, 0.34), marker_color, 68, -6)
+	_pulse_node(marker, 0.96, 1.12, 0.16, 0.28, 2.8)
 
 func _add_soft_disc(parent: Node2D, node_name: String, pos: Vector2, disc_scale: Vector2, modulate_color: Color, size: int, z: int) -> Sprite2D:
 	var sprite := Sprite2D.new()
