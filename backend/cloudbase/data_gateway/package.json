@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "smoke:gate5:real": "node scripts/gate5_real_smoke.js",
+    "smoke:gate6:farm:real": "node scripts/gate6_farm_real_smoke.js",
     "audit:prod": "npm audit --omit=dev --audit-level=critical"
   },
   "dependencies": {

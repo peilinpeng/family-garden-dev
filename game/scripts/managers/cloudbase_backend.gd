@@ -26,7 +26,7 @@ const IDENTITY_PATH := "user://cloud_identity.json"      ## 设备级,不提交:
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
 const SNAPSHOT_TABLES := [
 	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
-	"travel_places", "postcards", "messages", "mailbox_events",
+	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots",
 ]
 
 var _cfg: Dictionary = {}
@@ -94,10 +94,25 @@ func persist_record(table: String, row: Dictionary) -> void:
 	_cache_upsert(table, row)
 	_post({"action": "upsert", "table": table, "row": row})
 
+func persist_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+	var res: Dictionary = await _request({"action": "upsert", "table": table, "row": row})
+	if bool(res.get("ok", false)):
+		var cached := row.duplicate(true)
+		if str(res.get("id", "")) != "":
+			cached["id"] = str(res.get("id", ""))
+		_cache_upsert(table, cached)
+	return res
+
 func delete_record(table: String, row_id: String) -> void:
 	if _cache.has(table):
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
 	_post({"action": "delete", "table": table, "id": row_id})
+
+func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
+	var res: Dictionary = await _request({"action": "delete", "table": table, "id": row_id})
+	if bool(res.get("ok", false)) and _cache.has(table):
+		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
+	return res
 
 ## Gate 4 图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
 ## 临时 image_url 只用于本次 AI 调用，不应当作永久地址写入业务数据。

@@ -27,6 +27,7 @@ const WORLD_EVENT_TABLES := {
 	"messages": true,
 	"mailbox_events": true,
 	"inventories": true,
+	"farm_plots": true,
 }
 
 signal cloud_world_changed(event: Dictionary)
@@ -94,6 +95,34 @@ func delete_record(table: String, row_id: String) -> void:
 	if _persist_backend != null and _persist_backend.has_method("delete_record"):
 		_persist_backend.delete_record(table, row_id)
 		_announce_world_changed(table, row_id, "delete", {})
+
+func load_farm_plots() -> Array:
+	return load_table("farm_plots")
+
+func save_farm_plot(row: Dictionary) -> void:
+	persist_record("farm_plots", row)
+
+func save_farm_plot_confirmed(row: Dictionary) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("persist_record_confirmed"):
+		var res: Dictionary = await _persist_backend.persist_record_confirmed("farm_plots", row)
+		if bool(res.get("ok", false)):
+			var row_id := str(res.get("id", row.get("id", "")))
+			_announce_world_changed("farm_plots", row_id, "upsert", row)
+		return res
+	save_farm_plot(row)
+	return {"ok": true, "id": str(row.get("id", ""))}
+
+func delete_farm_plot(row_id: String) -> void:
+	delete_record("farm_plots", row_id)
+
+func delete_farm_plot_confirmed(row_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("delete_record_confirmed"):
+		var res: Dictionary = await _persist_backend.delete_record_confirmed("farm_plots", row_id)
+		if bool(res.get("ok", false)):
+			_announce_world_changed("farm_plots", row_id, "delete", {})
+		return res
+	delete_farm_plot(row_id)
+	return {"ok": true}
 
 func has_cloud_records() -> bool:
 	return _use_cloudbase_records()
