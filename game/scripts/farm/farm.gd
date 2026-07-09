@@ -40,6 +40,10 @@ var last_safe: Vector2
 var crops: Dictionary = {}   ## plot_index -> Crop
 var selected: int = 0        ## 当前选中的作物种类(按数字键 1-9 切换)
 var doors: Array = []        ## [{node, point}] 门节点 + 其参考点(SortAnchor 全局位置)
+var remote_players: Dictionary = {}      ## member_id -> RemotePlayer
+var placeholder_players: Dictionary = {} ## role_key -> RemotePlayer
+var presence_hud: CanvasLayer
+var presence_label: Label
 
 func _ready() -> void:
 	_sync_object_z()
@@ -47,8 +51,13 @@ func _ready() -> void:
 		return  # 编辑器里只同步遮挡排序,不跑游戏逻辑
 	# 行走遮罩只当数据读,不显示:
 	walk_img = load("res://assets/farm/walkable_area.png").get_image()
+	_build_presence_hud()
 	_spawn_player()
 	_setup_doors()
+
+func _exit_tree() -> void:
+	if not Engine.is_editor_hint() and PresenceChannel != null:
+		PresenceChannel.leave_scene("farm")
 
 ## 收集两扇门,记录各自参考点(用它们的 SortAnchor 全局位置)。
 func _setup_doors() -> void:
@@ -99,6 +108,7 @@ func _spawn_player() -> void:
 	if player.has_method("apply_character"):
 		player.apply_character(role)
 	_spawn_family(role)
+	_setup_presence()
 
 ## 其他家庭成员(占位:轻度溜达;联机后由 presence 驱动,见 docs/43)。
 func _spawn_family(local_role: String) -> void:
@@ -122,6 +132,137 @@ func _spawn_family(local_role: String) -> void:
 		rp.wander_area = spots[cid][1]
 		add_child(rp)
 		rp.global_position = spots[cid][0]
+		placeholder_players[cid] = rp
+
+func _setup_presence() -> void:
+	if PresenceChannel == null:
+		_update_presence_hud("离线")
+		return
+	if not PresenceChannel.peer_snapshot.is_connected(_on_presence_snapshot):
+		PresenceChannel.peer_snapshot.connect(_on_presence_snapshot)
+	if not PresenceChannel.peer_joined.is_connected(_on_presence_peer_joined):
+		PresenceChannel.peer_joined.connect(_on_presence_peer_joined)
+	if not PresenceChannel.peer_moved.is_connected(_on_presence_peer_moved):
+		PresenceChannel.peer_moved.connect(_on_presence_peer_moved)
+	if not PresenceChannel.peer_left.is_connected(_on_presence_peer_left):
+		PresenceChannel.peer_left.connect(_on_presence_peer_left)
+	if not PresenceChannel.status_changed.is_connected(_on_presence_status_changed):
+		PresenceChannel.status_changed.connect(_on_presence_status_changed)
+	PresenceChannel.enter_scene("farm", player)
+	_on_presence_status_changed(PresenceChannel.status())
+
+func _build_presence_hud() -> void:
+	presence_hud = CanvasLayer.new()
+	presence_hud.name = "PresenceHUD"
+	presence_hud.layer = 20
+	add_child(presence_hud)
+	var panel := PanelContainer.new()
+	panel.position = Vector2(1064, 18)
+	panel.custom_minimum_size = Vector2(176, 34)
+	presence_hud.add_child(panel)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.96, 0.98, 0.93, 0.9)
+	style.border_color = Color(0.34, 0.44, 0.28, 0.9)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	panel.add_theme_stylebox_override("panel", style)
+	presence_label = Label.new()
+	presence_label.text = "离线"
+	presence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	presence_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	presence_label.add_theme_font_size_override("font_size", 14)
+	panel.add_child(presence_label)
+
+func _on_presence_snapshot(peers: Array) -> void:
+	for member_id in remote_players.keys():
+		_remove_remote_player(str(member_id))
+	for peer in peers:
+		if peer is Dictionary:
+			_upsert_remote_player(peer)
+	_refresh_presence_count()
+
+func _on_presence_peer_joined(peer: Dictionary) -> void:
+	_upsert_remote_player(peer)
+	_refresh_presence_count()
+
+func _on_presence_peer_moved(peer: Dictionary) -> void:
+	_upsert_remote_player(peer)
+
+func _on_presence_peer_left(member_id: String) -> void:
+	_remove_remote_player(member_id)
+	_refresh_presence_count()
+
+func _on_presence_status_changed(status: String) -> void:
+	match status:
+		"online":
+			_refresh_presence_count()
+		"connecting", "reconnecting":
+			_update_presence_hud("连接中")
+		"waiting_identity":
+			_update_presence_hud("等待身份")
+		"disabled":
+			_update_presence_hud("离线演示")
+		_:
+			_update_presence_hud("离线")
+
+func _upsert_remote_player(peer: Dictionary) -> void:
+	var member_id := str(peer.get("member_id", ""))
+	if member_id == "":
+		return
+	if str(peer.get("scene_id", "")) != "farm":
+		_remove_remote_player(member_id)
+		return
+	var role := CharacterDB.resolve(str(peer.get("role", "father")))
+	if placeholder_players.has(role):
+		var placeholder := placeholder_players[role] as Node
+		placeholder_players.erase(role)
+		if placeholder != null:
+			placeholder.queue_free()
+	var rp: Node2D = remote_players.get(member_id, null)
+	if rp == null:
+		rp = preload("res://scenes/RemotePlayer.tscn").instantiate()
+		add_child(rp)
+		remote_players[member_id] = rp
+	var display_name := str(peer.get("display_name", CharacterDB.display_name(role)))
+	if rp.has_method("configure_presence"):
+		rp.configure_presence(member_id, role, display_name)
+	var pos := _peer_position(peer)
+	if rp.global_position == Vector2.ZERO:
+		rp.global_position = pos
+	if rp.has_method("set_presence_target"):
+		rp.set_presence_target(
+			pos,
+			str(peer.get("direction", "down")),
+			str(peer.get("animation_state", "idle")),
+			int(peer.get("sequence", 0)))
+	else:
+		rp.set_target(pos)
+
+func _remove_remote_player(member_id: String) -> void:
+	var rp: Node = remote_players.get(member_id, null)
+	remote_players.erase(member_id)
+	if rp != null:
+		rp.queue_free()
+
+func _peer_position(peer: Dictionary) -> Vector2:
+	var raw: Variant = peer.get("position", {})
+	if raw is Dictionary:
+		return Vector2(float(raw.get("x", 640.0)), float(raw.get("y", 650.0)))
+	return Vector2(640, 650)
+
+func _refresh_presence_count() -> void:
+	var count := 1 + remote_players.size()
+	_update_presence_hud("在线 " + str(count))
+
+func _update_presence_hud(text: String) -> void:
+	if presence_label != null:
+		presence_label.text = text
 
 ## 在画面底部中心附近螺旋找一个可走点作为出生位置。
 func _find_walkable_start() -> Vector2:

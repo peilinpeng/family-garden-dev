@@ -1,0 +1,14 @@
+{
+  "name": "presence_relay",
+  "version": "1.0.0",
+  "description": "Family Garden Gate6 WebSocket presence relay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "smoke:local": "node scripts/local_smoke.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "ws": "8.21.0"
+  }
+}

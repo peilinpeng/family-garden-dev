@@ -6,12 +6,14 @@ extends Node2D
 
 @export var role_key := "father"
 @export var display_name := ""
+@export var member_id := ""
 @export var placeholder_wander := false
 @export var wander_area := Rect2()
 
 var sprite: Sprite2D
 var label: Label
 var target: Vector2
+var last_sequence := 0
 var _step_timer := 0.0
 var _step := 1
 var _facing := 0
@@ -52,9 +54,45 @@ func _build() -> void:
 	label.position = Vector2(-45, -58)
 	add_child(label)
 
-## 联机:由 presence 喂入目标位置。
+func configure_presence(peer_member_id: String, peer_role: String, peer_name: String) -> void:
+	member_id = peer_member_id
+	role_key = CharacterDB.resolve(peer_role) if CharacterDB != null else peer_role
+	display_name = peer_name if peer_name.strip_edges() != "" else CharacterDB.display_name(role_key)
+	placeholder_wander = false
+	if label != null:
+		label.text = display_name
+		label.modulate = Color(0.16, 0.28, 0.22, 1.0)
+	if sprite != null:
+		var db := get_node_or_null("/root/CharacterDB")
+		if db != null:
+			var def: Dictionary = db.get_def(role_key)
+			var tex: Texture2D = db.texture(role_key)
+			if tex != null:
+				sprite.texture = tex
+			sprite.hframes = int(def.get("hframes", 3))
+			sprite.vframes = int(def.get("vframes", 4))
+			sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+
+## 联机:由 presence 喂入目标位置。旧序列会丢弃,避免网络乱序导致回滚。
 func set_target(pos: Vector2) -> void:
 	target = pos
+
+func set_presence_target(pos: Vector2, direction: String, animation_state: String, sequence: int) -> void:
+	if sequence < last_sequence:
+		return
+	last_sequence = sequence
+	target = pos
+	match direction:
+		"left":
+			_facing = 1
+		"right":
+			_facing = 2
+		"up":
+			_facing = 3
+		_:
+			_facing = 0
+	if animation_state == "idle":
+		_step = 1
 
 func _process(delta: float) -> void:
 	if placeholder_wander and wander_area.size != Vector2.ZERO:
