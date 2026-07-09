@@ -12,6 +12,8 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 持久数据继续走 `data_gateway`，实时通道只做轻量事件转发；
 - 家人在线时，记忆、明信片、留言、共享仓等持久数据写入后会广播 `world_changed`，
   其他客户端收到后自动刷新云端快照并给出轻提示；
+- 共享农场地块 `farm_plots` 进入真实云端模型，种植、收获和占用冲突由 data_gateway
+  统一裁决，在线成员通过 `world_changed` 自动刷新；
 - 没有配置实时服务时，农场仍保留原占位家人漫步，不影响离线演示。
 
 ## 2. 本轮改动
@@ -51,6 +53,7 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 刷新 CloudBase 快照后同步 `MemoryManager` 与 `InventoryManager`；
 - 云端已就绪时允许空表覆盖本地缓存，保证“最后一条删除”也能同步；
 - `SceneManager` 刷新聊天条、旅行地图和当前记忆场景，并显示节制的同步提示。
+- `Farm` 场景刷新共享地块，种植/收获使用确认式云端写入，避免扣了种子但云端没落库。
 
 农场场景接入：
 
@@ -59,6 +62,9 @@ Gate 6 的第一步不是做完整 MMO，而是让家庭成员“真的同时在
 - 远端成员使用 `RemotePlayer` 平滑插值；
 - HUD 显示在线/连接/离线演示状态；
 - 离开农场时发送 `leave` 并清理远端玩家。
+- 地块从 `farm_plots` 快照渲染，作物阶段按 `planted_at_unix` 本地计算；
+- 种植先确认云端空地，再扣本人种子；收获先确认云端删除，再给本人背包产物；
+- 同一地块被家人抢先使用或收走时，客户端刷新并给出轻提示。
 
 ## 3. 配置与部署
 
@@ -104,6 +110,8 @@ cd backend/cloudbase/presence_relay && npm run smoke:local
 
 cd backend/cloudbase/presence_relay && FG_GATE6_REAL_SMOKE=1 npm run smoke:real
 
+cd backend/cloudbase/data_gateway && FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
+
 /Applications/Godot.app/Contents/MacOS/Godot --headless --editor --path game --quit
 
 /Applications/Godot.app/Contents/MacOS/Godot \
@@ -123,14 +131,17 @@ git diff --check
 7. 断网/刷新后可重连，不出现重复角色或幽灵角色；
 8. A 新增留言、明信片或记忆后，B 在线客户端自动刷新并出现轻提示；
 9. B 更新共享仓后，A 自动刷新共享仓；
-10. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
+10. A 在农场种下作物后，B 在线客户端自动看到作物；
+11. B 收获成熟作物后，A 在线客户端该地块清空；
+12. A/B 同时操作同一空地时，只允许一个人种植成功；
+13. 清空 `presence_endpoint` 后，农场仍可进入，并显示离线演示状态。
 
 ## 6. 交付边界
 
 - 本轮做 Presence、移动同步和持久数据轻量刷新事件；
 - `world_changed` 只广播“需要刷新哪张共享表”，业务数据仍由客户端重新走
   `data_gateway` 拉取，不在 WebSocket 消息里传完整数据；
-- 不做农场种植/收获的实时权威状态裁决；
+- 农场种植/收获已接入 data_gateway 的确认式裁决，但不引入复杂交易市场或农作物经济；
 - 不做正式登录、邀请码、成员管理后台；
 - 不引入权威游戏服务器，仍按家庭协作游戏的轻量中继方案推进。
 
@@ -215,3 +226,53 @@ FG_GATE6_REAL_SMOKE=1 npm run smoke:real
 - A 的 `world_changed` 只广播给 B；
 - 隔离家庭 C 收不到 A 的移动与共享事件；
 - B 离开后 A 收到 `peer_left`。
+
+## 9. 2026-07-10 共享农场玩法闭环
+
+新增 `farm_plots` 共享集合：
+
+```json
+{
+  "id": "farm_plot:<family_id>:<plot_index>",
+  "plot_index": 0,
+  "crop_id": "corrato",
+  "planted_at": "2026-07-10T...",
+  "planted_at_unix": 1780000000
+}
+```
+
+服务端规则：
+
+- `farm_plots` 强制按当前成员的 `family_id` 写入；
+- 文档 ID 由服务端稳定生成为 `farm_plot:<family_id>:<plot_index>`；
+- `plot_index` 限制在 0–35；
+- `crop_id` 只接受安全短字符串；
+- 已占用地块再次种植返回 `409 plot occupied`；
+- 删除仍按家庭隔离，隔离家庭不能收获别家的地块；
+- 旧环境缺 `farm_plots` 集合时自动创建。
+
+客户端规则：
+
+- 农场进入后读取 `farm_plots` 快照；
+- 作物阶段由 `planted_at_unix` 和本机时间计算，生长过程不持续写库；
+- 种植先等云端确认成功，再扣本人种子；
+- 收获先等云端删除成功，再发放本人背包产物；
+- 收到 `farm_plots` 的 `world_changed` 后刷新地块并显示轻提示。
+
+真实云端 smoke 命令：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
+```
+
+本轮真实云端 smoke 已通过：
+
+- `data_gateway` 已部署最新版；
+- `presence-relay` 已部署最新版，健康检查返回 `{"ok":true}`；
+- `farm_plots` 真实种植成功；
+- 同家庭成员能读取对方种下的地块；
+- 已占用地块再次种植返回冲突；
+- 隔离家庭看不到、也不能删除别家的地块；
+- 同家庭成员收获后，原种植者再次查询时地块已清空；
+- `presence-relay` 真实 WebSocket smoke 已验证 `farm_plots` 的 `world_changed` 同家庭转发。

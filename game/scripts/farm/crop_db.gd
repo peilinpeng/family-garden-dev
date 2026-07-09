@@ -33,6 +33,12 @@ const CROPS := [
 static func get_crop(index: int) -> Dictionary:
 	return CROPS[index % CROPS.size()]
 
+static func get_crop_by_id(crop_id: String) -> Dictionary:
+	for crop in CROPS:
+		if str(crop.get("id", "")) == crop_id:
+			return crop
+	return {}
+
 ## 给定作物的某个阶段,返回它在图集里的取帧矩形。
 static func region(panel: int, row: int, stage: int) -> Rect2:
 	var col := panel * 7 + clampi(stage, 0, STAGES - 1)

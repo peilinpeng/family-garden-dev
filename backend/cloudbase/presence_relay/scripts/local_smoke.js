@@ -91,8 +91,8 @@ async function main() {
     const changeForB = onceMessage(b);
     a.send(JSON.stringify({
       type: 'world_changed',
-      table: 'messages',
-      id: 'message_smoke',
+      table: 'farm_plots',
+      id: 'farm_plot:family_smoke:0',
       action: 'upsert',
       timestamp: Date.now(),
       event_id: 'local_smoke_world_change',
@@ -102,7 +102,7 @@ async function main() {
     assert.equal(ack.event_id, 'local_smoke_world_change');
     const changed = await changeForB;
     assert.equal(changed.type, 'world_changed');
-    assert.equal(changed.event.table, 'messages');
+    assert.equal(changed.event.table, 'farm_plots');
     assert.equal(changed.event.member_id, 'member_a');
     await new Promise((resolve) => setTimeout(resolve, 60));
     assert.equal(isolatedSawChange, false);

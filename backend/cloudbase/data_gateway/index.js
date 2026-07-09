@@ -30,13 +30,15 @@ const db = app.database();
 const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
+  'farm_plots',
 ]);
 const AUDITED_TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'travel_places', 'postcards', 'messages', 'mailbox_events',
+  'farm_plots',
 ]);
 const AUTO_CREATE_TABLES = new Set([
-  'travel_places', 'postcards', 'messages', 'mailbox_events',
+  'travel_places', 'postcards', 'messages', 'mailbox_events', 'farm_plots',
 ]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
@@ -49,6 +51,8 @@ const IMAGE_MIME_TO_EXT = new Map([
 ]);
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const TEMP_URL_TTL_SECONDS = 10 * 60;
+const FARM_PLOT_COUNT = 36;
+const FARM_CROP_ID_RE = /^[a-z0-9_]{1,40}$/;
 
 // CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
 // 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
@@ -227,6 +231,29 @@ async function upsertInventories(row, familyId, memberId) {
   return { ok: false, error: 'bad inventory kind' };
 }
 
+function normalizeFarmPlot(row, familyId) {
+  const plotIndex = Number(row.plot_index);
+  if (!Number.isInteger(plotIndex) || plotIndex < 0 || plotIndex >= FARM_PLOT_COUNT) {
+    return { error: 'bad farm plot index' };
+  }
+  const cropId = String(row.crop_id || '').trim();
+  if (!FARM_CROP_ID_RE.test(cropId)) return { error: 'bad farm crop_id' };
+  const plantedAt = String(row.planted_at || '').trim();
+  const plantedAtUnix = Number(row.planted_at_unix || 0);
+  const stableId = `farm_plot:${familyId}:${plotIndex}`;
+  return {
+    row: {
+      id: stableId,
+      plot_index: plotIndex,
+      crop_id: cropId,
+      planted_at: plantedAt || new Date().toISOString(),
+      planted_at_unix: Number.isFinite(plantedAtUnix) && plantedAtUnix > 0
+        ? Math.floor(plantedAtUnix)
+        : Math.floor(Date.now() / 1000),
+    },
+  };
+}
+
 exports.main = async (event) => {
   const body = parseBody(event);
   if (hasUnsafeObjectShape(body)) {
@@ -356,6 +383,16 @@ exports.main = async (event) => {
         return await upsertInventories(incoming, familyId, memberId);
       }
 
+      if (body.table === 'farm_plots') {
+        const normalized = normalizeFarmPlot(incoming, familyId);
+        if (normalized.error) return { ok: false, code: 400, error: normalized.error };
+        incoming.id = normalized.row.id;
+        incoming.plot_index = normalized.row.plot_index;
+        incoming.crop_id = normalized.row.crop_id;
+        incoming.planted_at = normalized.row.planted_at;
+        incoming.planted_at_unix = normalized.row.planted_at_unix;
+      }
+
       // 通用表:强制 family_id,保留服务端已有字段,客户端不能覆盖别家的行
       const id = String(incoming.id || '');
       let existing = {};
@@ -366,6 +403,9 @@ exports.main = async (event) => {
             return { ok: false, code: 403, error: 'forbidden' };
           }
           existing = got.data[0];
+          if (body.table === 'farm_plots') {
+            return { ok: false, code: 409, error: 'plot occupied' };
+          }
         }
       }
       const cleanIncoming = Object.assign({}, incoming);
