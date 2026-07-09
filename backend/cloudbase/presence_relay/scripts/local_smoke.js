@@ -83,6 +83,31 @@ async function main() {
     assert.equal(isolatedSawMove, false);
     console.log('OK  movement broadcast stayed inside family');
 
+    let isolatedSawChange = false;
+    c.once('message', () => {
+      isolatedSawChange = true;
+    });
+    const changeAckForA = onceMessage(a);
+    const changeForB = onceMessage(b);
+    a.send(JSON.stringify({
+      type: 'world_changed',
+      table: 'messages',
+      id: 'message_smoke',
+      action: 'upsert',
+      timestamp: Date.now(),
+      event_id: 'local_smoke_world_change',
+    }));
+    const ack = await changeAckForA;
+    assert.equal(ack.type, 'world_changed_ack');
+    assert.equal(ack.event_id, 'local_smoke_world_change');
+    const changed = await changeForB;
+    assert.equal(changed.type, 'world_changed');
+    assert.equal(changed.event.table, 'messages');
+    assert.equal(changed.event.member_id, 'member_a');
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    assert.equal(isolatedSawChange, false);
+    console.log('OK  world change broadcast stayed inside family');
+
     const leftForA = onceMessage(a);
     b.send(JSON.stringify({ type: 'leave' }));
     const left = await leftForA;

@@ -8,6 +8,7 @@ signal peer_joined(peer: Dictionary)
 signal peer_moved(peer: Dictionary)
 signal peer_left(member_id: String)
 signal peer_snapshot(peers: Array)
+signal world_changed(event: Dictionary)
 
 const CONFIG_PATH := "res://config/cloudbase.json"
 const SEND_INTERVAL := 0.12
@@ -28,6 +29,8 @@ var _last_sent_animation := "idle"
 var _want_connected := false
 var _hello_sent := false
 var _peers: Dictionary = {}  ## member_id -> Dictionary
+var _world_event_sequence := 0
+var _recent_world_events: Dictionary = {}  ## event_id -> local msec
 
 func _ready() -> void:
 	set_process(true)
@@ -40,6 +43,24 @@ func status() -> String:
 
 func peers() -> Array:
 	return _peers.values()
+
+func announce_world_changed(table: String, row_id: String, action: String = "upsert") -> void:
+	if _ws.get_ready_state() != WebSocketPeer.STATE_OPEN or _status != "online":
+		return
+	_world_event_sequence += 1
+	var event_id := "%s:%d:%d" % [
+		GameIdentity.member_id,
+		Time.get_ticks_msec(),
+		_world_event_sequence,
+	]
+	_send({
+		"type": "world_changed",
+		"table": table,
+		"id": row_id,
+		"action": action,
+		"timestamp": Time.get_ticks_msec(),
+		"event_id": event_id,
+	})
 
 func enter_scene(scene_id: String, player: Node2D) -> void:
 	_scene_id = scene_id
@@ -178,8 +199,35 @@ func _handle_message(msg: Dictionary) -> void:
 			var member_id := str(msg.get("member_id", ""))
 			if _peers.erase(member_id):
 				peer_left.emit(member_id)
+		"world_changed":
+			var raw_event: Variant = msg.get("event", {})
+			if raw_event is Dictionary:
+				_handle_world_changed(raw_event)
+		"world_changed_ack":
+			pass
 		"error":
 			_schedule_reconnect()
+
+func _handle_world_changed(event: Dictionary) -> void:
+	if event.is_empty():
+		return
+	if str(event.get("member_id", "")) == GameIdentity.member_id:
+		return
+	var event_id := str(event.get("event_id", ""))
+	if event_id != "":
+		if _recent_world_events.has(event_id):
+			return
+		_recent_world_events[event_id] = Time.get_ticks_msec()
+	_trim_recent_world_events()
+	world_changed.emit(event)
+
+func _trim_recent_world_events() -> void:
+	if _recent_world_events.size() <= 80:
+		return
+	var cutoff := Time.get_ticks_msec() - 120000
+	for event_id in _recent_world_events.keys():
+		if int(_recent_world_events[event_id]) < cutoff:
+			_recent_world_events.erase(event_id)
 
 func _upsert_peer(peer: Dictionary, emit_join: bool) -> bool:
 	var member_id := str(peer.get("member_id", ""))

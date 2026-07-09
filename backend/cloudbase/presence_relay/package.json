@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "smoke:local": "node scripts/local_smoke.js",
+    "smoke:real": "node scripts/real_smoke.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
