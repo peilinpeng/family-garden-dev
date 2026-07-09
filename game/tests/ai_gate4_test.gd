@@ -1,5 +1,7 @@
 extends Node
 
+const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
+
 class FakePersistence:
 	extends Node
 	var uploads: Dictionary = {}
@@ -180,6 +182,7 @@ func _test_room_preview_commit_and_editing() -> void:
 	_assert(before == 0, "房间预览阶段不得落库")
 	var committed: Dictionary = await AIWorkflowManager.commit_room_draft(draft)
 	_assert(committed.ok and MemoryManager.rooms.size() == 1, "确认后应创建一个房间")
+	_assert(ROOM_SCENE_GENERATOR.has_scene_schema(MemoryManager.rooms[0]), "确认后应保存可重建的语义房间 schema")
 	var object_count := MemoryManager.room_objects.size()
 	await AIWorkflowManager.commit_room_draft(draft)
 	_assert(MemoryManager.rooms.size() == 1 and MemoryManager.room_objects.size() == object_count, "重复确认房间不得重复写入")

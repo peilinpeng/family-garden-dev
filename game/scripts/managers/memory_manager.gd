@@ -282,7 +282,7 @@ func answer_memory(memory_id: String, answer_text: String) -> void:
 		_sync("nodes", n)  # 节点状态变 grown，同步
 
 ## 用 AI 房间识别结果创建一个房间（room_analysis：room_type/style/suggested_room_theme/...）。
-func create_room(analysis: Dictionary, source_memory_id: String = "", workflow_key: String = "", generation_meta: Dictionary = {}) -> Dictionary:
+func create_room(analysis: Dictionary, source_memory_id: String = "", workflow_key: String = "", generation_meta: Dictionary = {}, scene_schema: Dictionary = {}) -> Dictionary:
 	if workflow_key != "":
 		for existing in rooms:
 			if existing is Dictionary and String(existing.get("workflow_key", "")) == workflow_key:
@@ -295,8 +295,9 @@ func create_room(analysis: Dictionary, source_memory_id: String = "", workflow_k
 		"room_name": String(analysis.get("suggested_room_theme", "")),
 		"room_type": String(analysis.get("room_type", "unknown")),
 		"style": String(analysis.get("style", "")),
-		"background_asset": "",
-		"source_memory_id": source_memory_id,
+			"background_asset": "",
+			"scene_schema": scene_schema.duplicate(true),
+			"source_memory_id": source_memory_id,
 		"workflow_key": workflow_key,
 		"generation_meta": generation_meta.duplicate(true),
 		"created_at": Time.get_datetime_string_from_system()
