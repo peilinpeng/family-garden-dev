@@ -33,6 +33,23 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 	SceneManager._show_garden()
+	if OS.get_environment("FG_CAPTURE_DENSE_GARDEN") == "1":
+		_seed_dense_garden()
+		SceneManager._refresh_current_memory_scene("garden")
+		await _capture("10_dense_garden.png", 20)
+		var first_node: Variant = SceneManager._demo_memories[0].get("node", null) if not SceneManager._demo_memories.is_empty() else null
+		var cluster_items: Array = []
+		for item in SceneManager._demo_memories:
+			if item is Dictionary and item.get("node", null) == first_node:
+				cluster_items.append(item)
+		if cluster_items.size() > 1:
+			SceneManager._open_memory_cluster(cluster_items)
+			await _capture("11_memory_cluster.png", 12)
+			SceneManager._close_active_panel()
+			await _wait_frames(3)
+		print("密集记忆截图已输出：", output_dir)
+		get_tree().quit(0)
+		return
 	await _capture("01_garden_hero.png")
 
 	SceneManager._show_role_select()
@@ -143,3 +160,21 @@ func _capture(file_name: String, settle_frames: int = 14) -> void:
 func _wait_frames(count: int) -> void:
 	for _index in range(count):
 		await get_tree().process_frame
+
+func _seed_dense_garden() -> void:
+	var slot_ids := [
+		"garden_slot_flowerbed_01",
+		"garden_slot_flowerbed_02",
+		"garden_slot_flowerbed_03",
+	]
+	for index in range(14):
+		var card := AIClient.mock_memory_card()
+		card["title"] = "家庭片段 %02d" % (index + 4)
+		var memory := MemoryManager.create_memory(card, "text")
+		MemoryManager.create_node(
+			String(memory.get("id", "")),
+			"garden",
+			"memory_flower",
+			String(slot_ids[index % slot_ids.size()])
+		)
+	MemoryManager.save_game()

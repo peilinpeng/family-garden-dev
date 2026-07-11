@@ -49,10 +49,12 @@ func get_node_asset(node_type: String, scene: String = "") -> Dictionary:
 
 ## 用一张 AI 记忆卡片 + 一个 slot 生成可点击节点。on_click 无参回调。
 ## 节点结构来自预制体 DynamicNode.tscn；此处只按 manifest 配置贴图/点击区/坐标。
-func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) -> Node2D:
+func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable, state: String = "grown") -> Node2D:
 	var node_type := String(card.get("node_type", "memory_flower"))
 	var scene := String(card.get("suggested_scene", ""))
 	var entry := get_node_asset(node_type, scene)
+	if entry.is_empty():
+		entry = get_node_asset(node_type)
 	var pos := _to_vec(slot.get("pos", [640, 400]))
 
 	var root := _new_root()
@@ -65,8 +67,10 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 		_configure_bottle_sprite(root, entry)
 		_decorate_bottle_node(root)
 	else:
-		_configure_sprite(root.get_node("Sprite"), entry, node_type)
+		_configure_sprite(root.get_node("Sprite"), entry, node_type, state)
 		_decorate_memory_node(root, node_type, float(entry.get("display_height", 96)))
+		if node_type in ["photo_board", "postcard"]:
+			_decorate_memory_board(root, node_type, float(entry.get("display_height", 92)))
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
 
@@ -124,11 +128,11 @@ func _new_root() -> Node2D:
 	root.add_child(area)
 	return root
 
-func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String) -> void:
+func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String, state: String = "") -> void:
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	var tex := _resolve_texture(entry, node_type)  # 真美术优先，缺图回退程序化占位（必非 null）
+	var tex := _resolve_texture(entry, node_type, state)
 	sprite.texture = tex
 	if tex.get_height() > 0:
 		sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
@@ -160,7 +164,14 @@ func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
 	animated.position = Vector2(0, -display_h * 0.5)
 	root.add_child(animated)
 
-func _resolve_texture(entry: Dictionary, node_type: String) -> Texture2D:
+func _resolve_texture(entry: Dictionary, node_type: String, state: String = "") -> Texture2D:
+	var state_files: Dictionary = entry.get("state_files", {})
+	var state_path := String(state_files.get(state, ""))
+	if state_path != "" and ResourceLoader.exists(state_path):
+		return load(state_path)
+	var resource_path := String(entry.get("resource_path", ""))
+	if resource_path != "" and ResourceLoader.exists(resource_path):
+		return load(resource_path)
 	var scene := String(entry.get("scene", ""))
 	var file_name := String(entry.get("file_name", ""))
 	if scene != "" and file_name != "":
@@ -169,13 +180,38 @@ func _resolve_texture(entry: Dictionary, node_type: String) -> Texture2D:
 			return load(real_path)
 	return _get_placeholder(node_type)
 
+func apply_memory_state(root: Node2D, state: String) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	var sprite := root.get_node_or_null("Sprite") as Sprite2D
+	if sprite == null:
+		return
+	var entry := get_node_asset("memory_flower")
+	_configure_sprite(sprite, entry, "memory_flower", state)
+
 func _decorate_memory_node(root: Node2D, node_type: String, display_h: float) -> void:
 	_add_soft_disc(root, "NodeShadow", Vector2(0, -8), Vector2(1.0, 0.30), Color(0.18, 0.12, 0.07, 0.24), 92, -8)
 	if node_type == "memory_flower":
-		var aura := _add_soft_disc(root, "MemoryAura", Vector2(0, -display_h * 0.52), Vector2(1.0, 1.0), Color(0.92, 0.72, 0.94, 0.34), 86, -7)
-		var ring := _add_soft_disc(root, "MemoryRing", Vector2(0, -display_h * 0.52), Vector2(0.62, 0.62), Color(1.0, 0.92, 0.62, 0.36), 70, -6)
-		_pulse_node(aura, 1.0, 1.08, 0.26, 0.42, 1.8)
-		_pulse_node(ring, 0.96, 1.16, 0.20, 0.34, 2.2)
+		var aura := _add_soft_disc(root, "MemoryAura", Vector2(0, -display_h * 0.50), Vector2(0.70, 0.70), Color(0.94, 0.78, 0.86, 0.16), 78, -7)
+		var ring := _add_soft_disc(root, "MemoryRing", Vector2(0, -display_h * 0.50), Vector2(0.40, 0.40), Color(1.0, 0.92, 0.66, 0.22), 66, -6)
+		_pulse_node(aura, 1.0, 1.05, 0.10, 0.18, 2.4)
+		_pulse_node(ring, 0.98, 1.10, 0.12, 0.22, 2.8)
+
+func _decorate_memory_board(root: Node2D, node_type: String, display_h: float) -> void:
+	var icon_path := "res://assets/ui/icons/icon_camera.png" if node_type == "photo_board" else "res://assets/ui/icons/icon_postcard.png"
+	var icon_texture := load(icon_path) as Texture2D
+	if icon_texture == null:
+		return
+	var icon := Sprite2D.new()
+	icon.name = "BoardSemanticIcon"
+	icon.texture = icon_texture
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.position = Vector2(0, -display_h * 0.54)
+	if icon_texture.get_height() > 0:
+		icon.scale = Vector2.ONE * (24.0 / float(icon_texture.get_height()))
+	icon.modulate = Color(0.40, 0.30, 0.21, 0.90)
+	icon.z_index = 2
+	root.add_child(icon)
 
 func _decorate_bottle_node(root: Node2D) -> void:
 	_add_soft_disc(root, "BottleShadow", Vector2(0, -8), Vector2(1.10, 0.28), Color(0.06, 0.18, 0.20, 0.28), 90, -8)
