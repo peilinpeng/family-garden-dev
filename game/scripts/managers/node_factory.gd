@@ -8,6 +8,11 @@ extends Node
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
+const GARDEN_ARCHIVE_NODE_TYPES := {
+	"flowers": "memory_flower",
+	"photos": "photo_board",
+	"postcards": "postcard",
+}
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
@@ -73,6 +78,26 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable, st
 			_decorate_memory_board(root, node_type, float(entry.get("display_height", 92)))
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
+
+## 花园长期只渲染三个稳定入口；单条记忆仍完整保留在数据层与入口面板中。
+func make_memory_archive(archive_key: String, slot: Dictionary, on_click: Callable, state: String = "grown") -> Node2D:
+	var node_type := String(GARDEN_ARCHIVE_NODE_TYPES.get(archive_key, "memory_flower"))
+	var card := {
+		"node_type": node_type,
+		"suggested_scene": "garden",
+	}
+	var root := make_memory_node(card, slot, on_click, state)
+	root.name = "GardenArchive_%s" % archive_key
+	return root
+
+func garden_archive_key(node_type: String) -> String:
+	match node_type:
+		"photo_board":
+			return "photos"
+		"postcard":
+			return "postcards"
+		_:
+			return "flowers"
 
 ## 用一个房间物件（object_type）+ 一个 zone 落点生成可点击家具节点。
 ## 真美术未产出时占位渲染 + 物件名标签（看清是 desk/lamp/...）。point = ZoneManager 落点 {slot_id, zone, pos}。

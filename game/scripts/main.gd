@@ -49,6 +49,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if pos.y < 650:
 			SceneManager._open_add_place_form(pos)
 		return
+	if SceneManager.mode == "garden" and SceneManager.active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		SceneManager._clear_memory_focus()
 	if SceneManager.mode == "garden" and SceneManager.plant_mode and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		SceneManager._add_plant(SceneManager.world.to_local(get_global_mouse_position()), SceneManager.selected_plant_type)
 		MemoryManager.save_game()

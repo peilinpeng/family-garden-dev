@@ -133,6 +133,22 @@ func _test_memory_visual_assets() -> void:
 		_assert((board.get_node("Sprite") as Sprite2D).texture != null, "%s 必须有受控木牌资产" % node_type)
 		_assert(board.has_node("BoardSemanticIcon"), "%s 必须带可识别语义图标" % node_type)
 		board.queue_free()
+	var archive_keys := ["flowers", "photos", "postcards"]
+	for archive_key in archive_keys:
+		var archive := NodeFactory.make_memory_archive(String(archive_key), slot, Callable(), "grown")
+		_assert((archive.get_node("Sprite") as Sprite2D).texture != null, "%s 归档景观必须可渲染" % archive_key)
+		archive.queue_free()
+	_assert(NodeFactory.garden_archive_key("memory_flower") == "flowers", "记忆花必须归入花圃")
+	_assert(NodeFactory.garden_archive_key("photo_board") == "photos", "照片牌必须归入家庭影像")
+	_assert(NodeFactory.garden_archive_key("postcard") == "postcards", "明信片必须归入远方来信")
+	var slots_text := FileAccess.get_file_as_string("res://assets/manifest/slots_garden.json")
+	var slots_data: Variant = JSON.parse_string(slots_text)
+	var archive_slot_count := 0
+	if slots_data is Dictionary:
+		for raw_slot in slots_data.get("slots", []):
+			if raw_slot is Dictionary and String(raw_slot.get("visual_role", "")) == "archive":
+				archive_slot_count += 1
+	_assert(archive_slot_count == 3, "花园长期可见记忆景观必须固定为三个")
 	bud.queue_free()
 	bloom.queue_free()
 

@@ -34,20 +34,41 @@ func _run() -> void:
 		return
 	SceneManager._show_garden()
 	if OS.get_environment("FG_CAPTURE_DENSE_GARDEN") == "1":
-		_seed_dense_garden()
+		_seed_dense_garden(17)
 		SceneManager._refresh_current_memory_scene("garden")
-		await _capture("10_dense_garden.png", 20)
-		var first_node: Variant = SceneManager._demo_memories[0].get("node", null) if not SceneManager._demo_memories.is_empty() else null
-		var cluster_items: Array = []
+		await _capture("10_memory_scale_17.png", 20)
+		_seed_dense_garden(50)
+		SceneManager._refresh_current_memory_scene("garden")
+		await _capture("11_memory_scale_50.png", 20)
+		_seed_dense_garden(100)
+		SceneManager._refresh_current_memory_scene("garden")
+		await _capture("12_memory_scale_100.png", 20)
+		var flower_items: Array = []
 		for item in SceneManager._demo_memories:
-			if item is Dictionary and item.get("node", null) == first_node:
-				cluster_items.append(item)
-		if cluster_items.size() > 1:
-			SceneManager._open_memory_cluster(cluster_items)
-			await _capture("11_memory_cluster.png", 12)
+			if item is Dictionary and String(item.get("archive_key", "")) == "flowers":
+				flower_items.append(item)
+		if not flower_items.is_empty():
+			SceneManager._open_memory_archive("flowers", flower_items)
+			await _capture("13_memory_archive.png", 12)
 			SceneManager._close_active_panel()
 			await _wait_frames(3)
-		print("密集记忆截图已输出：", output_dir)
+			var linked_item := _first_linked_item(flower_items)
+			if not linked_item.is_empty():
+				SceneManager._open_memory_archive_item(linked_item)
+				await _capture("14_memory_focus_card.png", 8)
+				SceneManager._close_active_panel()
+				await _capture("15_memory_focus_vine.png", 8)
+				if _count_world_memory_links() == 0:
+					push_error("选中有关联的记忆后应显示局部藤蔓。")
+					get_tree().quit(1)
+					return
+				SceneManager._clear_memory_focus()
+				await _wait_frames(3)
+				if _count_world_memory_links() != 0:
+					push_error("清除记忆焦点后不应残留藤蔓。")
+					get_tree().quit(1)
+					return
+		print("17/50/100 条记忆压力截图已输出：", output_dir)
 		get_tree().quit(0)
 		return
 	await _capture("01_garden_hero.png")
@@ -161,20 +182,40 @@ func _wait_frames(count: int) -> void:
 	for _index in range(count):
 		await get_tree().process_frame
 
-func _seed_dense_garden() -> void:
-	var slot_ids := [
-		"garden_slot_flowerbed_01",
-		"garden_slot_flowerbed_02",
-		"garden_slot_flowerbed_03",
-	]
-	for index in range(14):
+func _seed_dense_garden(target_count: int) -> void:
+	var existing_count := MemoryManager.get_nodes_for_scene("garden").filter(
+		func(node: Variant) -> bool: return node is Dictionary and String(node.get("node_type", "")) != "memory_link"
+	).size()
+	for index in range(existing_count, target_count):
 		var card := AIClient.mock_memory_card()
-		card["title"] = "家庭片段 %02d" % (index + 4)
+		card["title"] = "家庭片段 %03d" % (index + 1)
+		var node_type := "memory_flower"
+		var slot_id := "garden_archive_flowers"
+		if index % 7 == 5:
+			node_type = "photo_board"
+			slot_id = "garden_archive_photos"
+		elif index % 7 == 6:
+			node_type = "postcard"
+			slot_id = "garden_archive_postcards"
+		card["node_type"] = node_type
 		var memory := MemoryManager.create_memory(card, "text")
 		MemoryManager.create_node(
 			String(memory.get("id", "")),
 			"garden",
-			"memory_flower",
-			String(slot_ids[index % slot_ids.size()])
+			node_type,
+			slot_id
 		)
 	MemoryManager.save_game()
+
+func _first_linked_item(items: Array) -> Dictionary:
+	for raw_item in items:
+		if raw_item is Dictionary and MemoryManager.count_memory_links_for_memory(String(raw_item.get("memory_id", "")), "garden") > 0:
+			return raw_item
+	return {}
+
+func _count_world_memory_links() -> int:
+	var count := 0
+	for child in SceneManager.world.get_children():
+		if String(child.name).begins_with("MemoryLink"):
+			count += 1
+	return count
