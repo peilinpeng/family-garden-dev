@@ -76,33 +76,33 @@ const ASSETS := {
 }
 
 const HOUSE_DATA := [
-	{"id": "father", "label": "Papa's Cottage", "asset": "house_father", "pos": Vector2(155, 124), "height": 180.0},
-	{"id": "mother", "label": "Mama's Cottage", "asset": "house_mother", "pos": Vector2(1153, 145), "height": 230.0},
-	{"id": "player", "label": "Peilin's Cottage", "asset": "house_player", "pos": Vector2(125, 600), "height": 180.0},
-	{"id": "partner", "label": "Louis's Cottage", "asset": "house_partner", "pos": Vector2(126, 438), "height": 180.0},
+	{"id": "father", "label": "爸爸的小屋", "asset": "house_father", "pos": Vector2(155, 124), "height": 180.0},
+	{"id": "mother", "label": "妈妈的小屋", "asset": "house_mother", "pos": Vector2(1153, 145), "height": 230.0},
+	{"id": "player", "label": "佩林的小屋", "asset": "house_player", "pos": Vector2(125, 600), "height": 180.0},
+	{"id": "partner", "label": "路易的小屋", "asset": "house_partner", "pos": Vector2(126, 438), "height": 180.0},
 ]
 
 const ROOM_DATA := {
 	"father": {
-		"label": "Papa's Room",
+		"label": "爸爸的房间",
 		"asset": "room_papa",
 		"foreground": "room_papa_fg",
 		"spawn": Vector2(640, 575),
 	},
 	"mother": {
-		"label": "Mama's Room",
+		"label": "妈妈的房间",
 		"asset": "room_mama",
 		"foreground": "room_mama_fg",
 		"spawn": Vector2(640, 565),
 	},
 	"partner": {
-		"label": "Louis's Room",
+		"label": "路易的房间",
 		"asset": "room_louis",
 		"foreground": "room_louis_fg",
 		"spawn": Vector2(640, 560),
 	},
 	"player": {
-		"label": "Anna's Room",
+		"label": "我的房间",
 		"asset": "room_anna",
 		"foreground": "room_anna_fg",
 		"spawn": Vector2(640, 560),
@@ -110,10 +110,10 @@ const ROOM_DATA := {
 }
 
 const CHARACTER_DATA := [
-	{"role": "girl", "label": "Girl", "default_name": "Peilin", "asset": "girl", "house_id": "player", "house_label": "Peilin's Cottage", "npc_pos": Vector2(700, 405), "wander_radius": 90.0},
-	{"role": "boy", "label": "Boy", "default_name": "Louis", "asset": "boy", "house_id": "partner", "house_label": "Louis's Cottage", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
-	{"role": "papa", "label": "Papa", "default_name": "Papa", "asset": "papa", "house_id": "father", "house_label": "Papa's Cottage", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
-	{"role": "mama", "label": "Mama", "default_name": "Mama", "asset": "mama", "house_id": "mother", "house_label": "Mama's Cottage", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
+	{"role": "girl", "label": "女儿", "default_name": "佩林", "asset": "girl", "house_id": "player", "house_label": "佩林的小屋", "npc_pos": Vector2(700, 405), "wander_radius": 90.0},
+	{"role": "boy", "label": "儿子", "default_name": "路易", "asset": "boy", "house_id": "partner", "house_label": "路易的小屋", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
+	{"role": "papa", "label": "爸爸", "default_name": "爸爸", "asset": "papa", "house_id": "father", "house_label": "爸爸的小屋", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
+	{"role": "mama", "label": "妈妈", "default_name": "妈妈", "asset": "mama", "house_id": "mother", "house_label": "妈妈的小屋", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
 ]
 
 const ANIMAL_DATA := [
@@ -203,6 +203,8 @@ var photo_texture_cache: Dictionary = {}
 var active_ai_workflow: String = ""
 var active_ai_status_label: Label = null
 var _last_world_sync_toast_msec := -100000
+var orientation_overlay: Control = null
+var orientation_content: Control = null
 
 func _load_cloud_data() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
@@ -211,7 +213,7 @@ func _load_cloud_data() -> void:
 	if CloudManager == null:
 		return
 
-	_show_toast("Loading family garden...")
+	_show_toast("正在同步家庭花园...")
 	var data: Dictionary = await CloudManager.load_family_data()
 	MemoryManager.apply_cloud_data(data)
 	cloud_load_finished = true
@@ -265,6 +267,10 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 	if not AIWorkflowManager.workflow_state_changed.is_connected(_on_ai_workflow_state_changed):
 		AIWorkflowManager.workflow_state_changed.connect(_on_ai_workflow_state_changed)
 	_build_ui()
+	var viewport := get_viewport()
+	if viewport != null and not viewport.size_changed.is_connected(_update_orientation_overlay):
+		viewport.size_changed.connect(_update_orientation_overlay)
+	_update_orientation_overlay()
 
 func _build_ui() -> void:
 	var root := Control.new()
@@ -310,6 +316,70 @@ func _build_ui() -> void:
 	_add_button(root, "聊天", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
 	_add_button(root, "家人", Vector2(1042, 672), Vector2(76, 32), "family_members")
 	_refresh_world_chat_feed()
+	_build_orientation_overlay(root)
+
+func _build_orientation_overlay(root: Control) -> void:
+	orientation_overlay = Control.new()
+	orientation_overlay.name = "PortraitOrientationOverlay"
+	orientation_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	orientation_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	orientation_overlay.z_index = 4090
+	root.add_child(orientation_overlay)
+
+	var background := ColorRect.new()
+	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	background.color = Color(0.10, 0.17, 0.14, 0.98)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	orientation_overlay.add_child(background)
+
+	var content := VBoxContainer.new()
+	orientation_content = content
+	content.set_anchors_preset(Control.PRESET_CENTER)
+	content.position = Vector2(-260, -155)
+	content.size = Vector2(520, 310)
+	content.pivot_offset = content.size * 0.5
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 14)
+	orientation_overlay.add_child(content)
+
+	var brand := Label.new()
+	brand.text = "FAMILY GARDEN · 家庭花园"
+	brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	brand.add_theme_font_size_override("font_size", 22)
+	brand.add_theme_color_override("font_color", Color(0.78, 0.88, 0.72, 0.92))
+	content.add_child(brand)
+
+	var rotate_icon := Label.new()
+	rotate_icon.text = "↻"
+	rotate_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rotate_icon.add_theme_font_size_override("font_size", 72)
+	rotate_icon.add_theme_color_override("font_color", Color(0.96, 0.87, 0.62, 1.0))
+	content.add_child(rotate_icon)
+
+	var title := Label.new()
+	title.text = "请旋转手机"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(1.0, 0.97, 0.88, 1.0))
+	content.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "横屏进入 Family Garden"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 18)
+	hint.add_theme_color_override("font_color", Color(0.78, 0.84, 0.78, 0.90))
+	content.add_child(hint)
+
+func _update_orientation_overlay() -> void:
+	if orientation_overlay == null or not is_instance_valid(orientation_overlay):
+		return
+	var portrait := _is_portrait_size(get_viewport().get_visible_rect().size)
+	orientation_overlay.visible = portrait
+	if portrait and orientation_content != null and is_instance_valid(orientation_content):
+		orientation_content.scale = Vector2(2.0, 2.0)
+
+func _is_portrait_size(viewport_size: Vector2) -> bool:
+	return viewport_size.y > viewport_size.x
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
 	var button := Button.new()
@@ -432,7 +502,7 @@ func _gate4_guide_body(scene_id: String) -> String:
 			var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
 			var object_count := 0 if room.is_empty() else MemoryManager.get_room_objects(String(room.get("id", ""))).size()
 			return "%s\n%d 件 AI 摆放的物件" % [
-				String(room.get("room_name", "还没有生成房间")) if not room.is_empty() else "等待一张房间照片",
+				_room_theme_display_label(String(room.get("room_name", "还没有生成房间"))) if not room.is_empty() else "等待一张房间照片",
 				object_count,
 			]
 		_:
@@ -518,7 +588,7 @@ func _send_world_chat_message(text: String) -> void:
 	if world_chat_input != null and is_instance_valid(world_chat_input):
 		world_chat_input.editable = false
 		world_chat_input.text = ""
-		world_chat_input.placeholder_text = "Sending..."
+		world_chat_input.placeholder_text = "正在发送..."
 
 	var author := _get_world_chat_author()
 	var message_id := "message_" + str(Time.get_ticks_msec())
@@ -541,9 +611,9 @@ func _send_world_chat_message(text: String) -> void:
 
 	if world_chat_input != null and is_instance_valid(world_chat_input):
 		world_chat_input.editable = true
-		world_chat_input.placeholder_text = "Send a family message..."
+		world_chat_input.placeholder_text = "给家人留一句话..."
 		world_chat_input.grab_focus()
-	_show_toast("Message sent.")
+	_show_toast("留言已发送。")
 
 func _get_world_chat_author() -> String:
 	if GameIdentity != null and GameIdentity.is_ready() and str(GameIdentity.display_name).strip_edges() != "":
@@ -554,8 +624,8 @@ func _get_world_chat_author() -> String:
 	if role != "":
 		for character in CHARACTER_DATA:
 			if str(character.get("role", "")) == role:
-				return str(character.get("default_name", "Family"))
-	return "Family"
+				return str(character.get("default_name", "家人"))
+	return "家人"
 
 func _refresh_world_chat_feed(show_preview: bool = false) -> void:
 	if world_chat_feed == null or not is_instance_valid(world_chat_feed):
@@ -569,7 +639,7 @@ func _refresh_world_chat_feed(show_preview: bool = false) -> void:
 		if not (raw_message is Dictionary):
 			continue
 		var message: Dictionary = raw_message
-		var author := str(message.get("author", "Family"))
+		var author := str(message.get("author", "家人"))
 		var text := str(message.get("text", "")).strip_edges()
 		if text == "":
 			continue
@@ -730,7 +800,7 @@ func _show_role_select() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "你想以谁的身份进入花园？"
+	title.text = "Family Garden · 家庭花园"
 	title.position = Vector2(40, 28)
 	title.size = Vector2(900, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -739,7 +809,7 @@ func _show_role_select() -> void:
 	panel.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "选择一位家人成为自己，其他家人会作为访客留在花园里。"
+	subtitle.text = "选择你的身份，和家人一起进入同一座花园。"
 	subtitle.position = Vector2(70, 72)
 	subtitle.size = Vector2(840, 28)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -757,8 +827,8 @@ func _show_role_select() -> void:
 	panel.add_child(name_label)
 
 	var name_input := LineEdit.new()
-	name_input.placeholder_text = "Your name"
-	name_input.text = MemoryManager.player_display_name if MemoryManager.player_display_name != "" else "Peilin"
+	name_input.placeholder_text = "输入你的名字"
+	name_input.text = MemoryManager.player_display_name if MemoryManager.player_display_name != "" else "佩林"
 	name_input.position = Vector2(350, 140)
 	name_input.size = Vector2(280, 38)
 	panel.add_child(name_input)
@@ -773,7 +843,7 @@ func _show_role_select() -> void:
 	panel.add_child(family_label)
 
 	var family_input := LineEdit.new()
-	family_input.placeholder_text = "Family code"
+	family_input.placeholder_text = "输入家庭邀请码"
 	family_input.text = CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
 	family_input.position = Vector2(630, 140)
 	family_input.size = Vector2(270, 38)
@@ -839,7 +909,7 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_child(preview)
 
 	var label := Label.new()
-	label.text = str(role_data.get("label", "Family"))
+	label.text = str(role_data.get("label", "家人"))
 	label.custom_minimum_size = Vector2(card_size.x - 34, 24)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 18)
@@ -847,7 +917,7 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_child(label)
 
 	var default_name := Label.new()
-	default_name.text = str(role_data.get("default_name", "Family"))
+	default_name.text = str(role_data.get("default_name", "家人"))
 	default_name.custom_minimum_size = Vector2(card_size.x - 34, 20)
 	default_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	default_name.add_theme_font_size_override("font_size", 13)
@@ -860,7 +930,7 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_child(spacer)
 
 	var choose_btn := Button.new()
-	choose_btn.text = "Choose"
+	choose_btn.text = "选择"
 	choose_btn.custom_minimum_size = Vector2(112, 32)
 	choose_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	choose_btn.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -895,8 +965,8 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit, family_inpu
 func _default_name_for_role(role_key: String) -> String:
 	var role_data := _get_role_data(role_key)
 	if role_data.is_empty():
-		return "Family"
-	return str(role_data.get("default_name", "Family"))
+		return "家人"
+	return str(role_data.get("default_name", "家人"))
 
 
 func _get_role_data(role_key: String) -> Dictionary:
@@ -915,7 +985,7 @@ func _current_player_asset_key() -> String:
 
 func _update_plant_button() -> void:
 	if plant_button:
-		plant_button.text = "Plant: ON" if plant_mode else "Plant: OFF"
+		plant_button.text = "种植：开启" if plant_mode else "种植：关闭"
 		_apply_button_style(plant_button, plant_mode)
 
 func _show_garden(spawn_key: String = "default") -> void:
@@ -1034,7 +1104,7 @@ func _render_family_portrait() -> void:
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	board.add_child(sprite)
 	var lbl := Label.new()
-	lbl.text = "🖼️ 家庭画像 v%d\n%d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
+	lbl.text = "家庭画像 v%d\n%d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
 	lbl.position = Vector2(-58, -26)
 	lbl.size = Vector2(116, 52)
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1051,7 +1121,7 @@ func _render_family_portrait() -> void:
 	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			get_viewport().set_input_as_handled()
-			_show_toast("🖼️ 家庭画像 v%d · %d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
+			_show_toast("家庭画像 v%d · %d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
 	board.add_child(area)
 	world.add_child(board)
 
@@ -1109,10 +1179,11 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	pulse.end_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.joint_mode = Line2D.LINE_JOINT_ROUND
 	world.add_child(pulse)
-	var pulse_tween := create_tween()
-	pulse_tween.set_loops()
-	pulse_tween.tween_property(pulse, "modulate:a", 0.28 if answered else 0.18, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	pulse_tween.tween_property(pulse, "modulate:a", 0.90 if answered else 0.58, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") != "1":
+		var pulse_tween := create_tween()
+		pulse_tween.set_loops()
+		pulse_tween.tween_property(pulse, "modulate:a", 0.28 if answered else 0.18, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_property(pulse, "modulate:a", 0.90 if answered else 0.58, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 	_add_memory_link_leaf((a + head).lerp(arc, 0.56), link_color, -0.42, answered)
 	_add_memory_link_leaf(arc.lerp(b + head, 0.44), link_color, 0.42, answered)
@@ -1494,7 +1565,7 @@ func _refresh_current_memory_scene(scene: String) -> void:
 	if scene == "garden":
 		_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
 	else:
-		_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
+		_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆"))
 	_render_memory_links(scene)
 	if scene == "garden":
 		MemoryManager.maybe_recompute_family_portrait()
@@ -1662,9 +1733,9 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 	_grow_memory_node(mem.get("node"))
 	if bumped:
 		_update_season_overlay()
-		_show_toast("记忆长大了 🌱 → 🌸 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
+		_show_toast("记忆开花了 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
 	else:
-		_show_toast("记忆长大了 🌱 → 🌸")
+		_show_toast("记忆开花了。")
 	if MemoryManager.maybe_recompute_family_portrait():  # 参与成员变化 → 重画家庭画像木牌
 		_render_family_portrait()
 
@@ -1972,7 +2043,7 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	_register_scene_message_bottle(pond_area)
 	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
 	_fishpond_memories.clear()
-	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
+	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆"))
 	_render_memory_links("fishpond")
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	_show_gate4_scene_guide("fishpond")
@@ -2149,14 +2220,14 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 		var mem := MemoryManager.create_memory(card, "bottle")
 		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
 		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
-		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆 🌊"))
+		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆"))
 		mem_node.scale = Vector2(0.25, 0.25)
 		world.add_child(mem_node)
 		_grow_memory_node(mem_node)
 		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
 		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
 			"card": card, "state": "grown", "answer": text, "node": mem_node})
-	_show_toast("漂流瓶被回答了 🍶 → 🌊")
+	_show_toast("漂流瓶回答已成为岸边记忆。")
 
 func _clear_world() -> void:
 	for child in world.get_children():
@@ -2839,7 +2910,7 @@ func _open_room_management() -> void:
 	panel.add_child(title)
 	var summary := Label.new()
 	var scene_badge := " · 语义室内" if ROOM_SCENE_GENERATOR.has_scene_schema(room) else ""
-	summary.text = "%s · %s · %d 件家具%s" % [String(room.get("room_name", "我的房间")), String(room.get("style", "")), MemoryManager.get_room_objects(String(room.get("id", ""))).size(), scene_badge]
+	summary.text = "%s · %s · %d 件家具%s" % [_room_theme_display_label(String(room.get("room_name", "我的房间"))), _room_style_display_label(String(room.get("style", ""))), MemoryManager.get_room_objects(String(room.get("id", ""))).size(), scene_badge]
 	summary.position = Vector2(34, 82)
 	summary.size = Vector2(470, 50)
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3149,6 +3220,28 @@ func _room_object_display_label(object_type: String) -> String:
 		_:
 			return object_type
 
+func _room_theme_display_label(theme_key: String) -> String:
+	match theme_key:
+		"study_corner":
+			return "温暖学习角"
+		"memory_corner":
+			return "记忆角落"
+		"cozy_bedroom":
+			return "温暖卧室"
+		_:
+			return theme_key.replace("_", " ")
+
+func _room_style_display_label(style_key: String) -> String:
+	match style_key:
+		"warm_cozy":
+			return "温暖舒适"
+		"minimal":
+			return "简洁"
+		"vintage":
+			return "怀旧"
+		_:
+			return style_key.replace("_", " ")
+
 func _zone_display_label(zone: String) -> String:
 	match zone:
 		"back_wall":
@@ -3204,7 +3297,7 @@ func _on_room_object_clicked(obj_id: String) -> void:
 		if o is Dictionary and String(o.get("id", "")) == obj_id:
 			_open_room_object_editor(o)
 			return
-	_show_toast("房间里的物件 🪑")
+	_show_toast("房间里的物件")
 
 func _open_room_object_editor(object: Dictionary) -> void:
 	_close_active_panel()
@@ -4761,6 +4854,12 @@ func _clear_ai_workflow_watch(status_label: Label = null) -> void:
 	active_ai_status_label = null
 
 func _on_ai_workflow_state_changed(workflow: String, state: String, detail: Dictionary) -> void:
+	if workflow == "links" and state == "complete":
+		var created := int(detail.get("created", 0))
+		if created > 0 and mode == "garden":
+			_refresh_current_memory_scene("garden")
+			_show_toast("%d 条记忆藤蔓已长出。" % created)
+		return
 	if workflow != active_ai_workflow:
 		return
 	if active_ai_status_label == null or not is_instance_valid(active_ai_status_label):
