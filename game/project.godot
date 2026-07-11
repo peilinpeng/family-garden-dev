@@ -51,8 +51,8 @@ theme/custom_font="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf"
 
 [rendering]
 
-environment/defaults/default_clear_color=Color(0.80, 0.86, 0.70, 1)
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.8, 0.86, 0.7, 1)

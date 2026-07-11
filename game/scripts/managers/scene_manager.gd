@@ -116,6 +116,13 @@ const CHARACTER_DATA := [
 	{"role": "mama", "label": "妈妈", "default_name": "妈妈", "asset": "mama", "house_id": "mother", "house_label": "妈妈的小屋", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
 ]
 
+const GARDEN_ARCHIVES := {
+	"flowers": {"title": "记忆花圃", "subtitle": "家人共同照料的日常片段", "slot_id": "garden_archive_flowers"},
+	"photos": {"title": "家庭影像", "subtitle": "照片里留下的光和笑声", "slot_id": "garden_archive_photos"},
+	"postcards": {"title": "远方来信", "subtitle": "旅途中寄回家的明信片", "slot_id": "garden_archive_postcards"},
+}
+const GARDEN_ARCHIVE_ORDER := ["flowers", "photos", "postcards"]
+
 const ANIMAL_DATA := [
 	{
 		"id": "cat",
@@ -1040,6 +1047,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "garden"
+	_focused_memory_id = ""
 	adding_place = false
 	_clear_world()
 	info_label.text = "家庭花园"
@@ -1063,6 +1071,8 @@ func _show_garden(spawn_key: String = "default") -> void:
 # 场景层只负责渲染和交互；AI 生成、草稿确认和持久化由 AIClient / AIWorkflowManager / MemoryManager 处理。
 # 这里缓存当前场景已渲染的节点 view model，离场后可由数据层重建。
 var _demo_memories: Array = []
+var _focused_memory_id := ""
+var _pending_memory_arrival_id := ""
 
 # 鱼塘漂流瓶当前场景 view model；已保存问题来自 MemoryManager，缺口由 AIWorkflowManager 后台补齐。
 var _demo_bottles: Array = []
@@ -1102,8 +1112,11 @@ func _spawn_demo_memory_nodes() -> void:
 	# 统一从数据层渲染（首次/再次进入一致）。
 	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
 	_spawn_demo_memory_link()       # 空存档演示种子没有真实关联时补一条藤蔓
-	_render_memory_links("garden")  # 画连线
-	print("[SceneManager] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
+	_render_memory_links("garden")  # 默认保持安静，选中记忆后只画与它相关的藤蔓
+	if _pending_memory_arrival_id != "":
+		_play_memory_archive_arrival(_pending_memory_arrival_id)
+		_pending_memory_arrival_id = ""
+	print("[SceneManager] garden 记忆归档=", _demo_memories.size(), " 可见景观=", _garden_archive_count(), " 连线=", MemoryManager.get_memory_links("garden").size())
 
 # 兼容演示种子：没有任何关联时补一条演示藤蔓；真实新记忆的关联由 AIWorkflowManager 增量创建。
 func _spawn_demo_memory_link() -> void:
@@ -1119,13 +1132,23 @@ func _spawn_demo_memory_link() -> void:
 	MemoryManager.create_memory_link(a, b, "garden",
 		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
 
-# 画花园里所有记忆连线：两端取各自记忆花的落点，连一条藤蔓线 + 可点的关联问题。
+# 花园默认不铺开关系网；选中一段记忆后，只显示与它直接相关的藤蔓。
 func _render_memory_links(scene: String) -> void:
+	if scene == "garden" and _focused_memory_id == "":
+		return
 	for link in MemoryManager.get_memory_links(scene):
+		if scene == "garden" and _focused_memory_id not in [
+			String(link.get("memory_id", "")),
+			String(link.get("linked_memory_id", "")),
+		]:
+			continue
 		var a := _memory_flower_pos(scene, String(link.get("memory_id", "")))
 		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
 		if a == Vector2.INF or b == Vector2.INF:
 			continue
+		if scene == "garden" and a.distance_to(b) < 8.0:
+			a += Vector2(-34, 0)
+			b += Vector2(34, 0)
 		_draw_link_line(a, b, link)
 
 # 家庭画像落在右下角场景内的公告板上，不遮挡家庭树与人物。
@@ -1187,10 +1210,15 @@ func _render_family_portrait() -> void:
 	board.add_child(area)
 	world.add_child(board)
 
-# 取某条记忆在该场景的记忆花落点（slot.pos）；找不到返回 Vector2.INF。
+# 花园记忆指向所属归档景观；其他场景仍沿用持久化 slot 落点。
 func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
 	for nd in MemoryManager.get_nodes_for_scene(scene):
-		if String(nd.get("memory_id", "")) == memory_id and String(nd.get("node_type", "")) == "memory_flower":
+		if String(nd.get("memory_id", "")) != memory_id or String(nd.get("node_type", "")) == "memory_link":
+			continue
+		if scene == "garden":
+			var archive_key := NodeFactory.garden_archive_key(String(nd.get("node_type", "memory_flower")))
+			return _garden_archive_position(archive_key)
+		if String(nd.get("node_type", "")) == "memory_flower":
 			var slot := SlotManager.get_slot(scene, String(nd.get("slot_id", "")))
 			if not slot.is_empty():
 				var p: Variant = slot.get("pos", null)
@@ -1571,6 +1599,9 @@ func _open_memory_from_link(memory_id: String) -> void:
 	if mem.is_empty():
 		_show_toast("这段记忆不在当前场景里。")
 		return
+	if mode == "garden":
+		_focused_memory_id = memory_id
+		_refresh_memory_link_visuals("garden")
 	_open_memory_card(mem)
 
 func _find_rendered_memory_by_memory_id(memory_id: String) -> Dictionary:
@@ -1604,6 +1635,11 @@ func _refresh_memory_link_visuals(scene: String) -> void:
 		return
 	_clear_memory_link_nodes()
 	_render_memory_links(scene)
+
+func _clear_memory_focus() -> void:
+	_focused_memory_id = ""
+	if world != null and is_instance_valid(world):
+		_clear_memory_link_nodes()
 
 func _clear_memory_link_nodes() -> void:
 	for child in world.get_children():
@@ -1639,6 +1675,9 @@ func _refresh_current_memory_scene(scene: String) -> void:
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
 func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
+	if scene == "garden":
+		_render_garden_archives(cache)
+		return
 	var groups: Dictionary = {}
 	for nd in MemoryManager.get_nodes_for_scene(scene):
 		if String(nd.get("node_type", "")) == "memory_link":
@@ -1694,6 +1733,119 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 			(item as Dictionary)["node"] = live
 			cache.append(item)
 
+func _render_garden_archives(cache: Array) -> void:
+	var archives := {
+		"flowers": [],
+		"photos": [],
+		"postcards": [],
+	}
+	for raw_node in MemoryManager.get_nodes_for_scene("garden"):
+		if not (raw_node is Dictionary):
+			continue
+		var stored_node: Dictionary = raw_node
+		if String(stored_node.get("node_type", "")) == "memory_link":
+			continue
+		var memory_id := String(stored_node.get("memory_id", ""))
+		var memory := MemoryManager.get_memory(memory_id)
+		if memory.is_empty():
+			continue
+		var archive_key := NodeFactory.garden_archive_key(String(stored_node.get("node_type", "memory_flower")))
+		var item := {
+			"id": String(stored_node.get("id", "")),
+			"memory_id": memory_id,
+			"card": memory.get("ai_card", {}),
+			"state": String(stored_node.get("state", "new")),
+			"answer": MemoryManager.get_answer_for_memory(memory_id),
+			"owner_id": String(memory.get("user_id", "")),
+			"created_at": String(memory.get("created_at", stored_node.get("created_at", ""))),
+			"input_type": String(memory.get("input_type", "text")),
+			"archive_key": archive_key,
+			"node": null,
+		}
+		(archives[archive_key] as Array).append(item)
+
+	for raw_key in GARDEN_ARCHIVE_ORDER:
+		var archive_key := String(raw_key)
+		var items: Array = archives.get(archive_key, [])
+		if items.is_empty():
+			continue
+		items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return String(a.get("created_at", "")) > String(b.get("created_at", "")))
+		var visual_state := "new"
+		for item in items:
+			if String((item as Dictionary).get("state", "new")) == "grown":
+				visual_state = "grown"
+				break
+		var slot := SlotManager.get_slot("garden", String(GARDEN_ARCHIVES[archive_key].get("slot_id", "")))
+		if slot.is_empty():
+			continue
+		var live := NodeFactory.make_memory_archive(
+			archive_key,
+			slot,
+			_open_memory_archive.bind(archive_key, items),
+			visual_state
+		)
+		live.add_to_group("world_memory_node")
+		live.scale = Vector2.ONE * (0.92 if archive_key == "flowers" else 0.84)
+		_add_garden_archive_caption(live, archive_key, items.size())
+		world.add_child(live)
+		for item in items:
+			(item as Dictionary)["node"] = live
+			cache.append(item)
+
+func _garden_archive_position(archive_key: String) -> Vector2:
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, GARDEN_ARCHIVES["flowers"])
+	var slot := SlotManager.get_slot("garden", String(archive.get("slot_id", "")))
+	var pos: Variant = slot.get("pos", [472, 480])
+	if pos is Array and (pos as Array).size() >= 2:
+		return Vector2(float(pos[0]), float(pos[1]))
+	return Vector2(472, 480)
+
+func _garden_archive_count() -> int:
+	var keys := {}
+	for item in _demo_memories:
+		if item is Dictionary:
+			keys[String(item.get("archive_key", "flowers"))] = true
+	return keys.size()
+
+func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) -> void:
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, {})
+	var caption := Panel.new()
+	caption.name = "ArchiveCaption"
+	caption.position = Vector2(-68, -130)
+	caption.size = Vector2(136, 42)
+	caption.visible = false
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.82, 0.96)
+	style.border_color = Color(0.42, 0.52, 0.30, 0.90)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(5)
+	caption.add_theme_stylebox_override("panel", style)
+	node.add_child(caption)
+	var title := Label.new()
+	title.text = String(archive.get("title", "记忆"))
+	title.position = Vector2(8, 4)
+	title.size = Vector2(120, 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_color_override("font_color", Color(0.24, 0.19, 0.13, 0.96))
+	caption.add_child(title)
+	var summary := Label.new()
+	summary.text = "%d 段记忆" % count
+	summary.position = Vector2(8, 21)
+	summary.size = Vector2(120, 16)
+	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary.add_theme_font_size_override("font_size", 10)
+	summary.add_theme_color_override("font_color", Color(0.34, 0.30, 0.22, 0.84))
+	caption.add_child(summary)
+	var click_area := node.get_node_or_null("ClickArea") as Area2D
+	if click_area != null:
+		click_area.mouse_entered.connect(func() -> void: caption.visible = true)
+		click_area.mouse_exited.connect(func() -> void: caption.visible = false)
+
 func _add_memory_cluster_badge(node: Node2D, count: int) -> void:
 	var badge := Panel.new()
 	badge.name = "MemoryClusterBadge"
@@ -1716,6 +1868,163 @@ func _add_memory_cluster_badge(node: Node2D, count: int) -> void:
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", Color(1.0, 0.97, 0.84, 1.0))
 	badge.add_child(label)
+
+func _open_memory_archive(archive_key: String, items: Array) -> void:
+	_clear_memory_focus()
+	_close_active_panel()
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, GARDEN_ARCHIVES["flowers"])
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(290, 72)
+	panel.size = Vector2(700, 576)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = String(archive.get("title", "家庭记忆"))
+	title.position = Vector2(34, 24)
+	title.size = Vector2(620, 34)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = "%s · 共 %d 段" % [String(archive.get("subtitle", "")), items.size()]
+	subtitle.position = Vector2(34, 62)
+	subtitle.size = Vector2(620, 24)
+	subtitle.add_theme_font_size_override("font_size", 13)
+	subtitle.add_theme_color_override("font_color", Color(0.38, 0.31, 0.23, 0.82))
+	panel.add_child(subtitle)
+
+	var member_label := Label.new()
+	member_label.text = "家人"
+	member_label.position = Vector2(34, 100)
+	member_label.size = Vector2(42, 28)
+	member_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	member_label.add_theme_font_size_override("font_size", 12)
+	member_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
+	panel.add_child(member_label)
+	var member_select := OptionButton.new()
+	member_select.position = Vector2(78, 98)
+	member_select.size = Vector2(176, 32)
+	member_select.add_item("全部家人")
+	member_select.set_item_metadata(0, "")
+	_apply_button_style(member_select, false)
+	var owners := {}
+	for raw_item in items:
+		if raw_item is Dictionary:
+			var owner_id := String(raw_item.get("owner_id", ""))
+			if owner_id != "":
+				owners[owner_id] = _role_display_name(owner_id)
+	var owner_ids: Array = owners.keys()
+	owner_ids.sort()
+	for owner_id in owner_ids:
+		member_select.add_item(String(owners[owner_id]))
+		member_select.set_item_metadata(member_select.item_count - 1, String(owner_id))
+	panel.add_child(member_select)
+
+	var state_label := Label.new()
+	state_label.text = "状态"
+	state_label.position = Vector2(282, 100)
+	state_label.size = Vector2(42, 28)
+	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	state_label.add_theme_font_size_override("font_size", 12)
+	state_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
+	panel.add_child(state_label)
+	var state_select := OptionButton.new()
+	state_select.position = Vector2(326, 98)
+	state_select.size = Vector2(152, 32)
+	for state_item in [["全部状态", ""], ["等待回应", "new"], ["已经开花", "grown"]]:
+		state_select.add_item(String(state_item[0]))
+		state_select.set_item_metadata(state_select.item_count - 1, String(state_item[1]))
+	_apply_button_style(state_select, false)
+	panel.add_child(state_select)
+
+	var order_note := Label.new()
+	order_note.text = "按时间从新到旧"
+	order_note.position = Vector2(510, 101)
+	order_note.size = Vector2(144, 26)
+	order_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	order_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	order_note.add_theme_font_size_override("font_size", 11)
+	order_note.add_theme_color_override("font_color", Color(0.43, 0.37, 0.29, 0.68))
+	panel.add_child(order_note)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(34, 146)
+	scroll.size = Vector2(632, 360)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	scroll.add_child(list)
+	var empty_label := Label.new()
+	empty_label.text = "这个筛选下还没有记忆。"
+	empty_label.position = Vector2(34, 518)
+	empty_label.size = Vector2(632, 24)
+	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_label.visible = false
+	empty_label.add_theme_font_size_override("font_size", 12)
+	empty_label.add_theme_color_override("font_color", Color(0.43, 0.36, 0.27, 0.74))
+	panel.add_child(empty_label)
+
+	var refresh := func(_index: int = 0) -> void:
+		_populate_memory_archive_list(list, empty_label, items, member_select, state_select)
+	member_select.item_selected.connect(refresh)
+	state_select.item_selected.connect(refresh)
+	refresh.call()
+	_add_panel_button(panel, "关闭", Vector2(288, 526), Vector2(124, 38), "close")
+
+func _populate_memory_archive_list(list: VBoxContainer, empty_label: Label, items: Array, member_select: OptionButton, state_select: OptionButton) -> void:
+	for child in list.get_children():
+		list.remove_child(child)
+		child.queue_free()
+	var owner_filter := String(member_select.get_selected_metadata())
+	var state_filter := String(state_select.get_selected_metadata())
+	var visible_count := 0
+	for raw_item in items:
+		if not (raw_item is Dictionary):
+			continue
+		var item: Dictionary = raw_item
+		if owner_filter != "" and String(item.get("owner_id", "")) != owner_filter:
+			continue
+		if state_filter != "" and String(item.get("state", "new")) != state_filter:
+			continue
+		var card: Dictionary = item.get("card", {})
+		var owner_name := _role_display_name(String(item.get("owner_id", "")))
+		var created_at := String(item.get("created_at", ""))
+		var date_text := created_at.left(10) if created_at.length() >= 10 else "未记录日期"
+		var state_text := "已经开花" if String(item.get("state", "new")) == "grown" else "等待回应"
+		var link_count := MemoryManager.count_memory_links_for_memory(String(item.get("memory_id", "")), "garden")
+		var relation_text := " · %d 条关联" % link_count if link_count > 0 else ""
+		var row := Button.new()
+		row.text = "%s\n%s · %s · %s%s" % [
+			String(card.get("title", "一段家庭记忆")),
+			owner_name,
+			date_text,
+			state_text,
+			relation_text,
+		]
+		row.custom_minimum_size = Vector2(606, 64)
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.tooltip_text = "打开记忆；关闭卡片后可查看它的关联藤蔓"
+		_apply_button_style(row, String(item.get("state", "new")) == "grown")
+		var archive_key := String(item.get("archive_key", "flowers"))
+		_set_button_icon(row, "icon_camera" if archive_key == "photos" else ("icon_postcard" if archive_key == "postcards" else "icon_tree"))
+		row.pressed.connect(_open_memory_archive_item.bind(item))
+		list.add_child(row)
+		visible_count += 1
+	empty_label.visible = visible_count == 0
+
+func _open_memory_archive_item(item: Dictionary) -> void:
+	_focused_memory_id = String(item.get("memory_id", ""))
+	_refresh_memory_link_visuals("garden")
+	_open_memory_card(item)
 
 func _open_memory_cluster(items: Array) -> void:
 	_close_active_panel()
@@ -1795,6 +2104,39 @@ func _animate_scene_node_arrival(node: Node2D, target_scale: Vector2) -> void:
 	var tween := create_tween()
 	tween.tween_property(node, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "scale", target_scale, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _play_memory_archive_arrival(memory_id: String) -> void:
+	var item := _find_rendered_memory_by_memory_id(memory_id)
+	if item.is_empty() or world == null or not is_instance_valid(world):
+		return
+	var target := _garden_archive_position(String(item.get("archive_key", "flowers")))
+	var bloom := NodeFactory.make_memory_node(
+		{"node_type": "memory_flower", "suggested_scene": "garden"},
+		{"slot_id": "arrival", "pos": [640, 490]},
+		Callable(),
+		"new"
+	)
+	bloom.name = "MemoryArrivalBloom"
+	bloom.z_index = 620
+	bloom.scale = Vector2(0.34, 0.34)
+	bloom.modulate.a = 0.0
+	world.add_child(bloom)
+	var tween := create_tween()
+	tween.tween_property(bloom, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(bloom, "scale", Vector2(0.78, 0.78), 0.52).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.42)
+	tween.tween_property(bloom, "position", target, 0.86).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(bloom, "scale", Vector2(0.30, 0.30), 0.86).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(bloom, "modulate:a", 0.0, 0.72).set_delay(0.14)
+	tween.finished.connect(bloom.queue_free)
+
+func _pulse_memory_archive(node: Variant) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var archive: Node2D = node
+	var tween := create_tween()
+	tween.tween_property(archive, "scale", Vector2(1.08, 1.08), 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(archive, "scale", Vector2.ONE, 0.52).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _find_demo_memory(mem_id: String) -> Dictionary:
 	for m in _demo_memories:
@@ -1904,7 +2246,10 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 	# 跨成员互动计数（回答别人上传的记忆）→ 升温则刷新分季背景。
 	var bumped := MemoryManager.register_cross_member_answer(String(mem.get("memory_id", "")), MemoryManager.selected_role_key)
 	_close_active_panel()
-	_grow_memory_node(mem.get("node"))
+	if mode == "garden":
+		_pulse_memory_archive(mem.get("node"))
+	else:
+		_grow_memory_node(mem.get("node"))
 	if bumped:
 		_update_season_overlay()
 		_show_toast("记忆开花了 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
@@ -4149,6 +4494,7 @@ func _commit_memory_preview(draft: Dictionary, original_card: Dictionary, title_
 	var link_text := "，发现 %d 条记忆关联" % link_count if link_count > 0 else ""
 	_show_toast("记忆已保存到%s%s。" % [("爸爸鱼塘" if scene == "fishpond" else "家庭花园"), link_text])
 	if scene == "garden":
+		_pending_memory_arrival_id = String(saved_memory.get("id", ""))
 		_show_garden()
 
 
