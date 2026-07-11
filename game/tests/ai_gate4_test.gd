@@ -97,6 +97,7 @@ func _run() -> void:
 
 	_test_image_preparation()
 	_test_memory_visual_assets()
+	_test_family_portrait_miniature()
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
@@ -143,6 +144,9 @@ func _test_memory_visual_assets() -> void:
 			var archive_shape := archive.get_node("ClickArea/Shape") as CollisionShape2D
 			var archive_rect := archive_shape.shape as RectangleShape2D
 			_assert(archive_rect != null and archive_rect.size.x >= 180.0 and archive_rect.size.y >= 120.0, "背景花圃点击区必须覆盖整片花丛")
+		else:
+			_assert(not (archive.get_node("Sprite") as Sprite2D).visible, "%s 归档不应继续显示通用木牌" % archive_key)
+			_assert(archive.has_node("ArchiveVisual") and archive.has_node("ArchiveObjectGlow"), "%s 必须使用回忆角专属景观物件" % archive_key)
 		archive.queue_free()
 	_assert(NodeFactory.garden_archive_key("memory_flower") == "flowers", "记忆花必须归入花圃")
 	_assert(NodeFactory.garden_archive_key("photo_board") == "photos", "照片牌必须归入家庭影像")
@@ -157,6 +161,25 @@ func _test_memory_visual_assets() -> void:
 	_assert(archive_slot_count == 3, "花园长期可见记忆景观必须固定为三个")
 	bud.queue_free()
 	bloom.queue_free()
+
+func _test_family_portrait_miniature() -> void:
+	var previous := MemoryManager.family_portrait.duplicate(true)
+	MemoryManager.family_portrait = {
+		"version": 1,
+		"member_count": 2,
+		"memory_count": 12,
+		"members": ["papa", "mama"],
+	}
+	var host := Panel.new()
+	SceneManager._add_family_portrait_miniature(host)
+	_assert(host.has_node("FamilyPortraitMiniature"), "家庭画像必须进入左上状态卡")
+	var portrait := host.get_node_or_null("FamilyPortraitMiniature")
+	_assert(portrait != null and portrait.has_node("FamilyAvatar_0") and portrait.has_node("FamilyAvatar_1"), "两位家人必须显示为两张独立角色立绘")
+	_assert(portrait != null and not portrait.has_node("FamilyAvatar_2"), "两人合影不应生成多余角色")
+	_assert(SceneManager._family_portrait_frame_texture("papa") != null, "爸爸画像必须能裁出正面静止帧")
+	_assert(SceneManager._family_portrait_frame_texture("girl") != null, "主角画像必须能使用精确裁剪框")
+	host.queue_free()
+	MemoryManager.family_portrait = previous
 
 func _test_memory_draft_and_idempotency() -> void:
 	var seed := MemoryManager.create_memory(AIClient.mock_memory_card(), "text", "旧记忆", "", {}, "seed-memory")

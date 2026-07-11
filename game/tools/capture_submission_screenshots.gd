@@ -42,6 +42,14 @@ func _run() -> void:
 		await _capture("11_memory_scale_50.png", 20)
 		_seed_dense_garden(100)
 		SceneManager._refresh_current_memory_scene("garden")
+		if SceneManager.world.has_node("FamilyPortraitBoard"):
+			push_error("右下留言板上不应残留旧家庭画像。")
+			get_tree().quit(1)
+			return
+		if SceneManager.gate4_guide_card == null or not SceneManager.gate4_guide_card.has_node("FamilyPortraitMiniature"):
+			push_error("左上状态卡必须显示家庭迷你合影。")
+			get_tree().quit(1)
+			return
 		await _capture("12_memory_scale_100.png", 20)
 		var flower_items: Array = []
 		for item in SceneManager._demo_memories:
