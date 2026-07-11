@@ -90,6 +90,8 @@ func make_memory_archive(archive_key: String, slot: Dictionary, on_click: Callab
 	root.name = "GardenArchive_%s" % archive_key
 	if archive_key == "flowers":
 		_configure_background_flower_archive(root)
+	elif archive_key in ["photos", "postcards"]:
+		_configure_memory_corner_archive(root, archive_key)
 	return root
 
 func garden_archive_key(node_type: String) -> String:
@@ -138,6 +140,122 @@ func _configure_background_flower_archive(root: Node2D) -> void:
 		-6
 	)
 	hover_glow.visible = false
+
+func _configure_memory_corner_archive(root: Node2D, archive_key: String) -> void:
+	for decoration_name in ["Sprite", "NodeShadow", "BoardSemanticIcon"]:
+		var decoration := root.get_node_or_null(decoration_name) as CanvasItem
+		if decoration != null:
+			decoration.visible = false
+	var area := root.get_node_or_null("ClickArea") as Area2D
+	if area != null:
+		area.position = Vector2(0, -36)
+		var shape := area.get_node_or_null("Shape") as CollisionShape2D
+		if shape != null:
+			var rect := RectangleShape2D.new()
+			rect.size = Vector2(92, 76)
+			shape.shape = rect
+	var visual := Node2D.new()
+	visual.name = "ArchiveVisual"
+	root.add_child(visual)
+	if archive_key == "photos":
+		_build_photo_garland(visual)
+	else:
+		_build_letter_satchel(visual)
+	visual.scale = Vector2.ONE * 0.86
+	var glow := _add_soft_disc(root, "ArchiveObjectGlow", Vector2(0, -36), Vector2(0.66, 0.50), Color(1.0, 0.90, 0.58, 0.07), 92, -6)
+	_pulse_node(glow, 0.96, 1.05, 0.04, 0.10, 2.6)
+
+func _build_photo_garland(parent: Node2D) -> void:
+	var cord := Line2D.new()
+	cord.name = "PhotoCord"
+	cord.points = PackedVector2Array([Vector2(-45, -58), Vector2(-14, -55), Vector2(14, -58), Vector2(45, -55)])
+	cord.width = 2.0
+	cord.default_color = Color(0.38, 0.25, 0.16, 0.90)
+	parent.add_child(cord)
+	_add_hanging_photo(parent, "PhotoLeft", Vector2(-29, 0), -0.08, Color(0.54, 0.72, 0.58, 1.0))
+	_add_hanging_photo(parent, "PhotoCenter", Vector2(0, -1), 0.05, Color(0.82, 0.58, 0.62, 1.0))
+	_add_hanging_photo(parent, "PhotoRight", Vector2(29, 1), -0.04, Color(0.61, 0.72, 0.84, 1.0))
+	_add_archive_icon(parent, "PhotoCamera", "res://assets/ui/icons/icon_camera.png", Vector2(0, -31), 12.0)
+
+func _add_hanging_photo(parent: Node2D, photo_name: String, pos: Vector2, angle: float, image_color: Color) -> void:
+	var photo := Node2D.new()
+	photo.name = photo_name
+	photo.position = pos
+	photo.rotation = angle
+	parent.add_child(photo)
+	_add_archive_polygon(photo, "PaperBorder", PackedVector2Array([
+		Vector2(-13, -52), Vector2(13, -52), Vector2(13, -13), Vector2(-13, -13)
+	]), Color(0.46, 0.29, 0.17, 1.0))
+	_add_archive_polygon(photo, "Paper", PackedVector2Array([
+		Vector2(-11, -50), Vector2(11, -50), Vector2(11, -15), Vector2(-11, -15)
+	]), Color(1.0, 0.93, 0.76, 1.0))
+	_add_archive_polygon(photo, "Image", PackedVector2Array([
+		Vector2(-8, -46), Vector2(8, -46), Vector2(8, -27), Vector2(-8, -27)
+	]), image_color)
+	_add_archive_polygon(photo, "Clip", PackedVector2Array([
+		Vector2(-3, -58), Vector2(3, -58), Vector2(3, -51), Vector2(-3, -51)
+	]), Color(0.82, 0.58, 0.28, 1.0))
+
+func _build_letter_satchel(parent: Node2D) -> void:
+	for x in [-23.0, 23.0]:
+		var strap := Line2D.new()
+		strap.points = PackedVector2Array([Vector2(x, -64), Vector2(x, -42)])
+		strap.width = 3.0
+		strap.default_color = Color(0.42, 0.27, 0.16, 0.90)
+		parent.add_child(strap)
+	_add_small_postcard(parent, "LetterLeft", Vector2(-13, -42), -0.10, Color(0.94, 0.76, 0.61, 1.0))
+	_add_small_postcard(parent, "LetterRight", Vector2(13, -43), 0.08, Color(0.75, 0.87, 0.72, 1.0))
+	_add_archive_polygon(parent, "SatchelBorder", PackedVector2Array([
+		Vector2(-34, -43), Vector2(34, -43), Vector2(31, -7), Vector2(-31, -7)
+	]), Color(0.43, 0.27, 0.16, 1.0))
+	_add_archive_polygon(parent, "Satchel", PackedVector2Array([
+		Vector2(-30, -39), Vector2(30, -39), Vector2(27, -10), Vector2(-27, -10)
+	]), Color(0.72, 0.54, 0.32, 1.0))
+	_add_archive_polygon(parent, "SatchelFlap", PackedVector2Array([
+		Vector2(-27, -37), Vector2(27, -37), Vector2(0, -20)
+	]), Color(0.84, 0.66, 0.40, 1.0))
+	_add_archive_polygon(parent, "SatchelClasp", PackedVector2Array([
+		Vector2(-4, -23), Vector2(4, -23), Vector2(4, -16), Vector2(-4, -16)
+	]), Color(0.39, 0.25, 0.16, 1.0))
+	_add_archive_icon(parent, "LetterIcon", "res://assets/ui/icons/icon_postcard.png", Vector2(0, -29), 13.0)
+
+func _add_small_postcard(parent: Node2D, card_name: String, pos: Vector2, angle: float, paper_color: Color) -> void:
+	var card := Node2D.new()
+	card.name = card_name
+	card.position = pos
+	card.rotation = angle
+	parent.add_child(card)
+	_add_archive_polygon(card, "Border", PackedVector2Array([
+		Vector2(-17, -24), Vector2(17, -24), Vector2(17, 1), Vector2(-17, 1)
+	]), Color(0.45, 0.28, 0.17, 1.0))
+	_add_archive_polygon(card, "Paper", PackedVector2Array([
+		Vector2(-15, -22), Vector2(15, -22), Vector2(15, -1), Vector2(-15, -1)
+	]), paper_color)
+	_add_archive_polygon(card, "Stamp", PackedVector2Array([
+		Vector2(7, -19), Vector2(13, -19), Vector2(13, -13), Vector2(7, -13)
+	]), Color(0.83, 0.49, 0.53, 1.0))
+
+func _add_archive_polygon(parent: Node2D, polygon_name: String, points: PackedVector2Array, color: Color) -> Polygon2D:
+	var polygon := Polygon2D.new()
+	polygon.name = polygon_name
+	polygon.polygon = points
+	polygon.color = color
+	parent.add_child(polygon)
+	return polygon
+
+func _add_archive_icon(parent: Node2D, icon_name: String, texture_path: String, pos: Vector2, display_size: float) -> void:
+	var texture := load(texture_path) as Texture2D
+	if texture == null:
+		return
+	var icon := Sprite2D.new()
+	icon.name = icon_name
+	icon.texture = texture
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.position = pos
+	if texture.get_height() > 0:
+		icon.scale = Vector2.ONE * (display_size / float(texture.get_height()))
+	icon.modulate = Color(0.36, 0.25, 0.18, 0.92)
+	parent.add_child(icon)
 
 ## 用一个房间物件（object_type）+ 一个 zone 落点生成可点击家具节点。
 ## 真美术未产出时占位渲染 + 物件名标签（看清是 desk/lamp/...）。point = ZoneManager 落点 {slot_id, zone, pos}。

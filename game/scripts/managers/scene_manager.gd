@@ -467,7 +467,7 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	panel.name = "Gate4SceneGuide"
 	gate4_guide_card = panel
 	panel.position = Vector2(1012, 122) if scene_id == "room" else Vector2(20, 20)
-	panel.size = Vector2(248, 92)
+	panel.size = Vector2(284, 92) if scene_id == "garden" else Vector2(248, 92)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_guide_card_style(panel)
 	if ui_root != null and is_instance_valid(ui_root):
@@ -485,7 +485,7 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	var title := Label.new()
 	title.text = _gate4_guide_title(scene_id)
 	title.position = Vector2(28, 10)
-	title.size = Vector2(202, 22)
+	title.size = Vector2(112, 22) if scene_id == "garden" else Vector2(202, 22)
 	title.add_theme_font_size_override("font_size", 15)
 	title.add_theme_color_override("font_color", Color(0.21, 0.18, 0.13, 0.96))
 	panel.add_child(title)
@@ -493,11 +493,13 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	var body := Label.new()
 	body.text = _gate4_guide_body(scene_id)
 	body.position = Vector2(28, 36)
-	body.size = Vector2(202, 40)
+	body.size = Vector2(112, 40) if scene_id == "garden" else Vector2(202, 40)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_size_override("font_size", 12)
 	body.add_theme_color_override("font_color", Color(0.33, 0.28, 0.21, 0.90))
 	panel.add_child(body)
+	if scene_id == "garden":
+		_add_family_portrait_miniature(panel)
 
 
 func _apply_guide_card_style(panel: Panel) -> void:
@@ -545,10 +547,9 @@ func _gate4_guide_body(scene_id: String) -> String:
 				object_count,
 			]
 		_:
-			return "%d 段记忆 · %d 条藤蔓\n%d 位家人共同照料" % [
+			return "%d 段记忆\n%d 条藤蔓" % [
 				_demo_memories.size(),
 				MemoryManager.get_memory_links("garden").size(),
-				int(MemoryManager.family_portrait.get("member_count", 0)),
 			]
 
 func _gate4_guide_footer(scene_id: String) -> String:
@@ -1063,8 +1064,8 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_add_player(spawn)
 	_rebuild_plants()
 	_spawn_demo_memory_nodes()
-	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数算一版画像
-	_render_family_portrait()                         # 挂到入口木牌
+	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数更新左上迷你合影
+	_render_family_portrait()
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
 	_show_gate4_scene_guide("garden")
 
@@ -1151,64 +1152,113 @@ func _render_memory_links(scene: String) -> void:
 			b += Vector2(34, 0)
 		_draw_link_line(a, b, link)
 
-# 家庭画像落在右下角场景内的公告板上，不遮挡家庭树与人物。
+# 家庭画像进入左上状态卡，以实际角色组成迷你合影；右下木牌只保留留言板用途。
 func _render_family_portrait() -> void:
-	if world == null or not is_instance_valid(world):
+	if world != null and is_instance_valid(world):
+		var legacy_board := world.get_node_or_null("FamilyPortraitBoard")
+		if legacy_board != null:
+			legacy_board.queue_free()
+	if gate4_guide_card == null or not is_instance_valid(gate4_guide_card) or mode != "garden":
 		return
-	var existing := world.get_node_or_null("FamilyPortraitBoard")
+	var existing := gate4_guide_card.get_node_or_null("FamilyPortraitMiniature")
 	if existing != null:
+		gate4_guide_card.remove_child(existing)
 		existing.queue_free()
+	_add_family_portrait_miniature(gate4_guide_card)
+
+func _add_family_portrait_miniature(parent: Control) -> void:
 	var fp: Dictionary = MemoryManager.family_portrait
-	if int(fp.get("version", 0)) <= 0:
-		return  # 还没有画像（无人参与）
-	var board := Node2D.new()
-	board.name = "FamilyPortraitBoard"
-	board.position = Vector2(1174, 606)
-	board.z_index = 610
-	var panel := Panel.new()
-	panel.position = Vector2(-58, -34)
-	panel.size = Vector2(116, 68)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(1.0, 0.95, 0.80, 0.78)
-	panel_style.border_color = Color(0.48, 0.34, 0.20, 0.76)
-	panel_style.set_border_width_all(2)
-	panel_style.set_corner_radius_all(4)
-	panel.add_theme_stylebox_override("panel", panel_style)
-	board.add_child(panel)
-	var title := Label.new()
-	title.text = "家庭画像"
-	title.position = Vector2(10, 8)
-	title.size = Vector2(96, 20)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_theme_font_size_override("font_size", 13)
-	title.add_theme_color_override("font_color", Color(0.25, 0.19, 0.13, 0.94))
-	panel.add_child(title)
-	var summary := Label.new()
-	summary.text = "%d 位家人 · %d 段记忆" % [int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
-	summary.position = Vector2(8, 34)
-	summary.size = Vector2(100, 18)
-	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	summary.add_theme_font_size_override("font_size", 10)
-	summary.add_theme_color_override("font_color", Color(0.36, 0.28, 0.19, 0.86))
-	panel.add_child(summary)
-	var area := Area2D.new()
-	area.name = "FamilyPortraitHotspot"
-	var shape := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(124, 76)
-	shape.shape = rect
-	area.add_child(shape)
-	area.mouse_entered.connect(func() -> void: panel.modulate = Color(1.05, 1.03, 0.96, 1.0))
-	area.mouse_exited.connect(func() -> void: panel.modulate = Color.WHITE)
-	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+	var members: Array = fp.get("members", []).duplicate()
+	if members.is_empty() and MemoryManager.selected_role_key != "":
+		members.append(MemoryManager.selected_role_key)
+	var frame := Panel.new()
+	frame.name = "FamilyPortraitMiniature"
+	frame.position = Vector2(150, 10)
+	frame.size = Vector2(120, 72)
+	frame.clip_contents = true
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	frame.tooltip_text = "查看家庭成员 · %d 位家人共同留下 %d 段记忆" % [
+		members.size(),
+		int(fp.get("memory_count", MemoryManager.memories.size())),
+	]
+	var frame_style := StyleBoxFlat.new()
+	frame_style.bg_color = Color(0.92, 0.96, 0.78, 0.94)
+	frame_style.border_color = Color(0.50, 0.35, 0.21, 0.92)
+	frame_style.set_border_width_all(2)
+	frame_style.set_corner_radius_all(4)
+	frame_style.shadow_color = Color(0.18, 0.12, 0.07, 0.18)
+	frame_style.shadow_size = 3
+	frame.add_theme_stylebox_override("panel", frame_style)
+	parent.add_child(frame)
+
+	var sky := ColorRect.new()
+	sky.position = Vector2(4, 4)
+	sky.size = Vector2(112, 43)
+	sky.color = Color(0.80, 0.90, 0.76, 0.72)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(sky)
+	var ground := ColorRect.new()
+	ground.position = Vector2(4, 47)
+	ground.size = Vector2(112, 21)
+	ground.color = Color(0.66, 0.78, 0.52, 0.78)
+	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(ground)
+	for pin_x in [10.0, 104.0]:
+		var pin := ColorRect.new()
+		pin.position = Vector2(pin_x, 6)
+		pin.size = Vector2(5, 5)
+		pin.color = Color(0.82, 0.55, 0.26, 0.94)
+		pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(pin)
+
+	var shown_count := mini(members.size(), 4)
+	for index in range(shown_count):
+		var texture := _family_portrait_frame_texture(String(members[index]))
+		if texture == null:
+			continue
+		var avatar := Sprite2D.new()
+		avatar.name = "FamilyAvatar_%d" % index
+		avatar.texture = texture
+		avatar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var x := 60.0 if shown_count == 1 else lerpf(22.0, 98.0, float(index) / float(shown_count - 1))
+		avatar.position = Vector2(x, 46)
+		avatar.scale = Vector2.ONE * (42.0 / float(texture.get_height()))
+		frame.add_child(avatar)
+	if shown_count == 0:
+		var empty := Label.new()
+		empty.text = "等待家人加入"
+		empty.position = Vector2(8, 25)
+		empty.size = Vector2(104, 20)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		empty.add_theme_font_size_override("font_size", 10)
+		empty.add_theme_color_override("font_color", Color(0.34, 0.28, 0.21, 0.78))
+		frame.add_child(empty)
+	frame.mouse_entered.connect(func() -> void: frame.modulate = Color(1.05, 1.03, 0.96, 1.0))
+	frame.mouse_exited.connect(func() -> void: frame.modulate = Color.WHITE)
+	frame.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			get_viewport().set_input_as_handled()
-			_show_toast("%d 位家人共同留下了 %d 段记忆。" % [int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
-	board.add_child(area)
-	world.add_child(board)
+			_open_family_members_panel()
+	)
+
+func _family_portrait_frame_texture(role_key: String) -> Texture2D:
+	var source := CharacterDB.texture(role_key)
+	var definition: Dictionary = CharacterDB.get_def(role_key)
+	if source == null or definition.is_empty():
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	var rects: Array = definition.get("frame_rects", [])
+	if rects.size() > 1 and rects[1] is Array and (rects[1] as Array).size() >= 4:
+		var frame: Array = rects[1]
+		atlas.region = Rect2(float(frame[0]), float(frame[1]), float(frame[2]), float(frame[3]))
+		return atlas
+	var hframes := maxi(1, int(definition.get("hframes", 3)))
+	var vframes := maxi(1, int(definition.get("vframes", 4)))
+	var cell_size := Vector2(float(source.get_width()) / float(hframes), float(source.get_height()) / float(vframes))
+	atlas.region = Rect2(cell_size.x, 0, cell_size.x, cell_size.y)
+	return atlas
 
 # 花园记忆指向所属归档景观；其他场景仍沿用持久化 slot 落点。
 func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
@@ -1786,7 +1836,7 @@ func _render_garden_archives(cache: Array) -> void:
 			visual_state
 		)
 		live.add_to_group("world_memory_node")
-		live.scale = Vector2.ONE * (1.0 if archive_key == "flowers" else 0.84)
+		live.scale = Vector2.ONE
 		_add_garden_archive_caption(live, archive_key, items.size())
 		world.add_child(live)
 		for item in items:
@@ -1812,7 +1862,7 @@ func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) 
 	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, {})
 	var caption := Panel.new()
 	caption.name = "ArchiveCaption"
-	caption.position = Vector2(-68, -132 if archive_key == "flowers" else -130)
+	caption.position = Vector2(-68, -132 if archive_key == "flowers" else -108)
 	caption.size = Vector2(136, 42)
 	caption.visible = false
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE

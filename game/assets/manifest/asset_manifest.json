@@ -69,7 +69,7 @@
       "owner": "A",
       "priority": "P0",
       "status": "tested",
-      "notes": "照片牌；复用同源木质留言牌资产"
+      "notes": "单条照片节点兼容木牌；花园归档入口使用右上回忆角的摊开相册组合"
     },
     {
       "asset_id": "node_garden_postcard_01",
@@ -90,7 +90,7 @@
       "owner": "A",
       "priority": "P0",
       "status": "tested",
-      "notes": "明信片牌；复用同源木质留言牌资产"
+      "notes": "单条明信片节点兼容木牌；花园归档入口使用右上回忆角的明信片木托组合"
     },
     {
       "asset_id": "node_garden_sign_fishpond_01",
