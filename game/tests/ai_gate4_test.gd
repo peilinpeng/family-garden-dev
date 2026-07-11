@@ -96,13 +96,14 @@ func _run() -> void:
 	MemoryManager.selected_role_key = "player"
 
 	_test_image_preparation()
+	_test_memory_visual_assets()
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
 	_test_delete_memory_cascades_links()
 
 	if failures.is_empty():
-		print("Gate 4 Godot tests passed: image, draft, commit, bottle, room, links, delete")
+		print("Gate 4 Godot tests passed: image, visuals, draft, commit, bottle, room, links, delete")
 		get_tree().quit(0)
 	else:
 		for failure in failures:
@@ -117,6 +118,23 @@ func _test_image_preparation() -> void:
 	_assert(prepared.content_type == "image/jpeg", "上传应统一重编码并去元数据")
 	_assert(maxi(prepared.output_size.x, prepared.output_size.y) <= 1600, "图片长边必须限制到 1600")
 	_assert(not AIImageUploadService.prepare(PackedByteArray([1, 2, 3]), "image/gif").ok, "GIF 必须拒绝")
+
+func _test_memory_visual_assets() -> void:
+	var slot := {"slot_id": "visual_test", "pos": [320, 320]}
+	var bud := NodeFactory.make_memory_node(AIClient.mock_memory_card(), slot, Callable(), "new")
+	var bloom := NodeFactory.make_memory_node(AIClient.mock_memory_card(), slot, Callable(), "grown")
+	var bud_texture := (bud.get_node("Sprite") as Sprite2D).texture
+	var bloom_texture := (bloom.get_node("Sprite") as Sprite2D).texture
+	_assert(bud_texture != null and bloom_texture != null, "记忆花苞与开放状态必须有可渲染资产")
+	_assert(bud_texture != bloom_texture, "花苞与开放状态应使用不同视觉资产")
+	for node_type in ["photo_board", "postcard"]:
+		var board_card := {"node_type": node_type, "suggested_scene": "garden"}
+		var board := NodeFactory.make_memory_node(board_card, slot, Callable(), "new")
+		_assert((board.get_node("Sprite") as Sprite2D).texture != null, "%s 必须有受控木牌资产" % node_type)
+		_assert(board.has_node("BoardSemanticIcon"), "%s 必须带可识别语义图标" % node_type)
+		board.queue_free()
+	bud.queue_free()
+	bloom.queue_free()
 
 func _test_memory_draft_and_idempotency() -> void:
 	var seed := MemoryManager.create_memory(AIClient.mock_memory_card(), "text", "旧记忆", "", {}, "seed-memory")

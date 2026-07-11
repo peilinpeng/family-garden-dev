@@ -40,3 +40,7 @@ godot --resolution 1280x720 tools/CaptureSubmissionScreenshots.tscn
 ```
 
 竖屏提示单独使用 390×844 视口，并增加 `FG_CAPTURE_PORTRAIT_ONLY=1`。
+
+密集记忆压力截图增加 `FG_CAPTURE_DENSE_GARDEN=1`。该模式会在隔离存档中生成 17 段
+记忆，输出 `10_dense_garden.png` 与 `11_memory_cluster.png`，用于检查花簇聚合、数量徽标
+和每条记忆的可达性；这两张测试图不进入正式提交图组。
