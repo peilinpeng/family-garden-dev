@@ -90,16 +90,17 @@ func make_room_object(object_type: String, point: Dictionary, on_click: Callable
 		_configure_sprite(root.get_node("Sprite"), entry, object_type)
 		_decorate_room_object(root, object_type, float(entry.get("display_height", 96)))
 	_configure_click_area(root.get_node("ClickArea"), click_entry, on_click)
-	var label := Label.new()
-	label.name = "ObjTag"
-	label.text = _room_object_label(object_type)
-	label.position = Vector2(-52, -66 if semantic_scene else -124)
-	label.size = Vector2(104, 22)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 11 if semantic_scene else 12)
-	label.add_theme_color_override("font_color", Color(0.22, 0.19, 0.15, 0.72 if semantic_scene else 0.92))
-	root.add_child(label)
+	if not semantic_scene:
+		var label := Label.new()
+		label.name = "ObjTag"
+		label.text = _room_object_label(object_type)
+		label.position = Vector2(-52, -124)
+		label.size = Vector2(104, 22)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_font_size_override("font_size", 12)
+		label.add_theme_color_override("font_color", Color(0.22, 0.19, 0.15, 0.92))
+		root.add_child(label)
 	return root
 
 ## 取预制体实例；预制体缺失时回退代码构建（节点名与预制体一致：Sprite / ClickArea / Shape）。
@@ -226,6 +227,9 @@ func _soft_disc_texture(size: int) -> Texture2D:
 
 func _pulse_node(node: Node2D, from_scale: float, to_scale: float, from_alpha: float, to_alpha: float, duration: float) -> void:
 	if node == null:
+		return
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		node.modulate.a = to_alpha
 		return
 	node.scale *= from_scale
 	node.modulate.a = from_alpha

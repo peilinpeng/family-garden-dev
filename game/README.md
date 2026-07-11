@@ -1,119 +1,66 @@
-# Family Garden Godot MVP v2
+# Family Garden｜Godot 客户端
 
-This is the first asset-ready Godot implementation for Family Garden.
+本目录是 Family Garden 的 Godot 4.7 客户端，逻辑画布为 1280×720，手机横屏优先，
+同时支持桌面 Web 与本地运行。
 
-It is designed for Godot 4.7.x.
+## 当前可玩内容
 
-## MVP features
+- 家庭邀请码、角色选择、家庭成员与在线场景；
+- 花园记忆花、记忆卡片、家庭画像和跨记忆藤蔓；
+- 图片/文字记忆创建、AI 草稿预览、确认与错误恢复；
+- 鱼塘漂流瓶问题、回答与岸边记忆；
+- 共享农场种植、成长、收获与家庭同步；
+- 房间照片选择、AI 语义分析、布局预览和 TileMap 房间生成；
+- 个人背包、共享仓、场景切换、本地存档与 CloudBase 同步。
 
-- Shared Garden main scene
-- Background image support
-- Four houses as clickable entries
-- Family Tree interaction
-- Mailbox interaction
-- Bench display
-- Player movement with WASD / arrow keys
-- Three family NPCs
-- Plant mode: click the garden to place flowers/trees/mushrooms/signs
-- Drag placed items with left mouse button
-- Delete placed items with right mouse button
-- Local save/load via `user://family_garden_save_v2.json`
+空存档会生成少量演示记忆和漂流瓶，保证离线状态仍可理解核心体验。启用云端身份后，
+记忆、成员、农场和在线状态会按家庭隔离同步。
 
-## Where to place your AI-generated assets
+## 运行
 
-Put your cleaned PNG files in these paths:
+1. 安装 Godot 4.7；
+2. 导入本目录的 `project.godot`；
+3. 运行主场景 `res://scenes/Main.tscn`。
 
-```text
-assets/backgrounds/shared_garden.png
-assets/garden/family_tree.png
-assets/garden/mailbox.png
-assets/garden/bench.png
-assets/garden/flower.png          optional
-assets/garden/tree.png            optional
-assets/garden/mushroom.png        optional
-assets/garden/sign.png            optional
+操作方式：
 
-assets/houses/house_father.png
-assets/houses/house_mother.png
-assets/houses/house_player.png
-assets/houses/house_partner.png
+| 输入 | 行为 |
+|---|---|
+| WASD / 方向键 | 移动角色 |
+| 鼠标或触摸 | 点击入口、物件和面板 |
+| 底部导航 | 打开记忆、地图、背包和家人等功能 |
 
-assets/characters/player_peilin.png
-assets/characters/npc_father.png
-assets/characters/npc_mother.png
-assets/characters/npc_partner.png
+## 配置与安全
 
-assets/backgrounds/room_father.png   optional
-assets/backgrounds/room_mother.png   optional
-assets/backgrounds/room_player.png   optional
-assets/backgrounds/room_partner.png  optional
-```
+- `config/ai.json`：公开 AI Gateway endpoint 与客户端开关；
+- `config/cloudbase.json`：公开 CloudBase endpoint、在线中继与默认家庭配置；
+- `user://cloud_identity.json`：设备个人身份，只保存在本地；
+- 客户端和仓库不保存腾讯云密钥、AI API Key 或 service role key。
 
-If an asset is missing, the game uses a simple placeholder so the project can still run.
+AI 请求统一经过 `AIClient`，具备输入/输出契约校验、状态管理、并发合并、缓存、取消和
+技术错误 fallback。房间 AI 只输出语义物件及区域，不输出坐标；坐标与可用资产由客户端
+Scene Schema 白名单控制。
 
-## Important asset note
-
-Most AI images show a fake checkerboard background. That is not real transparency.
-Before importing, remove the checkerboard background using Photopea, Photoshop, remove.bg, or another background remover, then export as PNG with alpha.
-
-If you do not remove it, the checkerboard will appear in the game.
-
-## How to open
-
-1. Open Godot.
-2. Click Import.
-3. Select this folder's `project.godot`.
-4. Click Import & Edit.
-5. Press Run.
-
-## Controls
-
-```text
-WASD / Arrow keys: move
-Click Family Tree: open memory panel
-Click Mailbox: open mailbox panel
-Click houses: enter a room placeholder
-P: toggle plant mode
-Bottom buttons: choose plant type / save / reset / back garden
-Plant mode ON + click ground: plant item
-Left-drag planted item: move
-Right-click planted item: delete
-```
-
-## AI 客户端（Gate 3）
-
-`config/ai.json` 只包含公开的 CloudBase endpoint 和客户端行为开关。个人 `member_token` 仍只
-保存在 `user://cloud_identity.json`；TokenHub 与腾讯云密钥不会进入 Godot 工程。
-
-启用 AI 后，`AIClient` 会自动安装 `AIHttpBackend`。四个接口统一具备：
-
-- 兼容 Gate 1 的请求/响应校验；
-- `idle/loading/success/fallback/error/cancelled` 状态；
-- 只对技术错误 fallback，不掩盖鉴权、非法输入或内容安全错误；
-- 并发请求合并与短期纯内存缓存；
-- 切换场景时取消旧请求，以及离线 mock 可玩性。
-
-本地 Gate 3 测试：
+## Web 导出
 
 ```bash
-/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
-  --script res://tests/ai_gate3_test.gd
+/Applications/Godot.app/Contents/MacOS/Godot \
+  --headless --path game --export-release Web ../export_web/index.html
 ```
 
-真实冒烟测试必须显式启用，避免意外计费；脚本自动读取设备身份且不会输出身份内容：
+Web 端照片选择通过浏览器原生文件选择器接入。请通过 HTTP 服务访问导出目录，不要直接
+双击 `index.html`。
+
+## 验收
 
 ```bash
-FG_AI_REAL_SMOKE=1 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
-  --script res://tests/ai_gate3_real_smoke.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --editor --path game --quit
+
+FAMILY_GARDEN_TEST=1 /Applications/Godot.app/Contents/MacOS/Godot \
+  --headless --path game res://tests/ai_gate4_test.tscn
+
+/Applications/Godot.app/Contents/MacOS/Godot \
+  --headless --path game res://tests/gate7_room_scene_test.tscn
 ```
 
-## Current scope
-
-This project is intentionally minimal. It is the playable skeleton for the gift-game MVP.
-The next development steps are:
-
-1. Replace placeholders with cleaned assets.
-2. Add real room backgrounds.
-3. Add mailbox data and notes.
-4. Add family tree memory timeline.
-5. Export Web build.
+比赛级完整验收步骤见 `../docs/submission/06_final_qa_report.md`。

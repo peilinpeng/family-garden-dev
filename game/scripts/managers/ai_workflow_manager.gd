@@ -38,7 +38,7 @@ func prepare_memory_draft(raw_text: String, image_bytes: PackedByteArray = Packe
 	_emit("memory", "draft_ready", draft)
 	return draft
 
-func commit_memory_draft(draft: Dictionary, edited_card: Dictionary) -> Dictionary:
+func commit_memory_draft(draft: Dictionary, edited_card: Dictionary, wait_for_links: bool = false) -> Dictionary:
 	if String(draft.get("kind", "")) != "memory":
 		return _failure("INVALID_DRAFT", "这不是记忆卡草稿。")
 	var validation := AIContractValidator.validate_data("generate-memory-card", edited_card)
@@ -77,10 +77,16 @@ func commit_memory_draft(draft: Dictionary, edited_card: Dictionary) -> Dictiona
 		String(draft.get("upload_id", "")),
 	)
 	var node := MemoryManager.create_node(String(memory.get("id", "")), scene, node_type, String(slot.get("slot_id", "")), "", "memory_node:" + workflow_key)
-	await create_links_for_memory(memory)
+	if wait_for_links:
+		await create_links_for_memory(memory)
+	else:
+		_create_links_after_commit(memory.duplicate(true))
 	MemoryManager.maybe_recompute_family_portrait()
 	_emit("memory", "committed", {"memory": memory, "node": node})
 	return {"ok": true, "memory": memory, "node": node}
+
+func _create_links_after_commit(memory: Dictionary) -> void:
+	await create_links_for_memory(memory)
 
 func discard_draft(draft: Dictionary) -> void:
 	var upload_id := String(draft.get("upload_id", ""))

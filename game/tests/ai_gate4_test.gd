@@ -135,11 +135,11 @@ func _test_memory_draft_and_idempotency() -> void:
 	await AIWorkflowManager.discard_draft(photo_draft)
 	await AIWorkflowManager.discard_draft(combo_draft)
 
-	var committed: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card)
+	var committed: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card, true)
 	_assert(committed.ok, "合法草稿应可确认")
 	var memory_count := MemoryManager.memories.size()
 	var node_count := MemoryManager.nodes.size()
-	var duplicate: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card)
+	var duplicate: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card, true)
 	_assert(duplicate.ok, "重复确认应返回既有结果")
 	_assert(MemoryManager.memories.size() == memory_count and MemoryManager.nodes.size() == node_count, "重复确认不得生成重复 memory/node/link")
 	_assert(MemoryManager.get_memory_links("garden").size() == 1, "新记忆应创建一条合格跨记忆关联")

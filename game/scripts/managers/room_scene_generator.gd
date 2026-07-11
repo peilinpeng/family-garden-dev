@@ -81,6 +81,7 @@ static func build_schema(analysis: Dictionary, layout: Dictionary) -> Dictionary
 			"display_scale": int(tileset.get("display_scale", 2)),
 			"grid_size": [grid_size.x, grid_size.y],
 			"origin": [origin.x, origin.y],
+			"wall_height": 5,
 			"floor": tileset.get("floor", [4, 3]),
 			"wall": tileset.get("wall", [0, 0]),
 			"room_type": String(analysis.get("room_type", "unknown")),
@@ -138,13 +139,16 @@ static func render_scene(room: Dictionary, world: Node) -> Dictionary:
 	root.z_index = -90
 	root.z_as_relative = false
 	world.add_child(root)
+	_add_room_backdrop(root, schema)
 	var floor := _make_layer("Floor", tile_set, -2)
 	var furniture := _make_layer("Furniture", tile_set, 0)
+	floor.modulate = Color(1.0, 1.0, 1.0, 0.16)
 	root.add_child(floor)
 	root.add_child(furniture)
 	_paint_floor(floor, schema)
 	_paint_walls(floor, schema)
 	_paint_objects(furniture, schema)
+	_paint_procedural_objects(root, schema)
 	_add_collisions(root, schema)
 	return {"ok": true, "root": root}
 
@@ -184,7 +188,8 @@ static func _paint_floor(layer: TileMapLayer, schema: Dictionary) -> void:
 	var grid := _vec2i(schema.get("grid_size", [34, 22]), Vector2i(34, 22))
 	var floor_tile := _vec2i(schema.get("floor", [4, 3]), Vector2i(4, 3))
 	var source_id := int(schema.get("source_id", 0))
-	for y in range(grid.y):
+	var wall_height := clampi(int(schema.get("wall_height", 8)), 2, grid.y - 1)
+	for y in range(wall_height, grid.y):
 		for x in range(grid.x):
 			layer.set_cell(Vector2i(x, y), source_id, floor_tile)
 
@@ -192,9 +197,56 @@ static func _paint_walls(layer: TileMapLayer, schema: Dictionary) -> void:
 	var grid := _vec2i(schema.get("grid_size", [34, 22]), Vector2i(34, 22))
 	var wall_tile := _vec2i(schema.get("wall", [0, 0]), Vector2i.ZERO)
 	var source_id := int(schema.get("source_id", 0))
-	for x in range(grid.x):
-		layer.set_cell(Vector2i(x, 0), source_id, wall_tile)
-		layer.set_cell(Vector2i(x, 1), source_id, wall_tile)
+	var wall_height := clampi(int(schema.get("wall_height", 8)), 2, grid.y - 1)
+	for y in range(wall_height):
+		for x in range(grid.x):
+			layer.set_cell(Vector2i(x, y), source_id, wall_tile)
+
+static func _add_room_backdrop(root: Node2D, schema: Dictionary) -> void:
+	var grid := _vec2i(schema.get("grid_size", [40, 23]), Vector2i(40, 23))
+	var tile := _vec2i(schema.get("tile_size", [16, 16]), Vector2i(16, 16))
+	var wall_height := clampi(int(schema.get("wall_height", 8)), 2, grid.y - 1)
+	var room_size := Vector2(grid) * Vector2(tile)
+	var wall_px := float(wall_height * tile.y)
+	var backdrop := Node2D.new()
+	backdrop.name = "RoomBackdrop"
+	backdrop.z_index = -4
+	root.add_child(backdrop)
+
+	_add_backdrop_rect(backdrop, "Wallpaper", Vector2.ZERO, Vector2(room_size.x, wall_px), Color(0.94, 0.87, 0.72, 1.0))
+	_add_backdrop_rect(backdrop, "FloorBase", Vector2(0, wall_px), Vector2(room_size.x, room_size.y - wall_px), Color(0.68, 0.47, 0.31, 1.0))
+	_add_backdrop_rect(backdrop, "BaseboardShadow", Vector2(0, wall_px - 3), Vector2(room_size.x, 7), Color(0.30, 0.22, 0.17, 0.40))
+	_add_backdrop_rect(backdrop, "Baseboard", Vector2(0, wall_px - 5), Vector2(room_size.x, 4), Color(0.72, 0.54, 0.36, 1.0))
+
+	for x in range(tile.x * 5, int(room_size.x), tile.x * 5):
+		_add_backdrop_rect(backdrop, "WallPanel_%d" % x, Vector2(x, 14), Vector2(1, wall_px - 28), Color(0.62, 0.50, 0.36, 0.16))
+	for y in range(int(wall_px + tile.y * 2), int(room_size.y), tile.y * 2):
+		_add_backdrop_rect(backdrop, "FloorLine_%d" % y, Vector2(0, y), Vector2(room_size.x, 1), Color(0.24, 0.16, 0.11, 0.16))
+	for y in range(int(wall_px), int(room_size.y), tile.y * 4):
+		var offset := 0 if int((y - wall_px) / float(tile.y * 4)) % 2 == 0 else tile.x * 3
+		for x in range(offset, int(room_size.x), tile.x * 6):
+			_add_backdrop_rect(backdrop, "Plank_%d_%d" % [x, y], Vector2(x, y), Vector2(1, tile.y * 4), Color(0.24, 0.16, 0.11, 0.12))
+
+	var window_pos := Vector2(room_size.x * 0.72 - 48, 16)
+	_add_backdrop_rect(backdrop, "WindowFrame", window_pos, Vector2(96, 58), Color(0.45, 0.31, 0.22, 1.0))
+	_add_backdrop_rect(backdrop, "WindowLight", window_pos + Vector2(5, 5), Vector2(86, 48), Color(0.66, 0.82, 0.82, 1.0))
+	_add_backdrop_rect(backdrop, "WindowVertical", window_pos + Vector2(46, 5), Vector2(4, 48), Color(0.86, 0.72, 0.50, 1.0))
+	_add_backdrop_rect(backdrop, "WindowHorizontal", window_pos + Vector2(5, 27), Vector2(86, 4), Color(0.86, 0.72, 0.50, 1.0))
+	_add_backdrop_rect(backdrop, "CurtainLeft", window_pos + Vector2(-8, -3), Vector2(10, 68), Color(0.72, 0.48, 0.46, 0.72))
+	_add_backdrop_rect(backdrop, "CurtainRight", window_pos + Vector2(94, -3), Vector2(10, 68), Color(0.72, 0.48, 0.46, 0.72))
+	var rug_pos := Vector2(room_size.x * 0.5 - 82, wall_px + 74)
+	_add_backdrop_rect(backdrop, "RugShadow", rug_pos + Vector2(3, 4), Vector2(164, 64), Color(0.20, 0.14, 0.10, 0.16))
+	_add_backdrop_rect(backdrop, "RugBorder", rug_pos, Vector2(164, 64), Color(0.38, 0.50, 0.40, 0.72))
+	_add_backdrop_rect(backdrop, "RugInner", rug_pos + Vector2(5, 5), Vector2(154, 54), Color(0.64, 0.72, 0.58, 0.78))
+
+static func _add_backdrop_rect(parent: Node, node_name: String, pos: Vector2, size: Vector2, color: Color) -> void:
+	var rect := ColorRect.new()
+	rect.name = node_name
+	rect.position = pos
+	rect.size = size
+	rect.color = color
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rect)
 
 static func _paint_objects(layer: TileMapLayer, schema: Dictionary) -> void:
 	var source_id := int(schema.get("source_id", 0))
@@ -209,6 +261,28 @@ static func _paint_objects(layer: TileMapLayer, schema: Dictionary) -> void:
 		for i in range(mini(tiles.size(), size.x * size.y)):
 			var local := Vector2i(i % size.x, int(i / size.x))
 			layer.set_cell(cell + local, source_id, _vec2i(tiles[i], Vector2i.ZERO))
+
+static func _paint_procedural_objects(root: Node2D, schema: Dictionary) -> void:
+	var tile := _vec2i(schema.get("tile_size", [16, 16]), Vector2i(16, 16))
+	for raw in schema.get("objects", []):
+		if not (raw is Dictionary):
+			continue
+		var obj: Dictionary = raw
+		var entry := catalog_entry(String(obj.get("id", "")))
+		if String(entry.get("render", "")) != "floor_lamp":
+			continue
+		var cell := _vec2i(obj.get("cell", [0, 0]), Vector2i.ZERO)
+		var lamp := Node2D.new()
+		lamp.name = "FloorLamp_%s" % String(obj.get("slot_id", ""))
+		lamp.position = Vector2(cell) * Vector2(tile)
+		lamp.z_index = 1
+		root.add_child(lamp)
+		_add_backdrop_rect(lamp, "ShadeShadow", Vector2(2, 4), Vector2(28, 11), Color(0.30, 0.22, 0.14, 1.0))
+		_add_backdrop_rect(lamp, "Shade", Vector2(4, 3), Vector2(24, 9), Color(0.95, 0.68, 0.24, 1.0))
+		_add_backdrop_rect(lamp, "ShadeLight", Vector2(8, 5), Vector2(16, 2), Color(1.0, 0.88, 0.48, 1.0))
+		_add_backdrop_rect(lamp, "Stem", Vector2(15, 12), Vector2(3, 27), Color(0.38, 0.28, 0.20, 1.0))
+		_add_backdrop_rect(lamp, "BaseShadow", Vector2(5, 40), Vector2(24, 5), Color(0.24, 0.18, 0.14, 0.42))
+		_add_backdrop_rect(lamp, "Base", Vector2(7, 38), Vector2(20, 5), Color(0.68, 0.48, 0.24, 1.0))
 
 static func _add_collisions(root: Node2D, schema: Dictionary) -> void:
 	var body := StaticBody2D.new()
