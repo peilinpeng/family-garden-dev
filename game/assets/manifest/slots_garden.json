@@ -5,7 +5,7 @@
   "canvas": [1280, 720],
   "grid": 16,
   "slots": [
-    { "slot_id": "garden_archive_flowers",   "pos": [472, 480], "allow": ["memory_flower", "memory_seed"], "size_hint": "5x3", "visual_role": "archive" },
+    { "slot_id": "garden_archive_flowers",   "pos": [930, 548], "allow": ["memory_flower", "memory_seed"], "size_hint": "6x4", "visual_role": "archive" },
     { "slot_id": "garden_archive_photos",    "pos": [816, 416], "allow": ["photo_board"], "size_hint": "3x3", "visual_role": "archive" },
     { "slot_id": "garden_archive_postcards", "pos": [912, 448], "allow": ["postcard"], "size_hint": "3x3", "visual_role": "archive" },
     { "slot_id": "garden_slot_flowerbed_01", "pos": [432, 448], "allow": ["memory_flower", "memory_seed"], "size_hint": "2x2" },

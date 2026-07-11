@@ -88,6 +88,8 @@ func make_memory_archive(archive_key: String, slot: Dictionary, on_click: Callab
 	}
 	var root := make_memory_node(card, slot, on_click, state)
 	root.name = "GardenArchive_%s" % archive_key
+	if archive_key == "flowers":
+		_configure_background_flower_archive(root)
 	return root
 
 func garden_archive_key(node_type: String) -> String:
@@ -98,6 +100,44 @@ func garden_archive_key(node_type: String) -> String:
 			return "postcards"
 		_:
 			return "flowers"
+
+func _configure_background_flower_archive(root: Node2D) -> void:
+	# 右下角背景花丛本身就是景观，不再叠加一盆独立的记忆花。
+	var sprite := root.get_node_or_null("Sprite") as Sprite2D
+	if sprite != null:
+		sprite.visible = false
+	for decoration_name in ["NodeShadow", "MemoryAura", "MemoryRing"]:
+		var decoration := root.get_node_or_null(decoration_name) as CanvasItem
+		if decoration != null:
+			decoration.visible = false
+	var area := root.get_node_or_null("ClickArea") as Area2D
+	if area != null:
+		area.position = Vector2.ZERO
+		var shape := area.get_node_or_null("Shape") as CollisionShape2D
+		if shape != null:
+			var rect := RectangleShape2D.new()
+			rect.size = Vector2(188, 124)
+			shape.shape = rect
+	var glow := _add_soft_disc(
+		root,
+		"ArchiveAmbientGlow",
+		Vector2(0, -4),
+		Vector2(1.58, 0.78),
+		Color(1.0, 0.91, 0.58, 0.08),
+		128,
+		-7
+	)
+	_pulse_node(glow, 0.96, 1.04, 0.05, 0.11, 2.8)
+	var hover_glow := _add_soft_disc(
+		root,
+		"ArchiveHoverGlow",
+		Vector2(0, -4),
+		Vector2(1.68, 0.84),
+		Color(1.0, 0.94, 0.64, 0.22),
+		128,
+		-6
+	)
+	hover_glow.visible = false
 
 ## 用一个房间物件（object_type）+ 一个 zone 落点生成可点击家具节点。
 ## 真美术未产出时占位渲染 + 物件名标签（看清是 desk/lamp/...）。point = ZoneManager 落点 {slot_id, zone, pos}。

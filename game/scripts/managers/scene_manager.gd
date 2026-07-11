@@ -1786,7 +1786,7 @@ func _render_garden_archives(cache: Array) -> void:
 			visual_state
 		)
 		live.add_to_group("world_memory_node")
-		live.scale = Vector2.ONE * (0.92 if archive_key == "flowers" else 0.84)
+		live.scale = Vector2.ONE * (1.0 if archive_key == "flowers" else 0.84)
 		_add_garden_archive_caption(live, archive_key, items.size())
 		world.add_child(live)
 		for item in items:
@@ -1796,10 +1796,10 @@ func _render_garden_archives(cache: Array) -> void:
 func _garden_archive_position(archive_key: String) -> Vector2:
 	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, GARDEN_ARCHIVES["flowers"])
 	var slot := SlotManager.get_slot("garden", String(archive.get("slot_id", "")))
-	var pos: Variant = slot.get("pos", [472, 480])
+	var pos: Variant = slot.get("pos", [930, 548])
 	if pos is Array and (pos as Array).size() >= 2:
 		return Vector2(float(pos[0]), float(pos[1]))
-	return Vector2(472, 480)
+	return Vector2(930, 548)
 
 func _garden_archive_count() -> int:
 	var keys := {}
@@ -1812,7 +1812,7 @@ func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) 
 	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, {})
 	var caption := Panel.new()
 	caption.name = "ArchiveCaption"
-	caption.position = Vector2(-68, -130)
+	caption.position = Vector2(-68, -132 if archive_key == "flowers" else -130)
 	caption.size = Vector2(136, 42)
 	caption.visible = false
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1843,8 +1843,17 @@ func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) 
 	caption.add_child(summary)
 	var click_area := node.get_node_or_null("ClickArea") as Area2D
 	if click_area != null:
-		click_area.mouse_entered.connect(func() -> void: caption.visible = true)
-		click_area.mouse_exited.connect(func() -> void: caption.visible = false)
+		var hover_glow := node.get_node_or_null("ArchiveHoverGlow") as CanvasItem
+		click_area.mouse_entered.connect(func() -> void:
+			caption.visible = true
+			if hover_glow != null:
+				hover_glow.visible = true
+		)
+		click_area.mouse_exited.connect(func() -> void:
+			caption.visible = false
+			if hover_glow != null:
+				hover_glow.visible = false
+		)
 
 func _add_memory_cluster_badge(node: Node2D, count: int) -> void:
 	var badge := Panel.new()

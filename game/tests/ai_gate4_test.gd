@@ -137,6 +137,12 @@ func _test_memory_visual_assets() -> void:
 	for archive_key in archive_keys:
 		var archive := NodeFactory.make_memory_archive(String(archive_key), slot, Callable(), "grown")
 		_assert((archive.get_node("Sprite") as Sprite2D).texture != null, "%s 归档景观必须可渲染" % archive_key)
+		if archive_key == "flowers":
+			_assert(not (archive.get_node("Sprite") as Sprite2D).visible, "记忆花圃应复用背景花丛，不再叠加独立花盆")
+			_assert(archive.has_node("ArchiveAmbientGlow") and archive.has_node("ArchiveHoverGlow"), "背景花圃必须有轻量可发现反馈")
+			var archive_shape := archive.get_node("ClickArea/Shape") as CollisionShape2D
+			var archive_rect := archive_shape.shape as RectangleShape2D
+			_assert(archive_rect != null and archive_rect.size.x >= 180.0 and archive_rect.size.y >= 120.0, "背景花圃点击区必须覆盖整片花丛")
 		archive.queue_free()
 	_assert(NodeFactory.garden_archive_key("memory_flower") == "flowers", "记忆花必须归入花圃")
 	_assert(NodeFactory.garden_archive_key("photo_board") == "photos", "照片牌必须归入家庭影像")
