@@ -133,6 +133,7 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 
 	var index := facing_row * 3 + step_index
 	if _frame_rects.size() > index:
+		sprite.frame = 0
 		sprite.region_rect = _frame_rects[index]
 	else:
 		sprite.frame = index
@@ -148,3 +149,5 @@ func set_frame_rects(rects: Array) -> void:
 	for r in rects:
 		if r is Array and r.size() >= 4:
 			_frame_rects.append(Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])))
+	if sprite != null and _frame_rects.size() > 0:
+		sprite.frame = 0
