@@ -50,6 +50,7 @@ func _build() -> void:
 			sprite.region_enabled = true
 			sprite.hframes = 1
 			sprite.vframes = 1
+			sprite.frame = 0
 		else:
 			sprite.region_enabled = false
 			sprite.hframes = int(def.get("hframes", 3))
@@ -91,13 +92,14 @@ func _animate(delta: float, v: Vector2) -> void:
 		else:
 			_facing = 0 if v.y > 0.0 else 3
 		_step_timer += delta
-		if _step_timer > 0.16:
+		if _step_timer > 0.13:   # 与本地玩家(player.gd)步频一致,走路观感更自然
 			_step_timer = 0.0
 			_step = (_step + 1) % 3
 	else:
 		_step = 1
 	var index := _facing * 3 + _step
 	if _frame_rects.size() > index:
+		sprite.frame = 0
 		sprite.region_rect = _frame_rects[index]
 	else:
 		sprite.frame = index

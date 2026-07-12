@@ -14,7 +14,7 @@ var idle_frame := 0
 var frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl)按精确裁切矩形取帧,优先于 hframes/vframes
 var movement_locked := false   ## 场景切换渐隐过程中锁住输入,人物原地站定淡出
 
-const IDLE_FRAME_INDEX := 0
+const IDLE_FRAME_INDEX := 1   ## 站立用每行中间列(两脚并拢);第 0/2 列是迈步帧
 
 func _ready() -> void:
 	sprite = get_node_or_null("Sprite2D")
@@ -46,6 +46,12 @@ func apply_character(role_key: String) -> void:
 		sprite.region_enabled = true
 		sprite.hframes = 1
 		sprite.vframes = 1
+		sprite.frame = 0
+		# 紧包围盒图集(如 girl_2)脚底就在帧底边:阴影跟到视觉脚底(帧高×缩放的一半,精灵居中)。
+		# 留白图集(papa 等)脚底在帧内偏上,保持场景里调好的原值不动。
+		var shadow := get_node_or_null("Shadow") as Node2D
+		if shadow != null and frame_rects.size() > 1:
+			shadow.position.y = frame_rects[1].size.y * sprite.scale.y * 0.5
 	else:
 		sprite.region_enabled = false
 		sprite.hframes = int(def.get("hframes", 3))
@@ -109,7 +115,7 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 		idle_timer = 0.0
 		idle_frame = 0
 		step_timer += delta
-		if step_timer > 0.16:
+		if step_timer > 0.13:   # 步频略快于原 0.16,走路观感更自然(与移速 170 匹配)
 			step_timer = 0.0
 			step_index = (step_index + 1) % 3
 			if step_index == 0:   # 每走完一个完整步频循环响一次脚步声,不然太密集
@@ -136,6 +142,7 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 ## 按帧序号取图:优先用精确矩形(frame_rects),没有就退回 hframes/vframes 均分网格。
 func _set_frame(index: int) -> void:
 	if frame_rects.size() > index:
+		sprite.frame = 0
 		sprite.region_rect = frame_rects[index]
 	else:
 		sprite.frame = index

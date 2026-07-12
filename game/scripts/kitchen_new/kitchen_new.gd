@@ -63,6 +63,13 @@ func _spawn_player() -> void:
 	# 厨房自己 spawn 玩家,把 SceneManager.player 指向它,让 GameHUD 打开面板时的锁移动生效
 	# (否则 SceneManager.player 还是上一个场景那个已释放的引用,锁不住厨房玩家)。
 	SceneManager.player = player
+	# 套用玩家所选角色贴图(同 farm.gd):否则一直是 Player.tscn 里默认的 papa 贴图。
+	var mem := get_node_or_null("/root/MemoryManager")
+	var local_fallback := str(mem.selected_role_key) if mem != null and mem.selected_role_key != "" else "father"
+	var identity := get_node_or_null("/root/GameIdentity")
+	var role: String = identity.local_role(local_fallback) if identity != null else local_fallback
+	if player.has_method("apply_character"):
+		player.apply_character(role)
 
 ## 在画面中心附近螺旋找一个可走点作为出生位置。
 func _find_walkable_start() -> Vector2:
