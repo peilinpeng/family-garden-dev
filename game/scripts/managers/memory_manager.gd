@@ -19,6 +19,9 @@ var plants: Array = []
 var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
+var kitchen_orders_done: Array = []   ## 已完成的厨房订单 id(家庭数据;v1 本地持久化,未来可接云)
+var farm_plots: Array = []            ## 农场地块状态 FarmPlotState(家庭共享;由 FarmManager 读写)
+var farm_livestock: Dictionary = {}   ## 畜牧状态 source_id -> last_collected_at(家庭共享)
 var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_state != none
 var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
@@ -622,6 +625,9 @@ func _reset_all() -> void:
 	travel_places = []
 	postcards = []
 	garden_messages = []
+	kitchen_orders_done = []
+	farm_plots = []
+	farm_livestock = {}
 	memories = []
 	nodes = []
 	answers = []
@@ -751,6 +757,9 @@ func save_game() -> void:
 		"travel_places": travel_places,
 		"postcards": postcards,
 		"garden_messages": garden_messages,
+		"kitchen_orders_done": kitchen_orders_done,
+		"farm_plots": farm_plots,
+		"farm_livestock": farm_livestock,
 		"memories": memories,
 		"nodes": nodes,
 		"answers": answers,
@@ -784,6 +793,9 @@ func load_save() -> void:
 		travel_places = parsed.get("travel_places", [])
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
+		kitchen_orders_done = parsed.get("kitchen_orders_done", [])
+		farm_plots = parsed.get("farm_plots", [])
+		farm_livestock = parsed.get("farm_livestock", {})
 		memories = parsed.get("memories", [])
 		nodes = parsed.get("nodes", [])
 		answers = parsed.get("answers", [])

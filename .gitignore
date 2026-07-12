@@ -5,6 +5,9 @@
 # 系统文件
 .DS_Store
 
+# 第三方角色素材试用包(未采用,暂不入库)
+game/assets/characters/FREE Mana Seed Character Base Demo 2.0/
+
 # Web 导出产物（导出到仓库外或本目录，均不入库）
 export_web/
 *.zip

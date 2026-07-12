@@ -15,6 +15,7 @@ signal phase_changed(phase: String)
 @export var garden_tz_offset_hours: float = 8.0  ## 花园时区(默认 +8 北京);全家一致
 
 var server_offset: float = 0.0   ## 服务器now - 设备now(秒),联机对齐
+var filter_enabled: bool = true  ## 昼夜滤镜开关:关掉只取消整屏染色(置纯白),时间/时钟照常走
 var _seconds: float = 0.0        ## 当天累计秒 [0,86400)
 var _last_hour: int = -1
 var _last_phase: String = ""
@@ -57,7 +58,7 @@ func _process(delta: float) -> void:
 	else:
 		_seconds = _now_seconds()
 	if _modulate != null:
-		_modulate.color = overlay_color()
+		_modulate.color = overlay_color() if filter_enabled else Color.WHITE
 	var h := int(hours())
 	if h != _last_hour:
 		_last_hour = h
@@ -104,3 +105,9 @@ func overlay_color() -> Color:
 ## 联机:用服务器时间戳对齐本地时钟。
 func set_server_time(server_unix: float) -> void:
 	server_offset = server_unix - Time.get_unix_time_from_system()
+
+## 昼夜滤镜开关(设置面板/SettingsManager 调)。关掉立即取消染色,不影响时间与时钟显示。
+func set_filter_enabled(on: bool) -> void:
+	filter_enabled = on
+	if _modulate != null:
+		_modulate.color = overlay_color() if filter_enabled else Color.WHITE

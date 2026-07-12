@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "doc": "厨房冰箱订单板 v1:固定本地订单。未来可加每日刷新(见 KitchenManager.is_done / 刷新接口)。",
+  "orders": [
+    {
+      "id": "order_strawberry_jam",
+      "display_name": "邻居的果酱订单",
+      "requires": [
+        { "id": "dish_strawberry_jam", "qty": 1 }
+      ],
+      "reward_coin": 30,
+      "description": "邻居想要一罐自家熬的草莓果酱。"
+    },
+    {
+      "id": "order_tomato_egg",
+      "display_name": "食堂的番茄炒蛋",
+      "requires": [
+        { "id": "dish_tomato_egg", "qty": 1 }
+      ],
+      "reward_coin": 20,
+      "description": "食堂阿姨想学做一道番茄炒蛋。"
+    }
+  ]
+}
