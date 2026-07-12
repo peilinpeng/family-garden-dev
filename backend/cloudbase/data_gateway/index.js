@@ -30,11 +30,31 @@ const db = app.database();
 const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
+  'farm_plots',
+]);
+const AUDITED_TABLES = new Set([
+  'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
+  'travel_places', 'postcards', 'messages', 'mailbox_events',
+  'farm_plots',
+]);
+const AUTO_CREATE_TABLES = new Set([
+  'travel_places', 'postcards', 'messages', 'mailbox_events', 'farm_plots',
 ]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
 const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const IMAGE_MIME_TO_EXT = new Map([
+  ['image/jpeg', 'jpg'],
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+]);
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const TEMP_URL_TTL_SECONDS = 10 * 60;
+const ORPHAN_UPLOAD_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+const ORPHAN_UPLOAD_DELETE_LIMIT = 25;
+const FARM_PLOT_COUNT = 36;
+const FARM_CROP_ID_RE = /^[a-z0-9_]{1,40}$/;
 
 // CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
 // 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
@@ -67,6 +87,139 @@ function bearerToken(event) {
   return m ? m[1].trim() : '';
 }
 
+function stableScope(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 20);
+}
+
+function uploadDocumentId() {
+  return 'upload_' + crypto.randomBytes(16).toString('hex');
+}
+
+function hasExpectedImageSignature(bytes, contentType) {
+  if (contentType === 'image/jpeg') {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (contentType === 'image/png') {
+    return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+  if (contentType === 'image/webp') {
+    return bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  }
+  return false;
+}
+
+function imageDimensions(bytes, contentType) {
+  if (contentType === 'image/png' && bytes.length >= 24 && bytes.subarray(12, 16).toString('ascii') === 'IHDR') {
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (contentType === 'image/jpeg') {
+    const sofMarkers = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+    let offset = 2;
+    while (offset + 8 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset += 1; continue; }
+      const marker = bytes[offset + 1];
+      offset += 2;
+      if (marker === 0xd8 || marker === 0xd9) continue;
+      if (offset + 2 > bytes.length) break;
+      const length = bytes.readUInt16BE(offset);
+      if (length < 2 || offset + length > bytes.length) break;
+      if (sofMarkers.has(marker) && length >= 7) {
+        return { width: bytes.readUInt16BE(offset + 5), height: bytes.readUInt16BE(offset + 3) };
+      }
+      offset += length;
+    }
+  }
+  if (contentType === 'image/webp' && bytes.length >= 30) {
+    const chunk = bytes.subarray(12, 16).toString('ascii');
+    if (chunk === 'VP8X') {
+      return { width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
+    }
+    if (chunk === 'VP8L' && bytes[20] === 0x2f) {
+      return {
+        width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8),
+        height: 1 + (bytes[22] >> 6) + (bytes[23] << 2) + ((bytes[24] & 0x0f) << 10),
+      };
+    }
+    if (chunk === 'VP8 ' && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+      return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+    }
+  }
+  return null;
+}
+
+function validImageDimensions(dimensions) {
+  if (!dimensions) return false;
+  const { width, height } = dimensions;
+  return Number.isInteger(width) && Number.isInteger(height)
+    && width >= 32 && height >= 32
+    && width <= 12000 && height <= 12000
+    && width * height <= 40_000_000;
+}
+
+function decodeImage(body) {
+  const contentType = String(body.content_type || '').toLowerCase().trim();
+  const extension = IMAGE_MIME_TO_EXT.get(contentType);
+  if (!extension) return { error: 'unsupported image type' };
+  const encoded = String(body.base64_data || '');
+  // base64 理论上约为原文件的 4/3；先做字符串上限，避免在解码前分配超大 Buffer。
+  if (!encoded || encoded.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8) {
+    return { error: 'image too large' };
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) {
+    return { error: 'invalid base64 image' };
+  }
+  const bytes = Buffer.from(encoded, 'base64');
+  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return { error: 'image too large' };
+  if (!hasExpectedImageSignature(bytes, contentType)) return { error: 'image signature mismatch' };
+  const dimensions = imageDimensions(bytes, contentType);
+  if (!validImageDimensions(dimensions)) return { error: 'invalid image dimensions' };
+  return { bytes, contentType, extension, width: dimensions.width, height: dimensions.height };
+}
+
+async function temporaryImageUrl(fileId) {
+  const result = await app.getTempFileURL({
+    fileList: [{ fileID: fileId, maxAge: TEMP_URL_TTL_SECONDS }],
+  });
+  const first = result && Array.isArray(result.fileList) ? result.fileList[0] : null;
+  const url = String(first && (first.tempFileURL || first.download_url) || '');
+  if (!url) throw new Error('temporary image URL unavailable');
+  return url;
+}
+
+async function findUpload(uploadId, familyId) {
+  if (!/^upload_[a-f0-9]{32}$/.test(uploadId)) return null;
+  const got = await db.collection('uploads').doc(uploadId).get().catch(() => ({ data: [] }));
+  const row = got.data && got.data[0];
+  if (!row || String(row.family_id) !== familyId) return null;
+  return row;
+}
+
+async function isUploadReferenced(uploadId, familyId) {
+  const result = await db.collection('memories').where({ family_id: familyId, upload_id: uploadId }).limit(1).get();
+  return Boolean(result.data && result.data.length > 0);
+}
+
+async function cleanupOrphanUploads(familyId, memberId) {
+  const uploadsResult = await db.collection('uploads').where({ family_id: familyId, owner_member_id: memberId }).limit(200).get().catch(() => ({ data: [] }));
+  const cutoff = Date.now() - ORPHAN_UPLOAD_MIN_AGE_MS;
+  let deleted = 0;
+  for (const row of uploadsResult.data || []) {
+    if (deleted >= ORPHAN_UPLOAD_DELETE_LIMIT) break;
+    const uploadId = String(row.id || row._id || '');
+    const createdAt = Date.parse(String(row.created_at || ''));
+    if (!uploadId || !Number.isFinite(createdAt) || createdAt > cutoff) continue;
+    try {
+      if (await isUploadReferenced(uploadId, familyId)) continue;
+      await app.deleteFile({ fileList: [String(row.file_id)] });
+      await db.collection('uploads').doc(uploadId).remove();
+      deleted += 1;
+    } catch (_) {
+      // 引用查询或存储删除失败时保留元数据，下一次启动再安全重试。
+    }
+  }
+  return deleted;
+}
+
 // 用 member_token 解析身份;返回 {member_id, family_id, role, display_name} 或 null。
 async function resolveMember(token) {
   if (!token) return null;
@@ -82,6 +235,16 @@ async function resolveMember(token) {
   };
 }
 
+async function listFamilyMembers(familyId) {
+  const res = await db.collection('members').where({ family_id: familyId }).limit(100).get();
+  return (res.data || []).map((doc) => ({
+    member_id: String(doc._id || doc.id),
+    family_id: String(doc.family_id || ''),
+    role: String(doc.role || ''),
+    display_name: String(doc.display_name || ''),
+  }));
+}
+
 // 单个集合查询失败(如集合还没手动创建)不应拖垮整批 snapshot——降级返回空数组,
 // 让其它已就绪的集合仍能正常同步。
 async function queryGeneric(table, familyId) {
@@ -89,8 +252,52 @@ async function queryGeneric(table, familyId) {
     const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
     return res.data || [];
   } catch (err) {
+    try {
+      if (await ensureCollectionAfterMissingError(table, err)) return [];
+    } catch (createErr) {
+      console.warn('[data_gateway] auto-create failed for table=' + table + ': ' + (createErr && createErr.message || createErr));
+    }
     console.warn('[data_gateway] query failed for table=' + table + ': ' + (err && err.message || err));
     return [];
+  }
+}
+
+function isMissingCollectionError(err) {
+  const text = String((err && (err.code || err.message)) || err || '');
+  return text.includes('DATABASE_COLLECTION_NOT_EXIST')
+    || text.includes('COLLECTION_NOT_EXIST')
+    || text.includes('Db or Table not exist')
+    || text.includes('collection not exist');
+}
+
+async function ensureCollectionAfterMissingError(table, err) {
+  if (!AUTO_CREATE_TABLES.has(table) || !isMissingCollectionError(err)) return false;
+  try {
+    await db.createCollection(table);
+    console.warn('[data_gateway] auto-created missing collection: ' + table);
+    return true;
+  } catch (createErr) {
+    const text = String((createErr && (createErr.code || createErr.message)) || createErr || '');
+    if (text.includes('already exist') || text.includes('COLLECTION_ALREADY_EXISTS')) return true;
+    throw err;
+  }
+}
+
+async function setGenericDocument(table, id, row) {
+  try {
+    await db.collection(table).doc(id).set(row);
+  } catch (err) {
+    if (!(await ensureCollectionAfterMissingError(table, err))) throw err;
+    await db.collection(table).doc(id).set(row);
+  }
+}
+
+async function addGenericDocument(table, row) {
+  try {
+    return await db.collection(table).add(row);
+  } catch (err) {
+    if (!(await ensureCollectionAfterMissingError(table, err))) throw err;
+    return await db.collection(table).add(row);
   }
 }
 
@@ -124,6 +331,29 @@ async function upsertInventories(row, familyId, memberId) {
     return { ok: true, id };
   }
   return { ok: false, error: 'bad inventory kind' };
+}
+
+function normalizeFarmPlot(row, familyId) {
+  const plotIndex = Number(row.plot_index);
+  if (!Number.isInteger(plotIndex) || plotIndex < 0 || plotIndex >= FARM_PLOT_COUNT) {
+    return { error: 'bad farm plot index' };
+  }
+  const cropId = String(row.crop_id || '').trim();
+  if (!FARM_CROP_ID_RE.test(cropId)) return { error: 'bad farm crop_id' };
+  const plantedAt = String(row.planted_at || '').trim();
+  const plantedAtUnix = Number(row.planted_at_unix || 0);
+  const stableId = `farm_plot:${familyId}:${plotIndex}`;
+  return {
+    row: {
+      id: stableId,
+      plot_index: plotIndex,
+      crop_id: cropId,
+      planted_at: plantedAt || new Date().toISOString(),
+      planted_at_unix: Number.isFinite(plantedAtUnix) && plantedAtUnix > 0
+        ? Math.floor(plantedAtUnix)
+        : Math.floor(Date.now() / 1000),
+    },
+  };
 }
 
 exports.main = async (event) => {
@@ -165,6 +395,87 @@ exports.main = async (event) => {
       return { ok: true, member_id: memberId, family_id: familyId, role: identity.role, display_name: identity.display_name };
     }
 
+    if (action === 'list_family_members') {
+      return { ok: true, family_id: familyId, members: await listFamilyMembers(familyId) };
+    }
+
+    if (action === 'upload_image') {
+      const decoded = decodeImage(body);
+      if (decoded.error) return { ok: false, code: 400, error: decoded.error };
+      const uploadId = uploadDocumentId();
+      const cloudPath = [
+        'ai_uploads', stableScope(familyId), stableScope(memberId),
+        uploadId + '.' + decoded.extension,
+      ].join('/');
+      const uploaded = await app.uploadFile({ cloudPath, fileContent: decoded.bytes });
+      const fileId = String(uploaded && (uploaded.fileID || uploaded.fileId) || '');
+      if (!fileId) throw new Error('upload did not return fileID');
+      const row = {
+        id: uploadId,
+        family_id: familyId,
+        owner_member_id: memberId,
+        file_id: fileId,
+        cloud_path: cloudPath,
+        content_type: decoded.contentType,
+        size_bytes: decoded.bytes.length,
+        width: decoded.width,
+        height: decoded.height,
+        created_at: new Date().toISOString(),
+      };
+      try {
+        await db.collection('uploads').doc(uploadId).set(row);
+      } catch (err) {
+        await app.deleteFile({ fileList: [fileId] }).catch(() => {});
+        throw err;
+      }
+      const imageUrl = await temporaryImageUrl(fileId);
+      return {
+        ok: true,
+        upload_id: uploadId,
+        image_url: imageUrl,
+        content_type: decoded.contentType,
+        size_bytes: decoded.bytes.length,
+        width: decoded.width,
+        height: decoded.height,
+        expires_in: TEMP_URL_TTL_SECONDS,
+      };
+    }
+
+    if (action === 'resolve_image') {
+      const uploadId = String(body.upload_id || '');
+      const upload = await findUpload(uploadId, familyId);
+      if (!upload) return { ok: false, code: 404, error: 'image not found' };
+      return {
+        ok: true,
+        upload_id: uploadId,
+        image_url: await temporaryImageUrl(String(upload.file_id)),
+        content_type: String(upload.content_type || ''),
+        size_bytes: Number(upload.size_bytes || 0),
+        width: Number(upload.width || 0),
+        height: Number(upload.height || 0),
+        expires_in: TEMP_URL_TTL_SECONDS,
+      };
+    }
+
+    if (action === 'delete_image') {
+      const uploadId = String(body.upload_id || '');
+      const upload = await findUpload(uploadId, familyId);
+      if (!upload) return { ok: false, code: 404, error: 'image not found' };
+      if (String(upload.owner_member_id) !== memberId) {
+        return { ok: false, code: 403, error: 'forbidden' };
+      }
+      if (await isUploadReferenced(uploadId, familyId)) {
+        return { ok: false, code: 409, error: 'image is referenced' };
+      }
+      await app.deleteFile({ fileList: [String(upload.file_id)] });
+      await db.collection('uploads').doc(uploadId).remove();
+      return { ok: true };
+    }
+
+    if (action === 'cleanup_orphan_images') {
+      return { ok: true, deleted: await cleanupOrphanUploads(familyId, memberId) };
+    }
+
     if (action === 'snapshot') {
       const tables = Array.isArray(body.tables) ? body.tables : [];
       const out = {};
@@ -191,6 +502,16 @@ exports.main = async (event) => {
         return await upsertInventories(incoming, familyId, memberId);
       }
 
+      if (body.table === 'farm_plots') {
+        const normalized = normalizeFarmPlot(incoming, familyId);
+        if (normalized.error) return { ok: false, code: 400, error: normalized.error };
+        incoming.id = normalized.row.id;
+        incoming.plot_index = normalized.row.plot_index;
+        incoming.crop_id = normalized.row.crop_id;
+        incoming.planted_at = normalized.row.planted_at;
+        incoming.planted_at_unix = normalized.row.planted_at_unix;
+      }
+
       // 通用表:强制 family_id,保留服务端已有字段,客户端不能覆盖别家的行
       const id = String(incoming.id || '');
       let existing = {};
@@ -201,14 +522,30 @@ exports.main = async (event) => {
             return { ok: false, code: 403, error: 'forbidden' };
           }
           existing = got.data[0];
+          if (body.table === 'farm_plots') {
+            return { ok: false, code: 409, error: 'plot occupied' };
+          }
         }
       }
-      const merged = Object.assign({}, existing, incoming, { family_id: familyId });
+      const cleanIncoming = Object.assign({}, incoming);
+      delete cleanIncoming.family_id;
+      delete cleanIncoming.created_by_member_id;
+      delete cleanIncoming.updated_by_member_id;
+      const audit = AUDITED_TABLES.has(body.table)
+        ? {
+            created_by_member_id: existing.created_by_member_id || memberId,
+            updated_by_member_id: memberId,
+            updated_at: new Date().toISOString(),
+          }
+        : {};
+      const cleanExisting = Object.assign({}, existing);
+      delete cleanExisting._id;
+      const merged = Object.assign({}, cleanExisting, cleanIncoming, { family_id: familyId }, audit);
       if (id) {
-        await db.collection(body.table).doc(id).set(merged);
+        await setGenericDocument(body.table, id, merged);
         return { ok: true, id };
       }
-      const added = await db.collection(body.table).add(merged);
+      const added = await addGenericDocument(body.table, merged);
       return { ok: true, id: added.id };
     }
 

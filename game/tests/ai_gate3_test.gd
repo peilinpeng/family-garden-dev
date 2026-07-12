@@ -22,9 +22,35 @@ class FakeBackend:
 	func cache_namespace() -> String:
 		return "gate3-test"
 
+class RaceBackend:
+	extends Node
+	func request(_route: String, payload: Dictionary) -> Dictionary:
+		var label := String(payload.get("raw_text", ""))
+		for _frame in (5 if label == "slow" else 1):
+			await get_tree().process_frame
+		return _success_static({
+			"title": "并发记忆", "description": "用于验证请求级结果隔离。", "memory_type": "daily_life",
+			"suggested_scene": "garden", "question": "这段记忆还想补充什么细节呢？",
+			"node_type": "memory_flower", "confidence": 0.9,
+		}, "req_" + label)
+
+	func cache_ttl_seconds() -> float:
+		return 0.0
+
+	func cache_namespace() -> String:
+		return "race-test"
+
+	static func _success_static(data: Dictionary, request_id: String) -> Dictionary:
+		return {
+			"ok": true,
+			"data": data.duplicate(true),
+			"meta": {"request_id": request_id, "provider": "fake", "model": "fake", "prompt_version": "race", "source": "ai", "result": "complete"},
+		}
+
 var failures: Array[String] = []
 var client: Node
 var backend: FakeBackend
+var race_results: Dictionary = {}
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -47,9 +73,13 @@ func _run() -> void:
 	await _test_duplicate_coalescing()
 	await _test_cancellation()
 	await _test_request_after_cancellation()
+	await _test_request_scoped_outcomes()
+	await _test_moderation_fail_closed()
+	_test_stable_request_id()
 
 	client.queue_free()
 	backend.queue_free()
+	await process_frame
 	if failures.is_empty():
 		print("Gate 3 Godot tests passed: validator, envelope, state, fallback, cache, dedupe, cancel")
 		quit(0)
@@ -183,6 +213,40 @@ func _test_request_after_cancellation() -> void:
 	for _frame in 5:
 		await process_frame
 	_assert(client.state("generate-memory-card") == "success", "旧代回调不得覆盖新代成功状态")
+
+func _test_request_scoped_outcomes() -> void:
+	client.clear_cache()
+	var race := RaceBackend.new()
+	root.add_child(race)
+	client.set_backend(race)
+	race_results.clear()
+	_capture_outcome("slow")
+	_capture_outcome("fast")
+	for _frame in 8:
+		await process_frame
+	_assert(String(race_results.get("slow", {}).get("meta", {}).get("request_id", "")) == "req_slow", "慢请求必须保留自己的 meta")
+	_assert(String(race_results.get("fast", {}).get("meta", {}).get("request_id", "")) == "req_fast", "快请求必须保留自己的 meta")
+	client.set_backend(backend)
+	race.queue_free()
+
+func _capture_outcome(label: String) -> void:
+	race_results[label] = await client.request_memory_card("", label, "mem_" + label)
+
+func _test_moderation_fail_closed() -> void:
+	client.clear_backend()
+	var outcome: Dictionary = await client.moderate_user_content(["待确认内容"], "memory_card_edit")
+	_assert(String(outcome.get("state", "")) == "error", "审核服务离线时必须 fail-closed")
+	_assert(not bool(outcome.get("used_fallback", false)), "内容审核不得使用本地 mock 放行")
+	client.set_backend(backend)
+
+func _test_stable_request_id() -> void:
+	var http_backend := AIHttpBackend.new({})
+	var first := http_backend._new_request_id("same-workflow", "member-token")
+	var second := http_backend._new_request_id("same-workflow", "member-token")
+	var other := http_backend._new_request_id("same-workflow", "other-member-token")
+	_assert(first == second, "同一成员同一 workflow 重试必须复用 request ID")
+	_assert(first != other, "不同成员不能共享服务端幂等 request ID")
+	http_backend.free()
 
 func _success(route: String, data: Dictionary, request_id: String) -> Dictionary:
 	return {

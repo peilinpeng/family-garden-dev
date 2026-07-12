@@ -85,6 +85,26 @@ class DataGatewayIdentityClient {
       role: String(response.role || ""),
     };
   }
+
+  async resolveImage(authorization, uploadId, requestId) {
+    if (!authorization || !/^Bearer\s+\S+$/i.test(authorization)) {
+      throw new AppError("UNAUTHORIZED", "缺少有效的成员身份。", { retryable: false });
+    }
+    const response = await this.transport(
+      this.config.dataGatewayUrl,
+      { action: "resolve_image", upload_id: uploadId },
+      { authorization, "x-request-id": requestId },
+      Math.min(this.config.timeoutMs, 10000),
+    );
+    if (!response?.ok || !response.image_url) {
+      const code = Number(response?.code);
+      if (code === 401) throw new AppError("UNAUTHORIZED", "成员身份无效或已失效。", { retryable: false });
+      if (code === 403) throw new AppError("FORBIDDEN", "没有权限读取这张图片。", { retryable: false });
+      if (code === 404) throw new AppError("DATA_NOT_FOUND", "图片不存在或已经清理。", { retryable: false });
+      throw new AppError("AI_UPSTREAM_ERROR", "图片解析服务暂时不可用。", { expose: false, retryable: true });
+    }
+    return { image_url: String(response.image_url), upload_id: uploadId };
+  }
 }
 
 module.exports = { DataGatewayIdentityClient, postJson };

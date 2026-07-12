@@ -10,7 +10,8 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    写入时自动创建,必须提前建好,否则 `snapshot`/`query` 会直接报
    `ResourceNotFound: Db or Table not exist`):
    ```
-   members, families, memories, nodes, answers, rooms, room_objects, inventories
+   members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads,
+   travel_places, postcards, messages, mailbox_events, farm_plots
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。
@@ -95,10 +96,21 @@ db.collection('members').add({
 |---|---|---|---|
 | `join_family` | `{family_id, role, display_name}` | `{ok, member_token, member_id}` | **不需要**(这一步就是发令牌) |
 | `whoami` | 无 | `{ok, member_id, family_id, role, display_name}` | 需要 |
+| `list_family_members` | 无 | `{ok, family_id, members:[{member_id, family_id, role, display_name}]}` | 需要 |
 | `snapshot` | `{tables:[...]}` | `{ok, tables:{table:rows}}`(inventories 只含**本人**背包 + 共享仓) | 需要 |
 | `query` | `{table}` | `{ok, rows}` | 需要 |
 | `upsert` | `{table, row}` | `{ok, id}` | 需要 |
 | `delete` | `{table, id}` | `{ok}` | 需要 |
+| `upload_image` | `{content_type, base64_data}` | `{ok, upload_id, image_url, expires_in}` | 需要 |
+| `resolve_image` | `{upload_id}` | `{ok, image_url, expires_in}` | 需要 |
+| `delete_image` | `{upload_id}` | `{ok}` | 需要，且仅上传者可删 |
+| `cleanup_orphan_images` | `{}` | `{ok, deleted}` | 需要；只清理本人超过 24 小时且未被记忆引用的上传 |
+
+`uploads` 是网关内部元数据集合，不在通用表白名单中。客户端只持久化 `upload_id`；
+`image_url` 是短期签名地址，只用于预览和本次 AI 调用，重启后通过 `resolve_image` 刷新。
+上传网关会同时校验 MIME、文件魔数、真实宽高和总像素上限，不能仅靠伪造 Content-Type 上传任意字节。
+上传只接受 JPEG/PNG/WebP，解码前后均限制为 6 MB；存储路径由服务端按家庭与成员生成，
+不接受客户端自定义路径。
 
 除 `join_family` 外,无效/缺失令牌 → `{ok:false, code:401}`。
 
@@ -109,15 +121,57 @@ db.collection('members').add({
 - ✅ **伪造 id 无效**:客户端传什么 id 都会被服务端按自己的 member_id 重新计算,验证过"伪造别人 id 去写"会被纠正、不污染对方数据。
 - ✅ **跨家庭隔离**:通用表(families/memories/...)按 `family_id` 过滤;试图覆盖别家已存在的行 → 403。
 - ✅ **未鉴权拒绝**:无有效令牌 → 401(`join_family` 除外,那是发令牌本身)。
-- ✅ **members 表完全不可达**:不在 action 白名单,客户端无法查询/写入/回传 member_token。
+- ✅ **members 表不可通用访问**:不在 CRUD 白名单,客户端无法查询/写入/回传 member_token；
+  只开放 `list_family_members` 只读动作,且只返回同家庭公开字段。
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
 - ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/partner/player` 四个合法角色,乱传会被拒绝。
 - ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
+- ✅ **AI 图片受控上传**:服务端生成隔离路径；元数据表不对 CRUD 白名单开放；家庭外不可解析、非上传者不可删除。
 - **轮换/吊销**:删/换某成员的 member_token 行即可让其失效,不影响其他成员。
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
 
-以上边界已落成 `tests/data_gateway.test.js` 的 23 项可重复逻辑测试。
+以上边界已落成 `tests/data_gateway.test.js` 的可重复逻辑测试。
+
+Gate 5 真实云端联调可用以下命令显式触发。它会自助加入两个同家庭测试成员和一个隔离
+家庭测试成员，验证旅行地点、明信片、留言、邮箱事件的真实写入、跨成员读取、审计字段、
+跨家庭隔离和删除清理：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE5_REAL_SMOKE=1 npm run smoke:gate5:real
+```
+
+默认使用 `game/config/cloudbase.json` 的公开 endpoint，并创建临时测试家庭，避免污染正式
+`family_id` 的业务内容。若要刻意在配置家庭里验收，可额外设置
+`FG_GATE5_USE_CONFIG_FAMILY=1`。业务测试记录会在脚本结束时清理；`join_family` 生成的
+测试成员记录没有客户端删除入口，会留在 `members` 集合中，显示名带 `Gate5` 前缀。
+
+Gate 5 四张共享集合如果在旧环境里尚未手动创建，最新版 `data_gateway` 会在首次查询或
+写入时自动创建并继续执行；旧版云函数仍会返回 `DATABASE_COLLECTION_NOT_EXIST`，此时先
+部署本目录最新代码包。
+
+Gate 6 共享农场真实联调可用以下命令显式触发。它会自助加入两个同家庭测试成员和一个隔离
+家庭测试成员，验证 `farm_plots` 的真实种植、占用冲突、跨成员读取、跨家庭隔离和收获删除：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_FARM_REAL_SMOKE=1 npm run smoke:gate6:farm:real
+```
+
+测试会清理 `farm_plots` 业务记录；`join_family` 生成的测试成员记录没有客户端删除入口，
+会留在 `members` 集合中，显示名带 `Gate6 Farm` 前缀。
+
+Gate 6 成员入口真实联调可用以下命令显式触发。它会自助加入两个同家庭成员和一个隔离成员，
+验证家庭成员列表只返回同家庭公开字段，且不会泄漏 `member_token`：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
+```
+
+该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在 `members`
+集合中，显示名带 `Gate6 Members` 前缀。
 
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
@@ -132,3 +186,58 @@ db.collection('members').add({
 
 - **实时同步**(看到家人走动、共享仓即时刷新)= CloudBase 实时,建在存储之上,见 `docs/dev/43`。
 - 把旧的 Supabase 直连读路径(`CloudService.load_family_data`)也迁到本网关。
+
+## 7. Gate 6 Presence Relay
+
+`backend/cloudbase/presence_relay/` 是实时同场的第一步：一个部署在 CloudBase 云托管的
+WebSocket 中继。它不保存业务数据，只校验成员身份、按 `family_id` 分房间并转发在线成员
+位置与轻量共享事件。
+
+`world_changed` 只广播“哪张共享表变了”，不携带完整业务数据。收到事件的客户端会重新
+通过 `data_gateway` 拉取快照，因此权限、隔离和审计仍由 data_gateway 统一负责。
+
+本地测试：
+
+```bash
+cd backend/cloudbase/presence_relay
+npm install
+npm test
+npm run smoke:local
+```
+
+云托管部署时设置环境变量：
+
+```bash
+PORT=8080
+DATA_GATEWAY_URL=https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/data_gateway
+```
+
+`DATA_GATEWAY_URL` 可省略；relay 已内置当前项目公开 `data_gateway` 地址作为默认值。迁移到
+其他 CloudBase 环境时再显式覆盖。
+
+部署成功后，把云托管 WebSocket 地址填入 `game/config/cloudbase.json` 的
+`presence_endpoint`。为空时客户端不会连接实时服务，农场仍保持离线占位演示。
+
+当前 Gate 6 线上地址：
+
+```text
+wss://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay
+```
+
+健康检查：
+
+```bash
+curl https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay/healthz
+```
+
+真实云端 smoke 需要显式打开开关，脚本会临时自助加入两个同家庭测试成员和一个隔离成员，
+验证无效 token、移动广播、`world_changed` 同家庭转发、跨家庭隔离、离开通知和同一成员
+多设备替换：
+
+```bash
+cd backend/cloudbase/presence_relay
+FG_GATE6_REAL_SMOKE=1 npm run smoke:real
+```
+
+该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在
+`members` 集合中，显示名带 `Gate6` 前缀。

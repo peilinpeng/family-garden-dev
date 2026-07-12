@@ -14,6 +14,8 @@ var step_timer: float = 0.0
 var step_index: int = 1
 var facing_row: int = 0
 var _frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧,优先于 hframes/vframes
+var _label_check_timer := 0.0
+var _label_alpha := 0.0
 
 @onready var sprite: Sprite2D = get_node_or_null("Sprite2D")
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -54,6 +56,27 @@ func _physics_process(delta: float) -> void:
 		_pick_next_state()
 
 	z_index = int(global_position.y)
+	_update_name_label(delta)
+
+
+## 姓名只在玩家靠近时出现，既保留人物辨识，也让花园远景保持干净。
+func _update_name_label(delta: float) -> void:
+	_label_check_timer -= delta
+	var should_show := false
+	if _label_check_timer <= 0.0:
+		_label_check_timer = 0.12
+		var player := get_tree().get_first_node_in_group("player") as Node2D
+		should_show = player != null and global_position.distance_to(player.global_position) <= 118.0
+		set_meta("show_name_label", should_show)
+	else:
+		should_show = bool(get_meta("show_name_label", false))
+	_label_alpha = move_toward(_label_alpha, 1.0 if should_show else 0.0, delta * 6.0)
+	for node_name in ["NameLabel", "OnlineStatus"]:
+		var label := get_node_or_null(node_name) as CanvasItem
+		if label == null:
+			continue
+		label.visible = _label_alpha > 0.02
+		label.modulate.a = _label_alpha
 
 
 func _pick_next_state() -> void:
@@ -136,7 +159,9 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 		sprite.frame = 0
 		sprite.region_rect = _frame_rects[index]
 	else:
-		sprite.frame = index
+		# 兼容脚本刚挂载、精确裁剪帧尚未注入的首帧；永远不向 Sprite2D 写越界 frame。
+		var frame_count := maxi(1, sprite.hframes * sprite.vframes)
+		sprite.frame = clampi(index, 0, frame_count - 1)
 
 
 func set_blocked_rects(rects: Array) -> void:

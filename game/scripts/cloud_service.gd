@@ -14,6 +14,23 @@ const SUPABASE_ANON_KEY: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 const FAMILY_ID: String = "Happy_birthday_David"
 const REST_BASE: String = SUPABASE_URL + "/rest/v1"
 const STORAGE_BUCKET: String = "family-photos"
+const WORLD_REFRESH_DEBOUNCE := 0.45
+const WORLD_EVENT_TABLES := {
+	"memories": true,
+	"nodes": true,
+	"answers": true,
+	"rooms": true,
+	"room_objects": true,
+	"families": true,
+	"travel_places": true,
+	"postcards": true,
+	"messages": true,
+	"mailbox_events": true,
+	"inventories": true,
+	"farm_plots": true,
+}
+
+signal cloud_world_changed(event: Dictionary)
 
 # ── 持久化后端接缝（迭代1a · 后端无关接口）─────────────────────────────────
 # 默认无远端后端：persist/load/delete 为 no-op / 空，由 MemoryManager 本地存档兜底。
@@ -21,6 +38,9 @@ const STORAGE_BUCKET: String = "family-photos"
 # （需实现 persist_record(table,row) / load_table(table,query) / delete_record(table,id)），
 # MemoryManager 的写入/读取出入口签名不变。
 var _persist_backend: Object = null
+var _world_refresh_pending := false
+var _world_refresh_running := false
+var _latest_world_event: Dictionary = {}
 
 ## 启动:若 config/cloudbase.json 配了 endpoint,注入 CloudBase 后端;
 ## 若本设备已自助加入过(user://cloud_identity.json 里有令牌)则立刻预拉云端;
@@ -28,6 +48,9 @@ var _persist_backend: Object = null
 ## scene_manager 会调 ensure_cloud_identity() 自助注册 + 补上这次 bootstrap。
 ## 未配置 endpoint 则保持纯本地(接缝全 no-op),游戏照常离线运行。
 func _ready() -> void:
+	if OS.has_environment("FAMILY_GARDEN_TEST"):
+		return
+	_connect_presence_world_events()
 	if CloudBaseBackend.is_configured():
 		var backend := CloudBaseBackend.new()
 		add_child(backend)
@@ -35,6 +58,8 @@ func _ready() -> void:
 		await get_tree().process_frame   # 等其它 autoload(MemoryManager 等)就绪
 		if backend.has_identity():
 			await backend.bootstrap()
+			await _flush_ai_outbox()
+			await _cleanup_ai_images()
 
 func set_persistence_backend(backend: Object) -> void:
 	_persist_backend = backend
@@ -42,25 +67,71 @@ func set_persistence_backend(backend: Object) -> void:
 ## 首次选角色后调用:若配置了 CloudBase 但本设备还没自助加入过,
 ## 用选中的角色+昵称注册一个云身份,再补跑一次 bootstrap 把数据同步起来。
 ## 已经加入过的设备(has_identity()==true)直接跳过,不会重复注册。
-func ensure_cloud_identity(role: String, display_name: String) -> bool:
+func ensure_cloud_identity(role: String, display_name: String, family_code: String = "") -> bool:
 	if _persist_backend == null or not _persist_backend.has_method("has_identity"):
 		return false
 	if _persist_backend.has_identity():
 		return true
 	var fam_id: String = _persist_backend.family_id() if _persist_backend.family_id() != "" \
 		else str(CloudBaseBackend.load_config().get("family_id", ""))
+	if family_code.strip_edges() != "":
+		fam_id = family_code.strip_edges()
 	if fam_id == "":
 		push_warning("[CloudBase] 未配置 family_id,无法自助加入")
 		return false
 	var joined: bool = await _persist_backend.join_family(fam_id, role, display_name)
 	if joined:
 		await _persist_backend.bootstrap()
+		await _flush_ai_outbox()
+		await _cleanup_ai_images()
 		return true
 	return false
+
+func family_code() -> String:
+	if GameIdentity != null and GameIdentity.is_ready():
+		return str(GameIdentity.family_id)
+	if _persist_backend != null and _persist_backend.has_method("family_id"):
+		var fam_id := str(_persist_backend.family_id())
+		if fam_id != "":
+			return fam_id
+	return str(CloudBaseBackend.load_config().get("family_id", ""))
+
+func _flush_ai_outbox() -> void:
+	var workflow := get_node_or_null("/root/AIWorkflowManager")
+	var memory_manager := get_node_or_null("/root/MemoryManager")
+	var had_pending: bool = false
+	if memory_manager != null:
+		had_pending = not memory_manager.ai_sync_outbox.is_empty()
+	if workflow != null and workflow.has_method("flush_ai_sync_outbox"):
+		await workflow.flush_ai_sync_outbox()
+		if had_pending and memory_manager.ai_sync_outbox.is_empty() and _persist_backend != null and _persist_backend.has_method("refresh"):
+			await _persist_backend.refresh()
+			memory_manager.pull_remote()
+		if workflow.has_method("retry_pending_links"):
+			await workflow.retry_pending_links(2)
+
+func _cleanup_ai_images() -> void:
+	if _persist_backend != null and _persist_backend.has_method("cleanup_orphan_images"):
+		await _persist_backend.cleanup_orphan_images()
+
+func list_family_members() -> Array:
+	if _persist_backend != null and _persist_backend.has_method("list_family_members"):
+		return await _persist_backend.list_family_members()
+	return []
 
 func persist_record(table: String, row: Dictionary) -> void:
 	if _persist_backend != null and _persist_backend.has_method("persist_record"):
 		_persist_backend.persist_record(table, row)
+		_announce_world_changed(table, str(row.get("id", "")), "upsert", row)
+
+func persist_ai_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("persist_record_confirmed"):
+		var result: Dictionary = await _persist_backend.persist_record_confirmed(table, row)
+		if bool(result.get("ok", false)):
+			_announce_world_changed(table, str(result.get("id", row.get("id", ""))), "upsert", row)
+		return result
+	persist_record(table, row)
+	return {"ok": true, "id": str(row.get("id", "")), "local_only": true}
 
 func load_table(table: String, query: String = "") -> Array:
 	if _persist_backend != null and _persist_backend.has_method("load_table"):
@@ -70,9 +141,144 @@ func load_table(table: String, query: String = "") -> Array:
 func delete_record(table: String, row_id: String) -> void:
 	if _persist_backend != null and _persist_backend.has_method("delete_record"):
 		_persist_backend.delete_record(table, row_id)
+		_announce_world_changed(table, row_id, "delete", {})
+
+func delete_ai_record_confirmed(table: String, row_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("delete_record_confirmed"):
+		var result: Dictionary = await _persist_backend.delete_record_confirmed(table, row_id)
+		if bool(result.get("ok", false)):
+			_announce_world_changed(table, row_id, "delete", {})
+		return result
+	delete_record(table, row_id)
+	return {"ok": true, "local_only": true}
+
+func load_farm_plots() -> Array:
+	return load_table("farm_plots")
+
+func save_farm_plot(row: Dictionary) -> void:
+	persist_record("farm_plots", row)
+
+func save_farm_plot_confirmed(row: Dictionary) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("persist_record_confirmed"):
+		var res: Dictionary = await _persist_backend.persist_record_confirmed("farm_plots", row)
+		if bool(res.get("ok", false)):
+			var row_id := str(res.get("id", row.get("id", "")))
+			_announce_world_changed("farm_plots", row_id, "upsert", row)
+		return res
+	save_farm_plot(row)
+	return {"ok": true, "id": str(row.get("id", ""))}
+
+func delete_farm_plot(row_id: String) -> void:
+	delete_record("farm_plots", row_id)
+
+func delete_farm_plot_confirmed(row_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("delete_record_confirmed"):
+		var res: Dictionary = await _persist_backend.delete_record_confirmed("farm_plots", row_id)
+		if bool(res.get("ok", false)):
+			_announce_world_changed("farm_plots", row_id, "delete", {})
+		return res
+	delete_farm_plot(row_id)
+	return {"ok": true}
+
+func has_cloud_records() -> bool:
+	return _use_cloudbase_records()
+
+func upload_ai_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+	if _persist_backend == null or not _persist_backend.has_method("upload_image"):
+		return {"ok": false, "error": "CloudBase 图片上传未配置"}
+	return await _persist_backend.upload_image(bytes, content_type)
+
+func resolve_ai_image(upload_id: String) -> Dictionary:
+	if _persist_backend == null or not _persist_backend.has_method("resolve_image"):
+		return {"ok": false, "error": "CloudBase 图片解析未配置"}
+	return await _persist_backend.resolve_image(upload_id)
+
+func delete_ai_image(upload_id: String) -> bool:
+	if _persist_backend == null or not _persist_backend.has_method("delete_image"):
+		return false
+	return await _persist_backend.delete_image(upload_id)
+
+func _use_cloudbase_records() -> bool:
+	return _persist_backend != null \
+		and _persist_backend.has_method("has_identity") \
+		and _persist_backend.has_identity() \
+		and _persist_backend.has_method("load_table") \
+		and _persist_backend.has_method("persist_record")
+
+func _cloudbase_row_id(prefix: String) -> String:
+	return "%s_%d_%d" % [prefix, Time.get_ticks_msec(), randi() % 1000000]
+
+func _connect_presence_world_events() -> void:
+	if PresenceChannel == null:
+		return
+	if not PresenceChannel.world_changed.is_connected(_on_presence_world_changed):
+		PresenceChannel.world_changed.connect(_on_presence_world_changed)
+
+func _is_world_event_table(table: String) -> bool:
+	return WORLD_EVENT_TABLES.has(table)
+
+func _should_broadcast_world_change(table: String, row_id: String, action: String, row: Dictionary) -> bool:
+	if not _is_world_event_table(table):
+		return false
+	if table == "inventories":
+		var kind := str(row.get("kind", ""))
+		if action == "upsert" and kind != "storehouse":
+			return false
+		if action == "delete" and row_id == "backpack":
+			return false
+	return true
+
+func _announce_world_changed(table: String, row_id: String, action: String, row: Dictionary) -> void:
+	if not _should_broadcast_world_change(table, row_id, action, row):
+		return
+	if PresenceChannel != null and PresenceChannel.has_method("announce_world_changed"):
+		PresenceChannel.announce_world_changed(table, row_id, action)
+
+func _on_presence_world_changed(event: Dictionary) -> void:
+	var table := str(event.get("table", ""))
+	if not _is_world_event_table(table):
+		return
+	_latest_world_event = event.duplicate(true)
+	_world_refresh_pending = true
+	if _world_refresh_running:
+		return
+	_world_refresh_running = true
+	call_deferred("_run_world_refresh")
+
+func _run_world_refresh() -> void:
+	while _world_refresh_pending:
+		_world_refresh_pending = false
+		var event := _latest_world_event.duplicate(true)
+		await get_tree().create_timer(WORLD_REFRESH_DEBOUNCE).timeout
+		if _persist_backend != null and _persist_backend.has_method("refresh"):
+			await _persist_backend.refresh()
+		var mem := get_node_or_null("/root/MemoryManager")
+		if mem != null and mem.has_method("pull_remote"):
+			mem.pull_remote()
+		var inv := get_node_or_null("/root/InventoryManager")
+		if inv != null and inv.has_method("sync_from_cloud"):
+			inv.sync_from_cloud()
+		cloud_world_changed.emit(event)
+	_world_refresh_running = false
 
 
 func load_family_data() -> Dictionary:
+	if _use_cloudbase_records():
+		return {
+			"travel_places": load_table("travel_places"),
+			"postcards": load_table("postcards"),
+			"messages": load_table("messages"),
+			"mailbox_events": load_table("mailbox_events"),
+		}
+
+	if _persist_backend != null and _persist_backend.has_method("has_identity"):
+		return {
+			"travel_places": [],
+			"postcards": [],
+			"messages": [],
+			"mailbox_events": [],
+		}
+
 	var places: Array = await select_table("travel_places", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
 	var postcards: Array = await select_table("postcards", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
 	var messages: Array = await select_table("messages", "family_id=eq.%s&order=created_at.asc" % _url_encode(FAMILY_ID))
@@ -150,6 +356,46 @@ func delete_row(table_name: String, row_id: String) -> bool:
 
 
 func create_place_with_postcard(title: String, note: String, map_x: float, map_y: float, member_id: String = "", photo_path: String = "") -> Dictionary:
+	if _use_cloudbase_records():
+		var stamp := Time.get_datetime_string_from_system()
+		var place_id := _cloudbase_row_id("place")
+		var postcard_id := _cloudbase_row_id("postcard")
+		var event_id := _cloudbase_row_id("mailbox_event")
+		var member_value := member_id
+		var place := {
+			"id": place_id,
+			"member_id": member_value,
+			"title": title,
+			"note": note,
+			"map_x": map_x,
+			"map_y": map_y,
+			"photo_path": photo_path,
+			"created_at": stamp,
+		}
+		var postcard := {
+			"id": postcard_id,
+			"place_id": place_id,
+			"member_id": member_value,
+			"title": "来自%s的明信片" % title,
+			"message": note,
+			"photo_path": photo_path,
+			"is_new": true,
+			"created_at": stamp,
+		}
+		var event := {
+			"id": event_id,
+			"type": "postcard",
+			"title": "来自%s的新明信片" % title,
+			"message": note,
+			"target_id": postcard_id,
+			"is_read": false,
+			"created_at": stamp,
+		}
+		persist_record("travel_places", place)
+		persist_record("postcards", postcard)
+		persist_record("mailbox_events", event)
+		return {"place": place, "postcard": postcard}
+
 	var member_value: Variant = null
 	if member_id != "":
 		member_value = member_id
@@ -175,7 +421,7 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 	var postcard: Dictionary = await insert_row("postcards", {
 		"place_id": place_id,
 		"member_id": member_value,
-		"title": "Postcard from " + title,
+		"title": "来自%s的明信片" % title,
 		"message": note,
 		"photo_path": photo_value,
 		"is_new": true,
@@ -187,7 +433,7 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 
 	await insert_row("mailbox_events", {
 		"type": "postcard",
-		"title": "New postcard from " + title,
+		"title": "来自%s的新明信片" % title,
 		"message": note,
 		"target_id": target_value,
 		"is_read": false,
@@ -200,12 +446,52 @@ func create_place_with_postcard(title: String, note: String, map_x: float, map_y
 
 
 func delete_place_and_postcards(place_id: String) -> void:
+	if _use_cloudbase_records():
+		var postcard_ids: Array[String] = []
+		for postcard in load_table("postcards"):
+			if postcard is Dictionary and str(postcard.get("place_id", "")) == place_id:
+				var pid := str(postcard.get("id", ""))
+				if pid != "":
+					postcard_ids.append(pid)
+					delete_record("postcards", pid)
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and str(event.get("target_id", "")) in postcard_ids:
+				var eid := str(event.get("id", ""))
+				if eid != "":
+					delete_record("mailbox_events", eid)
+		delete_record("travel_places", place_id)
+		return
+
 	var postcard_url: String = REST_BASE + "/postcards?place_id=eq." + _url_encode(place_id)
 	await _request_json(HTTPClient.METHOD_DELETE, postcard_url, {}, ["Prefer: return=minimal"])
 	await delete_row("travel_places", place_id)
 
 
 func create_message(author_name: String, body: String, member_id: String = "") -> Dictionary:
+	if _use_cloudbase_records():
+		var stamp := Time.get_datetime_string_from_system()
+		var message_id := _cloudbase_row_id("message")
+		var event_id := _cloudbase_row_id("mailbox_event")
+		var message := {
+			"id": message_id,
+			"member_id": member_id,
+			"author_name": author_name,
+			"body": body,
+			"created_at": stamp,
+		}
+		var event := {
+			"id": event_id,
+			"type": "message",
+			"title": "新的花园留言",
+			"message": body,
+			"target_id": message_id,
+			"is_read": false,
+			"created_at": stamp,
+		}
+		persist_record("messages", message)
+		persist_record("mailbox_events", event)
+		return message
+
 	var member_value: Variant = null
 	if member_id != "":
 		member_value = member_id
@@ -222,7 +508,7 @@ func create_message(author_name: String, body: String, member_id: String = "") -
 
 	await insert_row("mailbox_events", {
 		"type": "message",
-		"title": "New garden note",
+		"title": "新的花园留言",
 		"message": body,
 		"target_id": target_value,
 		"is_read": false,
@@ -232,6 +518,14 @@ func create_message(author_name: String, body: String, member_id: String = "") -
 
 
 func mark_mailbox_read() -> bool:
+	if _use_cloudbase_records():
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and not bool(event.get("is_read", true)):
+				var updated := (event as Dictionary).duplicate(true)
+				updated["is_read"] = true
+				persist_record("mailbox_events", updated)
+		return true
+
 	var url: String = REST_BASE + "/mailbox_events?family_id=eq.%s&is_read=eq.false" % _url_encode(FAMILY_ID)
 	var result: Dictionary = await _request_json(
 		HTTPClient.METHOD_PATCH,
@@ -243,6 +537,12 @@ func mark_mailbox_read() -> bool:
 
 
 func has_unread_mailbox_events() -> bool:
+	if _use_cloudbase_records():
+		for event in load_table("mailbox_events"):
+			if event is Dictionary and not bool(event.get("is_read", true)):
+				return true
+		return false
+
 	var events: Array = await select_table(
 		"mailbox_events",
 		"family_id=eq.%s&is_read=eq.false&select=id&type=neq.none&limit=1" % _url_encode(FAMILY_ID)

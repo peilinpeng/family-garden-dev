@@ -4,6 +4,12 @@
 
 ## 推荐阅读顺序
 
+### 比赛验收与提交
+
+- `docs/submission/README.md`：最终交付包导航；
+- `docs/07_demo_script.md`：3—5 分钟主演示脚本；
+- `docs/submission/06_final_qa_report.md`：最终自动化与人工验收结论。
+
 ### 全员先读
 1. `docs/00_project_overview.md`：项目总定位与核心闭环
 2. `docs/01_development_scope.md`：开发边界、优先级与不做事项

@@ -118,6 +118,14 @@ func generate_memory_card(image_url: String, text: String = "", memory_id: Strin
 		payload["raw_text"] = text.strip_edges()
 	return await _data_call("generate-memory-card", payload, MOCK_MEMORY_CARD)
 
+func request_memory_card(upload_id: String, text: String = "", memory_id: String = "") -> Dictionary:
+	var payload := {"memory_id": memory_id if memory_id != "" else _local_id("memory"), "input_type": "photo" if upload_id != "" else "text", "language": "zh-CN"}
+	if upload_id != "":
+		payload["upload_id"] = upload_id
+	if text.strip_edges() != "":
+		payload["raw_text"] = text.strip_edges()
+	return await _call("generate-memory-card", payload, MOCK_MEMORY_CARD)
+
 func analyze_room_photo(image_url: String, memory_id: String = "") -> Dictionary:
 	var payload := {
 		"memory_id": memory_id if memory_id != "" else _local_id("room"),
@@ -126,7 +134,19 @@ func analyze_room_photo(image_url: String, memory_id: String = "") -> Dictionary
 	}
 	return await _data_call("analyze-room-photo", payload, MOCK_ROOM_ANALYSIS)
 
+func request_room_analysis(upload_id: String, memory_id: String = "") -> Dictionary:
+	var payload := {
+		"memory_id": memory_id if memory_id != "" else _local_id("room"),
+		"upload_id": upload_id,
+		"language": "zh-CN",
+	}
+	return await _call("analyze-room-photo", payload, MOCK_ROOM_ANALYSIS)
+
 func generate_bottle_question(context: Dictionary = {}) -> Dictionary:
+	var outcome := await request_bottle_question(context)
+	return _outcome_data(outcome)
+
+func request_bottle_question(context: Dictionary = {}) -> Dictionary:
 	var payload := {
 		"scene": String(context.get("scene", "fishpond")),
 		"target_memory_type": String(context.get("target_memory_type", "shared_memory")),
@@ -136,9 +156,13 @@ func generate_bottle_question(context: Dictionary = {}) -> Dictionary:
 	for optional in ["target_member_id", "memory_stats", "avoid_topics"]:
 		if context.has(optional):
 			payload[optional] = context[optional]
-	return await _data_call("generate-bottle-question", payload, MOCK_BOTTLE_QUESTION)
+	return await _call("generate-bottle-question", payload, MOCK_BOTTLE_QUESTION)
 
 func cross_memory_link(memory: Variant, candidates: Array = []) -> Dictionary:
+	var outcome := await request_memory_links(memory, candidates)
+	return _outcome_data(outcome)
+
+func request_memory_links(memory: Variant, candidates: Array = []) -> Dictionary:
 	var source: Dictionary = memory.duplicate(true) if memory is Dictionary else MemoryManager.get_memory(String(memory))
 	var source_summary := _memory_summary(source)
 	var normalized_candidates: Array = []
@@ -153,7 +177,15 @@ func cross_memory_link(memory: Variant, candidates: Array = []) -> Dictionary:
 		"candidates": normalized_candidates,
 		"language": "zh-CN",
 	}
-	return await _data_call("cross-memory-link", payload, MOCK_LINK)
+	return await _call("cross-memory-link", payload, MOCK_LINK)
+
+func moderate_user_content(texts: Array, kind: String) -> Dictionary:
+	var cleaned: Array = []
+	for text in texts:
+		var value := String(text).strip_edges()
+		if value != "":
+			cleaned.append(value)
+	return await _call("moderate-user-content", {"kind": kind, "texts": cleaned, "language": "zh-CN"}, null)
 
 func _memory_summary(memory: Dictionary) -> Dictionary:
 	var card: Dictionary = memory.get("ai_card", {}) if memory.get("ai_card", {}) is Dictionary else {}
@@ -166,10 +198,13 @@ func _memory_summary(memory: Dictionary) -> Dictionary:
 
 func _data_call(route: String, payload: Dictionary, fallback: Variant) -> Variant:
 	var outcome := await _call(route, payload, fallback)
+	return _outcome_data(outcome)
+
+func _outcome_data(outcome: Dictionary) -> Dictionary:
 	var data: Variant = outcome.get("data")
 	if data is Dictionary or data is Array:
 		return data.duplicate(true)
-	return {} if fallback is Dictionary else []
+	return {}
 
 func _call(route: String, payload: Dictionary, fallback: Variant) -> Dictionary:
 	var cache_key := _request_key(route, payload)
@@ -187,7 +222,7 @@ func _call(route: String, payload: Dictionary, fallback: Variant) -> Dictionary:
 	_inflight[inflight_key] = ticket
 	var generation := _generation
 	_set_result(route, _outcome(STATE_LOADING, route, null, {}, {}, false))
-	var outcome := await _perform_call(route, payload, fallback, generation)
+	var outcome := await _perform_call(route, payload, fallback, generation, cache_key)
 	ticket.result = outcome.duplicate(true)
 	ticket.finished = true
 	ticket.completed.emit(ticket.result)
@@ -199,18 +234,21 @@ func _call(route: String, payload: Dictionary, fallback: Variant) -> Dictionary:
 		_set_result(route, outcome)
 	return outcome
 
-func _perform_call(route: String, payload: Dictionary, fallback: Variant, generation: int) -> Dictionary:
+func _perform_call(route: String, payload: Dictionary, fallback: Variant, generation: int, request_key: String) -> Dictionary:
 	var request_validation := AIContractValidator.validate_request(route, payload)
 	if not bool(request_validation.get("ok", false)):
 		return _outcome(STATE_ERROR, route, null, {}, _local_error("INVALID_REQUEST", "; ".join(request_validation.get("errors", [])), false), false)
 	if _backend == null or not _backend.has_method("request"):
-		return _fallback_outcome(route, payload, fallback, "NETWORK_OFFLINE", "AI 后端未启用。")
-	var envelope: Variant = await _backend.request("/api/ai/" + route, payload)
+		return _fallback_outcome(route, payload, fallback, "NETWORK_OFFLINE", "AI 后端未启用。") if fallback != null \
+			else _outcome(STATE_ERROR, route, null, {}, _local_error("NETWORK_OFFLINE", "AI 后端未启用。", true), false)
+	var envelope: Variant = await _backend.request_with_key("/api/ai/" + route, payload, request_key) \
+		if _backend.has_method("request_with_key") else await _backend.request("/api/ai/" + route, payload)
 	if generation != _generation:
 		return _outcome(STATE_CANCELLED, route, null, {}, _local_error("CANCELLED", "请求已取消。", false), false)
 	var validation := AIContractValidator.validate_envelope(route, envelope, payload)
 	if not bool(validation.get("ok", false)):
-		return _fallback_outcome(route, payload, fallback, "AI_INVALID_OUTPUT", "; ".join(validation.get("errors", [])))
+		return _fallback_outcome(route, payload, fallback, "AI_INVALID_OUTPUT", "; ".join(validation.get("errors", []))) if fallback != null \
+			else _outcome(STATE_ERROR, route, null, {}, _local_error("AI_INVALID_OUTPUT", "; ".join(validation.get("errors", [])), true), false)
 	var body := envelope as Dictionary
 	if bool(body.get("ok", false)):
 		var meta := body.get("meta", {}) as Dictionary
@@ -218,7 +256,7 @@ func _perform_call(route: String, payload: Dictionary, fallback: Variant, genera
 		return _outcome(state_name, route, body.get("data"), meta, {}, state_name == STATE_FALLBACK)
 	var error := body.get("error", {}) as Dictionary
 	var code := String(error.get("code", "INTERNAL_ERROR"))
-	if code in TECHNICAL_FALLBACK_CODES:
+	if code in TECHNICAL_FALLBACK_CODES and fallback != null:
 		return _fallback_outcome(route, payload, fallback, code, String(error.get("message", "AI 服务暂时不可用。")), body.get("meta", {}))
 	if code == "CANCELLED":
 		return _outcome(STATE_CANCELLED, route, null, body.get("meta", {}), error, false)

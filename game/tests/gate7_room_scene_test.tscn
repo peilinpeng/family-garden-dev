@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://tests/gate7_room_scene_test.gd" type="Script" id="1"]
+
+[node name="Gate7RoomSceneTest" type="Node"]
+script = ExtResource("1")

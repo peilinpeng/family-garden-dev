@@ -2,13 +2,15 @@
 
 > 面向:负责"AI 生成场景"的队友
 > 关联:[03 美术资产管线](../03_art_asset_pipeline.md)、[04 AI 接口](../04_ai_interfaces.md)、[36 场景归属与管线](36_scene_ownership_and_pipeline.md)
-> 状态:架构已定 + 厨房做了可参考的小样;**生成器本体未做,交给你**
+> 状态:架构已定 + 厨房做了可参考的小样;**Gate 7 已完成首个生成器闭环**
 
 ---
 
 ## 0. 一句话目标
 
-让 AI **不画图**,而是从**固定素材库**里"挑 tile / 挑家具 + 摆到网格坐标",输出一份 JSON,由加载器把场景搭出来。本质:AI 输出一张**网格布局**,这是 LLM 最擅长、最可控、可校验的形式。
+让 AI **不画图**。当前客户端沿用 `docs/04_ai_interfaces.md` 的安全契约：AI 只输出
+`object_type + zone` 语义布局，不输出像素坐标；Godot 端再把语义布局转换成可校验的
+Scene Schema，由加载器搭出瓦片室内场景。
 
 ---
 
@@ -26,7 +28,7 @@
 ## 2. 三件套架构(必须照这个分层)
 
 ```
-① Scene Schema(JSON)—— AI 输出这个,也是唯一契约
+① Scene Schema(JSON)—— Godot 端由 AI 语义结果生成
    { tileset, size:[w,h], floor, objects:[{id, cell:[x,y]}], ... }
 
 ② Object Catalog(数据)—— 定义每个 id 是什么
@@ -35,7 +37,8 @@
 ③ SceneLoader(代码)—— 读 Schema → 铺地板 → 按 catalog 摆物体 → 碰撞/遮挡自动生效
 ```
 
-"AI 生成场景" = **AI 吐符合 Schema、只引用 catalog 内 id 的 JSON**。未知 id / 越界一律被校验器拒绝 —— 这是它可控的根本原因。
+"AI 生成场景" = **AI 吐合约内语义物件，客户端生成符合 Schema、只引用 catalog 内 id 的 JSON**。
+未知 id / 越界 / 重叠一律被校验器拒绝 —— 这是它可控的根本原因。
 
 ### Schema 示例(室内厨房)
 
@@ -90,6 +93,8 @@ farm 那套遮挡/碰撞是**逐物体手接**的(SortAnchor 手拖、walkable �
 | `game/assets/kitchen/tileset.png` | 厨房 16×16 图集(9×37) | 已导入 |
 | `game/assets/kitchen/kitchen_tileset.tres` | **已建好的 TileSet 资源**,333 格全部 `create_tile` 完毕 | 直接拿来当 §2① 的 `tileset:"kitchen"` |
 | `game/scenes/KitchenTiled.tscn` | **小样**:Floor + Furniture 两层,脚本摆好的厨房 | 参考布局法;它就是"手写版的 Schema 结果" |
+| `game/assets/manifest/room_object_catalog.json` | Gate 7 首版 catalog | 定义 kitchen tileset、6 类语义家具、zone 到 cell 的受控映射 |
+| `game/scripts/managers/room_scene_generator.gd` | Gate 7 首版生成器 | build_schema / validate_schema / render_scene / semantic anchor |
 | `game/scripts/farm/farm.gd` 的 `_apply_anchor_z` | 递归按锚点设 z 的遮挡同步 | 仅供理解 farm 那套,**室内别照搬** |
 
 ### 建 TileSet 的方法(新素材包照做)
@@ -112,13 +117,21 @@ ResourceSaver.save(ts, "res://assets/.../xxx_tileset.tres")
 
 ## 5. 建议的最小闭环(先打通,再铺开)
 
-1. **配 TileSet**:给厨房 tileset 里几个家具 tile 配好碰撞 + Y-sort 原点。
-2. **写小 Catalog**:`fridge / stove / counter / dining_table / chair / plant` 6 个 id。
-3. **写 SceneLoader**:读 Schema → 铺地板 → 盖家具 → TileMap 自动出碰撞/遮挡。
-4. **手写一段 JSON** 跑通(地板 + 1 冰箱 + 1 桌 + 几把椅子),验证遮挡和碰撞自动生效。
-5. **接 AI**:给 LLM 提供"可用 tileset + catalog id 清单 + 房间尺寸",让它**只输出符合 Schema 的 JSON**;加一个**校验器**(未知 id / 越界 / 重叠 → 拒绝或修正)。
+1. **配 TileSet**:厨房 tileset 已可用于首版渲染；精细 per-tile 碰撞/Y-sort 可继续补。
+2. **写小 Catalog**:已接 `desk / lamp / plant / photo_wall / bed / chair` 6 个合约内 id。
+3. **写 SceneLoader**:已读 Schema → 铺地板 → 盖家具 → 生成碰撞体与语义点击锚点。
+4. **手写/测试 JSON**:已用 `gate7_room_scene_test.tscn` 验证 schema、catalog 校验和 TileMapLayer 非空。
+5. **接 AI**:已接现有 `analyze-room-photo` 结果；AI 仍只输出 `object_type + zone`，客户端负责稳定格子坐标。
 
-打通后,"AI 生成室内场景"就只剩"调 prompt 让它写好这段 JSON"。
+打通后,"AI 生成室内场景"已经是可运行链路；下一轮重点是扩充 catalog、补更细的遮挡/碰撞
+和更多房间主题模板。
+
+Gate 7 自动验收：
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://tests/gate7_room_scene_test.tscn
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game --scene res://tests/ai_gate4_test.tscn
+```
 
 ---
 

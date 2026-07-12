@@ -1,10 +1,13 @@
 {
   "scene": "garden",
   "doc": "docs/09_godot_coordinate_art_spec.md §7",
-  "_status": "draft — 取自 docs/09 §7 示例；花园背景定稿后由 A+C 核对坐标并冻结",
+  "_status": "stable — 三个 archive slot 是长期可见景观；legacy slot 仅兼容既有节点数据，不再逐个渲染",
   "canvas": [1280, 720],
   "grid": 16,
   "slots": [
+    { "slot_id": "garden_archive_flowers",   "pos": [930, 548], "allow": ["memory_flower", "memory_seed"], "size_hint": "6x4", "visual_role": "archive" },
+    { "slot_id": "garden_archive_photos",    "pos": [886, 226], "allow": ["photo_board"], "size_hint": "3x3", "visual_role": "archive" },
+    { "slot_id": "garden_archive_postcards", "pos": [992, 226], "allow": ["postcard"], "size_hint": "3x3", "visual_role": "archive" },
     { "slot_id": "garden_slot_flowerbed_01", "pos": [432, 448], "allow": ["memory_flower", "memory_seed"], "size_hint": "2x2" },
     { "slot_id": "garden_slot_flowerbed_02", "pos": [512, 480], "allow": ["memory_flower", "memory_seed"], "size_hint": "2x2" },
     { "slot_id": "garden_slot_flowerbed_03", "pos": [592, 448], "allow": ["memory_flower"], "size_hint": "2x2" },

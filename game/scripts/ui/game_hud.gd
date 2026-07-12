@@ -1,11 +1,8 @@
 extends CanvasLayer
 class_name GameHUD
 
-## 常驻游戏 HUD(单实例,由 SceneManager.setup 创建挂到 main 根)。
-## 组织:左上角色卡 / 左右侧图标导航 / 右上设置 / 底部背包 / tooltip 层 / 面板层。
-## 导航图标直接接回 SceneManager 现有打开逻辑(不另建平行系统);Profile/Settings/Inventory
-## 是 HUD 自管的面板(单面板互斥 + 锁玩家移动 + 关旧 cozy 面板 + 图标选中高亮)。
-## layer=3:盖在底部导航/聊天条(layer 1)之上,低于将来更高层的临时叠加。
+## 统一常驻 HUD：左上家庭状态卡 + 底部行动坞。
+## 场景中的家庭树、邮箱承担自身入口；低频设置下沉到个人资料；地图合并为二级选择。
 
 const ICON_ALL_ICONS := "res://assets/ui/icons/All Icons.png"
 
@@ -13,9 +10,13 @@ var profile_card: PlayerProfileCard
 var tooltip: HUDTooltip
 var panel_root: Control
 
-var _settings_btn: HUDIconButton
+var _hud_root: Control
+var _dock: Panel
+var _memory_btn: Button
+var _map_btn: HUDIconButton
 var _backpack_btn: HUDIconButton
 var _quests_btn: HUDIconButton
+var _chat_btn: HUDIconButton
 var _current_panel: HUDPanel
 var _current_kind := ""
 var _active_source: HUDIconButton
@@ -25,97 +26,161 @@ func _ready() -> void:
 	_build()
 
 func _build() -> void:
-	var root := Control.new()
-	root.name = "HUDRoot"
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(root)
+	_hud_root = Control.new()
+	_hud_root.name = "HUDRoot"
+	_hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_hud_root)
 
-	# ---- 左上:玩家卡片 ----
 	profile_card = PlayerProfileCard.new()
 	profile_card.position = Vector2(16, 16)
 	profile_card.pressed.connect(_on_profile_pressed)
-	root.add_child(profile_card)
+	profile_card.members_pressed.connect(_on_members_pressed)
+	_hud_root.add_child(profile_card)
 
-	# ---- 左侧导航(家庭与记忆):家庭树 / 明信片 ----
-	var left_nav := VBoxContainer.new()
-	left_nav.name = "LeftNavigation"
-	left_nav.position = Vector2(18, 300)
-	left_nav.add_theme_constant_override("separation", 14)
-	root.add_child(left_nav)
-	left_nav.add_child(_make_icon(_tex("icon_tree"), "家庭树 / Family Tree", "family_tree",
-		HUDIconButton.Side.RIGHT, func() -> void: SceneManager.open_family_tree()))
-	left_nav.add_child(_make_icon(_tex("icon_postcard"), "明信片 / Postcards", "postcards",
-		HUDIconButton.Side.RIGHT, func() -> void: SceneManager.open_postcards()))
-	_quests_btn = _make_icon(_tex("icon_sign"), "任务 / Chapter 1", "quests",
-		HUDIconButton.Side.RIGHT, _on_quests_pressed)
-	left_nav.add_child(_quests_btn)
+	_build_action_dock()
 
-	# ---- 右侧导航(世界与行动):世界 / 地图 ----
-	var right_nav := VBoxContainer.new()
-	right_nav.name = "RightNavigation"
-	right_nav.position = Vector2(1210, 300)
-	right_nav.add_theme_constant_override("separation", 14)
-	root.add_child(right_nav)
-	right_nav.add_child(_make_icon(_tex("icon_home"), "世界 / World", "world",
-		HUDIconButton.Side.LEFT, func() -> void: SceneManager.open_global_map()))
-	right_nav.add_child(_make_icon(_tex("icon_map"), "地图 / Map", "map",
-		HUDIconButton.Side.LEFT, func() -> void: SceneManager.open_travel_map()))
-
-	# ---- 右上:设置(时钟左侧,独立于导航组)----
-	_settings_btn = _make_icon(_sheet_icon(9, 0), "设置 / Settings", "settings",
-		HUDIconButton.Side.BOTTOM, _on_settings_pressed)
-	_settings_btn.position = Vector2(1080, 20)
-	root.add_child(_settings_btn)
-
-	# ---- 底部:背包(避开右侧世界聊天条)----
-	_backpack_btn = _make_icon(_sheet_icon(8, 1), "背包 / Backpack (I)", "backpack",
-		HUDIconButton.Side.TOP, _on_backpack_pressed)
-	_backpack_btn.button_size = Vector2(56, 56)
-	_backpack_btn.position = Vector2(300, 652)
-	root.add_child(_backpack_btn)
-
-	# ---- 面板层(HUD 自管面板;无面板时不拦截,面板自身 STOP 做模态)----
 	panel_root = Control.new()
 	panel_root.name = "PanelLayer"
 	panel_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(panel_root)
 
-	# ---- tooltip 层(最上,不拦截鼠标)----
 	tooltip = HUDTooltip.new()
 	tooltip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(tooltip)
 
+func _build_action_dock() -> void:
+	_dock = Panel.new()
+	_dock.name = "GardenActionDock"
+	_dock.position = Vector2(354, 652)
+	_dock.size = Vector2(572, 54)
+	_dock.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dock_style := StyleBoxFlat.new()
+	dock_style.bg_color = Color(1.0, 0.96, 0.84, 0.88)
+	dock_style.border_color = Color(0.54, 0.40, 0.25, 0.68)
+	dock_style.set_border_width_all(1)
+	dock_style.set_corner_radius_all(12)
+	dock_style.shadow_color = Color(0.18, 0.12, 0.07, 0.18)
+	dock_style.shadow_size = 4
+	dock_style.shadow_offset = Vector2(0, 2)
+	_dock.add_theme_stylebox_override("panel", dock_style)
+	_hud_root.add_child(_dock)
+
+	_memory_btn = Button.new()
+	_memory_btn.text = "＋ 记录记忆"
+	_memory_btn.position = Vector2(7, 7)
+	_memory_btn.size = Vector2(168, 40)
+	_memory_btn.focus_mode = Control.FOCUS_ALL
+	_memory_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_memory_btn.tooltip_text = "把文字或照片变成一段家庭记忆"
+	_memory_btn.add_theme_font_size_override("font_size", 14)
+	_memory_btn.add_theme_color_override("font_color", Color(0.22, 0.25, 0.14, 1.0))
+	_memory_btn.add_theme_stylebox_override("normal", _action_box(Color(0.78, 0.86, 0.60, 0.96), Color(0.43, 0.54, 0.28, 0.86)))
+	_memory_btn.add_theme_stylebox_override("hover", _action_box(Color(0.86, 0.91, 0.68, 1.0), Color(0.48, 0.60, 0.30, 1.0)))
+	_memory_btn.add_theme_stylebox_override("pressed", _action_box(Color(0.70, 0.81, 0.52, 1.0), Color(0.39, 0.50, 0.24, 1.0)))
+	_memory_btn.pressed.connect(func() -> void:
+		AudioManager.play_sfx("按钮")
+		SceneManager.open_memory_creator())
+	_dock.add_child(_memory_btn)
+
+	_map_btn = _make_icon(_tex("icon_map"), "地图 / Maps", "maps", HUDIconButton.Side.TOP, _on_map_pressed)
+	_map_btn.position = Vector2(188, 7)
+	_map_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_map_btn)
+
+	_backpack_btn = _make_icon(_sheet_icon(8, 1), "背包 / Backpack (I)", "backpack", HUDIconButton.Side.TOP, _on_backpack_pressed)
+	_backpack_btn.position = Vector2(244, 7)
+	_backpack_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_backpack_btn)
+
+	_chat_btn = _make_icon(_tex("icon_letter"), "家人聊天 / Family Chat", "chat", HUDIconButton.Side.TOP, _on_chat_pressed)
+	_chat_btn.position = Vector2(300, 7)
+	_chat_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_chat_btn)
+
+	_quests_btn = _make_icon(_tex("icon_sign"), "任务 / Chapter 1", "quests", HUDIconButton.Side.TOP, _on_quests_pressed)
+	_quests_btn.position = Vector2(356, 7)
+	_quests_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_quests_btn)
+
+	var labels := Label.new()
+	labels.name = "ActionLabels"
+	labels.text = "地图       背包       聊天       任务"
+	labels.position = Vector2(178, 36)
+	labels.size = Vector2(236, 14)
+	labels.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	labels.add_theme_font_size_override("font_size", 9)
+	labels.add_theme_color_override("font_color", Color(0.39, 0.31, 0.22, 0.72))
+	_dock.add_child(labels)
+
+	var shortcut := Label.new()
+	shortcut.name = "GardenMoodLabel"
+	shortcut.text = "宁静花园 · 与家人共享"
+	shortcut.position = Vector2(418, 17)
+	shortcut.size = Vector2(144, 20)
+	shortcut.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shortcut.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shortcut.add_theme_font_size_override("font_size", 10)
+	shortcut.add_theme_color_override("font_color", Color(0.43, 0.35, 0.24, 0.66))
+	_dock.add_child(shortcut)
+
+func _action_box(bg: Color, border: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = bg
+	box.border_color = border
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(9)
+	return box
+
 func _make_icon(icon: Texture2D, tip: String, action: String, side: int, on_press: Callable) -> HUDIconButton:
-	var b := HUDIconButton.new()
-	b.icon_texture = icon
-	b.tooltip_label = tip
-	b.action_id = action
-	b.tooltip_side = side
-	b.pressed.connect(on_press)
-	b.hover_started.connect(func(t: String, r: Rect2, s: int) -> void:
+	var button := HUDIconButton.new()
+	button.icon_texture = icon
+	button.tooltip_label = tip
+	button.action_id = action
+	button.tooltip_side = side
+	button.pressed.connect(on_press)
+	button.hover_started.connect(func(t: String, rect: Rect2, tooltip_side: int) -> void:
 		if tooltip != null:
-			tooltip.show_for(t, r, s))
-	b.hover_ended.connect(func() -> void:
+			tooltip.show_for(t, rect, tooltip_side))
+	button.hover_ended.connect(func() -> void:
 		if tooltip != null:
 			tooltip.hide_tip())
-	return b
-
-# ---------- 输入 ----------
+	return button
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_I:
-		_on_backpack_pressed()   # I 键切换背包(替代原 inventory_ui 的监听)
+		_on_backpack_pressed()
 		get_viewport().set_input_as_handled()
 
-# ---------- 按钮回调 ----------
-
 func _on_profile_pressed() -> void:
-	_toggle("profile", func() -> HUDPanel: return ProfilePanel.new(), profile_card_active_proxy())
+	_toggle("profile", _create_profile_panel, null)
 
-func _on_settings_pressed() -> void:
-	_toggle("settings", func() -> HUDPanel: return SettingsPanel.new(), _settings_btn)
+func _create_profile_panel() -> HUDPanel:
+	var panel := ProfilePanel.new()
+	panel.settings_requested.connect(_open_settings_from_profile)
+	return panel
+
+func _open_settings_from_profile() -> void:
+	_toggle("settings", func() -> HUDPanel: return SettingsPanel.new(), null)
+
+func _on_members_pressed() -> void:
+	close_current()
+	SceneManager.open_family_members()
+
+func _on_map_pressed() -> void:
+	_toggle("maps", _create_map_panel, _map_btn)
+
+func _create_map_panel() -> HUDPanel:
+	var panel := MapHubPanel.new()
+	panel.world_map_requested.connect(func() -> void:
+		close_current()
+		SceneManager.open_global_map())
+	panel.travel_map_requested.connect(func() -> void:
+		close_current()
+		SceneManager.open_travel_map())
+	return panel
 
 func _on_backpack_pressed() -> void:
 	_toggle("inventory", func() -> HUDPanel: return InventoryPanel.new(), _backpack_btn)
@@ -132,9 +197,10 @@ func show_quests() -> void:
 func profile_card_active_proxy() -> HUDIconButton:
 	return null
 
-# ---------- 面板管理 ----------
+func _on_chat_pressed() -> void:
+	close_current()
+	SceneManager.open_world_chat()
 
-## 同类型面板已开则关闭(toggle),否则关掉旧面板并打开新的。
 func _toggle(kind: String, factory: Callable, source_btn: HUDIconButton) -> void:
 	if _current_kind == kind and has_open_panel():
 		close_current()
@@ -145,7 +211,7 @@ func _toggle(kind: String, factory: Callable, source_btn: HUDIconButton) -> void
 
 func open_panel(panel: HUDPanel, source_btn: HUDIconButton = null) -> void:
 	close_current()
-	SceneManager._close_active_panel()   # 避免与旧 cozy/地图面板叠在一起
+	SceneManager._close_active_panel()
 	if tooltip != null:
 		tooltip.hide_tip()
 	_current_panel = panel
@@ -169,23 +235,44 @@ func close_current() -> void:
 func has_open_panel() -> bool:
 	return _current_panel != null and is_instance_valid(_current_panel)
 
-## 昵称/头像变更后刷新左上角色卡(角色选择完成时由 SceneManager 调用)。
 func refresh_profile() -> void:
 	if profile_card != null:
 		profile_card.refresh()
 
-# ---------- 图标取图 ----------
+## 家庭总览与行动坞只属于主花园。农场、厨房、鱼塘和房间使用各自的场景 HUD，
+## 避免把主花园工具带过去后再次与场景提示重叠。
+func set_context(scene_id: String) -> void:
+	var in_garden := scene_id == "garden"
+	if _hud_root != null:
+		_hud_root.visible = in_garden
+	if _memory_btn != null:
+		_memory_btn.visible = in_garden
+	if _dock != null:
+		_dock.position.x = 354.0 if in_garden else 517.0
+		_dock.size.x = 572.0 if in_garden else 246.0
+		_map_btn.position.x = 188.0 if in_garden else 8.0
+		_backpack_btn.position.x = 244.0 if in_garden else 64.0
+		_chat_btn.position.x = 300.0 if in_garden else 120.0
+		_quests_btn.position.x = 356.0 if in_garden else 176.0
+		var action_labels := _dock.get_node_or_null("ActionLabels") as Label
+		if action_labels != null:
+			action_labels.visible = in_garden
+		var mood_label := _dock.get_node_or_null("GardenMoodLabel") as Label
+		if mood_label != null:
+			mood_label.visible = in_garden
+	if profile_card != null and in_garden:
+		profile_card.refresh()
+	if not in_garden:
+		close_current()
 
 func _tex(asset_key: String) -> Texture2D:
-	# 复用 SceneManager.ASSETS 里已注册的独立图标(已导入)。
 	var path := str(SceneManager.ASSETS.get(asset_key, ""))
 	return load(path) if path != "" and ResourceLoader.exists(path) else null
 
-## 从已导入的 "All Icons.png"(16×16 图集)裁一格做图标,免新增资源文件。
 func _sheet_icon(col: int, row: int) -> Texture2D:
 	if not ResourceLoader.exists(ICON_ALL_ICONS):
 		return null
-	var at := AtlasTexture.new()
-	at.atlas = load(ICON_ALL_ICONS)
-	at.region = Rect2(col * 16, row * 16, 16, 16)
-	return at
+	var atlas_texture := AtlasTexture.new()
+	atlas_texture.atlas = load(ICON_ALL_ICONS)
+	atlas_texture.region = Rect2(col * 16, row * 16, 16, 16)
+	return atlas_texture

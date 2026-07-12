@@ -1,0 +1,10 @@
+[gd_resource type="Theme" load_steps=2 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf" id="1_font"]
+
+[resource]
+default_font = ExtResource("1_font")
+default_font_size = 14
+Label/colors/font_color = Color(0.22, 0.18, 0.14, 1)
+Label/colors/font_shadow_color = Color(1, 0.98, 0.9, 0.24)
+RichTextLabel/colors/default_color = Color(0.22, 0.18, 0.14, 1)
