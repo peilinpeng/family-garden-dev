@@ -1282,10 +1282,31 @@ func _get_role_data(role_key: String) -> Dictionary:
 
 
 func _current_player_asset_key() -> String:
+	var selected_id := CharacterDB.resolve(MemoryManager.selected_role_key) if CharacterDB != null else MemoryManager.selected_role_key
 	var role_data := _get_role_data(MemoryManager.selected_role_key)
+	if role_data.is_empty():
+		for candidate in CHARACTER_DATA:
+			var candidate_role := str(candidate.get("role", ""))
+			var candidate_id := CharacterDB.resolve(candidate_role) if CharacterDB != null else candidate_role
+			if candidate_id == selected_id:
+				role_data = candidate
+				break
 	if role_data.is_empty():
 		return "girl"
 	return str(role_data.get("asset", "girl"))
+
+
+## 角色贴图路径必须与 CharacterDB 中的帧配置来自同一个定义。
+## 旧 ASSETS 别名仍保留给历史 UI 使用，但人物实例不再混用旧图与新版 frame_rects。
+func _character_texture_path(role_key: String, fallback_path: String) -> String:
+	if CharacterDB == null:
+		return fallback_path
+	var character_def: Dictionary = CharacterDB.get_def(role_key)
+	var sheet := str(character_def.get("sheet", "")).strip_edges()
+	if sheet == "":
+		return fallback_path
+	var configured_path := "res://assets/characters/%s.png" % sheet
+	return configured_path if ResourceLoader.exists(configured_path) else fallback_path
 
 
 func _update_plant_button() -> void:
@@ -2217,8 +2238,8 @@ func _open_memory_archive(archive_key: String, items: Array) -> void:
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 	var panel := Panel.new()
-	panel.position = Vector2(290, 72)
-	panel.size = Vector2(700, 576)
+	panel.position = Vector2(260, 60)
+	panel.size = Vector2(760, 600)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
@@ -2226,30 +2247,37 @@ func _open_memory_archive(archive_key: String, items: Array) -> void:
 
 	var title := Label.new()
 	title.text = String(archive.get("title", "家庭记忆"))
-	title.position = Vector2(34, 24)
-	title.size = Vector2(620, 34)
-	title.add_theme_font_size_override("font_size", 25)
+	title.position = Vector2(36, 24)
+	title.size = Vector2(650, 36)
+	title.add_theme_font_size_override("font_size", 27)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
+
 	var subtitle := Label.new()
 	subtitle.text = "%s · 共 %d 段" % [String(archive.get("subtitle", "")), items.size()]
-	subtitle.position = Vector2(34, 62)
-	subtitle.size = Vector2(620, 24)
+	subtitle.position = Vector2(36, 64)
+	subtitle.size = Vector2(650, 24)
 	subtitle.add_theme_font_size_override("font_size", 13)
 	subtitle.add_theme_color_override("font_color", Color(0.38, 0.31, 0.23, 0.82))
 	panel.add_child(subtitle)
 
+	var filter_bar := Panel.new()
+	filter_bar.position = Vector2(34, 102)
+	filter_bar.size = Vector2(692, 68)
+	filter_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	filter_bar.add_theme_stylebox_override("panel", _archive_filter_bar_style())
+	panel.add_child(filter_bar)
+
 	var member_label := Label.new()
 	member_label.text = "家人"
-	member_label.position = Vector2(34, 100)
-	member_label.size = Vector2(42, 28)
-	member_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	member_label.add_theme_font_size_override("font_size", 12)
+	member_label.position = Vector2(14, 7)
+	member_label.size = Vector2(196, 18)
+	member_label.add_theme_font_size_override("font_size", 11)
 	member_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
-	panel.add_child(member_label)
+	filter_bar.add_child(member_label)
 	var member_select := OptionButton.new()
-	member_select.position = Vector2(78, 98)
-	member_select.size = Vector2(176, 32)
+	member_select.position = Vector2(12, 27)
+	member_select.size = Vector2(210, 34)
 	member_select.add_item("全部家人")
 	member_select.set_item_metadata(0, "")
 	_apply_button_style(member_select, false)
@@ -2264,62 +2292,71 @@ func _open_memory_archive(archive_key: String, items: Array) -> void:
 	for owner_id in owner_ids:
 		member_select.add_item(String(owners[owner_id]))
 		member_select.set_item_metadata(member_select.item_count - 1, String(owner_id))
-	panel.add_child(member_select)
+	filter_bar.add_child(member_select)
 
 	var state_label := Label.new()
 	state_label.text = "状态"
-	state_label.position = Vector2(282, 100)
-	state_label.size = Vector2(42, 28)
-	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	state_label.add_theme_font_size_override("font_size", 12)
+	state_label.position = Vector2(244, 7)
+	state_label.size = Vector2(196, 18)
+	state_label.add_theme_font_size_override("font_size", 11)
 	state_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
-	panel.add_child(state_label)
+	filter_bar.add_child(state_label)
 	var state_select := OptionButton.new()
-	state_select.position = Vector2(326, 98)
-	state_select.size = Vector2(152, 32)
+	state_select.position = Vector2(242, 27)
+	state_select.size = Vector2(190, 34)
 	for state_item in [["全部状态", ""], ["等待回应", "new"], ["已经开花", "grown"]]:
 		state_select.add_item(String(state_item[0]))
 		state_select.set_item_metadata(state_select.item_count - 1, String(state_item[1]))
 	_apply_button_style(state_select, false)
-	panel.add_child(state_select)
+	filter_bar.add_child(state_select)
 
 	var order_note := Label.new()
-	order_note.text = "按时间从新到旧"
-	order_note.position = Vector2(510, 101)
-	order_note.size = Vector2(144, 26)
+	order_note.text = "最新记忆优先"
+	order_note.position = Vector2(458, 27)
+	order_note.size = Vector2(216, 34)
 	order_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	order_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	order_note.add_theme_font_size_override("font_size", 11)
 	order_note.add_theme_color_override("font_color", Color(0.43, 0.37, 0.29, 0.68))
-	panel.add_child(order_note)
+	filter_bar.add_child(order_note)
 
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(34, 146)
-	scroll.size = Vector2(632, 360)
+	scroll.position = Vector2(34, 184)
+	scroll.size = Vector2(692, 352)
 	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	panel.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 8)
+	list.add_theme_constant_override("separation", 10)
 	scroll.add_child(list)
 	var empty_label := Label.new()
-	empty_label.text = "这个筛选下还没有记忆。"
-	empty_label.position = Vector2(34, 518)
-	empty_label.size = Vector2(632, 24)
+	empty_label.text = "这个筛选下还没有内容。换个条件看看吧。"
+	empty_label.position = Vector2(44, 316)
+	empty_label.size = Vector2(672, 40)
 	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	empty_label.visible = false
-	empty_label.add_theme_font_size_override("font_size", 12)
+	empty_label.add_theme_font_size_override("font_size", 13)
 	empty_label.add_theme_color_override("font_color", Color(0.43, 0.36, 0.27, 0.74))
 	panel.add_child(empty_label)
 
 	var refresh := func(_index: int = 0) -> void:
-		_populate_memory_archive_list(list, empty_label, items, member_select, state_select)
+		_populate_memory_archive_list(list, empty_label, items, member_select, state_select, archive_key)
 	member_select.item_selected.connect(refresh)
 	state_select.item_selected.connect(refresh)
 	refresh.call()
-	_add_panel_button(panel, "关闭", Vector2(288, 526), Vector2(124, 38), "close")
 
-func _populate_memory_archive_list(list: VBoxContainer, empty_label: Label, items: Array, member_select: OptionButton, state_select: OptionButton) -> void:
+	var footer := Label.new()
+	footer.text = "点击任意卡片查看完整内容与记忆关联"
+	footer.position = Vector2(34, 552)
+	footer.size = Vector2(692, 24)
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.add_theme_font_size_override("font_size", 11)
+	footer.add_theme_color_override("font_color", Color(0.43, 0.36, 0.27, 0.64))
+	panel.add_child(footer)
+
+func _populate_memory_archive_list(list: VBoxContainer, empty_label: Label, items: Array, member_select: OptionButton, state_select: OptionButton, archive_key: String = "flowers") -> void:
 	for child in list.get_children():
 		list.remove_child(child)
 		child.queue_free()
@@ -2335,32 +2372,144 @@ func _populate_memory_archive_list(list: VBoxContainer, empty_label: Label, item
 		if state_filter != "" and String(item.get("state", "new")) != state_filter:
 			continue
 		var card: Dictionary = item.get("card", {})
-		var owner_name := _role_display_name(String(item.get("owner_id", "")))
+		var owner_id := String(item.get("owner_id", ""))
+		var owner_name := _role_display_name(owner_id) if owner_id != "" else "家人"
 		var created_at := String(item.get("created_at", ""))
 		var date_text := created_at.left(10) if created_at.length() >= 10 else "未记录日期"
-		var state_text := "已经开花" if String(item.get("state", "new")) == "grown" else "等待回应"
+		var is_grown := String(item.get("state", "new")) == "grown"
+		var state_text := "已开花" if is_grown else "待回应"
 		var link_count := MemoryManager.count_memory_links_for_memory(String(item.get("memory_id", "")), "garden")
-		var relation_text := " · %d 条关联" % link_count if link_count > 0 else ""
-		var row := Button.new()
-		row.text = "%s\n%s · %s · %s%s" % [
-			String(card.get("title", "一段家庭记忆")),
-			owner_name,
-			date_text,
-			state_text,
-			relation_text,
-		]
-		row.custom_minimum_size = Vector2(606, 64)
-		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.mouse_filter = Control.MOUSE_FILTER_STOP
-		row.tooltip_text = "打开记忆；关闭卡片后可查看它的关联藤蔓"
-		_apply_button_style(row, String(item.get("state", "new")) == "grown")
-		var archive_key := String(item.get("archive_key", "flowers"))
-		_set_button_icon(row, "icon_camera" if archive_key == "photos" else ("icon_postcard" if archive_key == "postcards" else "icon_tree"))
-		row.pressed.connect(_open_memory_archive_item.bind(item))
+		var row := Panel.new()
+		row.custom_minimum_size = Vector2(664, 78)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_stylebox_override("panel", _archive_row_style(is_grown))
 		list.add_child(row)
+
+		var icon_panel := Panel.new()
+		icon_panel.position = Vector2(12, 13)
+		icon_panel.size = Vector2(52, 52)
+		icon_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_panel.add_theme_stylebox_override("panel", _archive_icon_style(archive_key))
+		row.add_child(icon_panel)
+		var icon := TextureRect.new()
+		icon.position = Vector2(9, 9)
+		icon.size = Vector2(34, 34)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var icon_key := "icon_camera" if archive_key == "photos" else ("icon_postcard" if archive_key == "postcards" else "icon_tree")
+		icon.texture = _safe_texture(str(ASSETS.get(icon_key, "")))
+		icon_panel.add_child(icon)
+
+		var item_title := Label.new()
+		item_title.text = String(card.get("title", "一段家庭记忆")).strip_edges()
+		if item_title.text == "":
+			item_title.text = "一段家庭记忆"
+		item_title.position = Vector2(78, 11)
+		item_title.size = Vector2(448, 25)
+		item_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		item_title.add_theme_font_size_override("font_size", 15)
+		item_title.add_theme_color_override("font_color", Color(0.24, 0.19, 0.14, 0.98))
+		item_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(item_title)
+
+		var relation_text := " · %d 条关联" % link_count if link_count > 0 else ""
+		var metadata := Label.new()
+		metadata.text = "%s · %s%s" % [owner_name, date_text, relation_text]
+		metadata.position = Vector2(78, 42)
+		metadata.size = Vector2(448, 20)
+		metadata.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		metadata.add_theme_font_size_override("font_size", 12)
+		metadata.add_theme_color_override("font_color", Color(0.43, 0.35, 0.27, 0.82))
+		metadata.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(metadata)
+
+		var status_panel := Panel.new()
+		status_panel.position = Vector2(548, 23)
+		status_panel.size = Vector2(92, 32)
+		status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_panel.add_theme_stylebox_override("panel", _archive_status_style(is_grown))
+		row.add_child(status_panel)
+		var status_label := Label.new()
+		status_label.text = state_text
+		status_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_label.add_theme_font_size_override("font_size", 11)
+		status_label.add_theme_color_override("font_color", Color(0.27, 0.28, 0.17, 0.94) if is_grown else Color(0.48, 0.33, 0.17, 0.94))
+		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_panel.add_child(status_label)
+
+		var hit := Button.new()
+		hit.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hit.text = ""
+		hit.flat = true
+		hit.focus_mode = Control.FOCUS_ALL
+		hit.mouse_filter = Control.MOUSE_FILTER_STOP
+		hit.tooltip_text = item_title.text
+		hit.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		hit.add_theme_stylebox_override("hover", _archive_row_hover_style())
+		hit.add_theme_stylebox_override("pressed", _archive_row_pressed_style())
+		hit.add_theme_stylebox_override("focus", _archive_row_hover_style())
+		hit.pressed.connect(_open_memory_archive_item.bind(item))
+		row.add_child(hit)
 		visible_count += 1
 	empty_label.visible = visible_count == 0
+
+
+func _archive_filter_bar_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.94, 0.88, 0.72, 0.42)
+	style.border_color = Color(0.56, 0.43, 0.28, 0.22)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	return style
+
+
+func _archive_row_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.975, 0.90, 0.92)
+	style.border_color = Color(0.48, 0.58, 0.31, 0.48) if active else Color(0.62, 0.48, 0.31, 0.42)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(11)
+	style.shadow_color = Color(0.18, 0.12, 0.07, 0.11)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+
+func _archive_icon_style(archive_key: String) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.92, 0.84, 0.66, 0.72) if archive_key == "photos" else Color(0.86, 0.89, 0.72, 0.72)
+	style.border_color = Color(0.57, 0.43, 0.28, 0.48)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	return style
+
+
+func _archive_status_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.80, 0.87, 0.63, 0.78) if active else Color(0.94, 0.82, 0.60, 0.72)
+	style.border_color = Color(0.43, 0.54, 0.29, 0.40) if active else Color(0.62, 0.44, 0.24, 0.38)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	return style
+
+
+func _archive_row_hover_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.94, 0.72, 0.16)
+	style.border_color = Color(0.80, 0.58, 0.30, 0.76)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(11)
+	return style
+
+
+func _archive_row_pressed_style() -> StyleBoxFlat:
+	var style := _archive_row_hover_style()
+	style.bg_color = Color(0.82, 0.88, 0.66, 0.24)
+	return style
 
 func _open_memory_archive_item(item: Dictionary) -> void:
 	_focused_memory_id = String(item.get("memory_id", ""))
@@ -3298,9 +3447,11 @@ func _add_houses() -> void:
 		)
 
 func _add_npcs() -> void:
+	var selected_id := CharacterDB.resolve(MemoryManager.selected_role_key) if CharacterDB != null else MemoryManager.selected_role_key
 	for role_data in CHARACTER_DATA:
 		var role_key := str(role_data.get("role", ""))
-		if role_key == MemoryManager.selected_role_key:
+		var role_id := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
+		if role_id == selected_id:
 			continue
 		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
 		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
@@ -3308,7 +3459,8 @@ func _add_npcs() -> void:
 		var npc_def: Dictionary = CharacterDB.get_def(npc_asset_key)
 		var npc_frame_rects: Array = npc_def.get("frame_rects", [])
 		var npc_scale := float(npc_def.get("scale", -1.0))
-		var npc_body := _create_character(npc_name, ASSETS[npc_asset_key], npc_pos, false, 3, 4, npc_frame_rects, npc_scale)
+		var npc_texture_path := _character_texture_path(npc_asset_key, str(ASSETS.get(npc_asset_key, "")))
+		var npc_body := _create_character(npc_name, npc_texture_path, npc_pos, false, 3, 4, npc_frame_rects, npc_scale)
 		npc_body.name = "NPC_" + role_key
 		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
 		npc_body.set("home_position", npc_pos)
@@ -3444,7 +3596,8 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var char_def: Dictionary = CharacterDB.get_def(asset_key)
 	var char_hframes: int = int(char_def.get("hframes", 3))
 	var char_vframes: int = int(char_def.get("vframes", 4))
-	player = _create_character(display_name, ASSETS[asset_key], pos, true, char_hframes, char_vframes)
+	var player_texture_path := _character_texture_path(asset_key, str(ASSETS.get(asset_key, "")))
+	player = _create_character(display_name, player_texture_path, pos, true, char_hframes, char_vframes)
 	player.name = "Player_" + MemoryManager.selected_role_key
 	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
 	var parent := world if parent_override == null else parent_override
