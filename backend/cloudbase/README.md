@@ -104,9 +104,11 @@ db.collection('members').add({
 | `upload_image` | `{content_type, base64_data}` | `{ok, upload_id, image_url, expires_in}` | 需要 |
 | `resolve_image` | `{upload_id}` | `{ok, image_url, expires_in}` | 需要 |
 | `delete_image` | `{upload_id}` | `{ok}` | 需要，且仅上传者可删 |
+| `cleanup_orphan_images` | `{}` | `{ok, deleted}` | 需要；只清理本人超过 24 小时且未被记忆引用的上传 |
 
 `uploads` 是网关内部元数据集合，不在通用表白名单中。客户端只持久化 `upload_id`；
 `image_url` 是短期签名地址，只用于预览和本次 AI 调用，重启后通过 `resolve_image` 刷新。
+上传网关会同时校验 MIME、文件魔数、真实宽高和总像素上限，不能仅靠伪造 Content-Type 上传任意字节。
 上传只接受 JPEG/PNG/WebP，解码前后均限制为 6 MB；存储路径由服务端按家庭与成员生成，
 不接受客户端自定义路径。
 

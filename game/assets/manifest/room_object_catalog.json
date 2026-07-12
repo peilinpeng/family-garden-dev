@@ -5,9 +5,9 @@
       "tile_set": "res://assets/kitchen/kitchen_tileset.tres",
       "source_id": 0,
       "tile_size": [16, 16],
-      "display_scale": 3,
-      "grid_size": [26, 15],
-      "origin": [16, -8],
+      "display_scale": 4,
+      "grid_size": [20, 11],
+      "origin": [0, 8],
       "floor": [4, 3],
       "wall": [0, 0]
     }
@@ -64,15 +64,15 @@
     }
   },
   "zone_cells": {
-    "back_wall": [[11, 2], [4, 2], [18, 2]],
-    "back_left": [[7, 7], [11, 7]],
-    "back_center": [[11, 6], [16, 6]],
-    "back_right": [[18, 6], [21, 6]],
-    "left_side": [[3, 9], [8, 9]],
-    "right_side": [[20, 9], [16, 9]],
-    "front_left": [[4, 12]],
-    "front_center": [[11, 12]],
-    "front_right": [[20, 12]],
-    "floor_center": [[12, 9]]
+    "back_wall": [[6, 1], [2, 1], [13, 1]],
+    "back_left": [[2, 4], [5, 4]],
+    "back_center": [[7, 4], [10, 4]],
+    "back_right": [[14, 4], [16, 4]],
+    "left_side": [[2, 6], [5, 6]],
+    "right_side": [[16, 5], [13, 6]],
+    "front_left": [[3, 8]],
+    "front_center": [[8, 8]],
+    "front_right": [[15, 8]],
+    "floor_center": [[7, 6], [10, 6]]
   }
 }

@@ -1,5 +1,28 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+
+function fakePng(label = '') {
+  const header = Buffer.alloc(24);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(header, 0);
+  header.write('IHDR', 12, 'ascii');
+  header.writeUInt32BE(64, 16);
+  header.writeUInt32BE(64, 20);
+  return Buffer.concat([header, Buffer.from(label)]);
+}
+
+function fakeJpeg() {
+  return Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x40, 0x00, 0x40, 0x01, 0x01, 0x11, 0x00, 0xff, 0xd9]);
+}
+
+function fakeWebp() {
+  const bytes = Buffer.alloc(30);
+  bytes.write('RIFF', 0, 'ascii');
+  bytes.write('WEBP', 8, 'ascii');
+  bytes.write('VP8X', 12, 'ascii');
+  bytes.writeUIntLE(63, 24, 3);
+  bytes.writeUIntLE(63, 27, 3);
+  return bytes;
+}
 const Module = require('node:module');
 
 function createMemoryDatabase() {
@@ -207,7 +230,7 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     const uploaded = await invoke({
       action: 'upload_image',
       content_type: 'image/png',
-      base64_data: Buffer.from('fake-png').toString('base64'),
+      base64_data: fakePng('fake-png').toString('base64'),
     }, 'token_a');
     assert.equal(uploaded.ok, true);
     assert.match(uploaded.upload_id, /^upload_[a-f0-9]{32}$/);
@@ -227,7 +250,7 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
 
   await scenario('图片记录不能跨家庭解析', async () => {
     const uploaded = await invoke({
-      action: 'upload_image', content_type: 'image/jpeg', base64_data: Buffer.from('jpeg').toString('base64'),
+      action: 'upload_image', content_type: 'image/jpeg', base64_data: fakeJpeg().toString('base64'),
     }, 'token_a');
     const result = await invoke({ action: 'resolve_image', upload_id: uploaded.upload_id }, 'token_b');
     assert.equal(result.code, 404);
@@ -238,10 +261,35 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
       family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
     });
     const uploaded = await invoke({
-      action: 'upload_image', content_type: 'image/webp', base64_data: Buffer.from('webp').toString('base64'),
+      action: 'upload_image', content_type: 'image/webp', base64_data: fakeWebp().toString('base64'),
     }, 'token_a');
     const result = await invoke({ action: 'delete_image', upload_id: uploaded.upload_id }, 'token_a2');
     assert.equal(result.code, 403);
+  });
+
+  await scenario('已被记忆引用的图片不能直接删除', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image', content_type: 'image/png', base64_data: fakePng('referenced').toString('base64'),
+    }, 'token_a');
+    db.seed('memories', 'memory_with_upload', { family_id: 'family_a', upload_id: uploaded.upload_id });
+    const result = await invoke({ action: 'delete_image', upload_id: uploaded.upload_id }, 'token_a');
+    assert.equal(result.code, 409);
+    assert.notEqual(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 1);
+  });
+
+  await scenario('只清理当前成员超过一天且未被记忆引用的上传', async () => {
+    const png = fakePng('cleanup').toString('base64');
+    const orphan = await invoke({ action: 'upload_image', content_type: 'image/png', base64_data: png }, 'token_a');
+    db.get('uploads', orphan.upload_id).created_at = '2000-01-01T00:00:00.000Z';
+    const referenced = await invoke({ action: 'upload_image', content_type: 'image/png', base64_data: png }, 'token_a');
+    db.get('uploads', referenced.upload_id).created_at = '2000-01-01T00:00:00.000Z';
+    db.seed('memories', 'memory_with_upload', { family_id: 'family_a', upload_id: referenced.upload_id });
+    const result = await invoke({ action: 'cleanup_orphan_images' }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(result.deleted, 1);
+    assert.equal(db.get('uploads', orphan.upload_id), undefined);
+    assert.notEqual(db.get('uploads', referenced.upload_id), undefined);
   });
 
   await scenario('图片上传拒绝不支持类型、非法 base64 与超限输入', async () => {
@@ -250,6 +298,15 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     }, 'token_a')).code, 400);
     assert.equal((await invoke({
       action: 'upload_image', content_type: 'image/png', base64_data: '***',
+    }, 'token_a')).code, 400);
+    assert.equal((await invoke({
+      action: 'upload_image', content_type: 'image/png', base64_data: Buffer.from('not-a-png').toString('base64'),
+    }, 'token_a')).code, 400);
+    const tiny = fakePng('tiny');
+    tiny.writeUInt32BE(1, 16);
+    tiny.writeUInt32BE(1, 20);
+    assert.equal((await invoke({
+      action: 'upload_image', content_type: 'image/png', base64_data: tiny.toString('base64'),
     }, 'token_a')).code, 400);
     assert.equal((await invoke({
       action: 'upload_image', content_type: 'image/png', base64_data: 'A'.repeat(8 * 1024 * 1024 + 16),

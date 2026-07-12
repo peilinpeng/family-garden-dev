@@ -32,6 +32,7 @@ var answers: Array = []
 # AI 房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
 var rooms: Array = []
 var room_objects: Array = []
+var ai_sync_outbox: Array = []
 # 跨成员互动计数（= 家庭关系温度计，对齐 families.cross_member_interaction_count）。
 # 有效跨成员回答 +1：回答者≠上传者 且 同一 (memory, 回答者) 只计一次。进花园直接读它判季节。
 var cross_member_interaction_count: int = 0
@@ -59,6 +60,7 @@ func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: 
 		"status": "ai_done" if not ai_card.is_empty() else "uploaded",
 		"ai_card": ai_card,
 		"generation_meta": generation_meta.duplicate(true),
+		"link_status": "pending" if not ai_card.is_empty() and input_type not in ["room_photo", "bottle_answer"] else "not_applicable",
 		"workflow_key": workflow_key,
 		"created_at": Time.get_datetime_string_from_system()
 	}
@@ -97,6 +99,17 @@ func get_memory(memory_id: String) -> Dictionary:
 		if m is Dictionary and String(m.get("id", "")) == memory_id:
 			return m
 	return {}
+
+func set_memory_link_status(memory_id: String, status: String) -> void:
+	if status not in ["pending", "generating", "complete", "failed", "not_applicable"]:
+		return
+	var memory := get_memory(memory_id)
+	if memory.is_empty():
+		return
+	memory["link_status"] = status
+	memory["updated_at"] = Time.get_datetime_string_from_system()
+	save_game()
+	_sync("memories", memory)
 
 ## 注：不能叫 get_node，会覆盖 Node 原生方法（Godot 4.7 视为错误）。
 func get_node_by_id(node_id: String) -> Dictionary:
@@ -233,6 +246,7 @@ func delete_memory(memory_id: String) -> bool:
 	var memory := get_memory(memory_id)
 	if memory.is_empty():
 		return false
+	var upload_id := String(memory.get("upload_id", ""))
 	var deleted_node_ids: Array = []
 	for node in nodes:
 		if node is Dictionary and (String(node.get("memory_id", "")) == memory_id \
@@ -246,11 +260,14 @@ func delete_memory(memory_id: String) -> bool:
 	answers = answers.filter(func(answer): return not (answer is Dictionary and String(answer.get("memory_id", "")) == memory_id))
 	memories = memories.filter(func(item): return not (item is Dictionary and String(item.get("id", "")) == memory_id))
 	for node_id in deleted_node_ids:
-		CloudManager.delete_record("nodes", node_id)
+		queue_ai_delete("nodes", node_id)
 	for answer_id in deleted_answer_ids:
-		CloudManager.delete_record("answers", answer_id)
-	CloudManager.delete_record("memories", memory_id)
+		queue_ai_delete("answers", answer_id)
+	queue_ai_delete("memories", memory_id)
+	if upload_id != "":
+		queue_ai_image_delete(upload_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func get_answer_for_memory(memory_id: String) -> String:
@@ -355,9 +372,10 @@ func delete_room(room_id: String) -> bool:
 	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("room_id", "")) == room_id))
 	rooms = rooms.filter(func(room): return not (room is Dictionary and String(room.get("id", "")) == room_id))
 	for object_id in object_ids:
-		CloudManager.delete_record("room_objects", object_id)
-	CloudManager.delete_record("rooms", room_id)
+		queue_ai_delete("room_objects", object_id)
+	queue_ai_delete("rooms", room_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func update_room_object(object_id: String, zone: String, slot_id: String) -> bool:
@@ -376,8 +394,9 @@ func delete_room_object(object_id: String) -> bool:
 	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("id", "")) == object_id))
 	if room_objects.size() == previous_size:
 		return false
-	CloudManager.delete_record("room_objects", object_id)
+	queue_ai_delete("room_objects", object_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func create_bottle(question_card: Dictionary, slot_id: String, generation_meta: Dictionary = {}) -> Dictionary:
@@ -608,6 +627,7 @@ func _reset_all() -> void:
 	answers = []
 	rooms = []
 	room_objects = []
+	ai_sync_outbox = []
 	cross_member_interaction_count = 0
 	cross_member_pairs = []
 	family_portrait = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
@@ -621,6 +641,52 @@ func _reset_all() -> void:
 # 迭代1b 注入 CloudBase 后端后即生效，本方法及调用点签名不变。
 func _sync(table: String, row: Dictionary) -> void:
 	CloudManager.persist_record(table, row)
+
+func queue_ai_sync(table: String, row: Dictionary) -> void:
+	var key := table + "|" + String(row.get("id", ""))
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = {"key": key, "operation": "upsert", "table": table, "row": row.duplicate(true)}
+			save_game()
+			return
+	ai_sync_outbox.append({"key": key, "operation": "upsert", "table": table, "row": row.duplicate(true)})
+	save_game()
+
+func queue_ai_delete(table: String, row_id: String) -> void:
+	if row_id == "":
+		return
+	var key := table + "|" + row_id
+	var item := {"key": key, "operation": "delete", "table": table, "row_id": row_id}
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = item
+			save_game()
+			return
+	ai_sync_outbox.append(item)
+	save_game()
+
+func queue_ai_image_delete(upload_id: String) -> void:
+	if upload_id == "":
+		return
+	var key := "uploads|" + upload_id
+	var item := {"key": key, "operation": "delete_image", "table": "uploads", "row_id": upload_id}
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = item
+			save_game()
+			return
+	ai_sync_outbox.append(item)
+	save_game()
+
+func remove_ai_sync(table: String, row_id: String) -> void:
+	var key := table + "|" + row_id
+	ai_sync_outbox = ai_sync_outbox.filter(func(item): return String(item.get("key", "")) != key)
+	save_game()
+
+func _schedule_ai_outbox_flush() -> void:
+	var workflow := get_node_or_null("/root/AIWorkflowManager")
+	if workflow != null and workflow.has_method("flush_ai_sync_outbox"):
+		workflow.call_deferred("flush_ai_sync_outbox")
 
 # families 行（家庭级状态：跨成员计数 + 家庭画像）。
 func _family_row() -> Dictionary:
@@ -690,6 +756,7 @@ func save_game() -> void:
 		"answers": answers,
 		"rooms": rooms,
 		"room_objects": room_objects,
+		"ai_sync_outbox": ai_sync_outbox,
 		"cross_member_interaction_count": cross_member_interaction_count,
 		"cross_member_pairs": cross_member_pairs,
 		"family_portrait": family_portrait,
@@ -722,6 +789,7 @@ func load_save() -> void:
 		answers = parsed.get("answers", [])
 		rooms = parsed.get("rooms", [])
 		room_objects = parsed.get("room_objects", [])
+		ai_sync_outbox = parsed.get("ai_sync_outbox", [])
 		cross_member_interaction_count = int(parsed.get("cross_member_interaction_count", 0))
 		cross_member_pairs = parsed.get("cross_member_pairs", [])
 		family_portrait = parsed.get("family_portrait", {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []})

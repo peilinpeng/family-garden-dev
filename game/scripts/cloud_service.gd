@@ -58,6 +58,8 @@ func _ready() -> void:
 		await get_tree().process_frame   # 等其它 autoload(MemoryManager 等)就绪
 		if backend.has_identity():
 			await backend.bootstrap()
+			await _flush_ai_outbox()
+			await _cleanup_ai_images()
 
 func set_persistence_backend(backend: Object) -> void:
 	_persist_backend = backend
@@ -80,6 +82,8 @@ func ensure_cloud_identity(role: String, display_name: String, family_code: Stri
 	var joined: bool = await _persist_backend.join_family(fam_id, role, display_name)
 	if joined:
 		await _persist_backend.bootstrap()
+		await _flush_ai_outbox()
+		await _cleanup_ai_images()
 		return true
 	return false
 
@@ -92,6 +96,24 @@ func family_code() -> String:
 			return fam_id
 	return str(CloudBaseBackend.load_config().get("family_id", ""))
 
+func _flush_ai_outbox() -> void:
+	var workflow := get_node_or_null("/root/AIWorkflowManager")
+	var memory_manager := get_node_or_null("/root/MemoryManager")
+	var had_pending: bool = false
+	if memory_manager != null:
+		had_pending = not memory_manager.ai_sync_outbox.is_empty()
+	if workflow != null and workflow.has_method("flush_ai_sync_outbox"):
+		await workflow.flush_ai_sync_outbox()
+		if had_pending and memory_manager.ai_sync_outbox.is_empty() and _persist_backend != null and _persist_backend.has_method("refresh"):
+			await _persist_backend.refresh()
+			memory_manager.pull_remote()
+		if workflow.has_method("retry_pending_links"):
+			await workflow.retry_pending_links(2)
+
+func _cleanup_ai_images() -> void:
+	if _persist_backend != null and _persist_backend.has_method("cleanup_orphan_images"):
+		await _persist_backend.cleanup_orphan_images()
+
 func list_family_members() -> Array:
 	if _persist_backend != null and _persist_backend.has_method("list_family_members"):
 		return await _persist_backend.list_family_members()
@@ -102,6 +124,15 @@ func persist_record(table: String, row: Dictionary) -> void:
 		_persist_backend.persist_record(table, row)
 		_announce_world_changed(table, str(row.get("id", "")), "upsert", row)
 
+func persist_ai_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("persist_record_confirmed"):
+		var result: Dictionary = await _persist_backend.persist_record_confirmed(table, row)
+		if bool(result.get("ok", false)):
+			_announce_world_changed(table, str(result.get("id", row.get("id", ""))), "upsert", row)
+		return result
+	persist_record(table, row)
+	return {"ok": true, "id": str(row.get("id", "")), "local_only": true}
+
 func load_table(table: String, query: String = "") -> Array:
 	if _persist_backend != null and _persist_backend.has_method("load_table"):
 		return _persist_backend.load_table(table, query)
@@ -111,6 +142,15 @@ func delete_record(table: String, row_id: String) -> void:
 	if _persist_backend != null and _persist_backend.has_method("delete_record"):
 		_persist_backend.delete_record(table, row_id)
 		_announce_world_changed(table, row_id, "delete", {})
+
+func delete_ai_record_confirmed(table: String, row_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("delete_record_confirmed"):
+		var result: Dictionary = await _persist_backend.delete_record_confirmed(table, row_id)
+		if bool(result.get("ok", false)):
+			_announce_world_changed(table, row_id, "delete", {})
+		return result
+	delete_record(table, row_id)
+	return {"ok": true, "local_only": true}
 
 func load_farm_plots() -> Array:
 	return load_table("farm_plots")

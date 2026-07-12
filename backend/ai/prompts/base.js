@@ -11,4 +11,9 @@ function userBlock(payload, instruction, repairReason = "") {
   return `${instruction}${repair}\n<user_data>\n${JSON.stringify(payload)}\n</user_data>`;
 }
 
-module.exports = { BASE_SYSTEM, userBlock };
+function withoutImageTransport(payload) {
+  const { image_url: _imageUrl, upload_id: _uploadId, ...safePayload } = payload;
+  return safePayload;
+}
+
+module.exports = { BASE_SYSTEM, userBlock, withoutImageTransport };

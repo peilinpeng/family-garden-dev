@@ -51,6 +51,8 @@ const IMAGE_MIME_TO_EXT = new Map([
 ]);
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const TEMP_URL_TTL_SECONDS = 10 * 60;
+const ORPHAN_UPLOAD_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+const ORPHAN_UPLOAD_DELETE_LIMIT = 25;
 const FARM_PLOT_COUNT = 36;
 const FARM_CROP_ID_RE = /^[a-z0-9_]{1,40}$/;
 
@@ -93,6 +95,67 @@ function uploadDocumentId() {
   return 'upload_' + crypto.randomBytes(16).toString('hex');
 }
 
+function hasExpectedImageSignature(bytes, contentType) {
+  if (contentType === 'image/jpeg') {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (contentType === 'image/png') {
+    return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+  if (contentType === 'image/webp') {
+    return bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  }
+  return false;
+}
+
+function imageDimensions(bytes, contentType) {
+  if (contentType === 'image/png' && bytes.length >= 24 && bytes.subarray(12, 16).toString('ascii') === 'IHDR') {
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (contentType === 'image/jpeg') {
+    const sofMarkers = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+    let offset = 2;
+    while (offset + 8 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset += 1; continue; }
+      const marker = bytes[offset + 1];
+      offset += 2;
+      if (marker === 0xd8 || marker === 0xd9) continue;
+      if (offset + 2 > bytes.length) break;
+      const length = bytes.readUInt16BE(offset);
+      if (length < 2 || offset + length > bytes.length) break;
+      if (sofMarkers.has(marker) && length >= 7) {
+        return { width: bytes.readUInt16BE(offset + 5), height: bytes.readUInt16BE(offset + 3) };
+      }
+      offset += length;
+    }
+  }
+  if (contentType === 'image/webp' && bytes.length >= 30) {
+    const chunk = bytes.subarray(12, 16).toString('ascii');
+    if (chunk === 'VP8X') {
+      return { width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
+    }
+    if (chunk === 'VP8L' && bytes[20] === 0x2f) {
+      return {
+        width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8),
+        height: 1 + (bytes[22] >> 6) + (bytes[23] << 2) + ((bytes[24] & 0x0f) << 10),
+      };
+    }
+    if (chunk === 'VP8 ' && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+      return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+    }
+  }
+  return null;
+}
+
+function validImageDimensions(dimensions) {
+  if (!dimensions) return false;
+  const { width, height } = dimensions;
+  return Number.isInteger(width) && Number.isInteger(height)
+    && width >= 32 && height >= 32
+    && width <= 12000 && height <= 12000
+    && width * height <= 40_000_000;
+}
+
 function decodeImage(body) {
   const contentType = String(body.content_type || '').toLowerCase().trim();
   const extension = IMAGE_MIME_TO_EXT.get(contentType);
@@ -107,7 +170,10 @@ function decodeImage(body) {
   }
   const bytes = Buffer.from(encoded, 'base64');
   if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return { error: 'image too large' };
-  return { bytes, contentType, extension };
+  if (!hasExpectedImageSignature(bytes, contentType)) return { error: 'image signature mismatch' };
+  const dimensions = imageDimensions(bytes, contentType);
+  if (!validImageDimensions(dimensions)) return { error: 'invalid image dimensions' };
+  return { bytes, contentType, extension, width: dimensions.width, height: dimensions.height };
 }
 
 async function temporaryImageUrl(fileId) {
@@ -126,6 +192,32 @@ async function findUpload(uploadId, familyId) {
   const row = got.data && got.data[0];
   if (!row || String(row.family_id) !== familyId) return null;
   return row;
+}
+
+async function isUploadReferenced(uploadId, familyId) {
+  const result = await db.collection('memories').where({ family_id: familyId, upload_id: uploadId }).limit(1).get();
+  return Boolean(result.data && result.data.length > 0);
+}
+
+async function cleanupOrphanUploads(familyId, memberId) {
+  const uploadsResult = await db.collection('uploads').where({ family_id: familyId, owner_member_id: memberId }).limit(200).get().catch(() => ({ data: [] }));
+  const cutoff = Date.now() - ORPHAN_UPLOAD_MIN_AGE_MS;
+  let deleted = 0;
+  for (const row of uploadsResult.data || []) {
+    if (deleted >= ORPHAN_UPLOAD_DELETE_LIMIT) break;
+    const uploadId = String(row.id || row._id || '');
+    const createdAt = Date.parse(String(row.created_at || ''));
+    if (!uploadId || !Number.isFinite(createdAt) || createdAt > cutoff) continue;
+    try {
+      if (await isUploadReferenced(uploadId, familyId)) continue;
+      await app.deleteFile({ fileList: [String(row.file_id)] });
+      await db.collection('uploads').doc(uploadId).remove();
+      deleted += 1;
+    } catch (_) {
+      // 引用查询或存储删除失败时保留元数据，下一次启动再安全重试。
+    }
+  }
+  return deleted;
 }
 
 // 用 member_token 解析身份;返回 {member_id, family_id, role, display_name} 或 null。
@@ -326,6 +418,8 @@ exports.main = async (event) => {
         cloud_path: cloudPath,
         content_type: decoded.contentType,
         size_bytes: decoded.bytes.length,
+        width: decoded.width,
+        height: decoded.height,
         created_at: new Date().toISOString(),
       };
       try {
@@ -341,6 +435,8 @@ exports.main = async (event) => {
         image_url: imageUrl,
         content_type: decoded.contentType,
         size_bytes: decoded.bytes.length,
+        width: decoded.width,
+        height: decoded.height,
         expires_in: TEMP_URL_TTL_SECONDS,
       };
     }
@@ -355,6 +451,8 @@ exports.main = async (event) => {
         image_url: await temporaryImageUrl(String(upload.file_id)),
         content_type: String(upload.content_type || ''),
         size_bytes: Number(upload.size_bytes || 0),
+        width: Number(upload.width || 0),
+        height: Number(upload.height || 0),
         expires_in: TEMP_URL_TTL_SECONDS,
       };
     }
@@ -366,9 +464,16 @@ exports.main = async (event) => {
       if (String(upload.owner_member_id) !== memberId) {
         return { ok: false, code: 403, error: 'forbidden' };
       }
+      if (await isUploadReferenced(uploadId, familyId)) {
+        return { ok: false, code: 409, error: 'image is referenced' };
+      }
       await app.deleteFile({ fileList: [String(upload.file_id)] });
       await db.collection('uploads').doc(uploadId).remove();
       return { ok: true };
+    }
+
+    if (action === 'cleanup_orphan_images') {
+      return { ok: true, deleted: await cleanupOrphanUploads(familyId, memberId) };
     }
 
     if (action === 'snapshot') {

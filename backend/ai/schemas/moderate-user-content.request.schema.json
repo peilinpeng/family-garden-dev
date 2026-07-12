@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/moderate-user-content.request.schema.json",
+  "title": "用户确认内容审核请求",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "texts", "language"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["memory_card_edit", "memory_answer", "memory_link_followup", "bottle_answer"] },
+    "texts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "language": { "$ref": "common.schema.json#/$defs/language" }
+  }
+}

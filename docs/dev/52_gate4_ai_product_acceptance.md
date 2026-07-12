@@ -40,7 +40,7 @@ Gate 4 把 Gate 3 的四个通用 AI 接口接入真实产品流程。统一原�
 
 - 房间按钮已移除 `(mock)`；
 - 复用桌面 FileDialog 和 Web 原生图片选择桥；
-- 本地解码 JPEG/PNG/WebP，限制原图 12 MB、长边 1600，并重编码 JPEG 去除元数据；
+- 本地解码 JPEG/PNG/WebP，限制原图 12 MB，并自适应缩放、重编码 JPEG 去除元数据；最终文件不超过 40 KiB，以满足生产 HTTP 入口对 Base64 JSON 请求体的限制；
 - 图片通过 `data_gateway` 写入家庭/成员隔离路径；
 - 分析结果先预览，契约非法、未知家具、非法 zone 或无落点家具不会进入数据层；
 - 用户确认后才创建 room/room_objects；
