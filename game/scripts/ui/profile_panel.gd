@@ -1,6 +1,8 @@
 extends HUDPanel
 class_name ProfilePanel
 
+signal settings_requested
+
 ## 玩家个人资料面板(点左上角色卡打开)。头像 / 昵称 / 家庭名称 / 家庭成员入口 / 收集成就(占位)。
 ## 复用 CharacterDB.avatar_texture 取头像、MemoryManager.player_display_name 取昵称;
 ## 成员入口直接接回 SceneManager 现有的家庭树面板,不另建一套。
@@ -61,7 +63,7 @@ func _build_content() -> void:
 	family.add_theme_color_override("font_color", Color(0.45, 0.36, 0.26, 0.9))
 	names.add_child(family)
 
-	# ---- 家庭成员入口 ----
+	# ---- 家庭与设置入口（低频设置从主界面下沉到这里）----
 	var members_btn := Button.new()
 	members_btn.text = "👪  家庭成员 / Family Members"
 	members_btn.custom_minimum_size = Vector2(0, 40)
@@ -69,6 +71,16 @@ func _build_content() -> void:
 	HUDPanel._style_soft_button(members_btn)
 	members_btn.pressed.connect(_on_members)
 	content_root.add_child(members_btn)
+
+	var settings_btn := Button.new()
+	settings_btn.text = "⚙  设置 / Settings"
+	settings_btn.custom_minimum_size = Vector2(0, 40)
+	settings_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	HUDPanel._style_soft_button(settings_btn)
+	settings_btn.pressed.connect(func() -> void:
+		close_requested.emit()
+		settings_requested.emit())
+	content_root.add_child(settings_btn)
 
 	# ---- 我的收集 / 成就(占位) ----
 	var collection := Panel.new()
@@ -92,6 +104,6 @@ func _build_content() -> void:
 	collection.add_child(col_label)
 
 func _on_members() -> void:
-	# 关闭本面板,复用现有家庭树面板列出成员名单。
+	# 关闭本面板，复用现有云端家庭成员面板。
 	close_requested.emit()
-	SceneManager.open_family_tree()
+	SceneManager.open_family_members()

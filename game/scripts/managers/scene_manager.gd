@@ -11,6 +11,7 @@ const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
 const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
+const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -206,6 +207,7 @@ var plant_button: Button
 var world_chat_input: LineEdit = null
 var world_chat_feed_panel: Panel = null
 var world_chat_feed: Label = null
+var day_night_clock_ui: Control = null
 var world_chat_fade_tween: Tween = null
 var _chat_panel_list: VBoxContainer = null   ## 打开的完整聊天面板的消息容器(发送后实时刷新)
 var _chat_panel_scroll: ScrollContainer = null
@@ -223,6 +225,7 @@ var game_hud: GameHUD = null   ## 常驻 HUD(角色卡/图标导航/设置/背�
 var map_ui: Control = null
 var global_map_ui: Control = null
 var adding_place := false
+var _garden_controls_hint_shown := false
 var pending_place_position := Vector2.ZERO
 var animal_nodes: Dictionary = {}
 var cloud_load_finished: bool = false
@@ -332,11 +335,13 @@ func _build_ui() -> void:
 	var day_night_clock := TextureRect.new()
 	day_night_clock.name = "DayNightClock"
 	day_night_clock.set_script(DAY_NIGHT_CLOCK_UI_SCRIPT)
-	day_night_clock.position = Vector2(GAME_SIZE.x - 110, 12)
+	day_night_clock.position = Vector2(GAME_SIZE.x - 82, 10)
 	day_night_clock.size = Vector2(112, 124)
-	day_night_clock.scale = Vector2(0.78, 0.78)
+	day_night_clock.scale = Vector2(0.58, 0.58)
+	day_night_clock.modulate = Color(1.0, 1.0, 1.0, 0.92)
 	day_night_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(day_night_clock)
+	day_night_clock_ui = day_night_clock
 
 	info_label = Label.new()
 	info_label.visible = false
@@ -344,21 +349,10 @@ func _build_ui() -> void:
 	info_label.text = "家庭花园"
 	root.add_child(info_label)
 
-	var help := Label.new()
-	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	help.text = "WASD / 方向键移动 · 点击物件互动"
-	help.position = Vector2(18, 45)
-	help.size = Vector2(920, 24)
-	help.add_theme_font_size_override("font_size", 13)
-	help.modulate = Color(0.25, 0.22, 0.18, 0.85)
-	root.add_child(help)
-
-	# 底部原有的 World/Tree/Map/Postcards 文字按钮已迁移到常驻 HUD 的左右侧图标导航(GameHUD),
-	# 这里不再创建;保留世界聊天条(输入框 + 预览 + Chat 历史)在底部原位置不动。
-	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
-	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(238, 32))
-	_add_button(root, "发送", Vector2(892, 672), Vector2(62, 32), "world_chat_send")
-	_add_button(root, "聊天", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
+	# 操作说明改为首次进入时的短提示；聊天输入只在聊天面板内出现。
+	# 这里只保留收到消息后的临时预览，不再永久占据底部花园画面。
+	_add_world_chat_feed(root, Vector2(826, 580), Vector2(382, 60))
+	world_chat_input = null
 	_refresh_world_chat_feed()
 	_build_orientation_overlay(root)
 
@@ -1093,6 +1087,7 @@ func _show_role_select() -> void:
 	_clear_map_ui()
 	_clear_world()
 	mode = "role_select"
+	_set_hud_context(mode)
 	info_label.text = "选择角色"
 	_add_background()
 
@@ -1306,19 +1301,18 @@ func _show_garden(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "garden"
+	_set_hud_context(mode)
 	_focused_memory_id = ""
 	adding_place = false
 	_clear_world()
 	info_label.text = "家庭花园"
 	AudioManager.play_music("garden")
 	_add_background()
-	# Phase B(花园 TileMap 改造):碰撞区/房子/核心物件热区/NPC 都是按旧整图背景手工调的坐标,
-	# 跟新的 GardenTiled 布局对不上,先关掉;等新布局定稿后再照新坐标重建这几块。
-	# _add_collision_zones()
+	_add_collision_zones()
 	_add_garden_spawn_markers()
-	# _add_houses()
-	# _add_core_objects()
-	# _add_npcs()
+	_add_houses()
+	_add_core_objects()
+	_add_npcs()
 	_add_animals()
 	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
 	_add_player(spawn)
@@ -1327,7 +1321,12 @@ func _show_garden(spawn_key: String = "default") -> void:
 	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数更新左上迷你合影
 	_render_family_portrait()
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
-	_show_gate4_scene_guide("garden")
+	# 花园统计已合并到左上家庭状态卡，不再叠加第二张“花园今日”。
+	if game_hud != null:
+		game_hud.refresh_profile()
+	if not _garden_controls_hint_shown:
+		_garden_controls_hint_shown = true
+		_show_toast("方向键 / WASD 移动 · 靠近家人或点击花园物件互动")
 
 # 场景层只负责渲染和交互；AI 生成、草稿确认和持久化由 AIClient / AIWorkflowManager / MemoryManager 处理。
 # 这里缓存当前场景已渲染的节点 view model，离场后可由数据层重建。
@@ -2644,6 +2643,7 @@ func _show_global_map() -> void:
 		room_card.queue_free()
 		room_card = null
 	mode = "global_map"
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -2801,6 +2801,7 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 		room_card.queue_free()
 		room_card = null
 	mode = scene_key
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -2891,6 +2892,7 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "fishpond"
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -3135,9 +3137,9 @@ func _clear_global_map_ui() -> void:
 	global_map_ui = null
 
 func _add_background() -> void:
-	# Phase B(花园 TileMap 改造):有 GardenTiled.tscn 就用它(小屋固定底图 + 可画的地面/装饰
-	# TileMapLayer),没有就退回旧的整图背景,避免半途改造中场景直接崩掉。
-	if ResourceLoader.exists(GARDEN_TILED_SCENE):
+	# 主花园不能再由“文件是否存在”隐式决定，否则搭档提交一个试验场景就会替换正式入口。
+	# TileMap 版本继续完整保留；未来完成坐标、碰撞与交互验收后，只需显式切换此开关。
+	if USE_GARDEN_TILED_AS_MAIN and ResourceLoader.exists(GARDEN_TILED_SCENE):
 		var tiled := (load(GARDEN_TILED_SCENE) as PackedScene).instantiate()
 		tiled.name = "GardenTiled"
 		world.add_child(tiled)
@@ -3313,8 +3315,9 @@ func _add_npcs() -> void:
 		npc_body.set("wander_radius", float(role_data.get("wander_radius", 80.0)))
 		npc_body.set("move_speed", 34.0)
 		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
-		npc_body.call_deferred("set_blocked_rects", _get_character_blocked_rects())
-		npc_body.call_deferred("set_frame_rects", npc_frame_rects)
+		# 这两个 setter 不依赖 _ready，立即注入可避免 NPC 第一帧仍按 1×1 网格取帧。
+		npc_body.call("set_blocked_rects", _get_character_blocked_rects())
+		npc_body.call("set_frame_rects", npc_frame_rects)
 		world.add_child(npc_body)
 		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
 
@@ -3516,8 +3519,10 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 		body.set_script(preload("res://scripts/player.gd"))
 
 	var name_label := Label.new()
+	name_label.name = "NameLabel"
 	name_label.text = label_text
-	name_label.visible = not controllable
+	# NPC 名字由 npc_wander 按玩家距离淡入，避免花园中央长期堆叠文字。
+	name_label.visible = false
 	name_label.position = Vector2(-52, -66)
 	name_label.size = Vector2(104, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -3536,6 +3541,7 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 func _add_online_status_badge(parent: Node2D, online: bool) -> void:
 	var dot := Label.new()
 	dot.name = "OnlineStatus"
+	dot.visible = false
 	dot.text = "●"
 	dot.position = Vector2(34, -79)
 	dot.size = Vector2(20, 18)
@@ -3646,6 +3652,7 @@ func _enter_house(id: String, label_text: String) -> void:
 	_clear_gate4_guide()
 
 	mode = "room"
+	_set_hud_context(mode)
 	adding_place = false
 	_clear_world()
 	plant_mode = false
@@ -4379,6 +4386,7 @@ func _show_travel_map() -> void:
 		room_card.queue_free()
 		room_card = null
 	mode = "map"
+	_set_hud_context(mode)
 	plant_mode = false
 	_update_plant_button()
 	_clear_world()
@@ -4408,6 +4416,16 @@ func _build_map_ui() -> void:
 	map_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	map_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(map_ui)
+
+	var back_btn := Button.new()
+	back_btn.text = "返回花园"
+	back_btn.position = Vector2(24, 24)
+	back_btn.size = Vector2(126, 38)
+	back_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(back_btn, false)
+	_set_button_icon(back_btn, "icon_back")
+	back_btn.pressed.connect(func() -> void: _show_garden())
+	map_ui.add_child(back_btn)
 
 	var add_btn := Button.new()
 	add_btn.text = "Add Place"
@@ -5999,11 +6017,26 @@ func open_global_map() -> void:
 func open_travel_map() -> void:
 	_show_travel_map()
 
+func open_memory_creator() -> void:
+	_open_memory_creator()
+
+func open_world_chat() -> void:
+	_open_world_chat_history_panel()
+
 func open_family_tree() -> void:
 	_open_family_tree_panel()
 
+func open_family_members() -> void:
+	_open_family_members_panel()
+
 func open_postcards() -> void:
 	_open_postcards_panel()
+
+func _set_hud_context(scene_id: String) -> void:
+	if game_hud != null and is_instance_valid(game_hud):
+		game_hud.set_context(scene_id)
+	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
+		day_night_clock_ui.visible = scene_id == "garden"
 
 ## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
 ## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。

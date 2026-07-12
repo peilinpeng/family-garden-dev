@@ -21,7 +21,7 @@ func prepare_memory_draft(raw_text: String, image_bytes: PackedByteArray = Packe
 		return image
 	_emit("memory", "generating", {"workflow_key": workflow_key})
 	var outcome: Dictionary = await AIClient.request_memory_card(String(image.get("upload_id", "")), text, "draft_" + workflow_key.left(24))
-	var card: Dictionary = outcome.get("data", {})
+	var card := _dictionary_or_empty(outcome.get("data"))
 	if card.is_empty():
 		return _failure_from_outcome(outcome)
 	var draft := {
@@ -31,7 +31,7 @@ func prepare_memory_draft(raw_text: String, image_bytes: PackedByteArray = Packe
 		"raw_text": text,
 		"input_type": "photo" if text == "" else ("text" if image_bytes.is_empty() else "photo"),
 		"card": card.duplicate(true),
-		"generation_meta": outcome.get("meta", {}).duplicate(true),
+		"generation_meta": _dictionary_or_empty(outcome.get("meta")).duplicate(true),
 		"used_fallback": bool(outcome.get("used_fallback", false)),
 		"upload_id": String(image.get("upload_id", "")),
 		"image_url": "",
@@ -137,10 +137,11 @@ func create_links_for_memory(memory: Dictionary) -> Array:
 		return []
 	_emit("links", "generating", {"memory_id": source_id})
 	var outcome := await AIClient.request_memory_links(memory, candidates)
-	var result: Dictionary = outcome.get("data", {})
-	var meta: Dictionary = outcome.get("meta", {})
+	var result := _dictionary_or_empty(outcome.get("data"))
+	var meta := _dictionary_or_empty(outcome.get("meta"))
 	if String(outcome.get("state", "")) in [AIClient.STATE_ERROR, AIClient.STATE_CANCELLED]:
-		MemoryManager.set_memory_link_status(source_id, "pending" if bool(outcome.get("error", {}).get("retryable", false)) else "failed")
+		var outcome_error := _dictionary_or_empty(outcome.get("error"))
+		MemoryManager.set_memory_link_status(source_id, "pending" if bool(outcome_error.get("retryable", false)) else "failed")
 		return []
 	var created: Array = []
 	for raw_link in result.get("links", []):
@@ -188,11 +189,11 @@ func ensure_bottles(target_count: int = 2) -> Array:
 			"target_memory_type": "shared_memory",
 			"memory_stats": _memory_stats(),
 		})
-		var card: Dictionary = outcome.get("data", {})
+		var card := _dictionary_or_empty(outcome.get("data"))
 		if card.is_empty():
 			SlotManager.release("fishpond", String(slot.get("slot_id", "")))
 			break
-		var bottle := MemoryManager.create_bottle(card, String(slot.get("slot_id", "")), outcome.get("meta", {}))
+		var bottle := MemoryManager.create_bottle(card, String(slot.get("slot_id", "")), _dictionary_or_empty(outcome.get("meta")))
 		if bottle.is_empty() or bottles.any(func(item): return String(item.get("id", "")) == String(bottle.get("id", ""))):
 			SlotManager.release("fishpond", String(slot.get("slot_id", "")))
 			continue
@@ -298,7 +299,7 @@ func prepare_room_draft(image_bytes: PackedByteArray, content_type: String) -> D
 		return image
 	_emit("room", "analyzing", {"workflow_key": workflow_key})
 	var outcome: Dictionary = await AIClient.request_room_analysis(String(image.get("upload_id", "")), "room_" + workflow_key.left(24))
-	var analysis: Dictionary = outcome.get("data", {})
+	var analysis := _dictionary_or_empty(outcome.get("data"))
 	if analysis.is_empty():
 		await CloudManager.delete_ai_image(String(image.get("upload_id", "")))
 		return _failure_from_outcome(outcome)
@@ -312,7 +313,7 @@ func prepare_room_draft(image_bytes: PackedByteArray, content_type: String) -> D
 		"workflow_key": workflow_key,
 		"analysis": analysis.duplicate(true),
 		"layout": layout,
-		"generation_meta": outcome.get("meta", {}).duplicate(true),
+		"generation_meta": _dictionary_or_empty(outcome.get("meta")).duplicate(true),
 		"used_fallback": bool(outcome.get("used_fallback", false)),
 		"upload_id": String(image.get("upload_id", "")),
 		"image_url": "",
@@ -483,8 +484,11 @@ func _failure_from_ai(route: String) -> Dictionary:
 	return _failure_from_outcome(outcome)
 
 func _failure_from_outcome(outcome: Dictionary) -> Dictionary:
-	var error: Dictionary = outcome.get("error", {})
+	var error := _dictionary_or_empty(outcome.get("error"))
 	return _failure(String(error.get("code", "AI_FAILED")), String(error.get("message", "AI 暂时不可用。")))
+
+func _dictionary_or_empty(value: Variant) -> Dictionary:
+	return (value as Dictionary) if value is Dictionary else {}
 
 func _failure(code: String, message: String) -> Dictionary:
 	return {"ok": false, "error": {"code": code, "message": message}}

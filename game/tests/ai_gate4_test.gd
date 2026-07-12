@@ -116,6 +116,7 @@ func _run() -> void:
 	_test_image_preparation()
 	_test_memory_visual_assets()
 	_test_family_portrait_miniature()
+	_test_null_ai_outcome_guard()
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
@@ -147,6 +148,12 @@ func _test_image_preparation() -> void:
 	var noisy_image := Image.create_from_data(800, 600, false, Image.FORMAT_RGB8, noise_bytes)
 	var noisy_prepared := AIImageUploadService.prepare(noisy_image.save_png_to_buffer(), "image/png")
 	_assert(noisy_prepared.ok and int(noisy_prepared.output_bytes) <= AIImageUploadService.MAX_UPLOAD_BYTES, "复杂照片也必须自适应压缩到生产传输安全线")
+
+func _test_null_ai_outcome_guard() -> void:
+	_assert(AIWorkflowManager._dictionary_or_empty(null).is_empty(), "AI data=null 必须安全转换为空字典")
+	_assert(AIWorkflowManager._dictionary_or_empty([]).is_empty(), "AI data 类型错误必须安全转换为空字典")
+	var failure := AIWorkflowManager._failure_from_outcome({"data": null, "error": null})
+	_assert(not failure.ok and String(failure.error.code) == "AI_FAILED", "空 AI 错误体必须返回稳定失败结果")
 
 func _test_memory_visual_assets() -> void:
 	var slot := {"slot_id": "visual_test", "pos": [320, 320]}
