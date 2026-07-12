@@ -34,6 +34,10 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		# 先关最上层的 HUD 主面板(资料/设置/背包),没有再关旧的 cozy/地图面板。
+		if SceneManager.game_hud != null and SceneManager.game_hud.has_open_panel():
+			SceneManager.game_hud.close_current()
+			return
 		SceneManager._close_active_panel()
 		if OS.has_feature("web"):
 			JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)

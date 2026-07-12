@@ -117,6 +117,22 @@ func play_sfx(name: String, volume_db: float = SFX_VOLUME_DB) -> void:
 	p.volume_db = volume_db
 	p.play()
 
+## 音量总线控制(0.0~1.0 线性),供 SettingsManager / 设置面板调用。0 视为静音。
+## 音乐/音效各走独立 bus(_ready 里已建),这里只改 bus 音量,不动各 player 的基础音量。
+func set_music_volume(linear: float) -> void:
+	_set_bus_volume("Music", linear)
+
+func set_sfx_volume(linear: float) -> void:
+	_set_bus_volume("SFX", linear)
+
+func _set_bus_volume(bus_name: String, linear: float) -> void:
+	var idx := AudioServer.get_bus_index(bus_name)
+	if idx == -1:
+		return
+	linear = clampf(linear, 0.0, 1.0)
+	AudioServer.set_bus_mute(idx, linear <= 0.001)
+	AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(linear, 0.0001)))
+
 func _load_first(dir: String, base_name: String) -> AudioStream:
 	var cache_key := dir + base_name
 	if _stream_cache.has(cache_key):

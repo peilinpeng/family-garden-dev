@@ -8,15 +8,20 @@ extends RefCounted
 const SHEET := "res://assets/farm/crops_daily.png"
 const CELL := 32
 const STAGES := 7
-const SECONDS_PER_STAGE := 600.0  ## 10 分钟一阶段(调试用,正式上线改这里即可)
+const SECONDS_PER_STAGE := 600.0  ## 旧字段:保留兼容,新生长走 stage_duration(crop_id)
 
-## 16 种作物:row 0-7 两个面板。名字取自素材包 read me,可随意改。
+const DEFAULT_STAGE_DURATION := 120.0  ## 每作物可覆盖;满熟 = (STAGES-1) × 该值
+const DEFAULT_YIELD := 2
+
+## 16 种作物:row 0-7 两个面板。CropDefinition 字段:可选 display_name / stage_duration / base_yield
+## (未标注的用上面的默认值)。seed_item_id = "seed_<id>",harvest_item_id = "produce_<id>"(约定派生)。
+## 第一版重点作物:corrato=番茄、bottarries=草莓、cauliviol=紫花菜。
 const CROPS := [
-	{"id": "corrato",   "panel": 0, "row": 0},
+	{"id": "corrato",   "panel": 0, "row": 0, "display_name": "番茄",   "stage_duration": 90.0,  "base_yield": 2},
 	{"id": "tomelone",  "panel": 0, "row": 1},
 	{"id": "peanks",    "panel": 0, "row": 2},
-	{"id": "cauliviol", "panel": 0, "row": 3},
-	{"id": "bottarries","panel": 0, "row": 4},
+	{"id": "cauliviol", "panel": 0, "row": 3, "display_name": "紫花菜", "stage_duration": 150.0, "base_yield": 3},
+	{"id": "bottarries","panel": 0, "row": 4, "display_name": "草莓",   "stage_duration": 120.0, "base_yield": 2},
 	{"id": "safruma",   "panel": 0, "row": 5},
 	{"id": "mooam",     "panel": 0, "row": 6},
 	{"id": "reoin",     "panel": 0, "row": 7},
@@ -34,10 +39,32 @@ static func get_crop(index: int) -> Dictionary:
 	return CROPS[index % CROPS.size()]
 
 static func get_crop_by_id(crop_id: String) -> Dictionary:
-	for crop in CROPS:
-		if str(crop.get("id", "")) == crop_id:
-			return crop
+	return find(crop_id)
+
+## 按 crop_id 找配置(找不到返回空字典)。
+static func find(crop_id: String) -> Dictionary:
+	for c in CROPS:
+		if str(c.id) == crop_id:
+			return c
 	return {}
+
+static func display_name(crop_id: String) -> String:
+	var c := find(crop_id)
+	return str(c.get("display_name", crop_id)) if not c.is_empty() else crop_id
+
+static func stage_duration(crop_id: String) -> float:
+	var c := find(crop_id)
+	return float(c.get("stage_duration", DEFAULT_STAGE_DURATION)) if not c.is_empty() else DEFAULT_STAGE_DURATION
+
+static func base_yield(crop_id: String) -> int:
+	var c := find(crop_id)
+	return int(c.get("base_yield", DEFAULT_YIELD)) if not c.is_empty() else DEFAULT_YIELD
+
+static func seed_item_id(crop_id: String) -> String:
+	return "seed_" + crop_id
+
+static func harvest_item_id(crop_id: String) -> String:
+	return "produce_" + crop_id
 
 ## 给定作物的某个阶段,返回它在图集里的取帧矩形。
 static func region(panel: int, row: int, stage: int) -> Rect2:

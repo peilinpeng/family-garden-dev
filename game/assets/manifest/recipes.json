@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "recipes": [
+    {
+      "id": "tomato_egg_dish",
+      "display_name": "番茄炒蛋",
+      "station_type": "stove",
+      "ingredients": [
+        { "id": "produce_corrato", "qty": 2 },
+        { "id": "egg", "qty": 1 }
+      ],
+      "output_item_id": "dish_tomato_egg",
+      "output_quantity": 1,
+      "description": "家常番茄炒蛋，酸甜下饭，最适合家庭晚餐的主菜。"
+    },
+    {
+      "id": "strawberry_jam",
+      "display_name": "草莓果酱",
+      "station_type": "pantry",
+      "ingredients": [
+        { "id": "produce_bottarries", "qty": 3 },
+        { "id": "sugar", "qty": 1 }
+      ],
+      "output_item_id": "dish_strawberry_jam",
+      "output_quantity": 1,
+      "description": "把新鲜草莓和糖慢慢熬成果酱，可以抹面包也可以泡水。"
+    },
+    {
+      "id": "honey_lemon_tea",
+      "display_name": "蜂蜜柠檬茶",
+      "station_type": "prep_table",
+      "ingredients": [
+        { "id": "honey", "qty": 1 },
+        { "id": "lemon", "qty": 1 }
+      ],
+      "output_item_id": "dish_honey_lemon_tea",
+      "output_quantity": 1,
+      "description": "温润的蜂蜜柠檬茶，一杯暖到心里。"
+    },
+    {
+      "id": "garden_breakfast",
+      "display_name": "花园早餐",
+      "station_type": "prep_table",
+      "ingredients": [
+        { "id": "egg", "qty": 1 },
+        { "id": "bread", "qty": 1 },
+        { "id": "honey", "qty": 1 }
+      ],
+      "output_item_id": "dish_garden_breakfast",
+      "output_quantity": 1,
+      "description": "煎蛋、面包和蜂蜜组成的元气早餐，开启新的一天。"
+    }
+  ]
+}

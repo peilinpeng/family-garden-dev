@@ -9,6 +9,8 @@ const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
+const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
+const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -40,6 +42,27 @@ const ASSETS := {
 	"button_normal": "res://assets/ui/buttons/button_normal.png",
 	"button_hover": "res://assets/ui/buttons/button_hover.png",
 	"button_selected": "res://assets/ui/buttons/button_selected.png",
+	"dialog_toast_panel": "res://assets/ui/dialog_toast_panel.png",
+	"inventory_bg": "res://assets/ui/Inventory_Light_example_with_slots_2.png",
+	"cursor_arrow": "res://assets/ui/cursors/cursor_arrow.png",
+	"cursor_pointer": "res://assets/ui/cursors/cursor_pointer.png",
+	# 下面这批已经导入项目、但还没有具体使用场景对接,先注册好 key 方便以后接:
+	"speech_bubble": "res://assets/ui/speech_bubble_grey.png",
+	"dialog_box_medium": "res://assets/ui/Dialouge UI/Premade dialog box medium.png",
+	"dialog_box_big": "res://assets/ui/Dialouge UI/Premade dialog box  big.png",
+	"emote_sheet": "res://assets/ui/Dialouge UI/Emotes/Teemo Basic emote animations sprite sheet.png",
+	"play_button": "res://assets/ui/UI Big Play Button.png",
+	"settings_buttons": "res://assets/ui/UI Settings Buttons.png",
+	"square_buttons_small": "res://assets/ui/buttons/Small Square Buttons.png",
+	"square_buttons_19x26": "res://assets/ui/buttons/Square Buttons 19x26.png",
+	"square_buttons_26x19": "res://assets/ui/buttons/Square Buttons 26x19.png",
+	"square_buttons_26x26": "res://assets/ui/buttons/Square Buttons 26x26.png",
+	"icons_all": "res://assets/ui/icons/All Icons.png",
+	"icons_weather": "res://assets/ui/icons/Weather_Icons_smal_freel.png",
+	"icons_white": "res://assets/ui/icons/white icons.png",
+	"icons_special": "res://assets/ui/icons/special icons/Special Icons.png",
+	"icons_happy_sad": "res://assets/ui/icons/special icons/Small Happines-Sadness icons.png",
+	"basic_pack_sheet": "res://assets/ui/Sprite sheet for Basic Pack.png",
 	"icon_map": "res://assets/ui/icons/icon_map.png",
 	"icon_postcard": "res://assets/ui/icons/icon_postcard.png",
 	"icon_mailbox": "res://assets/ui/icons/icon_mailbox.png",
@@ -184,6 +207,8 @@ var world_chat_input: LineEdit = null
 var world_chat_feed_panel: Panel = null
 var world_chat_feed: Label = null
 var world_chat_fade_tween: Tween = null
+var _chat_panel_list: VBoxContainer = null   ## 打开的完整聊天面板的消息容器(发送后实时刷新)
+var _chat_panel_scroll: ScrollContainer = null
 var plant_mode := false
 var selected_plant_type := "tree"
 var mode := "garden"
@@ -194,6 +219,7 @@ var gate4_guide_card: Panel = null
 var garden_guide_expanded := false
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
+var game_hud: GameHUD = null   ## 常驻 HUD(角色卡/图标导航/设置/背包),setup 时创建
 var map_ui: Control = null
 var global_map_ui: Control = null
 var adding_place := false
@@ -275,11 +301,24 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 		CloudManager.cloud_world_changed.connect(_on_cloud_world_changed)
 	if not AIWorkflowManager.workflow_state_changed.is_connected(_on_ai_workflow_state_changed):
 		AIWorkflowManager.workflow_state_changed.connect(_on_ai_workflow_state_changed)
+	_setup_custom_cursor()
 	_build_ui()
+	# 常驻 HUD 作为独立 CanvasLayer 挂到 main 根，切换场景时不重建。
+	game_hud = GameHUD.new()
+	ui_layer.get_parent().add_child(game_hud)
 	var viewport := get_viewport()
 	if viewport != null and not viewport.size_changed.is_connected(_update_viewport_layout):
 		viewport.size_changed.connect(_update_viewport_layout)
 	_update_viewport_layout()
+
+## 自定义猫爪鼠标指针(默认箭头 + 悬浮可点击时的指示手型),整局只需设一次。
+func _setup_custom_cursor() -> void:
+	var arrow := _safe_texture(str(ASSETS.get("cursor_arrow", "")))
+	if arrow:
+		Input.set_custom_mouse_cursor(arrow, Input.CURSOR_ARROW, Vector2(6, 4))
+	var pointer := _safe_texture(str(ASSETS.get("cursor_pointer", "")))
+	if pointer:
+		Input.set_custom_mouse_cursor(pointer, Input.CURSOR_POINTING_HAND, Vector2(6, 4))
 
 func _build_ui() -> void:
 	var root := Control.new()
@@ -305,33 +344,21 @@ func _build_ui() -> void:
 	info_label.text = "家庭花园"
 	root.add_child(info_label)
 
-	var dock := Panel.new()
-	dock.name = "GardenNavigationDock"
-	dock.position = Vector2(160, 666)
-	dock.size = Vector2(960, 46)
-	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dock.add_theme_stylebox_override("panel", _navigation_dock_style())
-	root.add_child(dock)
-	var nav_items := [
-		["记忆", "create_memory", 100],
-		["世界", "global_map", 94],
-		["家谱", "family_tree", 94],
-		["旅行", "travel_map", 94],
-		["明信片", "MemoryManager.postcards", 110],
-		["聊天", "world_chat_history", 94],
-		["家人", "family_members", 94],
-	]
-	var nav_width := 0.0
-	for item in nav_items:
-		nav_width += float(item[2])
-	nav_width += float(nav_items.size() - 1) * 8.0
-	var nav_x := (dock.size.x - nav_width) * 0.5
-	for item in nav_items:
-		var nav_button := _add_button(dock, String(item[0]), Vector2(nav_x, 7), Vector2(float(item[2]), 32), String(item[1]))
-		if String(item[1]) == "create_memory":
-			_apply_button_style(nav_button, true)
-		nav_x += float(item[2]) + 8.0
-	_add_world_chat_feed(root, Vector2(428, 598), Vector2(424, 58))
+	var help := Label.new()
+	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	help.text = "WASD / 方向键移动 · 点击物件互动"
+	help.position = Vector2(18, 45)
+	help.size = Vector2(920, 24)
+	help.add_theme_font_size_override("font_size", 13)
+	help.modulate = Color(0.25, 0.22, 0.18, 0.85)
+	root.add_child(help)
+
+	# 底部原有的 World/Tree/Map/Postcards 文字按钮已迁移到常驻 HUD 的左右侧图标导航(GameHUD),
+	# 这里不再创建;保留世界聊天条(输入框 + 预览 + Chat 历史)在底部原位置不动。
+	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
+	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(238, 32))
+	_add_button(root, "发送", Vector2(892, 672), Vector2(62, 32), "world_chat_send")
+	_add_button(root, "聊天", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
 	_refresh_world_chat_feed()
 	_build_orientation_overlay(root)
 
@@ -800,16 +827,18 @@ func _on_world_chat_preview_input(event: InputEvent) -> void:
 		_open_world_chat_history_panel()
 
 func _on_world_chat_submitted(submitted_text: String) -> void:
-	var text := submitted_text.strip_edges()
+	_send_world_chat_message(submitted_text, world_chat_input)
+
+## 发送世界聊天消息。source_input:发起发送的输入框(底部栏或聊天面板内嵌),发送期间禁用、
+## 完成后清空并重新聚焦。回车键与 Send 按钮、聊天面板发送都走这里。
+func _send_world_chat_message(raw_text: String, source_input: LineEdit = null) -> void:
+	var text := raw_text.strip_edges()
 	if text == "":
 		return
-	_send_world_chat_message(text)
-
-func _send_world_chat_message(text: String) -> void:
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = false
-		world_chat_input.text = ""
-		world_chat_input.placeholder_text = "正在发送..."
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = false
+		source_input.text = ""
+		source_input.placeholder_text = "正在发送..."
 
 	var author := _get_world_chat_author()
 	var message_id := "message_" + str(Time.get_ticks_msec())
@@ -829,11 +858,11 @@ func _send_world_chat_message(text: String) -> void:
 	MemoryManager.notify_family_activity()
 	MemoryManager.save_game()
 	_refresh_world_chat_feed(true)
-
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = true
-		world_chat_input.placeholder_text = "给家人留一句话..."
-		world_chat_input.grab_focus()
+	_refresh_chat_panel_messages()
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = true
+		source_input.placeholder_text = "给家人留一句话..."
+		source_input.grab_focus()
 	_show_toast("留言已发送。")
 
 func _get_world_chat_author() -> String:
@@ -886,14 +915,16 @@ func _show_world_chat_preview() -> void:
 			world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	)
 
+## 完整家庭聊天面板:滚动消息流(旧→新,气泡按自己/家人左右对齐)+ 内嵌输入框/发送。
+## 底部栏"Chat"按钮或点消息预览都打开这里。发送后实时刷新并自动滚到底。
 func _open_world_chat_history_panel() -> void:
 	_close_active_panel()
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 
 	var panel := Panel.new()
-	panel.position = Vector2(360, 96)
-	panel.size = Vector2(560, 520)
+	panel.position = Vector2(340, 70)
+	panel.size = Vector2(600, 580)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
@@ -901,81 +932,122 @@ func _open_world_chat_history_panel() -> void:
 
 	var title := Label.new()
 	title.text = "家庭聊天"
-	title.position = Vector2(34, 24)
-	title.size = Vector2(470, 30)
+	title.position = Vector2(34, 22)
+	title.size = Vector2(500, 32)
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
 
+	# 消息流
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(34, 70)
-	scroll.size = Vector2(492, 314)
+	scroll.position = Vector2(28, 66)
+	scroll.size = Vector2(544, 436)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(scroll)
+	_chat_panel_scroll = scroll
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 10)
+	list.custom_minimum_size = Vector2(544, 0)
+	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
+	_chat_panel_list = list
 
+	# 内嵌输入 + 发送
+	var input := LineEdit.new()
+	input.name = "ChatPanelInput"
+	input.placeholder_text = "给家人留一句话..."
+	input.position = Vector2(28, 514)
+	input.size = Vector2(456, 40)
+	input.mouse_filter = Control.MOUSE_FILTER_STOP
+	input.add_theme_font_size_override("font_size", 14)
+	input.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	panel.add_child(input)
+
+	var send_btn := Button.new()
+	send_btn.text = "发送"
+	send_btn.position = Vector2(492, 514)
+	send_btn.size = Vector2(80, 40)
+	send_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(send_btn, false)
+	send_btn.pressed.connect(func() -> void: _send_world_chat_message(input.text, input))
+	panel.add_child(send_btn)
+	input.text_submitted.connect(func(t: String) -> void: _send_world_chat_message(t, input))
+
+	_refresh_chat_panel_messages()
+	input.grab_focus()
+
+## 重建聊天面板的消息气泡(打开时 + 每次发送后)。面板已关则安全跳过。
+func _refresh_chat_panel_messages() -> void:
+	if _chat_panel_list == null or not is_instance_valid(_chat_panel_list):
+		return
+	for c in _chat_panel_list.get_children():
+		c.queue_free()
 	if MemoryManager.garden_messages.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "还没有留言。"
-		empty_label.custom_minimum_size = Vector2(460, 48)
-		empty_label.add_theme_font_size_override("font_size", 15)
-		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
-		list.add_child(empty_label)
+		var empty := Label.new()
+		empty.text = "还没有消息，发一条和家人打个招呼吧～"
+		empty.add_theme_font_size_override("font_size", 14)
+		empty.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+		_chat_panel_list.add_child(empty)
 	else:
-		for i in range(MemoryManager.garden_messages.size() - 1, -1, -1):
-			var raw_message: Variant = MemoryManager.garden_messages[i]
-			if raw_message is Dictionary:
-				list.add_child(_make_world_chat_history_card(raw_message))
+		for raw in MemoryManager.garden_messages:
+			if raw is Dictionary:
+				_chat_panel_list.add_child(_make_chat_bubble(raw))
+	# 布局完成后滚到底(超大值自动夹到 max)
+	if _chat_panel_scroll != null and is_instance_valid(_chat_panel_scroll):
+		_chat_panel_scroll.set_deferred("scroll_vertical", 1000000)
+## 单条聊天气泡:自己发的靠右(暖绿),家人的靠左(米色);含作者 + 时间。
+func _make_chat_bubble(message: Dictionary) -> Control:
+	var is_self := str(message.get("role", "")) == str(MemoryManager.selected_role_key)
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	world_chat_input = _add_world_chat_box(panel, Vector2(34, 400), Vector2(382, 38))
-	var send := Button.new()
-	send.text = "发送"
-	send.position = Vector2(428, 400)
-	send.size = Vector2(98, 38)
-	send.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_button_style(send, true)
-	_set_button_icon(send, "icon_letter")
-	send.pressed.connect(func() -> void:
-		if world_chat_input != null and is_instance_valid(world_chat_input):
-			_on_world_chat_submitted(world_chat_input.text))
-	panel.add_child(send)
-	_add_panel_button(panel, "关闭", Vector2(218, 456), Vector2(124, 38), "close")
-
-func _make_world_chat_history_card(message: Dictionary) -> Control:
-	var card := Panel.new()
-	card.custom_minimum_size = Vector2(470, 78)
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bubble := PanelContainer.new()
+	bubble.size_flags_horizontal = Control.SIZE_SHRINK_END if is_self else Control.SIZE_SHRINK_BEGIN
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.95, 0.82, 0.82)
-	style.border_color = Color(0.62, 0.48, 0.32, 0.70)
+	style.bg_color = Color(0.86, 0.93, 0.72, 0.96) if is_self else Color(1.0, 0.95, 0.82, 0.94)
+	style.border_color = Color(0.58, 0.62, 0.36, 0.7) if is_self else Color(0.62, 0.48, 0.32, 0.65)
 	style.set_border_width_all(1)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	card.add_theme_stylebox_override("panel", style)
+	style.set_corner_radius_all(12)
+	bubble.add_theme_stylebox_override("panel", style)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	bubble.add_child(margin)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	margin.add_child(vb)
 
 	var meta := Label.new()
-	meta.text = str(message.get("author", "家人")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
-	meta.position = Vector2(14, 10)
-	meta.size = Vector2(442, 20)
-	meta.add_theme_font_size_override("font_size", 12)
-	meta.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.86))
-	card.add_child(meta)
+	meta.text = str(message.get("author", "家人")) + "  ·  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.add_theme_font_size_override("font_size", 11)
+	meta.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+	vb.add_child(meta)
 
 	var body := Label.new()
 	body.text = str(message.get("text", ""))
-	body.position = Vector2(14, 32)
-	body.size = Vector2(442, 38)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(320, 0)
 	body.add_theme_font_size_override("font_size", 14)
-	body.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
-	card.add_child(body)
-	return card
+	body.add_theme_color_override("font_color", Color(0.20, 0.16, 0.12, 1.0))
+	vb.add_child(body)
+
+	if is_self:
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+		row.add_child(bubble)
+	else:
+		row.add_child(bubble)
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+	return row
 
 func _format_world_chat_time(raw_time: String) -> String:
 	if raw_time == "":
@@ -1001,6 +1073,9 @@ func _on_ui_button(action: String) -> void:
 			_show_travel_map()
 		"MemoryManager.postcards":
 			_open_postcards_panel()
+		"world_chat_send":
+			if world_chat_input != null and is_instance_valid(world_chat_input):
+				_send_world_chat_message(world_chat_input.text, world_chat_input)
 		"world_chat_history":
 			_open_world_chat_history_panel()
 		"create_memory":
@@ -1187,6 +1262,8 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit, family_inpu
 		MemoryManager.player_display_name = _default_name_for_role(role_key)
 	MemoryManager.save_game()
 	_close_active_panel()
+	if game_hud != null:
+		game_hud.refresh_profile()   # 昵称/头像定了,刷新左上角色卡
 	_show_garden()
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
@@ -1235,11 +1312,13 @@ func _show_garden(spawn_key: String = "default") -> void:
 	info_label.text = "家庭花园"
 	AudioManager.play_music("garden")
 	_add_background()
-	_add_collision_zones()
+	# Phase B(花园 TileMap 改造):碰撞区/房子/核心物件热区/NPC 都是按旧整图背景手工调的坐标,
+	# 跟新的 GardenTiled 布局对不上,先关掉;等新布局定稿后再照新坐标重建这几块。
+	# _add_collision_zones()
 	_add_garden_spawn_markers()
-	_add_houses()
-	_add_core_objects()
-	_add_npcs()
+	# _add_houses()
+	# _add_core_objects()
+	# _add_npcs()
 	_add_animals()
 	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
 	_add_player(spawn)
@@ -2708,6 +2787,8 @@ func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hov
 			t.tween_property(shadow, "position", Vector2.ZERO, 0.12)
 
 func _on_global_map_region_pressed(target: String, label_text: String) -> void:
+	# TextureButton 不走 _apply_button_style，点击音效单独补在这里。
+	AudioManager.play_sfx("按钮")
 	_show_toast("进入%s…" % label_text)
 	goto_scene(target)
 
@@ -2765,6 +2846,11 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
 			AudioManager.play_music("house")
 			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
+		"kitchen":
+			# KitchenNew.tscn 自带玩家（kitchen_new.gd 的 _spawn_player），不要再补一个。
+			AudioManager.play_music("kitchen")
+			_build_embedded_scene("kitchen", KITCHEN_SCENE, "厨房", Color(0.58, 0.66, 0.50, 1.0), false)
+			ScenePortal.build_portals("kitchen", world, _on_portal_travel)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
 
@@ -3049,6 +3135,15 @@ func _clear_global_map_ui() -> void:
 	global_map_ui = null
 
 func _add_background() -> void:
+	# Phase B(花园 TileMap 改造):有 GardenTiled.tscn 就用它(小屋固定底图 + 可画的地面/装饰
+	# TileMapLayer),没有就退回旧的整图背景,避免半途改造中场景直接崩掉。
+	if ResourceLoader.exists(GARDEN_TILED_SCENE):
+		var tiled := (load(GARDEN_TILED_SCENE) as PackedScene).instantiate()
+		tiled.name = "GardenTiled"
+		world.add_child(tiled)
+		_add_season_overlay()
+		return
+
 	var texture := _safe_texture(ASSETS["background"])
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -3207,7 +3302,11 @@ func _add_npcs() -> void:
 			continue
 		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
 		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
-		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false)
+		var npc_asset_key := str(role_data.get("asset", "girl"))
+		var npc_def: Dictionary = CharacterDB.get_def(npc_asset_key)
+		var npc_frame_rects: Array = npc_def.get("frame_rects", [])
+		var npc_scale := float(npc_def.get("scale", -1.0))
+		var npc_body := _create_character(npc_name, ASSETS[npc_asset_key], npc_pos, false, 3, 4, npc_frame_rects, npc_scale)
 		npc_body.name = "NPC_" + role_key
 		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
 		npc_body.set("home_position", npc_pos)
@@ -3215,6 +3314,7 @@ func _add_npcs() -> void:
 		npc_body.set("move_speed", 34.0)
 		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
 		npc_body.call_deferred("set_blocked_rects", _get_character_blocked_rects())
+		npc_body.call_deferred("set_frame_rects", npc_frame_rects)
 		world.add_child(npc_body)
 		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
 
@@ -3360,7 +3460,7 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4, frame_rects: Array = [], scale_override: float = -1.0) -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
@@ -3382,12 +3482,24 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var texture := _safe_texture(path)
 	if texture:
 		sprite.texture = texture
-		sprite.hframes = hframes
-		sprite.vframes = vframes
-		sprite.frame = 0
-		var frame_height := float(texture.get_height()) / float(vframes)
-		if frame_height > 0.0:
-			sprite.scale = Vector2.ONE * (82.0 / frame_height)
+		if frame_rects.size() > 0:
+			# 非等分网格贴图(如 girl_2):按精确裁切矩形取帧,交给挂上去的行为脚本(npc_wander.gd
+			# 等)逐帧切 region_rect,这里只摆一个初始的"朝下待机"帧(第 0 列,与 player.gd 的
+			# IDLE_FRAME_INDEX 约定一致)。
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+			var r0 = frame_rects[0]
+			if r0 is Array and r0.size() >= 4:
+				sprite.region_rect = Rect2(float(r0[0]), float(r0[1]), float(r0[2]), float(r0[3]))
+			sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else 0.46)
+		else:
+			sprite.hframes = hframes
+			sprite.vframes = vframes
+			sprite.frame = 0
+			var frame_height := float(texture.get_height()) / float(vframes)
+			if frame_height > 0.0:
+				sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else (82.0 / frame_height))
 	else:
 		sprite.texture = _solid_texture(32, 48, Color(0.92, 0.80, 0.62, 1.0))
 		sprite.scale = Vector2(1.6, 1.6)
@@ -5822,6 +5934,13 @@ func _apply_button_style(button: Button, selected: bool = false) -> void:
 	button.add_theme_font_size_override("font_size", 13)
 	button.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
 	button.add_theme_color_override("font_hover_color", Color(0.22, 0.17, 0.12, 1.0))
+	# 所有走这个统一样式函数的 Button 都顺带接上点击音效；toggle 类按钮(如种植开关)会
+	# 反复调用 _apply_button_style 刷新选中态样式，用 is_connected 防止重复挂信号导致连响多次。
+	if not button.pressed.is_connected(_play_button_click_sfx):
+		button.pressed.connect(_play_button_click_sfx)
+
+func _play_button_click_sfx() -> void:
+	AudioManager.play_sfx("按钮")
 
 func _button_style(asset_key: String, fallback_color: Color, border_color: Color) -> StyleBox:
 	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
@@ -5868,8 +5987,29 @@ func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):
 		active_modal.queue_free()
 	active_modal = null
+	_chat_panel_list = null   ## 聊天面板随 overlay 一起释放,清引用避免悬空
+	_chat_panel_scroll = null
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
+
+# ---- 供 GameHUD 图标导航接回的 public 包装(转调现有打开逻辑,不重写业务)----
+func open_global_map() -> void:
+	_show_global_map()
+
+func open_travel_map() -> void:
+	_show_travel_map()
+
+func open_family_tree() -> void:
+	_open_family_tree_panel()
+
+func open_postcards() -> void:
+	_open_postcards_panel()
+
+## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
+## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。
+func set_player_input_locked(locked: bool) -> void:
+	if player != null and is_instance_valid(player) and player.has_method("set_movement_locked"):
+		player.set_movement_locked(locked)
 
 func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
 	var item_id := existing_id if existing_id != "" else "plant_" + str(Time.get_ticks_msec())

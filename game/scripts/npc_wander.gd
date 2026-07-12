@@ -13,6 +13,7 @@ var state_timer: float = 0.0
 var step_timer: float = 0.0
 var step_index: int = 1
 var facing_row: int = 0
+var _frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧,优先于 hframes/vframes
 
 @onready var sprite: Sprite2D = get_node_or_null("Sprite2D")
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -121,9 +122,6 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 	if sprite.texture == null:
 		return
 
-	sprite.hframes = 3
-	sprite.vframes = 4
-
 	if walking:
 		step_timer += delta
 		if step_timer > 0.24:
@@ -133,8 +131,20 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 		step_index = 1
 		step_timer = 0.0
 
-	sprite.frame = facing_row * 3 + step_index
+	var index := facing_row * 3 + step_index
+	if _frame_rects.size() > index:
+		sprite.region_rect = _frame_rects[index]
+	else:
+		sprite.frame = index
 
 
 func set_blocked_rects(rects: Array) -> void:
 	blocked_rects = rects
+
+
+## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧;传空数组则退回 hframes/vframes 均分网格。
+func set_frame_rects(rects: Array) -> void:
+	_frame_rects.clear()
+	for r in rects:
+		if r is Array and r.size() >= 4:
+			_frame_rects.append(Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])))

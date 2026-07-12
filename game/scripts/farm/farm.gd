@@ -2,13 +2,12 @@
 extends Node2D
 
 ## Farm 场景控制器(独立场景,可用 F6 单独运行)。
-## 负责:1) 按每个建筑下的 SortAnchor(可在编辑器拖动)设置遮挡排序 z_index
-##      2) 用 walkable_area.png 当遮罩,逐像素限制玩家行走范围(碰撞)
-##      3) 用 crop_points 烘焙出的 36 个种植点,走近+点击种作物,按 10 分钟一阶段生长
+## 负责:1) 按每个建筑下的 SortAnchor 设置遮挡排序 z_index
+##      2) 用 walkable_area.png 当遮罩逐像素限制行走(碰撞)
+##      3) 农场玩法:[E] 就近上下文交互(播种/浇水/施肥/收获)+ 畜牧收集(鸡→蛋/牛→奶)
 ##
-## @tool:拖动 Objects 下任意建筑的 SortAnchor 时,编辑器里实时更新遮挡关系。
-## 数据层(crop_points / walkable_area)在画面上不显示:walkable 只当 Image 读,
-## 种植点坐标已烘焙进下面的 PLOTS,不需要把图加进场景。
+## 作物/畜牧的状态与规则都在 FarmManager(家庭共享 + 时间戳生长 + 持久化),这里只做渲染与交互。
+## @tool:编辑器里实时同步 SortAnchor 拖动的遮挡关系;运行时才跑玩法逻辑。
 
 ## crop_points.png 扫描得到的 36 个种植点中心(屏幕坐标,1280x720 与图层 1:1)。
 const PLOTS: Array[Vector2] = [
@@ -26,7 +25,7 @@ const PLOTS: Array[Vector2] = [
 	Vector2(928, 499), Vector2(971, 499), Vector2(1012, 499),
 ]
 
-const PLANT_REACH := 90.0   ## 玩家离种植点多近才能种
+const PLANT_REACH := 90.0   ## 玩家离种植点多近才能交互
 const CLICK_SNAP := 32.0    ## 点击离种植点多近算选中该点
 const FEET_OFFSET := Vector2(0, 18)  ## 玩家脚底相对其原点的偏移(同 Player 碰撞体)
 
@@ -57,8 +56,7 @@ var _farm_busy := false
 func _ready() -> void:
 	_sync_object_z()
 	if Engine.is_editor_hint():
-		return  # 编辑器里只同步遮挡排序,不跑游戏逻辑
-	# 行走遮罩只当数据读,不显示:
+		return
 	walk_img = load("res://assets/farm/walkable_area.png").get_image()
 	_build_presence_hud()
 	_build_farm_hud()
@@ -71,28 +69,21 @@ func _exit_tree() -> void:
 	if not Engine.is_editor_hint() and PresenceChannel != null:
 		PresenceChannel.leave_scene("farm")
 
-## 收集两扇门,记录各自参考点(用它们的 SortAnchor 全局位置)。
 func _setup_doors() -> void:
 	doors.clear()
 	for path in DOOR_PATHS:
 		var n := get_node_or_null(path) as Sprite2D
 		if n == null:
 			continue
-		n.visible = true  # 门初始为关(可见),点击后开(消失)
+		n.visible = true
 		var anchor := n.get_node_or_null("SortAnchor") as Node2D
 		var pt: Vector2 = anchor.global_position if anchor != null else n.global_position
 		doors.append({"node": n, "point": pt})
 
 func _process(_delta: float) -> void:
-	# 编辑器中实时跟随 SortAnchor 拖动;运行时只需 _ready 同步一次,这里跳过省开销
 	if Engine.is_editor_hint():
 		_sync_object_z()
 
-## 把每个建筑的 z_index 设为它 SortAnchor 的全局 Y。
-## 玩家 z = 脚底 Y,二者一比即得正确遮挡:玩家在锚点线之上被挡,之下则挡住建筑。
-## 递归遍历 Objects:任何带 SortAnchor 子节点的精灵,z_index = 锚点全局 Y。
-## 这样既支持整块建筑(一个锚点),也支持拆成多件的建筑(每件各自一个锚点,
-## 如 CowHouse/Shed 与 CowHouse/SouthFence 各管一段深度)。
 func _sync_object_z() -> void:
 	var objs := get_node_or_null("Objects")
 	if objs != null:
@@ -112,7 +103,8 @@ func _spawn_player() -> void:
 	player.add_to_group("player")
 	last_safe = player.global_position
 	add_child(player)
-	# 本地玩家角色:云身份(每用户登录,不可伪造)优先,否则回退本地存档角色
+	# 农场自 spawn 玩家:指向 SceneManager.player,让 GameHUD 开面板时锁移动生效(同 Kitchen)。
+	SceneManager.player = player
 	var mem := get_node_or_null("/root/MemoryManager")
 	var local_fallback := str(mem.selected_role_key) if mem != null and mem.selected_role_key != "" else "father"
 	var identity := get_node_or_null("/root/GameIdentity")
@@ -122,13 +114,11 @@ func _spawn_player() -> void:
 	_spawn_family(role)
 	_setup_presence()
 
-## 其他家庭成员(占位:轻度溜达;联机后由 presence 驱动,见 docs/43)。
 func _spawn_family(local_role: String) -> void:
 	var db := get_node_or_null("/root/CharacterDB")
 	if db == null:
 		return
 	var local_id: String = db.resolve(local_role)
-	# 几个开阔草地落点 + 各自小范围漫步框
 	var spots := {
 		"mother":  [Vector2(705, 235), Rect2(660, 222, 95, 36)],
 		"partner": [Vector2(1120, 600), Rect2(1075, 582, 95, 44)],
@@ -385,9 +375,10 @@ func _update_presence_hud(text: String) -> void:
 	if presence_label != null:
 		presence_label.text = text
 
-## 在画面底部中心附近螺旋找一个可走点作为出生位置。
 func _find_walkable_start() -> Vector2:
-	var spawn_center := Vector2(640, 650)
+	# 出生点必须在"回花园"传送门(trigger_rect y585-615)的内侧(上方),
+	# 否则玩家出生在门外、一往上走就踩进触发区被立刻送回花园。
+	var spawn_center := Vector2(640, 540)
 	for r in range(0, 420, 8):
 		for a in range(0, 360, 15):
 			var p: Vector2 = spawn_center + Vector2(r, 0).rotated(deg_to_rad(a))
@@ -405,7 +396,6 @@ func _walkable(feet: Vector2) -> bool:
 func _physics_process(_delta: float) -> void:
 	if player == null:
 		return
-	# 玩家移动后做一次脚底采样:不可走则退回上一安全点(用手绘遮罩实现碰撞)
 	var feet := player.global_position + FEET_OFFSET
 	if _walkable(feet):
 		last_safe = player.global_position
@@ -427,7 +417,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		_try_plant(click)
 
-## 点击靠近某扇门、且玩家也走近时,切换门的显隐(开/关门)。返回是否处理了点击。
 func _try_doors(click: Vector2) -> bool:
 	for d in doors:
 		if click.distance_to(d.point) > DOOR_CLICK:
@@ -435,10 +424,7 @@ func _try_doors(click: Vector2) -> bool:
 		if player.global_position.distance_to(d.point) <= DOOR_REACH:
 			d.node.visible = not d.node.visible
 			AudioManager.play_sfx("开门" if not d.node.visible else "门")
-			print("开门" if not d.node.visible else "关门", " ", d.node.name)
-		else:
-			print("离门太远,走近点再开")
-		return true  # 点到门附近就算处理了(不再去种植)
+		return true
 	return false
 
 func _try_plant(click: Vector2) -> void:
