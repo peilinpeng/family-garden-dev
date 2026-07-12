@@ -60,6 +60,8 @@ func withdraw(id: String, amount: int) -> int:
 # ── 持久化(本地优先 + 上云) ──────────────────────────
 ## 本地整体快照,纯本设备缓存,两者一起写没有风险(不影响其他设备/成员)。
 func _save_local() -> void:
+	if OS.has_environment("FAMILY_GARDEN_TEST"):
+		return
 	var data := {
 		"backpack": backpack.to_array(),
 		"storehouse": storehouse.to_array(),
@@ -102,6 +104,8 @@ func sync_from_cloud() -> void:
 	_save_local()
 
 func load_inv() -> bool:
+	if OS.has_environment("FAMILY_GARDEN_TEST"):
+		return false
 	if not FileAccess.file_exists(SAVE_PATH):
 		return false
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)

@@ -38,6 +38,9 @@ const CROPS := [
 static func get_crop(index: int) -> Dictionary:
 	return CROPS[index % CROPS.size()]
 
+static func get_crop_by_id(crop_id: String) -> Dictionary:
+	return find(crop_id)
+
 ## 按 crop_id 找配置(找不到返回空字典)。
 static func find(crop_id: String) -> Dictionary:
 	for c in CROPS:

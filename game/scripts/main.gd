@@ -46,16 +46,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
 		if SceneManager.adding_place:
 			SceneManager.adding_place = false
-			SceneManager._show_toast("Add place cancelled.")
+			SceneManager._show_toast("已取消添加地点。")
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SHIFT):
 		print("Mouse position: ", get_global_mouse_position())
 		return
 	if SceneManager.mode == "map" and SceneManager.adding_place and SceneManager.active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var pos := get_global_mouse_position()
+		var pos := SceneManager.world.to_local(get_global_mouse_position())
 		if pos.y < 650:
 			SceneManager._open_add_place_form(pos)
 		return
+	if SceneManager.mode == "garden" and SceneManager.active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		SceneManager._clear_memory_focus()
 	if SceneManager.mode == "garden" and SceneManager.plant_mode and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		SceneManager._add_plant(get_global_mouse_position(), SceneManager.selected_plant_type)
+		SceneManager._add_plant(SceneManager.world.to_local(get_global_mouse_position()), SceneManager.selected_plant_type)
 		MemoryManager.save_game()

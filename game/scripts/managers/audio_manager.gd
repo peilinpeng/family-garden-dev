@@ -39,6 +39,15 @@ func _ready() -> void:
 		add_child(p)
 		_sfx_pool.append(p)
 
+func _exit_tree() -> void:
+	for p in _music_players:
+		p.stop()
+		p.stream = null
+	for p in _sfx_pool:
+		p.stop()
+		p.stream = null
+	_stream_cache.clear()
+
 func _ensure_bus(bus_name: String) -> void:
 	if AudioServer.get_bus_index(bus_name) != -1:
 		return
@@ -50,6 +59,8 @@ func _ensure_bus(bus_name: String) -> void:
 ## 切场景时调用一次:scene_key 对应 res://music/{scene_key}.*,找不到就把当前 BGM 淡出静音。
 ## 同一个 scene_key 连续调用(比如同场景内小范围切换)不会重复重播。
 func play_music(scene_key: String) -> void:
+	if _audio_disabled_for_headless():
+		return
 	if scene_key == _current_music_key:
 		return
 	_current_music_key = scene_key
@@ -94,6 +105,8 @@ func _fade_out_and_stop(player: AudioStreamPlayer) -> void:
 
 ## 一次性音效,name 是 res://soundeffect/ 下的文件名(不含扩展名,支持中文文件名)。
 func play_sfx(name: String, volume_db: float = SFX_VOLUME_DB) -> void:
+	if _audio_disabled_for_headless():
+		return
 	var stream := _load_first(SFX_DIR, name)
 	if stream == null:
 		push_warning("[AudioManager] 找不到音效: " + name)
@@ -132,3 +145,6 @@ func _load_first(dir: String, base_name: String) -> AudioStream:
 			break
 	_stream_cache[cache_key] = found
 	return found
+
+func _audio_disabled_for_headless() -> bool:
+	return DisplayServer.get_name() == "headless"

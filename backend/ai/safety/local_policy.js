@@ -1,6 +1,7 @@
 "use strict";
 
 const { AppError } = require("../errors");
+const net = require("node:net");
 
 const RULES = [
   ["sexual", /(色情|裸照|性行为|porn|explicit sex)/i],
@@ -20,7 +21,7 @@ function assertSafeText(text) {
   }
 }
 
-function assertSafeImageUrl(rawUrl) {
+function assertSafeImageUrl(rawUrl, allowedHosts = []) {
   if (!rawUrl) return;
   let url;
   try {
@@ -30,6 +31,7 @@ function assertSafeImageUrl(rawUrl) {
   }
   if (url.protocol !== "https:") throw new AppError("IMAGE_UNSUPPORTED", "图片必须使用 HTTPS 地址。", { retryable: false });
   const host = url.hostname.toLowerCase();
+  const normalizedHost = host.replace(/^\[|\]$/g, "");
   const privateHost = host === "localhost"
     || host === "[::1]"
     || host === "::1"
@@ -42,14 +44,27 @@ function assertSafeImageUrl(rawUrl) {
     || /^169\.254\./.test(host)
     || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)
     || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
-  if (privateHost) {
+  const privateIpv6 = net.isIP(normalizedHost) === 6 && (
+    normalizedHost === "::"
+    || normalizedHost === "::1"
+    || /^f[cd][0-9a-f]{2}:/i.test(normalizedHost)
+    || /^fe[89ab][0-9a-f]:/i.test(normalizedHost)
+    || normalizedHost.startsWith("::ffff:")
+  );
+  if (privateHost || privateIpv6) {
     throw new AppError("IMAGE_UNSUPPORTED", "图片地址不能指向本地或私有网络。", { retryable: false });
+  }
+  if (allowedHosts.length > 0 && !allowedHosts.some((allowed) => host === allowed || host.endsWith(`.${allowed}`))) {
+    throw new AppError("IMAGE_UNSUPPORTED", "图片地址不在受控存储域名内。", { retryable: false });
   }
 }
 
 function textFromPayload(payload) {
   const values = [];
   if (typeof payload.raw_text === "string") values.push(payload.raw_text);
+  if (typeof payload.title === "string") values.push(payload.title);
+  if (typeof payload.description === "string") values.push(payload.description);
+  if (Array.isArray(payload.texts)) values.push(...payload.texts.filter((item) => typeof item === "string"));
   if (Array.isArray(payload.candidates)) {
     for (const item of payload.candidates) values.push(item.title || "", item.description || "");
   }

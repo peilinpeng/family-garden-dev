@@ -78,6 +78,42 @@ failure = {
 }
 for endpoint in cases:
     validate(f"{endpoint}.response.schema.json", failure)
+validate("moderate-user-content.response.schema.json", failure)
+
+moderation_request = {
+    "kind": "memory_card_edit",
+    "texts": ["和家人在花园里种树。"],
+    "language": "zh-CN",
+}
+validate("moderate-user-content.request.schema.json", moderation_request)
+validate(
+    "moderate-user-content.response.schema.json",
+    {
+        "ok": True,
+        "data": {"approved": True, "safety_note": "已通过安全检查。"},
+        "meta": {
+            "request_id": "req_moderation",
+            "provider": "content-safety",
+            "model": "tencent",
+            "prompt_version": "user-content-safety-v1",
+            "source": "ai",
+            "result": "complete",
+        },
+    },
+)
+expect_invalid(
+    "moderate-user-content.request.schema.json",
+    {"kind": "bottle_answer", "texts": [], "language": "zh-CN"},
+    "内容审核缺少文本",
+)
+
+upload_request = {
+    "memory_id": "mem_upload",
+    "input_type": "photo",
+    "upload_id": "upload_0123456789abcdef0123456789abcdef",
+    "language": "zh-CN",
+}
+validate("generate-memory-card.request.schema.json", upload_request)
 
 empty_link = {
     "ok": True,
@@ -207,4 +243,4 @@ expect_invalid(
     "非空 data 错误标记为 empty",
 )
 
-print(f"Gate 1 契约测试通过：{len(schemas)} 个 Schema，4 组请求/mock，12 个拒绝或空结果场景。")
+print(f"Gate 1 契约测试通过：{len(schemas)} 个 Schema，4 组生成请求/mock + 1 组内容审核，扩展拒绝与空结果场景通过。")

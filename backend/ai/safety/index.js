@@ -12,10 +12,12 @@ class SafetyService {
   async inspectInput(payload, requestId) {
     const text = textFromPayload(payload);
     assertSafeText(text);
-    assertSafeImageUrl(payload.image_url || "");
+    assertSafeImageUrl(payload.image_url || "", this.config.imageAllowedHosts || []);
     if (this.remote) {
-      await this.remote.inspectText(text, requestId);
-      await this.remote.inspectImage(payload.image_url || "", requestId);
+      await Promise.all([
+        this.remote.inspectText(text, requestId),
+        this.remote.inspectImage(payload.image_url || "", requestId),
+      ]);
     }
   }
 

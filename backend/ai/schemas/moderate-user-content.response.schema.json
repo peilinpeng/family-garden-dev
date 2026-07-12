@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/moderate-user-content.response.schema.json",
+  "title": "用户确认内容审核响应",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "data", "meta"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approved"],
+          "properties": {
+            "approved": { "const": true },
+            "safety_note": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "meta": { "$ref": "common.schema.json#/$defs/successMeta" }
+      }
+    },
+    { "$ref": "common.schema.json#/$defs/failureEnvelope" }
+  ]
+}

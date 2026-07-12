@@ -9,10 +9,12 @@
     "memory_id": { "$ref": "common.schema.json#/$defs/id" },
     "input_type": { "type": "string", "enum": ["photo", "text", "postcard", "bottle_answer"] },
     "image_url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 },
+    "upload_id": { "type": "string", "pattern": "^upload_[a-f0-9]{32}$", "maxLength": 64 },
     "raw_text": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "language": { "$ref": "common.schema.json#/$defs/language" }
   },
   "anyOf": [
+    { "required": ["upload_id"] },
     { "required": ["image_url"] },
     { "required": ["raw_text"] }
   ]

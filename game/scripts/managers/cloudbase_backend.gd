@@ -23,8 +23,12 @@ extends Node
 
 const CONFIG_PATH := "res://config/cloudbase.json"      ## 项目级,可提交:endpoint / family_id
 const IDENTITY_PATH := "user://cloud_identity.json"      ## 设备级,不提交:member_token
+const REQUEST_TIMEOUT_SECONDS := 30.0
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
-const SNAPSHOT_TABLES := ["memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories"]
+const SNAPSHOT_TABLES := [
+	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
+	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots",
+]
 
 var _cfg: Dictionary = {}
 
@@ -85,16 +89,58 @@ func join_family(fam_id: String, role: String, display_name: String) -> bool:
 		f.store_string(JSON.stringify({"member_token": token}))
 	return true
 
+func list_family_members() -> Array:
+	var res: Dictionary = await _request({"action": "list_family_members"})
+	if not bool(res.get("ok", false)):
+		return []
+	var members: Variant = res.get("members", [])
+	return members if members is Array else []
+
 # ── 接缝实现(family_id 不再需要:服务端从 member_token 解析) ─
 func persist_record(table: String, row: Dictionary) -> void:
 	# 乐观更新缓存(按 id upsert),再异步推云
 	_cache_upsert(table, row)
 	_post({"action": "upsert", "table": table, "row": row})
 
+func persist_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+	var res: Dictionary = await _request({"action": "upsert", "table": table, "row": row})
+	if bool(res.get("ok", false)):
+		var cached := row.duplicate(true)
+		if str(res.get("id", "")) != "":
+			cached["id"] = str(res.get("id", ""))
+		_cache_upsert(table, cached)
+	return res
+
 func delete_record(table: String, row_id: String) -> void:
 	if _cache.has(table):
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
 	_post({"action": "delete", "table": table, "id": row_id})
+
+func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
+	var res: Dictionary = await _request({"action": "delete", "table": table, "id": row_id})
+	if String(res.get("error", "")) == "not found":
+		res = {"ok": true, "already_deleted": true}
+	if bool(res.get("ok", false)) and _cache.has(table):
+		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
+	return res
+
+## Gate 4 图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
+## 临时 image_url 只用于本次 AI 调用，不应当作永久地址写入业务数据。
+func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+	if bytes.is_empty():
+		return {"ok": false, "error": "empty image"}
+	return await _request({
+		"action": "upload_image",
+		"content_type": content_type,
+		"base64_data": Marshalls.raw_to_base64(bytes),
+	})
+
+func resolve_image(upload_id: String) -> Dictionary:
+	return await _request({"action": "resolve_image", "upload_id": upload_id})
+
+func delete_image(upload_id: String) -> bool:
+	var result: Dictionary = await _request({"action": "delete_image", "upload_id": upload_id})
+	return bool(result.get("ok", false)) or int(result.get("code", 0)) == 404
 
 func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
@@ -133,7 +179,11 @@ func refresh() -> void:
 	if tables is Dictionary:
 		for t in tables:
 			if tables[t] is Array:
-				_cache[t] = tables[t]
+					_cache[t] = tables[t]
+
+func cleanup_orphan_images() -> int:
+	var result: Dictionary = await _request({"action": "cleanup_orphan_images"})
+	return int(result.get("deleted", 0)) if bool(result.get("ok", false)) else 0
 
 # ── HTTP ─────────────────────────────────────────────
 func _post(body: Dictionary) -> void:
@@ -145,6 +195,7 @@ func _request(body: Dictionary) -> Dictionary:
 	if endpoint == "":
 		return {}
 	var req := HTTPRequest.new()
+	req.timeout = REQUEST_TIMEOUT_SECONDS
 	add_child(req)
 	var headers := ["Content-Type: application/json"]
 	# 本人的成员令牌:服务端据此解析身份(family_id/member_id/role),不信 body。
@@ -158,12 +209,17 @@ func _request(body: Dictionary) -> Dictionary:
 		return {}
 	var result: Array = await req.request_completed
 	req.queue_free()
+	var result_code: int = int(result[0])
 	var code: int = result[1]
 	var bytes: PackedByteArray = result[3]
+	if result_code == HTTPRequest.RESULT_TIMEOUT:
+		return {"ok": false, "error": "request timeout", "code": 504}
+	if result_code != HTTPRequest.RESULT_SUCCESS:
+		return {"ok": false, "error": "network request failed", "code": 503}
+	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
 	if code < 200 or code >= 300:
 		push_warning("[CloudBase] %s 失败 code=%d" % [body.get("action", "?"), code])
-		return {}
-	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+		return parsed if parsed is Dictionary else {"ok": false, "error": "http error", "code": code}
 	return parsed if parsed is Dictionary else {}
 
 func _cache_upsert(table: String, row: Dictionary) -> void:
