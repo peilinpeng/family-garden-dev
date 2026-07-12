@@ -15,6 +15,7 @@ var panel_root: Control
 
 var _settings_btn: HUDIconButton
 var _backpack_btn: HUDIconButton
+var _quests_btn: HUDIconButton
 var _current_panel: HUDPanel
 var _current_kind := ""
 var _active_source: HUDIconButton
@@ -46,6 +47,9 @@ func _build() -> void:
 		HUDIconButton.Side.RIGHT, func() -> void: SceneManager.open_family_tree()))
 	left_nav.add_child(_make_icon(_tex("icon_postcard"), "明信片 / Postcards", "postcards",
 		HUDIconButton.Side.RIGHT, func() -> void: SceneManager.open_postcards()))
+	_quests_btn = _make_icon(_tex("icon_sign"), "任务 / Chapter 1", "quests",
+		HUDIconButton.Side.RIGHT, _on_quests_pressed)
+	left_nav.add_child(_quests_btn)
 
 	# ---- 右侧导航(世界与行动):世界 / 地图 ----
 	var right_nav := VBoxContainer.new()
@@ -115,6 +119,14 @@ func _on_settings_pressed() -> void:
 
 func _on_backpack_pressed() -> void:
 	_toggle("inventory", func() -> HUDPanel: return InventoryPanel.new(), _backpack_btn)
+
+func _on_quests_pressed() -> void:
+	_toggle("quests", func() -> HUDPanel: return QuestPanel.new(), _quests_btn)
+
+## 开场结束后自动弹一次任务面板(StoryManager 经 SceneManager 调)。
+func show_quests() -> void:
+	if _current_kind != "quests" or not has_open_panel():
+		_toggle("quests", func() -> HUDPanel: return QuestPanel.new(), _quests_btn)
 
 ## 角色卡不是 HUDIconButton,不参与 set_active 高亮,这里返回 null 让面板管理跳过高亮。
 func profile_card_active_proxy() -> HUDIconButton:

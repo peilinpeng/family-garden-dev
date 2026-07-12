@@ -30,11 +30,11 @@ const ASSETS := {
 	"house_mother": "res://assets/houses/house_mother.png",
 	"house_player": "res://assets/houses/house_player.png",
 	"house_partner": "res://assets/houses/house_partner.png",
-	"player": "res://assets/characters/girl.png",
+	"player": "res://assets/characters/girl_2.png",
 	"father": "res://assets/characters/papa.png",
 	"mother": "res://assets/characters/mama.png",
 	"partner": "res://assets/characters/boy.png",
-	"girl": "res://assets/characters/girl.png",
+	"girl": "res://assets/characters/girl_2.png",
 	"boy": "res://assets/characters/boy.png",
 	"papa": "res://assets/characters/papa.png",
 	"mama": "res://assets/characters/mama.png",
@@ -744,7 +744,6 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_theme_constant_override("separation", 7)
 	margin.add_child(vbox)
 
-	var texture := _safe_texture(str(ASSETS.get(str(role_data.get("asset", "girl")), "")))
 	var preview := TextureRect.new()
 	preview.custom_minimum_size = Vector2(112, 118)
 	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -752,8 +751,9 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if texture:
-		preview.texture = _make_character_preview_texture(texture)
+	# 头像统一走 CharacterDB.avatar_texture:兼容等分网格与 girl_2 的非等分 frame_rects,
+	# 不再用本地 3×4 均分裁切(对 girl_2 会切错)。
+	preview.texture = CharacterDB.avatar_texture(str(role_data.get("role", "girl")))
 	vbox.add_child(preview)
 
 	var label := Label.new()
@@ -786,15 +786,6 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	choose_btn.pressed.connect(_confirm_role_selection.bind(str(role_data.get("role", "girl")), name_input))
 	vbox.add_child(choose_btn)
 
-func _make_character_preview_texture(source: Texture2D) -> Texture2D:
-	var atlas := AtlasTexture.new()
-	var frame_w: float = float(source.get_width()) / 3.0
-	var frame_h: float = float(source.get_height()) / 4.0
-	atlas.atlas = source
-	atlas.region = Rect2(Vector2(frame_w, 0.0), Vector2(frame_w, frame_h))
-	return atlas
-
-
 func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 	MemoryManager.selected_role_key = role_key
 	MemoryManager.player_display_name = name_input.text.strip_edges()
@@ -805,6 +796,9 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit) -> void:
 	if game_hud != null:
 		game_hud.refresh_profile()   # 昵称/头像定了,刷新左上角色卡
 	_show_garden()
+	# 首次流程(开场→选角色→进花园)刚走完开场时,自动弹一次 Chapter 1 任务面板
+	if StoryManager.consume_quest_intro() and game_hud != null:
+		game_hud.show_quests()
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
 	var canonical_role: String = CharacterDB.resolve(role_key)
@@ -2001,19 +1995,20 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 		sprite.texture = texture
 		if frame_rects.size() > 0:
 			# 非等分网格贴图(如 girl_2):按精确裁切矩形取帧,交给挂上去的行为脚本(npc_wander.gd
-			# 等)逐帧切 region_rect,这里只摆一个初始的"朝下待机"帧(第 0 列,与 player.gd 的
-			# IDLE_FRAME_INDEX 约定一致)。
+			# 等)逐帧切 region_rect,这里只摆一个初始的"朝下站立"帧(中间列,与 player.gd 的
+			# IDLE_FRAME_INDEX=1 约定一致)。
 			sprite.region_enabled = true
 			sprite.hframes = 1
 			sprite.vframes = 1
-			var r0 = frame_rects[0]
+			sprite.frame = 0
+			var r0 = frame_rects[1] if frame_rects.size() > 1 else frame_rects[0]   # 中间列=站立帧
 			if r0 is Array and r0.size() >= 4:
 				sprite.region_rect = Rect2(float(r0[0]), float(r0[1]), float(r0[2]), float(r0[3]))
 			sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else 0.46)
 		else:
 			sprite.hframes = hframes
 			sprite.vframes = vframes
-			sprite.frame = 0
+			sprite.frame = 1   # 第 0 行中间列=站立帧(两脚并拢)
 			var frame_height := float(texture.get_height()) / float(vframes)
 			if frame_height > 0.0:
 				sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else (82.0 / frame_height))
@@ -3659,6 +3654,8 @@ func _get_house_intro(id: String) -> String:
 	return "A small family cottage."
 
 func _show_toast(toast_text: String) -> void:
+	if info_label == null or not is_instance_valid(info_label):
+		return   # UI 尚未构建(如启动早期的任务信号),静默跳过
 	info_label.text = "Family Garden   —   " + toast_text
 
 func _safe_texture(path: String) -> Texture2D:

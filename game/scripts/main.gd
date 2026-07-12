@@ -19,6 +19,9 @@ func _ready() -> void:
 	SceneManager._setup_web_photo_bridge()
 	MemoryManager.load_save()
 	await SceneManager._load_cloud_data()
+	# 首次进入(或 debug 重置后)播放启动剧情;播完/跳过都会落 opening_seen,之后不再自动播。
+	if not MemoryManager.opening_seen:
+		await StoryManager.play_opening(self)
 	if MemoryManager.selected_role_key == "":
 		SceneManager._show_role_select()
 	else:
