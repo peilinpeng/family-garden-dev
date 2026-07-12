@@ -8,6 +8,8 @@ extends Node
 ## 库存一律走家庭共享仓 InventoryManager.storehouse(种子消耗优先共享仓、否则背包)。
 
 signal changed   ## 任何作物/畜牧状态变化后发,场景据此重绘
+signal planted(crop_id: String)                           ## 播种成功(任务/剧情钩子)
+signal harvested(crop_id: String, item_id: String, qty: int)  ## 收获成功(任务/剧情钩子)
 
 # 畜牧定义(LivestockDefinition):source_id -> 产出/冷却/交互文案/就绪视觉
 const LIVESTOCK := {
@@ -51,6 +53,7 @@ func plant(plot: int, crop_id: String) -> bool:
 		"fertilized_at": 0.0,
 	})
 	_save()
+	planted.emit(crop_id)
 	return true
 
 func water(plot: int) -> bool:
@@ -119,6 +122,7 @@ func harvest(plot: int) -> int:
 	InventoryManager.give(CropDB.harvest_item_id(crop_id), amount, true)
 	MemoryManager.farm_plots.erase(p)
 	_save()
+	harvested.emit(crop_id, CropDB.harvest_item_id(crop_id), amount)
 	return amount
 
 func _consume_seed(crop_id: String) -> bool:

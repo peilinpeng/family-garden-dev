@@ -6,7 +6,7 @@ class_name SettingsPanel
 
 func _init() -> void:
 	panel_title = "设置 / Settings"
-	card_size = Vector2(480, 420)
+	card_size = Vector2(480, 470)
 
 func _build_content() -> void:
 	content_root.add_child(_slider_row("🎵 音乐音量", SettingsManager.music_volume,
@@ -49,6 +49,22 @@ func _build_content() -> void:
 	scale_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	scale_row.add_child(scale_hint)
 	content_root.add_child(scale_row)
+
+	# 重播开场 —— 仅开发/debug 构建可见(编辑器运行与 debug 导出;正式 release 导出自动隐藏)。
+	# 只重置 opening_seen 并重播,不清任务/库存/记忆卡/存档。
+	if OS.is_debug_build():
+		var replay_row := HBoxContainer.new()
+		replay_row.add_theme_constant_override("separation", 12)
+		replay_row.add_child(_row_label("🎬 开场剧情"))
+		var replay_btn := Button.new()
+		replay_btn.text = "重播开场(开发)"
+		replay_btn.custom_minimum_size = Vector2(150, 34)
+		HUDPanel._style_soft_button(replay_btn)
+		replay_btn.pressed.connect(func() -> void:
+			close_requested.emit()
+			StoryManager.debug_replay_opening(SceneManager.ui_layer.get_parent()))
+		replay_row.add_child(replay_btn)
+		content_root.add_child(replay_row)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

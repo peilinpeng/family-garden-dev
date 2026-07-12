@@ -19,6 +19,11 @@ var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
 var kitchen_orders_done: Array = []   ## 已完成的厨房订单 id(家庭数据;v1 本地持久化,未来可接云)
+# ── 启动剧情 / Chapter 1(个人 onboarding 态,与 selected_role_key 同为本设备个人字段;
+#    未来迁移点:per-member 云 profile) ──
+var opening_seen: bool = false        ## 开场叙事是否已看过(跳过也算)
+var chapter1_tasks: Dictionary = {}   ## task_id -> true(Chapter 1 任务完成态)
+var memory_cards: Array = []          ## 已解锁记忆卡 [{id,title,desc,unlocked_at}](未来接家庭树/相册/云端)
 var farm_plots: Array = []            ## 农场地块状态 FarmPlotState(家庭共享;由 FarmManager 读写)
 var farm_livestock: Dictionary = {}   ## 畜牧状态 source_id -> last_collected_at(家庭共享)
 var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_state != none
@@ -376,6 +381,9 @@ func _reset_all() -> void:
 	kitchen_orders_done = []
 	farm_plots = []
 	farm_livestock = {}
+	opening_seen = false
+	chapter1_tasks = {}
+	memory_cards = []
 	memories = []
 	nodes = []
 	answers = []
@@ -432,6 +440,9 @@ func save_game() -> void:
 		"kitchen_orders_done": kitchen_orders_done,
 		"farm_plots": farm_plots,
 		"farm_livestock": farm_livestock,
+		"opening_seen": opening_seen,
+		"chapter1_tasks": chapter1_tasks,
+		"memory_cards": memory_cards,
 		"memories": memories,
 		"nodes": nodes,
 		"answers": answers,
@@ -467,6 +478,9 @@ func load_save() -> void:
 		kitchen_orders_done = parsed.get("kitchen_orders_done", [])
 		farm_plots = parsed.get("farm_plots", [])
 		farm_livestock = parsed.get("farm_livestock", {})
+		opening_seen = bool(parsed.get("opening_seen", false))
+		chapter1_tasks = parsed.get("chapter1_tasks", {})
+		memory_cards = parsed.get("memory_cards", [])
 		memories = parsed.get("memories", [])
 		nodes = parsed.get("nodes", [])
 		answers = parsed.get("answers", [])

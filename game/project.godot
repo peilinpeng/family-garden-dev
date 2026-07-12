@@ -36,6 +36,7 @@ SettingsManager="*res://scripts/managers/settings_manager.gd"
 RecipeDB="*res://scripts/managers/recipe_db.gd"
 KitchenManager="*res://scripts/managers/kitchen_manager.gd"
 FarmManager="*res://scripts/managers/farm_manager.gd"
+StoryManager="*res://scripts/managers/story_manager.gd"
 
 [display]
 
