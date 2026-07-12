@@ -58,8 +58,12 @@ func replace(room_id: String, analysis: Dictionary, source_memory_id: String, wo
 	var layout := plan(analysis)
 	if not bool(layout.get("ok", false)):
 		return {}
+	# 先完整生成新版，再删除旧版；即使新版落库失败，也不会让玩家失去原房间。
+	var replacement := generate(analysis, source_memory_id, workflow_key, generation_meta)
+	if replacement.is_empty():
+		return {}
 	MemoryManager.delete_room(room_id)
-	return generate(analysis, source_memory_id, workflow_key, generation_meta)
+	return replacement
 
 func move_object(object_id: String, target_zone: String) -> bool:
 	var target: Dictionary = {}

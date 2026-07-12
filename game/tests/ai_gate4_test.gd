@@ -8,9 +8,16 @@ class FakePersistence:
 	var persisted: Array = []
 	var deleted: Array = []
 	var upload_count := 0
+	var fail_confirm := false
 
 	func persist_record(table: String, row: Dictionary) -> void:
 		persisted.append({"table": table, "row": row.duplicate(true)})
+
+	func persist_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+		if fail_confirm:
+			return {"ok": false, "error": "offline"}
+		persist_record(table, row)
+		return {"ok": true, "id": String(row.get("id", ""))}
 
 	func load_table(_table: String, _query: String = "") -> Array:
 		return []
@@ -18,9 +25,15 @@ class FakePersistence:
 	func delete_record(table: String, row_id: String) -> void:
 		deleted.append({"table": table, "id": row_id})
 
+	func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
+		if fail_confirm:
+			return {"ok": false, "error": "offline"}
+		delete_record(table, row_id)
+		return {"ok": true}
+
 	func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
 		upload_count += 1
-		var upload_id := "upload_test_%d" % upload_count
+		var upload_id := "upload_" + ("%032x" % upload_count)
 		uploads[upload_id] = {"bytes": bytes, "content_type": content_type}
 		return {"ok": true, "upload_id": upload_id, "image_url": "https://example.test/%s.jpg" % upload_id}
 
@@ -33,12 +46,17 @@ class FakePersistence:
 class FakeAIBackend:
 	extends Node
 	var calls: Dictionary = {}
+	var reject_moderation := false
 
 	func request(path: String, payload: Dictionary) -> Dictionary:
 		var route := path.get_file()
 		calls[route] = int(calls.get(route, 0)) + 1
 		var data: Dictionary = {}
 		match route:
+			"moderate-user-content":
+				if reject_moderation:
+					return {"ok": false, "error": {"code": "CONTENT_UNSAFE", "message": "test unsafe", "retryable": false}, "meta": {"request_id": "gate4_unsafe"}}
+				data = {"approved": true, "safety_note": "test pass"}
 			"generate-memory-card":
 				data = AIClient.mock_memory_card()
 			"generate-bottle-question":
@@ -101,7 +119,7 @@ func _run() -> void:
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
-	_test_delete_memory_cascades_links()
+	await _test_delete_memory_cascades_links()
 
 	if failures.is_empty():
 		print("Gate 4 Godot tests passed: image, visuals, draft, commit, bottle, room, links, delete")
@@ -118,7 +136,17 @@ func _test_image_preparation() -> void:
 	_assert(prepared.ok, "合法 PNG 应可预处理")
 	_assert(prepared.content_type == "image/jpeg", "上传应统一重编码并去元数据")
 	_assert(maxi(prepared.output_size.x, prepared.output_size.y) <= 1600, "图片长边必须限制到 1600")
+	_assert(int(prepared.output_bytes) <= AIImageUploadService.MAX_UPLOAD_BYTES, "上传图片必须满足生产 HTTP 请求体限制")
 	_assert(not AIImageUploadService.prepare(PackedByteArray([1, 2, 3]), "image/gif").ok, "GIF 必须拒绝")
+	var noise_bytes := PackedByteArray()
+	noise_bytes.resize(800 * 600 * 3)
+	var noise_value := 17
+	for index in noise_bytes.size():
+		noise_value = (noise_value * 1103515245 + 12345) & 0x7fffffff
+		noise_bytes[index] = noise_value & 0xff
+	var noisy_image := Image.create_from_data(800, 600, false, Image.FORMAT_RGB8, noise_bytes)
+	var noisy_prepared := AIImageUploadService.prepare(noisy_image.save_png_to_buffer(), "image/png")
+	_assert(noisy_prepared.ok and int(noisy_prepared.output_bytes) <= AIImageUploadService.MAX_UPLOAD_BYTES, "复杂照片也必须自适应压缩到生产传输安全线")
 
 func _test_memory_visual_assets() -> void:
 	var slot := {"slot_id": "visual_test", "pos": [320, 320]}
@@ -222,6 +250,23 @@ func _test_memory_draft_and_idempotency() -> void:
 	_assert(not MemoryManager.answer_memory_link(link_id, "").ok, "空关联回答必须拒绝")
 	_assert(String(seed.get("id", "")) != String(committed.memory.get("id", "")), "新旧记忆 ID 应不同")
 
+	var rejected_draft: Dictionary = await AIWorkflowManager.prepare_memory_draft("需要二次审核的编辑内容。")
+	ai_backend.reject_moderation = true
+	var before_rejected := MemoryManager.memories.size()
+	var rejected := await AIWorkflowManager.commit_memory_draft(rejected_draft, rejected_draft.card, false)
+	_assert(not rejected.ok and String(rejected.error.code) == "CONTENT_UNSAFE", "用户编辑内容未通过审核时不得写入")
+	_assert(MemoryManager.memories.size() == before_rejected, "审核拒绝不得产生 memory")
+	ai_backend.reject_moderation = false
+
+	persistence.fail_confirm = true
+	var pending_draft: Dictionary = await AIWorkflowManager.prepare_memory_draft("用于验证云端补偿队列的记忆。")
+	var pending_commit := await AIWorkflowManager.commit_memory_draft(pending_draft, pending_draft.card, false)
+	_assert(pending_commit.ok and pending_commit.sync_pending, "云端确认写失败时应保留本地结果并标记待同步")
+	_assert(not MemoryManager.ai_sync_outbox.is_empty(), "确认写失败必须进入 outbox")
+	persistence.fail_confirm = false
+	_assert(await AIWorkflowManager.flush_ai_sync_outbox(), "网络恢复后 outbox 应可补偿")
+	_assert(MemoryManager.ai_sync_outbox.is_empty(), "补偿成功后 outbox 应清空")
+
 func _test_bottle_recovery_and_answer_idempotency() -> void:
 	var bottles: Array = await AIWorkflowManager.ensure_bottles(2)
 	_assert(bottles.size() == 2, "应异步补齐两个真实漂流瓶")
@@ -260,8 +305,13 @@ func _test_delete_memory_cascades_links() -> void:
 		_assert(false, "删除级联测试需要已有连线")
 		return
 	var memory_id := String(links[0].get("memory_id", ""))
+	persistence.fail_confirm = true
 	_assert(MemoryManager.delete_memory(memory_id), "记忆应可删除")
 	_assert(not MemoryManager.nodes.any(func(node): return String(node.get("memory_id", "")) == memory_id or String(node.get("linked_memory_id", "")) == memory_id), "删除记忆必须级联清理节点与连线")
+	_assert(MemoryManager.ai_sync_outbox.any(func(item): return String(item.get("operation", "")) == "delete"), "离线删除必须进入补偿队列")
+	persistence.fail_confirm = false
+	_assert(await AIWorkflowManager.flush_ai_sync_outbox(), "恢复联网后删除补偿应成功")
+	_assert(MemoryManager.ai_sync_outbox.is_empty(), "删除补偿成功后队列应清空")
 
 func _assert(condition: bool, message: String) -> void:
 	if not condition:

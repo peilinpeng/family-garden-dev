@@ -44,6 +44,8 @@ function loadConfig(env = process.env) {
     circuitResetMs: intEnv(env, "AI_CIRCUIT_RESET_MS", 30000, 1000, 3600000),
     idempotencyTtlMs: intEnv(env, "AI_IDEMPOTENCY_TTL_MS", 300000, 1000, 86400000),
     allowInsecureLocal: boolEnv(env, "ALLOW_INSECURE_LOCAL", false),
+    imageAllowedHosts: String(env.AI_IMAGE_ALLOWED_HOSTS || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean),
+    visionJsonSchema: boolEnv(env, "AI_VISION_JSON_SCHEMA", false),
   };
 
   if (!new Set(["development", "test", "production"]).has(config.env)) {

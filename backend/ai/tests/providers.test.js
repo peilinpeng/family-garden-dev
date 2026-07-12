@@ -77,9 +77,10 @@ test("TokenHub 图片请求使用官方 text + image_url 格式", async () => {
   assert.equal(body.model, "vision-model");
   assert.equal(body.max_tokens, 4096);
   assert.equal(body.response_format, undefined);
-  assert.deepEqual(body.messages[0].content, [
+  assert.deepEqual(body.messages[0], { role: "system", content: "system" });
+  assert.deepEqual(body.messages[1].content, [
     { type: "image_url", image_url: { url: "https://example.com/room.jpg" } },
-    { type: "text", text: "system\n\ndescribe" },
+    { type: "text", text: "describe" },
   ]);
 });
 
@@ -104,7 +105,7 @@ test("TokenHub 敏感、截断、缺 Key 和 HTTP 错误被稳定分类", async 
   assert.equal(mapProviderError({ code: "ETIMEDOUT" }).code, "AI_TIMEOUT");
   assert.equal(endpoint("https://tokenhub.tencentmaas.com/v1/"), "https://tokenhub.tencentmaas.com/v1/chat/completions");
   assert.throws(() => endpoint("http://tokenhub.example/v1"), (error) => error.code === "INTERNAL_ERROR");
-  assert.equal(loadDataSchema("analyze-room-photo"), null);
+  assert.notEqual(loadDataSchema("analyze-room-photo"), null);
 });
 
 test("TokenHub 超时与非 JSON 响应不会泄漏上游正文", async () => {
@@ -183,5 +184,5 @@ test("房间分析 prompt 显式约束所有业务枚举", () => {
   assert.match(prompt.user, /warm_cozy\/simple\/nostalgic\/bright\/quiet/);
   assert.match(prompt.user, /study_corner\/reading_corner\/rest_corner\/family_corner\/memory_corner/);
   assert.match(prompt.user, /back_wall\/back_left\/back_center\/back_right/);
-  assert.equal(roomPrompt.version, "room-analysis-v2");
+	assert.equal(roomPrompt.version, "room-analysis-v4");
 });

@@ -11,6 +11,7 @@ const ROUTES = Object.freeze([
   "generate-bottle-question",
   "analyze-room-photo",
   "cross-memory-link",
+  "moderate-user-content",
 ]);
 
 function loadSchemas(schemaDir = path.join(__dirname, "..", "schemas")) {

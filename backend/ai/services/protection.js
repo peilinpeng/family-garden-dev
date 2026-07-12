@@ -17,6 +17,11 @@ class RateLimiter {
 
   consume(key) {
     const now = this.clock();
+    if (this.buckets.size > 10000) {
+      for (const [bucketKey, value] of this.buckets) {
+        if (now - value.startedAt >= this.windowMs) this.buckets.delete(bucketKey);
+      }
+    }
     const bucket = this.buckets.get(key);
     if (!bucket || now - bucket.startedAt >= this.windowMs) {
       this.buckets.set(key, { startedAt: now, count: 1 });
@@ -85,6 +90,11 @@ class IdempotencyStore {
 
   async run(key, hash, task) {
     const now = this.clock();
+    if (this.entries.size > 10000) {
+      for (const [entryKey, value] of this.entries) {
+        if (now - value.createdAt >= this.ttlMs) this.entries.delete(entryKey);
+      }
+    }
     const existing = this.entries.get(key);
     if (existing && now - existing.createdAt < this.ttlMs) {
       if (existing.hash !== hash) throw new AppError("DATA_CONFLICT", "同一 request ID 不能用于不同请求。", { retryable: false });

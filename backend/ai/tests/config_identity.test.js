@@ -59,6 +59,15 @@ test("身份客户端转发 Authorization，并区分无效身份与上游故障
   assert.equal(identity.member_id, "member_1");
   assert.equal(captured[2].authorization, "Bearer member-token");
 
+  const resolver = new DataGatewayIdentityClient(config, {
+    transport: async (_url, body, headers) => {
+      assert.equal(body.action, "resolve_image");
+      assert.equal(headers.authorization, "Bearer member-token");
+      return { ok: true, image_url: "https://example.com/temp.jpg" };
+    },
+  });
+  assert.equal((await resolver.resolveImage("Bearer member-token", "upload_0123456789abcdef0123456789abcdef", "req_img")).image_url, "https://example.com/temp.jpg");
+
   await assert.rejects(() => success.authorize("", "req_2"), (error) => error.code === "UNAUTHORIZED");
 
   const invalid = new DataGatewayIdentityClient(config, { transport: async () => ({ ok: false, code: 401, error: "unauthorized" }) });
@@ -79,7 +88,12 @@ test("图片地址拒绝 HTTP、本机、云元数据与常见私网", () => {
     "https://169.254.169.254/a.jpg",
     "https://metadata.tencentyun.com/a.jpg",
     "https://[::1]/a.jpg",
+    "https://[::ffff:7f00:1]/a.jpg",
+    "https://[fc00::1]/a.jpg",
+    "https://[fe80::1]/a.jpg",
   ];
   for (const url of blocked) assert.throws(() => assertSafeImageUrl(url), (error) => error.code === "IMAGE_UNSUPPORTED");
   assert.doesNotThrow(() => assertSafeImageUrl("https://example.com/a.jpg"));
+  assert.doesNotThrow(() => assertSafeImageUrl("https://img.example.com/a.jpg", ["example.com"]));
+  assert.throws(() => assertSafeImageUrl("https://evil.example.net/a.jpg", ["example.com"]), (error) => error.code === "IMAGE_UNSUPPORTED");
 });
