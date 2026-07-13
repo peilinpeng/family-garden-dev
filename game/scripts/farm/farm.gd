@@ -42,6 +42,10 @@ const FARMER_POS := Vector2(1040, 260)
 const FARMER_REACH := 115.0
 const FARMER_CLICK := 72.0
 const SEED_SHOP_PANEL_SCRIPT := preload("res://scripts/ui/seed_shop_panel.gd")
+const NOTICE_BOARD_PANEL_SCRIPT := preload("res://scripts/ui/farm_notice_board_panel.gd")
+const NOTEBOARD_PATH := "Objects/Noteboard"
+const NOTEBOARD_REACH := 125.0
+const NOTEBOARD_CLICK := 86.0
 const LIVESTOCK_TARGETS := {
 	"chicken_coop": {"point": Vector2(274, 300), "reach": 150.0, "click": 150.0},
 	"cow_shed": {"point": Vector2(214, 545), "reach": 155.0, "click": 175.0},
@@ -55,6 +59,8 @@ var crop_rows: Dictionary = {} ## plot_index -> FarmManager farm_plots 行
 var selected: int = 0        ## 当前选中的作物种类(按数字键 1-9 切换)
 var doors: Array = []        ## [{node, point}] 门节点 + 其参考点(Farm 本地坐标)
 var seed_vendor: Node2D
+var noteboard: Node2D
+var noteboard_point := Vector2.ZERO
 var remote_players: Dictionary = {}      ## member_id -> RemotePlayer
 var placeholder_players: Dictionary = {} ## role_key -> RemotePlayer
 var presence_hud: CanvasLayer
@@ -62,6 +68,7 @@ var presence_label: Label
 var farm_hud: CanvasLayer
 var seed_label: Label
 var farm_status_label: Label
+var farm_hint_label: Label
 var _farm_refresh_pending := false
 var _farm_refresh_running := false
 var _farm_busy := false
@@ -77,6 +84,7 @@ func _ready() -> void:
 	_build_farm_hud()
 	_spawn_player()
 	_setup_doors()
+	_setup_noteboard()
 	_setup_seed_vendor()
 	_setup_shared_farm()
 	_update_seed_label()
@@ -104,11 +112,19 @@ func _setup_seed_vendor() -> void:
 	if seed_vendor.has_method("set_hint_visible"):
 		seed_vendor.call("set_hint_visible", false)
 
+func _setup_noteboard() -> void:
+	noteboard = get_node_or_null(NOTEBOARD_PATH) as Node2D
+	if noteboard == null:
+		return
+	var anchor := noteboard.get_node_or_null("SortAnchor") as Node2D
+	noteboard_point = to_local(anchor.global_position if anchor != null else noteboard.global_position)
+
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		_sync_object_z()
 	else:
 		_update_seed_vendor_hint()
+		_update_interaction_hint()
 		_crop_stage_tick += delta
 		if _crop_stage_tick >= 1.0:
 			_crop_stage_tick = 0.0
@@ -219,7 +235,7 @@ func _build_farm_hud() -> void:
 
 	var panel := PanelContainer.new()
 	panel.position = Vector2(18, 18)
-	panel.custom_minimum_size = Vector2(330, 70)
+	panel.custom_minimum_size = Vector2(360, 96)
 	farm_hud.add_child(panel)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.98, 0.95, 0.84, 0.92)
@@ -235,8 +251,8 @@ func _build_farm_hud() -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(306, 56)
-	box.add_theme_constant_override("separation", 2)
+	box.custom_minimum_size = Vector2(336, 82)
+	box.add_theme_constant_override("separation", 3)
 	panel.add_child(box)
 
 	seed_label = Label.new()
@@ -250,6 +266,13 @@ func _build_farm_hud() -> void:
 	farm_status_label.add_theme_font_size_override("font_size", 13)
 	farm_status_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.18, 0.92))
 	box.add_child(farm_status_label)
+
+	farm_hint_label = Label.new()
+	farm_hint_label.text = "靠近田地、告示牌或老爷爷，会出现操作提示。"
+	farm_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	farm_hint_label.add_theme_font_size_override("font_size", 13)
+	farm_hint_label.add_theme_color_override("font_color", Color(0.22, 0.42, 0.20, 0.95))
+	box.add_child(farm_hint_label)
 
 func _setup_shared_farm() -> void:
 	if FarmManager != null and not FarmManager.changed.is_connected(_on_farm_manager_changed):
@@ -427,6 +450,55 @@ func _update_presence_hud(text: String) -> void:
 	if presence_label != null:
 		presence_label.text = text
 
+func _update_interaction_hint() -> void:
+	if farm_hint_label == null:
+		return
+	farm_hint_label.text = _interaction_hint_text()
+
+func _interaction_hint_text() -> String:
+	if player == null:
+		return "靠近田地、告示牌或老爷爷，会出现操作提示。"
+	if _can_reach_seed_vendor():
+		return "按 E 打开农场小铺。"
+	if _can_reach_noteboard():
+		return "按 E 查看农场告示牌。"
+	var livestock_id := _nearest_livestock(player.position, false)
+	if livestock_id != "" and _can_reach_livestock(livestock_id):
+		return _livestock_hint(livestock_id)
+	var plot_index := _nearest_reachable_plot(player.position)
+	if plot_index >= 0:
+		return _plot_hint(plot_index)
+	return "靠近田地、告示牌或老爷爷，会出现操作提示。"
+
+func _livestock_hint(id: String) -> String:
+	if FarmManager == null:
+		return "按 E 查看畜棚。"
+	var def: Dictionary = FarmManager.livestock_def(id)
+	var label := str(def.get("interaction_label", "收集"))
+	if FarmManager.livestock_ready(id):
+		return "按 E " + label + "。"
+	var left := int(ceil(FarmManager.cooldown_left(id)))
+	return "按 E 查看%s还要多久。" % label
+
+func _plot_hint(plot_index: int) -> String:
+	if FarmManager == null:
+		return "按 E 查看这块田。"
+	if not crops.has(plot_index):
+		return "按 E 种下：" + _selected_seed_name() + "。"
+	var row: Dictionary = crop_rows.get(plot_index, {})
+	var crop_id := str(row.get("crop_id", ""))
+	var crop_name := _item_name("produce_" + crop_id)
+	if not bool(row.get("watered", false)):
+		if _has_item_anywhere(TOOL_WATERING_CAN):
+			return "按 E 给%s浇水。" % crop_name
+		return "需要浇水壶才能给%s浇水。" % crop_name
+	if FarmManager.is_mature(plot_index):
+		return "按 E 收获%s。" % crop_name
+	if not bool(row.get("fertilized", false)) and _has_item_anywhere(FERTILIZER):
+		return "按 E 给%s施肥。" % crop_name
+	var left := int(ceil(FarmManager.seconds_to_next_stage(plot_index)))
+	return "%s正在生长，还要%s。" % [crop_name, _format_wait(left)]
+
 func _find_walkable_start() -> Vector2:
 	# 出生点必须在"回花园"传送门(trigger_rect y585-615)的内侧(上方),
 	# 否则玩家出生在门外、一往上走就踩进触发区被立刻送回花园。
@@ -473,6 +545,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var click := to_local(get_global_mouse_position())
 		if _try_seed_vendor_click(click):
 			return
+		if _try_noteboard_click(click):
+			return
 		if _try_livestock_click(click):
 			return
 		if _try_doors(click):
@@ -487,6 +561,8 @@ func _try_seed_vendor_interact() -> bool:
 
 func _try_context_interact() -> bool:
 	if _try_seed_vendor_interact():
+		return true
+	if _try_noteboard_interact():
 		return true
 	if player == null:
 		return false
@@ -506,7 +582,7 @@ func _try_seed_vendor_click(click: Vector2) -> bool:
 	if click.distance_to(seed_vendor.position) > FARMER_CLICK:
 		return false
 	if not _can_reach_seed_vendor():
-		_set_farm_status("再走近一点，老爷爷可以卖你种子。")
+		_set_farm_status("再走近一点，老爷爷的农场小铺就在这里。")
 		return true
 	_open_seed_shop()
 	return true
@@ -529,7 +605,39 @@ func _open_seed_shop() -> void:
 		add_child(layer)
 		panel.close_requested.connect(func() -> void: layer.queue_free())
 		layer.add_child(panel)
-	_set_farm_status("老爷爷的小铺开张了。")
+	_set_farm_status("老爷爷的农场小铺开张了。")
+
+func _try_noteboard_interact() -> bool:
+	if not _can_reach_noteboard():
+		return false
+	_open_noteboard()
+	return true
+
+func _try_noteboard_click(click: Vector2) -> bool:
+	if noteboard == null:
+		return false
+	if click.distance_to(noteboard_point) > NOTEBOARD_CLICK:
+		return false
+	if not _can_reach_noteboard():
+		_set_farm_status("再走近一点，告示牌在这里。")
+		return true
+	_open_noteboard()
+	return true
+
+func _can_reach_noteboard() -> bool:
+	return player != null and noteboard != null and player.position.distance_to(noteboard_point) <= NOTEBOARD_REACH
+
+func _open_noteboard() -> void:
+	var panel: HUDPanel = NOTICE_BOARD_PANEL_SCRIPT.new()
+	if SceneManager.game_hud != null and is_instance_valid(SceneManager.game_hud):
+		SceneManager.game_hud.open_panel(panel)
+	else:
+		var layer := CanvasLayer.new()
+		layer.layer = 40
+		add_child(layer)
+		panel.close_requested.connect(func() -> void: layer.queue_free())
+		layer.add_child(panel)
+	_set_farm_status("打开了农场告示牌。")
 
 func _try_livestock_click(click: Vector2) -> bool:
 	var target_id := _nearest_livestock(click, true)
@@ -568,6 +676,7 @@ func _collect_livestock(id: String) -> void:
 	if qty > 0:
 		var item_id := str(def.get("output_item_id", ""))
 		_set_farm_status("收集到 " + _item_name(item_id) + " ×" + str(qty) + "。")
+		_record_farm_activity("collect_livestock", "收集", "收集了%s ×%d" % [_item_name(item_id), qty], item_id, qty)
 		return
 	var left := int(ceil(FarmManager.cooldown_left(id)))
 	_set_farm_status(str(def.get("interaction_label", "收集")) + "还要 " + _format_wait(left) + "。")
@@ -628,6 +737,7 @@ func _try_existing_crop(plot_index: int) -> void:
 			return
 		if FarmManager.water(plot_index):
 			_set_farm_status("浇水了，" + _item_name("produce_" + crop_id) + "开始生长。")
+			_record_farm_activity("water", "浇水", "给%s浇水了" % _item_name("produce_" + crop_id), "produce_" + crop_id)
 		return
 	if FarmManager.is_mature(plot_index):
 		_harvest_plot(plot_index)
@@ -635,6 +745,7 @@ func _try_existing_crop(plot_index: int) -> void:
 	if not bool(row.get("fertilized", false)) and _has_item_anywhere(FERTILIZER):
 		if _take_item_anywhere(FERTILIZER, 1) and FarmManager.fertilize(plot_index):
 			_set_farm_status("施肥了，成熟后会多收一点。")
+			_record_farm_activity("fertilize", "施肥", "给%s施肥了" % _item_name("produce_" + crop_id), FERTILIZER, 1)
 		return
 	var left := int(ceil(FarmManager.seconds_to_next_stage(plot_index)))
 	_set_farm_status("还要 " + _format_wait(left) + " 进入下一阶段。")
@@ -647,6 +758,7 @@ func _plant_plot(plot_index: int, data: Dictionary) -> void:
 	_farm_busy = false
 	if planted:
 		_set_farm_status("种下了 " + _item_name("seed_" + crop_id) + "。")
+		_record_farm_activity("plant", "播种", "种下了%s" % _item_name("seed_" + crop_id), "seed_" + crop_id, 1)
 	else:
 		_set_farm_status("没有 " + _item_name("seed_" + crop_id) + "，可以去老爷爷那里买。")
 
@@ -656,6 +768,7 @@ func _harvest_plot(plot_index: int) -> void:
 	var amount := FarmManager.harvest(plot_index) if FarmManager != null else 0
 	if amount > 0:
 		_set_farm_status("收获 " + _item_name("produce_" + crop_id) + " ×" + str(amount) + "。")
+		_record_farm_activity("harvest", "收获", "收获了%s ×%d" % [_item_name("produce_" + crop_id), amount], "produce_" + crop_id, amount)
 	else:
 		_set_farm_status("还不能收获。")
 
@@ -692,6 +805,10 @@ func _item_name(item_id: String) -> String:
 func _set_farm_status(text: String) -> void:
 	if farm_status_label != null:
 		farm_status_label.text = text
+
+func _record_farm_activity(action: String, label: String, detail: String, item_id: String = "", qty: int = 0) -> void:
+	if MemoryManager != null and MemoryManager.has_method("record_farm_activity"):
+		MemoryManager.record_farm_activity(action, label, detail, item_id, qty)
 
 func _format_wait(seconds: int) -> String:
 	if seconds <= 0:

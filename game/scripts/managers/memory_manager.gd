@@ -6,6 +6,7 @@ extends Node
 ## 从 main.gd 拆出，逻辑保持不变（增量 2 / feature/c-foundation）。
 
 signal mailbox_alert_changed(state: String)
+signal farm_activity_changed
 
 const SAVE_PATH := "user://family_garden_save_v2.json"
 const TEST_SAVE_PATH := "user://family_garden_save_v2.test.json"
@@ -20,6 +21,7 @@ var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
 var kitchen_orders_done: Array = []   ## 已完成的厨房订单 id(家庭数据;v1 本地持久化,未来可接云)
+var farm_activity_log: Array = []     ## 农场告示牌动态 [{id, actor_name, action, detail, created_at...}]
 # ── 启动剧情 / Chapter 1(个人 onboarding 态,与 selected_role_key 同为本设备个人字段;
 #    未来迁移点:per-member 云 profile) ──
 var opening_seen: bool = false        ## 开场叙事是否已看过(跳过也算)
@@ -626,6 +628,62 @@ func notify_family_activity() -> void:
 	if mailbox_alert_state != MAILBOX_ALERT_LETTER:
 		set_mailbox_alert(MAILBOX_ALERT_DOT)
 
+func record_farm_activity(action: String, label: String, detail: String, item_id: String = "", qty: int = 0) -> Dictionary:
+	var clean_detail := detail.strip_edges()
+	if clean_detail == "":
+		return {}
+	var role := selected_role_key
+	if GameIdentity != null and GameIdentity.is_ready() and GameIdentity.role != "":
+		role = GameIdentity.role
+	if role == "":
+		role = "father"
+	var actor_name := ""
+	if GameIdentity != null and GameIdentity.is_ready():
+		actor_name = GameIdentity.display_name.strip_edges()
+	if actor_name == "":
+		actor_name = player_display_name.strip_edges()
+	if actor_name == "" and CharacterDB != null:
+		actor_name = CharacterDB.display_name(role)
+	var family_id := FAMILY_ID
+	if CloudManager != null and CloudManager.has_method("family_code"):
+		var cloud_family := str(CloudManager.family_code()).strip_edges()
+		if cloud_family != "":
+			family_id = cloud_family
+	var now_unix := int(Time.get_unix_time_from_system())
+	var row := {
+		"id": "farm_log:%s:%d:%d" % [family_id, Time.get_ticks_msec(), randi() % 1000000],
+		"family_id": family_id,
+		"actor_member_id": GameIdentity.member_id if GameIdentity != null and GameIdentity.is_ready() else "",
+		"actor_role": role,
+		"actor_name": actor_name,
+		"action": action,
+		"label": label,
+		"detail": clean_detail,
+		"item_id": item_id,
+		"qty": qty,
+		"created_at_unix": now_unix,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	farm_activity_log.append(row)
+	_trim_farm_activity_log()
+	save_game()
+	_sync("farm_activity_log", row)
+	notify_family_activity()
+	farm_activity_changed.emit()
+	return row
+
+func recent_farm_activities(limit: int = 30) -> Array:
+	var rows := farm_activity_log.duplicate(true)
+	rows.sort_custom(func(a: Variant, b: Variant) -> bool:
+		return int((a as Dictionary).get("created_at_unix", 0)) > int((b as Dictionary).get("created_at_unix", 0)) \
+			if a is Dictionary and b is Dictionary else false)
+	if limit > 0 and rows.size() > limit:
+		rows = rows.slice(0, limit)
+	return rows
+
+func _trim_farm_activity_log() -> void:
+	farm_activity_log = recent_farm_activities(120)
+
 func clear_mailbox_alert() -> void:
 	set_mailbox_alert(MAILBOX_ALERT_NONE)
 
@@ -635,6 +693,7 @@ func _reset_all() -> void:
 	postcards = []
 	garden_messages = []
 	kitchen_orders_done = []
+	farm_activity_log = []
 	farm_plots = []
 	farm_livestock = {}
 	opening_seen = false
@@ -781,6 +840,7 @@ func pull_remote() -> void:
 	var t_postcards := CloudManager.load_table("postcards")
 	var t_messages := CloudManager.load_table("messages")
 	var t_mailbox := CloudManager.load_table("mailbox_events")
+	var t_farm_activity := CloudManager.load_table("farm_activity_log")
 	if cloud_ready or not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
 		apply_cloud_data({
 			"travel_places": t_places,
@@ -788,6 +848,11 @@ func pull_remote() -> void:
 			"messages": t_messages,
 			"mailbox_events": t_mailbox,
 		}, cloud_ready)
+		pulled = true
+	if cloud_ready or not t_farm_activity.is_empty():
+		farm_activity_log = t_farm_activity
+		_trim_farm_activity_log()
+		farm_activity_changed.emit()
 		pulled = true
 	if pulled:
 		save_game()
@@ -799,6 +864,7 @@ func save_game() -> void:
 		"postcards": postcards,
 		"garden_messages": garden_messages,
 		"kitchen_orders_done": kitchen_orders_done,
+		"farm_activity_log": farm_activity_log,
 		"farm_plots": farm_plots,
 		"farm_livestock": farm_livestock,
 		"opening_seen": opening_seen,
@@ -842,6 +908,7 @@ func load_save() -> void:
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
 		kitchen_orders_done = parsed.get("kitchen_orders_done", [])
+		farm_activity_log = parsed.get("farm_activity_log", [])
 		farm_plots = parsed.get("farm_plots", [])
 		farm_livestock = parsed.get("farm_livestock", {})
 		opening_seen = bool(parsed.get("opening_seen", false))

@@ -28,6 +28,7 @@ const WORLD_EVENT_TABLES := {
 	"mailbox_events": true,
 	"inventories": true,
 	"farm_plots": true,
+	"farm_activity_log": true,
 }
 
 signal cloud_world_changed(event: Dictionary)

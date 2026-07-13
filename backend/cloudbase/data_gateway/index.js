@@ -30,15 +30,15 @@ const db = app.database();
 const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
-  'farm_plots',
+  'farm_plots', 'farm_activity_log',
 ]);
 const AUDITED_TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'travel_places', 'postcards', 'messages', 'mailbox_events',
-  'farm_plots',
+  'farm_plots', 'farm_activity_log',
 ]);
 const AUTO_CREATE_TABLES = new Set([
-  'travel_places', 'postcards', 'messages', 'mailbox_events', 'farm_plots',
+  'travel_places', 'postcards', 'messages', 'mailbox_events', 'farm_plots', 'farm_activity_log',
 ]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
@@ -510,6 +510,12 @@ exports.main = async (event) => {
         incoming.crop_id = normalized.row.crop_id;
         incoming.planted_at = normalized.row.planted_at;
         incoming.planted_at_unix = normalized.row.planted_at_unix;
+      }
+
+      if (body.table === 'farm_activity_log') {
+        incoming.actor_member_id = memberId;
+        incoming.actor_role = identity.role;
+        incoming.actor_name = identity.display_name || identity.role || '家人';
       }
 
       // 通用表:强制 family_id,保留服务端已有字段,客户端不能覆盖别家的行

@@ -11,7 +11,7 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    `ResourceNotFound: Db or Table not exist`):
    ```
    members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads,
-   travel_places, postcards, messages, mailbox_events, farm_plots
+   travel_places, postcards, messages, mailbox_events, farm_plots, farm_activity_log
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。

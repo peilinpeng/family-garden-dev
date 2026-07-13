@@ -394,6 +394,40 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.get('travel_places', 'place_a').updated_by_member_id, 'member_a2');
   });
 
+  await scenario('农场动态按家庭共享且强制成员审计字段', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'mother', display_name: 'A2',
+    });
+    const created = await invoke({
+      action: 'upsert',
+      table: 'farm_activity_log',
+      row: {
+        id: 'farm_log_a',
+        family_id: 'family_b',
+        created_by_member_id: 'forged_creator',
+        updated_by_member_id: 'forged_updater',
+        actor_member_id: 'forged_member',
+        actor_role: 'forged_role',
+        actor_name: '伪造名字',
+        action: 'harvest',
+        detail: '收获了红番茄 ×2',
+      },
+    }, 'token_a');
+    assert.equal(created.ok, true);
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').family_id, 'family_a');
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').created_by_member_id, 'member_a');
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').updated_by_member_id, 'member_a');
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').actor_member_id, 'member_a');
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').actor_role, 'father');
+    assert.equal(db.get('farm_activity_log', 'farm_log_a').actor_name, 'A');
+
+    const visibleToSameFamily = await invoke({ action: 'query', table: 'farm_activity_log' }, 'token_a2');
+    assert.deepEqual(visibleToSameFamily.rows.map((row) => row.id), ['farm_log_a']);
+
+    const hiddenFromOtherFamily = await invoke({ action: 'query', table: 'farm_activity_log' }, 'token_b');
+    assert.deepEqual(hiddenFromOtherFamily.rows, []);
+  });
+
   await scenario('农场地块按家庭共享且使用稳定文档 ID', async () => {
     db.seed('members', 'member_a2', {
       family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
@@ -481,6 +515,18 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(result.ok, true);
     assert.equal(db.wasCreated('farm_plots'), true);
     assert.equal(db.get('farm_plots', 'farm_plot:family_a:4').family_id, 'family_a');
+  });
+
+  await scenario('farm_activity_log 集合缺失时自动创建并重试写入', async () => {
+    db.markMissing('farm_activity_log');
+    const result = await invoke({
+      action: 'upsert',
+      table: 'farm_activity_log',
+      row: { id: 'farm_log_auto_create', action: 'plant', detail: '种下了红番茄种子' },
+    }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(db.wasCreated('farm_activity_log'), true);
+    assert.equal(db.get('farm_activity_log', 'farm_log_auto_create').family_id, 'family_a');
   });
 
 
