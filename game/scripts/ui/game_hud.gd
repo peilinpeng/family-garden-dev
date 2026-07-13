@@ -2,7 +2,7 @@ extends CanvasLayer
 class_name GameHUD
 
 ## 统一常驻 HUD：左上家庭状态卡 + 底部行动坞。
-## 场景中的家庭树、邮箱承担自身入口；低频设置下沉到个人资料；地图合并为二级选择。
+## 作为所有可游玩场景共享的一套入口；角色选择等流程页会临时隐藏。
 
 const ICON_ALL_ICONS := "res://assets/ui/icons/All Icons.png"
 
@@ -22,8 +22,9 @@ var _current_kind := ""
 var _active_source: HUDIconButton
 
 func _ready() -> void:
-	layer = 3
+	layer = 30
 	_build()
+	set_context(SceneManager.mode)
 
 func _build() -> void:
 	_hud_root = Control.new()
@@ -239,30 +240,33 @@ func refresh_profile() -> void:
 	if profile_card != null:
 		profile_card.refresh()
 
-## 家庭总览与行动坞只属于主花园。农场、厨房、鱼塘和房间使用各自的场景 HUD，
-## 避免把主花园工具带过去后再次与场景提示重叠。
+## 所有可游玩场景共用同一套 HUD；只在角色选择/启动前隐藏。
 func set_context(scene_id: String) -> void:
-	var in_garden := scene_id == "garden"
+	var show_global_hud := scene_id != "" and scene_id != "role_select"
 	if _hud_root != null:
-		_hud_root.visible = in_garden
+		_hud_root.visible = show_global_hud
+	if panel_root != null:
+		panel_root.visible = show_global_hud
+	if tooltip != null:
+		tooltip.visible = show_global_hud
 	if _memory_btn != null:
-		_memory_btn.visible = in_garden
+		_memory_btn.visible = show_global_hud
 	if _dock != null:
-		_dock.position.x = 354.0 if in_garden else 517.0
-		_dock.size.x = 572.0 if in_garden else 246.0
-		_map_btn.position.x = 188.0 if in_garden else 8.0
-		_backpack_btn.position.x = 244.0 if in_garden else 64.0
-		_chat_btn.position.x = 300.0 if in_garden else 120.0
-		_quests_btn.position.x = 356.0 if in_garden else 176.0
+		_dock.position.x = 354.0
+		_dock.size.x = 572.0
+		_map_btn.position.x = 188.0
+		_backpack_btn.position.x = 244.0
+		_chat_btn.position.x = 300.0
+		_quests_btn.position.x = 356.0
 		var action_labels := _dock.get_node_or_null("ActionLabels") as Label
 		if action_labels != null:
-			action_labels.visible = in_garden
+			action_labels.visible = show_global_hud
 		var mood_label := _dock.get_node_or_null("GardenMoodLabel") as Label
 		if mood_label != null:
-			mood_label.visible = in_garden
-	if profile_card != null and in_garden:
+			mood_label.visible = show_global_hud
+	if profile_card != null and show_global_hud:
 		profile_card.refresh()
-	if not in_garden:
+	if not show_global_hud:
 		close_current()
 
 func _tex(asset_key: String) -> Texture2D:

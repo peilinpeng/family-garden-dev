@@ -33,7 +33,11 @@ func _ready() -> void:
 		if display_name == "":
 			display_name = CharacterDB.display_name(canonical_role)
 		await CloudManager.ensure_cloud_identity(canonical_role, display_name)
-		SceneManager._show_garden()
+		SceneManager.restore_last_saved_scene()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:
+		SceneManager.save_current_progress()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:

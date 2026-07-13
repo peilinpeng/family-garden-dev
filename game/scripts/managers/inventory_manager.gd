@@ -11,6 +11,17 @@ signal storehouse_changed
 const SAVE_PATH := "user://inventory_v1.json"
 const BACKPACK_SLOTS := 24
 const STOREHOUSE_SLOTS := 120
+const SORT_CATEGORY_ORDER := {
+	"seed": 0,
+	"produce": 1,
+	"material": 2,
+	"tool": 3,
+	"dish": 4,
+	"decor": 5,
+	"gift": 6,
+	"memory": 7,
+	"currency": 98,
+}
 
 var backpack: Inventory
 var storehouse: Inventory
@@ -56,6 +67,78 @@ func deposit(id: String, amount: int) -> int:
 ## 共享仓 → 背包
 func withdraw(id: String, amount: int) -> int:
 	return storehouse.move_to(backpack, id, amount)
+
+func sort_backpack() -> void:
+	_sort_inventory(backpack)
+
+func sort_storehouse() -> void:
+	_sort_inventory(storehouse)
+
+func reset_to_new_game() -> void:
+	_loading = true
+	backpack.from_array([])
+	storehouse.from_array([])
+	_loading = false
+	_grant_starter_kit()
+	storehouse_changed.emit()
+
+func _sort_inventory(inv: Inventory) -> void:
+	if inv == null:
+		return
+	var totals: Dictionary = {}
+	for stack in inv.stacks:
+		var id := String(stack.get("id", ""))
+		var count := int(stack.get("count", 0))
+		if id == "" or count <= 0:
+			continue
+		totals[id] = int(totals.get(id, 0)) + count
+
+	var ids := totals.keys()
+	ids.sort_custom(_sort_item_id_less)
+
+	var rebuilt: Array = []
+	for id_value in ids:
+		var id := String(id_value)
+		var left := int(totals[id])
+		var max_stack: int = max(1, _item_max_stack(id))
+		while left > 0:
+			var put: int = min(max_stack, left)
+			rebuilt.append({"id": id, "count": put})
+			left -= put
+	inv.from_array(rebuilt)
+
+func _sort_item_id_less(a: Variant, b: Variant) -> bool:
+	var item_a := String(a)
+	var item_b := String(b)
+	var cat_a := _item_category(item_a)
+	var cat_b := _item_category(item_b)
+	var rank_a := int(SORT_CATEGORY_ORDER.get(cat_a, 50))
+	var rank_b := int(SORT_CATEGORY_ORDER.get(cat_b, 50))
+	if rank_a != rank_b:
+		return rank_a < rank_b
+	var idx_a := _item_catalog_index(item_a)
+	var idx_b := _item_catalog_index(item_b)
+	if idx_a != idx_b:
+		return idx_a < idx_b
+	return item_a < item_b
+
+func _item_db() -> Node:
+	return get_node_or_null("/root/ItemDB")
+
+func _item_category(id: String) -> String:
+	var db := _item_db()
+	if db == null:
+		return ""
+	var item = db.get_def(id)
+	return str(item.category) if item != null else ""
+
+func _item_max_stack(id: String) -> int:
+	var db := _item_db()
+	return db.max_stack(id) if db != null else 99
+
+func _item_catalog_index(id: String) -> int:
+	var db := _item_db()
+	return db.catalog_index(id) if db != null and db.has_method("catalog_index") else 999999
 
 # ── 持久化(本地优先 + 上云) ──────────────────────────
 ## 本地整体快照,纯本设备缓存,两者一起写没有风险(不影响其他设备/成员)。

@@ -8,6 +8,7 @@ extends Node
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
+const PULSE_TWEEN_MIN_DURATION := 0.05
 const GARDEN_ARCHIVE_NODE_TYPES := {
 	"flowers": "memory_flower",
 	"photos": "photo_board",
@@ -450,14 +451,17 @@ func _pulse_node(node: Node2D, from_scale: float, to_scale: float, from_alpha: f
 	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
 		node.modulate.a = to_alpha
 		return
-	node.scale *= from_scale
+	var safe_from_scale := from_scale if absf(from_scale) > 0.001 else 1.0
+	var safe_duration := maxf(duration, PULSE_TWEEN_MIN_DURATION)
+	node.scale *= safe_from_scale
 	node.modulate.a = from_alpha
 	var tween := create_tween()
 	tween.set_loops()
-	tween.tween_property(node, "scale", node.scale * (to_scale / from_scale), duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(node, "modulate:a", to_alpha, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "scale", node.scale, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(node, "modulate:a", from_alpha, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "scale", node.scale * (to_scale / safe_from_scale), safe_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(node, "modulate:a", to_alpha, safe_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "scale", node.scale, safe_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(node, "modulate:a", from_alpha, safe_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_interval(PULSE_TWEEN_MIN_DURATION)
 
 func _make_placeholder_texture(node_type: String) -> Texture2D:
 	var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)

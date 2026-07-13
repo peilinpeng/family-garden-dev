@@ -242,7 +242,7 @@ func _show_segment() -> void:
 
 func _advance_narration() -> void:
 	# 正在打字 → 本段立即显完;已显完 → 下一段 / 进幕3
-	if _narration_label.visible_characters < _narration_label.text.length():
+	if _narration_label.visible_characters >= 0 and _narration_label.visible_characters < _narration_label.text.length():
 		if _type_tween != null and _type_tween.is_valid():
 			_type_tween.kill()
 		_narration_label.visible_characters = -1

@@ -219,7 +219,7 @@ position = Vector2(220, 270)
 position = Vector2(345, 300)
 
 [node name="NpcFarmer" parent="Objects" unique_id=-473961785 instance=ExtResource("19_npcfarmer")]
-position = Vector2(958, 189)
+position = Vector2(1040, 260)
 
 [node name="Chick" parent="Objects" unique_id=555661648 instance=ExtResource("17_chick")]
 position = Vector2(290, 285)

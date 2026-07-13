@@ -12,6 +12,7 @@ const FARM_SCENE := "res://scenes/Farm.tscn"
 const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
+const LOOP_TWEEN_GUARD_INTERVAL := 0.05
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -243,12 +244,20 @@ var active_ai_status_label: Label = null
 var _last_world_sync_toast_msec := -100000
 var orientation_overlay: Control = null
 var orientation_content: Control = null
+var _autosave_timer: Timer = null
+var _current_spawn_key := "default"
+var _current_room_id := ""
+var _pending_resume_position := Vector2.ZERO
+var _has_pending_resume_position := false
 
 func _load_cloud_data() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
 		cloud_load_finished = true
 		return
 	if CloudManager == null:
+		return
+	if MemoryManager.selected_role_key == "":
+		cloud_load_finished = true
 		return
 
 	_show_toast("正在同步家庭花园...")
@@ -304,6 +313,13 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 		CloudManager.cloud_world_changed.connect(_on_cloud_world_changed)
 	if not AIWorkflowManager.workflow_state_changed.is_connected(_on_ai_workflow_state_changed):
 		AIWorkflowManager.workflow_state_changed.connect(_on_ai_workflow_state_changed)
+	if _autosave_timer == null:
+		_autosave_timer = Timer.new()
+		_autosave_timer.name = "AutosaveTimer"
+		_autosave_timer.wait_time = 5.0
+		_autosave_timer.autostart = true
+		_autosave_timer.timeout.connect(_on_autosave_timeout)
+		add_child(_autosave_timer)
 	_setup_custom_cursor()
 	_build_ui()
 	# 常驻 HUD 作为独立 CanvasLayer 挂到 main 根，切换场景时不重建。
@@ -313,6 +329,83 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 	if viewport != null and not viewport.size_changed.is_connected(_update_viewport_layout):
 		viewport.size_changed.connect(_update_viewport_layout)
 	_update_viewport_layout()
+
+func _on_autosave_timeout() -> void:
+	save_current_progress()
+
+func save_current_progress() -> void:
+	if MemoryManager.selected_role_key == "":
+		return
+	if not _is_autosavable_scene(mode):
+		return
+	if player == null or not is_instance_valid(player):
+		return
+	var scene_id := _current_autosave_scene_id()
+	MemoryManager.update_autosave(scene_id, player.global_position, _current_spawn_key)
+
+func restore_last_saved_scene() -> void:
+	if not MemoryManager.has_resume_position():
+		_show_garden()
+		return
+	var scene_id := MemoryManager.last_scene_id
+	_pending_resume_position = MemoryManager.resume_position()
+	_has_pending_resume_position = true
+	if scene_id.begins_with("room:"):
+		var room_id := scene_id.get_slice(":", 1)
+		var room_data := _get_room_data(room_id)
+		_enter_house(room_id, str(room_data.get("label", "房间")))
+	else:
+		match scene_id:
+			"garden":
+				_show_garden(MemoryManager.last_spawn_key)
+			"farm":
+				goto_scene("farm")
+			"kitchen":
+				goto_scene("kitchen")
+			"fishpond", "pond":
+				_build_fishpond(MemoryManager.last_spawn_key)
+			"room":
+				var room_data := _get_room_data("player")
+				_enter_house("player", str(room_data.get("label", "我的房间")))
+			_:
+				_show_garden()
+	call_deferred("_apply_pending_resume_position")
+
+func reset_to_new_game() -> void:
+	_has_pending_resume_position = false
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	player = null
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_open_panel():
+		game_hud.close_current()
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	_clear_world()
+	MemoryManager.reset_to_new_game()
+	if InventoryManager != null and InventoryManager.has_method("reset_to_new_game"):
+		InventoryManager.reset_to_new_game()
+	_show_role_select()
+	_show_toast("存档已清除，已恢复初始状态。")
+
+func _apply_pending_resume_position() -> void:
+	if not _has_pending_resume_position:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _has_pending_resume_position and player != null and is_instance_valid(player):
+		player.global_position = _pending_resume_position
+	_has_pending_resume_position = false
+
+func _is_autosavable_scene(scene_id: String) -> bool:
+	return scene_id in ["garden", "farm", "kitchen", "fishpond", "room"]
+
+func _current_autosave_scene_id() -> String:
+	if mode == "room":
+		return "room:%s" % (_current_room_id if _current_room_id != "" else "player")
+	return mode
 
 ## 自定义猫爪鼠标指针(默认箭头 + 悬浮可点击时的指示手型),整局只需设一次。
 func _setup_custom_cursor() -> void:
@@ -1087,6 +1180,8 @@ func _show_role_select() -> void:
 	_clear_map_ui()
 	_clear_world()
 	mode = "role_select"
+	_current_spawn_key = "default"
+	_current_room_id = ""
 	_set_hud_context(mode)
 	info_label.text = "选择角色"
 	_add_background()
@@ -1309,6 +1404,7 @@ func _update_plant_button() -> void:
 		_apply_button_style(plant_button, plant_mode)
 
 func _show_garden(spawn_key: String = "default") -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -1316,6 +1412,8 @@ func _show_garden(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "garden"
+	_current_spawn_key = spawn_key
+	_current_room_id = ""
 	_set_hud_context(mode)
 	_focused_memory_id = ""
 	adding_place = false
@@ -1618,6 +1716,7 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 		pulse_tween.set_loops()
 		pulse_tween.tween_property(pulse, "modulate:a", 0.28 if answered else 0.18, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		pulse_tween.tween_property(pulse, "modulate:a", 0.90 if answered else 0.58, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_interval(LOOP_TWEEN_GUARD_INTERVAL)
 
 	_add_memory_link_leaf((a + head).lerp(arc, 0.56), link_color, -0.42, answered)
 	_add_memory_link_leaf(arc.lerp(b + head, 0.44), link_color, 0.42, answered)
@@ -2779,6 +2878,7 @@ const GLOBAL_MAP_REGIONS := [
 ]
 
 func _show_global_map() -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	_clear_gate4_guide()
@@ -2786,6 +2886,8 @@ func _show_global_map() -> void:
 		room_card.queue_free()
 		room_card = null
 	mode = "global_map"
+	_current_spawn_key = "default"
+	_current_room_id = ""
 	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
@@ -2932,6 +3034,9 @@ func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hov
 func _on_global_map_region_pressed(target: String, label_text: String) -> void:
 	# TextureButton 不走 _apply_button_style，点击音效单独补在这里。
 	AudioManager.play_sfx("按钮")
+	if target == "house":
+		_show_house_destination_panel()
+		return
 	_show_toast("进入%s…" % label_text)
 	goto_scene(target)
 
@@ -2944,6 +3049,8 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 		room_card.queue_free()
 		room_card = null
 	mode = scene_key
+	_current_spawn_key = "default"
+	_current_room_id = ""
 	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
@@ -2968,6 +3075,7 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 # ── 通用场景切换（ScenePortal 框架）────────────────────────────────
 # 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
 func goto_scene(target: String, spawn_key: String = "default") -> void:
+	save_current_progress()
 	AIClient.cancel_all()
 	if target == POND_AREA_SCENE:
 		_build_fishpond(spawn_key)
@@ -2987,9 +3095,7 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
 			ScenePortal.build_portals("farm", world, _on_portal_travel)
 		"house":
-			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
-			AudioManager.play_music("house")
-			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
+			_show_house_destination_panel()
 		"kitchen":
 			# KitchenNew.tscn 自带玩家（kitchen_new.gd 的 _spawn_player），不要再补一个。
 			AudioManager.play_music("kitchen")
@@ -3028,6 +3134,7 @@ func _add_scene_background(scene: String, fallback_color: Color) -> void:
 
 # ── 爸爸鱼塘 fishpond ──────────────────────────────────────────────
 func _build_fishpond(spawn_key: String = "default") -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -3035,6 +3142,8 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "fishpond"
+	_current_spawn_key = spawn_key
+	_current_room_id = ""
 	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
@@ -3791,7 +3900,60 @@ func _handle_action(action: String, label_text: String) -> void:
 		var animal_id := action.split(":")[1]
 		_open_animal_dialog(animal_id, label_text)
 
+func _show_house_destination_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 132)
+	panel.size = Vector2(560, 456)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "进入小屋"
+	title.position = Vector2(34, 28)
+	title.size = Vector2(470, 34)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var body := Label.new()
+	body.text = "选择要去的室内区域。"
+	body.position = Vector2(36, 72)
+	body.size = Vector2(480, 26)
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.9))
+	panel.add_child(body)
+
+	var kitchen := _add_panel_button(panel, "厨房", Vector2(40, 118), Vector2(480, 48), "enter_kitchen")
+	_apply_button_style(kitchen, true)
+
+	var room_buttons := [
+		{"text": "我的房间", "action": "enter_room:player"},
+		{"text": "爸爸的房间", "action": "enter_room:father"},
+		{"text": "妈妈的房间", "action": "enter_room:mother"},
+		{"text": "路易的房间", "action": "enter_room:partner"},
+	]
+	for i in range(room_buttons.size()):
+		var item: Dictionary = room_buttons[i]
+		var col := i % 2
+		var row := int(i / 2)
+		_add_panel_button(
+			panel,
+			str(item.get("text", "")),
+			Vector2(40 + col * 250, 188 + row * 66),
+			Vector2(230, 46),
+			str(item.get("action", "close"))
+		)
+
+	_add_panel_button(panel, "关闭", Vector2(214, 350), Vector2(132, 40), "close")
+
 func _enter_house(id: String, label_text: String) -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -3800,6 +3962,8 @@ func _enter_house(id: String, label_text: String) -> void:
 	_clear_gate4_guide()
 
 	mode = "room"
+	_current_spawn_key = "default"
+	_current_room_id = id
 	_set_hud_context(mode)
 	adding_place = false
 	_clear_world()
@@ -4528,12 +4692,15 @@ func _remove_room_card_and_back(card: Panel) -> void:
 	_show_garden()
 
 func _show_travel_map() -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
 		room_card.queue_free()
 		room_card = null
 	mode = "map"
+	_current_spawn_key = "default"
+	_current_room_id = ""
 	_set_hud_context(mode)
 	plant_mode = false
 	_update_plant_button()
@@ -6137,6 +6304,14 @@ func _on_panel_button(action: String) -> void:
 		_open_add_message_form()
 	elif action == "back_garden":
 		_show_garden()
+	elif action == "enter_kitchen":
+		_close_active_panel()
+		_show_toast("进入厨房…")
+		goto_scene("kitchen")
+	elif action.begins_with("enter_room:"):
+		var house_id := action.split(":")[1]
+		var room_info: Dictionary = _get_room_data(house_id)
+		_enter_house(house_id, str(room_info.get("label", "房间")))
 	elif action.begins_with("open_postcard:"):
 		_open_postcard_detail_from_id(action.split(":")[1])
 	elif action.begins_with("delete_place:"):
@@ -6184,7 +6359,7 @@ func _set_hud_context(scene_id: String) -> void:
 	if game_hud != null and is_instance_valid(game_hud):
 		game_hud.set_context(scene_id)
 	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
-		day_night_clock_ui.visible = scene_id == "garden"
+		day_night_clock_ui.visible = scene_id != "" and scene_id != "role_select"
 
 ## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
 ## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。
