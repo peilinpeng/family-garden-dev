@@ -136,13 +136,27 @@ func _run() -> void:
 func _test_kitchen_dish_visual_texture() -> void:
 	InventoryManager.give("produce_corrato", 2, true)
 	InventoryManager.give("egg", 1, true)
-	var result: Dictionary = await KitchenManager.craft_random_ai_dish("stove")
+	var before_tomato := InventoryManager.storehouse.count("produce_corrato")
+	var before_egg := InventoryManager.storehouse.count("egg")
+	var selected := [
+		{"id": "produce_corrato", "name": "红番茄", "qty": 2},
+		{"id": "egg", "name": "鸡蛋", "qty": 1},
+	]
+	var validation := KitchenManager.validate_ai_ingredients(selected)
+	_assert(validation.ok, "互动烹饪选中的真实食材应通过校验")
+	_assert(InventoryManager.storehouse.count("produce_corrato") == before_tomato, "选材校验阶段不能提前扣料")
+	var invalid := KitchenManager.validate_ai_ingredients([{"id": "coin", "qty": 1}])
+	_assert(not invalid.ok and String(invalid.error.code) == "INVALID_INGREDIENT", "互动烹饪必须拒绝非食材物品")
+	var result: Dictionary = await KitchenManager.craft_ai_dish_with_ingredients(selected, "stove")
 	_assert(result.ok, "AI 随机料理应可生成并提交")
 	var dish: Dictionary = result.get("dish", {}) if result.get("dish", {}) is Dictionary else {}
 	var dish_id := String(dish.get("id", ""))
 	var texture := KitchenManager.dish_icon(dish_id)
 	_assert(texture != null and texture.get_width() == 96 and texture.get_height() == 96, "AI 料理必须渲染 96x96 菜品图")
 	_assert(dish.get("visual", {}) is Dictionary, "AI 料理必须保存 visual 菜品图规格")
+	_assert((dish.get("ingredients", []) as Array).size() == 2, "成品必须记录玩家实际放入的食材")
+	_assert(InventoryManager.storehouse.count("produce_corrato") == before_tomato - 2, "成功提交后应且只应扣除选中的番茄")
+	_assert(InventoryManager.storehouse.count("egg") == before_egg - 1, "成功提交后应且只应扣除选中的鸡蛋")
 
 func _test_image_preparation() -> void:
 	var image := Image.create(2200, 1100, false, Image.FORMAT_RGB8)

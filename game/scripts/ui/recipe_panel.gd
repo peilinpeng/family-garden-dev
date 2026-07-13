@@ -63,13 +63,13 @@ func _build_header() -> Control:
 	copy.add_theme_constant_override("separation", 1)
 	row.add_child(copy)
 	copy.add_child(_label("家庭共享仓库", 15, COLOR_TEXT))
-	copy.add_child(_label("选择固定菜谱，或让 AI 用现有食材随机做一道菜。", 12, COLOR_MUTED))
+	copy.add_child(_label("选择固定菜谱，或亲手搭配食材完成一道 AI 料理。", 12, COLOR_MUTED))
 
 	var ai_btn := Button.new()
-	ai_btn.text = "AI 随机做一道菜"
+	ai_btn.text = "进入互动烹饪"
 	ai_btn.custom_minimum_size = Vector2(154, 38)
 	HUDPanel._style_soft_button(ai_btn)
-	ai_btn.pressed.connect(_on_ai_random_dish_pressed.bind(ai_btn))
+	ai_btn.pressed.connect(_open_interactive_cooking)
 	row.add_child(ai_btn)
 
 	var dev := Button.new()
@@ -444,6 +444,12 @@ func _source_hint(item_id: String) -> String:
 			return "牛棚收集"
 		_:
 			return "旅行/地图奖励或后续活动"
+
+func _open_interactive_cooking() -> void:
+	var cooking_panel := KitchenCookingPanel.new()
+	cooking_panel.station = station
+	if SceneManager.game_hud != null:
+		SceneManager.game_hud.open_panel(cooking_panel)
 
 func _on_ai_random_dish_pressed(button: Button) -> void:
 	button.disabled = true
