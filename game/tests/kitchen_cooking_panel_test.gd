@@ -49,6 +49,26 @@ func _run() -> void:
 	add_child(panel)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_assert(ItemDB.icon_texture("produce_corrato") != null, "红番茄应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("produce_bottarries") != null, "瓶子莓应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("milk") != null, "牛奶应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("sugar") != null, "糖应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("honey") != null, "蜂蜜应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("lemon") != null, "柠檬应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("bread") != null, "面包应加载独立匹配图标")
+	_assert(ItemDB.icon_texture("egg") != null, "鸡蛋应加载独立匹配图标")
+	for produce_id in ItemDB.by_category("produce"):
+		var produce_key := String(produce_id)
+		_assert_standalone_icon(produce_key, ItemDB.display_name(produce_key))
+	_assert_standalone_icon("dish_tomato_egg", "番茄炒蛋")
+	_assert_standalone_icon("dish_strawberry_jam", "草莓果酱")
+	_assert_standalone_icon("dish_honey_lemon_tea", "蜂蜜柠檬茶")
+	_assert_standalone_icon("dish_garden_breakfast", "花园早餐")
+	_assert_standalone_icon("fertilizer", "肥料")
+	var liquid_center_before: Vector2 = panel._effects.liquid_center
+	panel._effects.add_stir(1.0)
+	await get_tree().process_frame
+	_assert(panel._effects.liquid_center == liquid_center_before, "搅拌时汤面中心必须固定在锅内")
 
 	_assert(panel.add_ingredient("produce_corrato"), "点击食材应能加入锅中")
 	_assert(panel.add_ingredient("produce_corrato"), "重复食材应增加数量")
@@ -117,3 +137,11 @@ func _save_capture(path: String) -> bool:
 func _assert(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
+
+func _assert_standalone_icon(item_id: String, display_name: String) -> void:
+	var item_def: ItemDef = ItemDB.get_def(item_id)
+	_assert(item_def != null, "%s 应存在物品定义" % display_name)
+	if item_def == null:
+		return
+	_assert(item_def.icon_spec.begins_with("res://assets/kitchen_cooking/"), "%s 不应继续复用无关作物图集" % display_name)
+	_assert(ItemDB.icon_texture(item_id) != null, "%s 应能加载独立匹配图标" % display_name)

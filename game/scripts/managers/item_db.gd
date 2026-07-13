@@ -52,13 +52,20 @@ func catalog_index(id: String) -> int:
 func by_category(cat: String) -> Array:
 	return _by_category.get(cat, [])
 
-## 把 "sheet:col:row" 解析成 32×32 的 AtlasTexture(复用现有图集,无需新图标资源)。
+## 支持 res:// 独立贴图路径，或把 "sheet:col:row" 解析成 32×32 的 AtlasTexture。
 func icon_texture(id: String) -> Texture2D:
 	var d: ItemDef = _defs.get(id, null)
 	if d == null or d.icon_spec == "":
 		return null
 	if _icon_cache.has(d.icon_spec):
 		return _icon_cache[d.icon_spec]
+	if d.icon_spec.begins_with("res://"):
+		if not ResourceLoader.exists(d.icon_spec):
+			return null
+		var standalone := load(d.icon_spec) as Texture2D
+		if standalone != null:
+			_icon_cache[d.icon_spec] = standalone
+		return standalone
 	var parts := d.icon_spec.split(":")
 	if parts.size() != 3:
 		return null

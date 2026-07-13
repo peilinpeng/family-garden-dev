@@ -7,7 +7,7 @@ var id: String
 var name: String
 var category: String      ## seed / produce / tool / gift / currency / decor
 var max_stack: int = 99
-var icon_spec: String = ""  ## "sheet:col:row",由 ItemDB.icon_texture 解析成 AtlasTexture
+var icon_spec: String = ""  ## "sheet:col:row" 图集帧或 res:// 独立贴图路径，由 ItemDB.icon_texture 解析
 var ownership_type: String = "both"  ## personal / household / both:决定物品默认归个人背包还是家庭共享仓
 var data: Dictionary = {}   ## 类别专属字段(crop_id / sell / buy / giftable / object_type ...)
 

@@ -5,9 +5,8 @@ class_name KitchenCookingPanel
 ## 食材不会在拖入时扣除；AI 成功且提交前由 AIWorkflowManager 再次校验并原子扣除。
 
 const COOKING_ATLAS := preload("res://assets/kitchen_cooking/cooking_atlas.png")
-const POT_REGION := Rect2(270, 480, 700, 720)
+const MODERN_STOVE := preload("res://assets/kitchen_cooking/modern_stove_pot.png")
 const SPOON_REGION := Rect2(90, 40, 180, 480)
-const FLAME_REGION := Rect2(900, 140, 250, 310)
 const MIN_COOK_SECONDS := 2.8
 const MAX_INGREDIENT_KINDS := 5
 
@@ -143,6 +142,8 @@ class CookingEffects:
 	var elapsed := 0.0
 	var ingredient_count := 0
 	var liquid_color := Color(0.78, 0.38, 0.16, 0.94)
+	var liquid_center := Vector2(210, 105)
+	var liquid_radius := Vector2(112, 30)
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -157,9 +158,22 @@ class CookingEffects:
 		stir_energy = minf(1.0, stir_energy + amount * 1.8)
 
 	func _draw() -> void:
-		var center := Vector2(205, 142)
-		var wobble := sin(elapsed * (5.0 + stir_energy * 9.0)) * (1.5 + stir_energy * 2.5)
-		_draw_ellipse(center + Vector2(0, wobble), Vector2(118, 34), liquid_color.lightened(stir_energy * 0.10))
+		var center := liquid_center
+		# 汤面始终固定在锅口内；搅拌只改变内部高光、涟漪和气泡。
+		_draw_ellipse(center, liquid_radius, liquid_color.lightened(stir_energy * 0.10))
+		var swirl := sin(elapsed * (4.0 + stir_energy * 8.0))
+		_draw_ellipse_outline(
+			center + Vector2(swirl * 5.0, cos(elapsed * 3.0) * 1.5),
+			Vector2(42.0 + stir_energy * 8.0, 8.0 + stir_energy * 2.0),
+			Color(1.0, 0.76, 0.38, 0.24 + stir_energy * 0.30),
+			1.5
+		)
+		_draw_ellipse_outline(
+			center - Vector2(swirl * 3.0, 0.0),
+			Vector2(20.0 + stir_energy * 5.0, 4.0 + stir_energy),
+			Color(1.0, 0.91, 0.64, 0.20 + stir_energy * 0.34),
+			1.2
+		)
 		var bubble_count := 8 if cooking else (4 if ingredient_count > 0 else 2)
 		bubble_count += int(round(stir_energy * 7.0))
 		for index in bubble_count:
@@ -175,9 +189,9 @@ class CookingEffects:
 				var rise := fmod(elapsed * (22.0 + index * 3.0) + index * 18.0, 54.0)
 				var alpha := 0.18 + 0.26 * (1.0 - rise / 54.0)
 				var points := PackedVector2Array([
-					Vector2(x, 104 - rise),
-					Vector2(x - 5, 92 - rise),
-					Vector2(x + 4, 80 - rise),
+					Vector2(x, center.y - 18.0 - rise),
+					Vector2(x - 5, center.y - 30.0 - rise),
+					Vector2(x + 4, center.y - 42.0 - rise),
 				])
 				draw_polyline(points, Color(1.0, 0.96, 0.84, alpha), 3.0, true)
 		if success_burst > 0.0:
@@ -192,6 +206,13 @@ class CookingEffects:
 			var angle := float(index) / 48.0 * TAU
 			points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
 		draw_colored_polygon(points, color)
+
+	func _draw_ellipse_outline(center: Vector2, radius: Vector2, color: Color, width: float) -> void:
+		var points := PackedVector2Array()
+		for index in 49:
+			var angle := float(index) / 48.0 * TAU
+			points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+		draw_polyline(points, color, width, true)
 
 var station := "stove"
 var _selected: Dictionary = {}
@@ -299,16 +320,10 @@ func _build_cooking_stage() -> Control:
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_stage)
-	var glow := ColorRect.new()
-	glow.position = Vector2(74, 300)
-	glow.size = Vector2(272, 96)
-	glow.color = Color(1.0, 0.56, 0.16, 0.08)
-	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stage.add_child(glow)
 	var pot := TextureRect.new()
 	pot.position = Vector2(30, 54)
 	pot.size = Vector2(360, 370)
-	pot.texture = _atlas_texture(POT_REGION)
+	pot.texture = MODERN_STOVE
 	pot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	pot.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -317,31 +332,20 @@ func _build_cooking_stage() -> Control:
 	_effects = CookingEffects.new()
 	_effects.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_stage.add_child(_effects)
-	var flame := TextureRect.new()
-	flame.position = Vector2(180, 332)
-	flame.size = Vector2(60, 72)
-	flame.texture = _atlas_texture(FLAME_REGION)
-	flame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	flame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	flame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stage.add_child(flame)
-	var tween := flame.create_tween().set_loops()
-	tween.tween_property(flame, "modulate", Color(1.0, 0.76, 0.48, 0.86), 0.38)
-	tween.tween_property(flame, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.42)
 	_drop_zone = IngredientDropZone.new()
-	_drop_zone.position = Vector2(76, 72)
-	_drop_zone.size = Vector2(268, 164)
+	_drop_zone.position = Vector2(76, 62)
+	_drop_zone.size = Vector2(268, 112)
 	_drop_zone.ingredient_dropped.connect(add_ingredient)
 	_stage.add_child(_drop_zone)
 	_spoon = StirSpoon.new()
-	_spoon.position = Vector2(170, 80)
-	_spoon.size = Vector2(48, 132)
+	_spoon.position = Vector2(170, 48)
+	_spoon.size = Vector2(42, 116)
 	_spoon.texture = _atlas_texture(SPOON_REGION)
 	_spoon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_spoon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_spoon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_spoon.orbit_center = Vector2(210, 150)
+	_spoon.orbit_center = Vector2(210, 108)
+	_spoon.orbit_radius = Vector2(52, 16)
 	_spoon.stirred.connect(_on_spoon_stirred)
 	_stage.add_child(_spoon)
 	_stage_hint = _label("先把喜欢的食材放进锅里", 13, COLOR_TEXT)
@@ -634,9 +638,9 @@ func _update_pot_icons() -> void:
 	var index := 0
 	for iid_value in _selected:
 		var iid := String(iid_value)
-		var icon := _icon_rect(ItemDB.icon_texture(iid), 34)
+		var icon := _icon_rect(ItemDB.icon_texture(iid), 24)
 		var angle := -PI * 0.85 + float(index) * (PI * 1.7 / maxf(1.0, float(_selected.size())))
-		icon.position = Vector2(188, 124) + Vector2(cos(angle) * 62.0, sin(angle) * 17.0)
+		icon.position = Vector2(198, 93) + Vector2(cos(angle) * 62.0, sin(angle) * 8.0)
 		icon.rotation = sin(float(index) * 1.7) * 0.12
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_stage.add_child(icon)
