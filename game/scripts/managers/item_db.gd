@@ -53,6 +53,12 @@ func icon_texture(id: String) -> Texture2D:
 		return null
 	if _icon_cache.has(d.icon_spec):
 		return _icon_cache[d.icon_spec]
+	if d.icon_spec.begins_with("res://"):
+		if not ResourceLoader.exists(d.icon_spec):
+			return null
+		var direct_texture := load(d.icon_spec) as Texture2D
+		_icon_cache[d.icon_spec] = direct_texture
+		return direct_texture
 	var parts := d.icon_spec.split(":")
 	if parts.size() != 3:
 		return null

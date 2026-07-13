@@ -9,35 +9,18 @@ extends Node
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
+const FLOATING_NODE_CONTROLLER := preload("res://scripts/pond/floating_node_controller.gd")
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
-var _placeholder_tex: Texture2D = null
 
 func _ready() -> void:
 	_load_manifest()
 	if ResourceLoader.exists(DYNAMIC_NODE_PREFAB):
 		_prefab = load(DYNAMIC_NODE_PREFAB)
 
-## 占位记忆节点贴图：柔紫圆形 + 描边。真美术（manifest status=imported）到位后改为加载真资产。
-## 用可辨识图形而非背景同款花，避免和花园背景里画的花糊在一起。
 func _get_placeholder() -> Texture2D:
-	if _placeholder_tex != null:
-		return _placeholder_tex
-	var size := 44
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var c := Vector2(size / 2.0, size / 2.0)
-	var r := size / 2.0 - 2.0
-	for y in range(size):
-		for x in range(size):
-			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
-			if d <= r:
-				img.set_pixel(x, y, Color(0.64, 0.48, 0.82))
-			elif d <= r + 1.5:
-				img.set_pixel(x, y, Color(0.34, 0.22, 0.48))
-	_placeholder_tex = ImageTexture.create_from_image(img)
-	return _placeholder_tex
+	return _make_placeholder_texture("memory_flower")
 
 func _load_manifest() -> void:
 	if not FileAccess.file_exists(MANIFEST_PATH):
@@ -137,6 +120,11 @@ func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String) -
 ## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退程序化占位。
 ## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
 func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
+	root.set_script(FLOATING_NODE_CONTROLLER)
+	root.set("drift_radius", Vector2(7.0, 3.5))
+	root.set("drift_seconds", 6.5 + float(abs(hash(root.name)) % 30) * 0.08)
+	root.set("phase_offset", float(abs(hash(root.name)) % 628) / 100.0)
+
 	var sprite: Sprite2D = root.get_node("Sprite")
 	sprite.visible = false
 
@@ -159,6 +147,18 @@ func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
 		animated.scale = Vector2.ONE * (display_h / float(first_frame.get_height()))
 	animated.position = Vector2(0, -display_h * 0.5)
 	root.add_child(animated)
+
+	var body := StaticBody2D.new()
+	body.name = "BottleCollision"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.position = Vector2(0, -display_h * 0.42)
+	var collision := CollisionShape2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = maxf(12.0, display_h * 0.22)
+	collision.shape = shape
+	body.add_child(collision)
+	root.add_child(body)
 
 func _resolve_texture(entry: Dictionary) -> Texture2D:
 	var scene := String(entry.get("scene", ""))

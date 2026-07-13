@@ -2,36 +2,38 @@
   "scene": "garden",
   "doc": "docs/09_godot_coordinate_art_spec.md section 14",
   "spawn_points": {
-    "default": [640, 480],
-    "from_fishpond": [136, 288],
-    "GardenFromPondSpawnPoint": [136, 288],
-    "from_room": [224, 448],
-    "from_farm": [640, 224]
+    "default": [640, 520],
+    "from_fishpond": [1088, 335],
+    "GardenFromPondSpawnPoint": [1088, 335],
+    "from_room": [640, 335],
+    "from_farm": [500, 335]
   },
   "portals": [
     {
       "portal_id": "PondEntranceArea",
       "target_scene": "res://scenes/pond/pond_area.tscn",
       "spawn_point": "PondSpawnPoint",
-      "trigger_rect": [24, 240, 96, 96],
-      "prompt_text": "Enter pond",
+      "trigger_rect": [1035, 285, 190, 95],
+      "prompt_text": "去鱼塘",
       "tap_enabled": true
     },
     {
       "portal_id": "garden_portal_room",
       "target_scene": "room",
       "spawn_point": "from_garden",
-      "trigger_rect": [128, 384, 96, 128],
-      "prompt_text": "Return to room",
+      "trigger_rect": [590, 280, 120, 95],
+      "prompt_text": "回房间",
       "tap_enabled": true
     },
     {
       "portal_id": "garden_portal_farm",
       "target_scene": "farm",
       "spawn_point": "from_garden",
-      "trigger_rect": [576, 128, 128, 80],
-      "prompt_text": "Go to farm",
-      "tap_enabled": true
+      "trigger_rect": [440, 280, 135, 95],
+      "prompt_text": "去农场",
+      "tap_enabled": true,
+      "cooldown_after_teleport": 0.8,
+      "one_way": true
     }
   ]
 }

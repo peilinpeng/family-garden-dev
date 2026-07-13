@@ -1,0 +1,6884 @@
+{
+  "version": 1,
+  "grid_size": 32,
+  "assets": [
+    {
+      "id": "gb_flowerbed_02_001",
+      "display_name": "花坛 001",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_001.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        46,
+        28,
+        93,
+        104
+      ],
+      "width": 93,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 1
+    },
+    {
+      "id": "gb_flowerbed_02_002",
+      "display_name": "花坛 002",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_002.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        181,
+        28,
+        96,
+        104
+      ],
+      "width": 96,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 2
+    },
+    {
+      "id": "gb_flowerbed_02_003",
+      "display_name": "花坛 003",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_003.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        319,
+        28,
+        101,
+        104
+      ],
+      "width": 101,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 3
+    },
+    {
+      "id": "gb_flowerbed_02_004",
+      "display_name": "花坛 004",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_004.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        458,
+        27,
+        105,
+        105
+      ],
+      "width": 105,
+      "height": 105,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 4
+    },
+    {
+      "id": "gb_flowerbed_02_005",
+      "display_name": "花坛 005",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_005.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        600,
+        28,
+        104,
+        104
+      ],
+      "width": 104,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 5
+    },
+    {
+      "id": "gb_flowerbed_02_006",
+      "display_name": "花坛 006",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_006.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_006.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        741,
+        28,
+        106,
+        104
+      ],
+      "width": 106,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 6
+    },
+    {
+      "id": "gb_flowerbed_02_007",
+      "display_name": "花坛 007",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_007.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_007.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        883,
+        28,
+        107,
+        104
+      ],
+      "width": 107,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 7
+    },
+    {
+      "id": "gb_flowerbed_02_008",
+      "display_name": "花坛 008",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_008.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_008.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        43,
+        146,
+        107,
+        81
+      ],
+      "width": 107,
+      "height": 81,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 8
+    },
+    {
+      "id": "gb_flowerbed_02_009",
+      "display_name": "花坛 009",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_009.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_009.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        181,
+        146,
+        109,
+        81
+      ],
+      "width": 109,
+      "height": 81,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 9
+    },
+    {
+      "id": "gb_flowerbed_02_010",
+      "display_name": "花坛 010",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_010.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_010.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        319,
+        146,
+        143,
+        81
+      ],
+      "width": 143,
+      "height": 81,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 10
+    },
+    {
+      "id": "gb_flowerbed_02_011",
+      "display_name": "花坛 011",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_011.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_011.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        491,
+        145,
+        145,
+        82
+      ],
+      "width": 145,
+      "height": 82,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 11
+    },
+    {
+      "id": "gb_flowerbed_02_012",
+      "display_name": "花坛 012",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_012.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_012.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        665,
+        146,
+        145,
+        81
+      ],
+      "width": 145,
+      "height": 81,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 12
+    },
+    {
+      "id": "gb_flowerbed_02_013",
+      "display_name": "花坛 013",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_013.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_013.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        839,
+        146,
+        155,
+        81
+      ],
+      "width": 155,
+      "height": 81,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 13
+    },
+    {
+      "id": "gb_flowerbed_02_014",
+      "display_name": "花坛 014",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_014.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_014.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1023,
+        147,
+        159,
+        80
+      ],
+      "width": 159,
+      "height": 80,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 14
+    },
+    {
+      "id": "gb_flowerbed_02_015",
+      "display_name": "花坛 015",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_015.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_015.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        42,
+        244,
+        51,
+        147
+      ],
+      "width": 51,
+      "height": 147,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 15
+    },
+    {
+      "id": "gb_flowerbed_02_016",
+      "display_name": "花坛 016",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_016.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_016.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        112,
+        244,
+        53,
+        147
+      ],
+      "width": 53,
+      "height": 147,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 16
+    },
+    {
+      "id": "gb_flowerbed_02_017",
+      "display_name": "花坛 017",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_017.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_017.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        184,
+        244,
+        52,
+        147
+      ],
+      "width": 52,
+      "height": 147,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 17
+    },
+    {
+      "id": "gb_flowerbed_02_018",
+      "display_name": "花坛 018",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_018.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_018.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        255,
+        244,
+        52,
+        147
+      ],
+      "width": 52,
+      "height": 147,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 18
+    },
+    {
+      "id": "gb_flowerbed_02_019",
+      "display_name": "花坛 019",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_019.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_019.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        326,
+        244,
+        53,
+        147
+      ],
+      "width": 53,
+      "height": 147,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 19
+    },
+    {
+      "id": "gb_flowerbed_02_020",
+      "display_name": "花坛 020",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_020.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_020.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        402,
+        244,
+        164,
+        147
+      ],
+      "width": 164,
+      "height": 147,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 20
+    },
+    {
+      "id": "gb_flowerbed_02_021",
+      "display_name": "花坛 021",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_021.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_021.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        492,
+        245,
+        74,
+        82
+      ],
+      "width": 74,
+      "height": 82,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 21
+    },
+    {
+      "id": "gb_flowerbed_02_022",
+      "display_name": "花坛 022",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_022.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_022.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        594,
+        245,
+        174,
+        146
+      ],
+      "width": 174,
+      "height": 146,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 22
+    },
+    {
+      "id": "gb_flowerbed_02_023",
+      "display_name": "花坛 023",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_023.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_023.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        730,
+        245,
+        99,
+        81
+      ],
+      "width": 99,
+      "height": 81,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 23
+    },
+    {
+      "id": "gb_flowerbed_02_024",
+      "display_name": "花坛 024",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_024.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_024.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        858,
+        245,
+        128,
+        146
+      ],
+      "width": 128,
+      "height": 146,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 24
+    },
+    {
+      "id": "gb_flowerbed_02_025",
+      "display_name": "花坛 025",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_025.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_025.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1014,
+        245,
+        165,
+        146
+      ],
+      "width": 165,
+      "height": 146,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 25
+    },
+    {
+      "id": "gb_flowerbed_02_026",
+      "display_name": "花坛 026",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_026.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_026.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1208,
+        244,
+        175,
+        147
+      ],
+      "width": 175,
+      "height": 147,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 26
+    },
+    {
+      "id": "gb_flowerbed_02_027",
+      "display_name": "花坛 027",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_027.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_027.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        43,
+        414,
+        93,
+        83
+      ],
+      "width": 93,
+      "height": 83,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 27
+    },
+    {
+      "id": "gb_flowerbed_02_028",
+      "display_name": "花坛 028",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_028.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_028.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        166,
+        414,
+        105,
+        84
+      ],
+      "width": 105,
+      "height": 84,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 28
+    },
+    {
+      "id": "gb_flowerbed_02_029",
+      "display_name": "花坛 029",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_029.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_029.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        301,
+        414,
+        139,
+        84
+      ],
+      "width": 139,
+      "height": 84,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 29
+    },
+    {
+      "id": "gb_flowerbed_02_030",
+      "display_name": "花坛 030",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_030.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_030.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        470,
+        410,
+        145,
+        88
+      ],
+      "width": 145,
+      "height": 88,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 30
+    },
+    {
+      "id": "gb_flowerbed_02_031",
+      "display_name": "花坛 031",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_031.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_031.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        645,
+        414,
+        183,
+        84
+      ],
+      "width": 183,
+      "height": 84,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 31
+    },
+    {
+      "id": "gb_flowerbed_02_032",
+      "display_name": "花坛 032",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_032.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_032.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        858,
+        414,
+        170,
+        84
+      ],
+      "width": 170,
+      "height": 84,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 32
+    },
+    {
+      "id": "gb_flowerbed_02_033",
+      "display_name": "花坛 033",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_033.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_033.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1058,
+        412,
+        172,
+        86
+      ],
+      "width": 172,
+      "height": 86,
+      "footprint": [
+        3,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 33
+    },
+    {
+      "id": "gb_flowerbed_02_034",
+      "display_name": "花坛 034",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_034.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_034.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        43,
+        513,
+        61,
+        149
+      ],
+      "width": 61,
+      "height": 149,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 34
+    },
+    {
+      "id": "gb_flowerbed_02_035",
+      "display_name": "花坛 035",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_035.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_035.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        124,
+        513,
+        58,
+        149
+      ],
+      "width": 58,
+      "height": 149,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 35
+    },
+    {
+      "id": "gb_flowerbed_02_036",
+      "display_name": "花坛 036",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_036.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_036.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        205,
+        513,
+        57,
+        149
+      ],
+      "width": 57,
+      "height": 149,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 36
+    },
+    {
+      "id": "gb_flowerbed_02_037",
+      "display_name": "花坛 037",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_037.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_037.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        286,
+        514,
+        57,
+        148
+      ],
+      "width": 57,
+      "height": 148,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 37
+    },
+    {
+      "id": "gb_flowerbed_02_038",
+      "display_name": "花坛 038",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_038.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_038.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        366,
+        513,
+        58,
+        149
+      ],
+      "width": 58,
+      "height": 149,
+      "footprint": [
+        1,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 38
+    },
+    {
+      "id": "gb_flowerbed_02_039",
+      "display_name": "花坛 039",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_039.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_039.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        449,
+        513,
+        169,
+        149
+      ],
+      "width": 169,
+      "height": 149,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 39
+    },
+    {
+      "id": "gb_flowerbed_02_040",
+      "display_name": "花坛 040",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_040.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_040.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        537,
+        514,
+        81,
+        80
+      ],
+      "width": 81,
+      "height": 80,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 40
+    },
+    {
+      "id": "gb_flowerbed_02_041",
+      "display_name": "花坛 041",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_041.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_041.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        646,
+        514,
+        157,
+        148
+      ],
+      "width": 157,
+      "height": 148,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 41
+    },
+    {
+      "id": "gb_flowerbed_02_042",
+      "display_name": "花坛 042",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_042.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_042.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        760,
+        515,
+        89,
+        79
+      ],
+      "width": 89,
+      "height": 79,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 42
+    },
+    {
+      "id": "gb_flowerbed_02_043",
+      "display_name": "花坛 043",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_043.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_043.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        876,
+        518,
+        166,
+        144
+      ],
+      "width": 166,
+      "height": 144,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 43
+    },
+    {
+      "id": "gb_flowerbed_02_044",
+      "display_name": "花坛 044",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_044.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_044.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1071,
+        517,
+        188,
+        145
+      ],
+      "width": 188,
+      "height": 145,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 44
+    },
+    {
+      "id": "gb_flowerbed_02_045",
+      "display_name": "花坛 045",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_045.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_045.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        43,
+        680,
+        101,
+        95
+      ],
+      "width": 101,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 45
+    },
+    {
+      "id": "gb_flowerbed_02_046",
+      "display_name": "花坛 046",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_046.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_046.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        171,
+        681,
+        123,
+        94
+      ],
+      "width": 123,
+      "height": 94,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 46
+    },
+    {
+      "id": "gb_flowerbed_02_047",
+      "display_name": "花坛 047",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_047.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_047.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        324,
+        680,
+        129,
+        95
+      ],
+      "width": 129,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 47
+    },
+    {
+      "id": "gb_flowerbed_02_048",
+      "display_name": "花坛 048",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_048.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_048.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        480,
+        681,
+        128,
+        94
+      ],
+      "width": 128,
+      "height": 94,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 48
+    },
+    {
+      "id": "gb_flowerbed_02_049",
+      "display_name": "花坛 049",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_049.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_049.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        634,
+        681,
+        169,
+        152
+      ],
+      "width": 169,
+      "height": 152,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 49
+    },
+    {
+      "id": "gb_flowerbed_02_050",
+      "display_name": "花坛 050",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_050.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_050.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        740,
+        682,
+        94,
+        82
+      ],
+      "width": 94,
+      "height": 82,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 50
+    },
+    {
+      "id": "gb_flowerbed_02_051",
+      "display_name": "花坛 051",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_051.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_051.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        859,
+        683,
+        140,
+        150
+      ],
+      "width": 140,
+      "height": 150,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 51
+    },
+    {
+      "id": "gb_flowerbed_02_052",
+      "display_name": "花坛 052",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_052.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_052.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1030,
+        684,
+        115,
+        149
+      ],
+      "width": 115,
+      "height": 149,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 52
+    },
+    {
+      "id": "gb_flowerbed_02_053",
+      "display_name": "花坛 053",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_053.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_053.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1165,
+        684,
+        103,
+        149
+      ],
+      "width": 103,
+      "height": 149,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 53
+    },
+    {
+      "id": "gb_flowerbed_02_054",
+      "display_name": "花坛 054",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_054.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_054.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1286,
+        684,
+        105,
+        149
+      ],
+      "width": 105,
+      "height": 149,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 54
+    },
+    {
+      "id": "gb_flowerbed_02_055",
+      "display_name": "花坛 055",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_055.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_055.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        42,
+        792,
+        105,
+        111
+      ],
+      "width": 105,
+      "height": 111,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 55
+    },
+    {
+      "id": "gb_flowerbed_02_056",
+      "display_name": "花坛 056",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_056.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_056.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        166,
+        792,
+        133,
+        112
+      ],
+      "width": 133,
+      "height": 112,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 56
+    },
+    {
+      "id": "gb_flowerbed_02_057",
+      "display_name": "花坛 057",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_057.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_057.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        317,
+        793,
+        136,
+        111
+      ],
+      "width": 136,
+      "height": 111,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 57
+    },
+    {
+      "id": "gb_flowerbed_02_058",
+      "display_name": "花坛 058",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_058.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_058.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        472,
+        793,
+        137,
+        111
+      ],
+      "width": 137,
+      "height": 111,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 58
+    },
+    {
+      "id": "gb_flowerbed_02_059",
+      "display_name": "花坛 059",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_059.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_059.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        631,
+        852,
+        116,
+        75
+      ],
+      "width": 116,
+      "height": 75,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 59
+    },
+    {
+      "id": "gb_flowerbed_02_060",
+      "display_name": "花坛 060",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_060.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_060.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        766,
+        852,
+        115,
+        76
+      ],
+      "width": 115,
+      "height": 76,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 60
+    },
+    {
+      "id": "gb_flowerbed_02_061",
+      "display_name": "花坛 061",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_061.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_061.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        900,
+        855,
+        111,
+        72
+      ],
+      "width": 111,
+      "height": 72,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 61
+    },
+    {
+      "id": "gb_flowerbed_02_062",
+      "display_name": "花坛 062",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_062.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_062.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1030,
+        857,
+        110,
+        72
+      ],
+      "width": 110,
+      "height": 72,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 62
+    },
+    {
+      "id": "gb_flowerbed_02_063",
+      "display_name": "花坛 063",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_063.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_063.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1161,
+        859,
+        103,
+        71
+      ],
+      "width": 103,
+      "height": 71,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 63
+    },
+    {
+      "id": "gb_flowerbed_02_064",
+      "display_name": "花坛 064",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_064.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_064.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1283,
+        861,
+        103,
+        69
+      ],
+      "width": 103,
+      "height": 69,
+      "footprint": [
+        2,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 64
+    },
+    {
+      "id": "gb_flowerbed_02_065",
+      "display_name": "花坛 065",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_065.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_065.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        42,
+        918,
+        120,
+        121
+      ],
+      "width": 120,
+      "height": 121,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 65
+    },
+    {
+      "id": "gb_flowerbed_02_066",
+      "display_name": "花坛 066",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_066.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_066.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        184,
+        922,
+        117,
+        117
+      ],
+      "width": 117,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 66
+    },
+    {
+      "id": "gb_flowerbed_02_067",
+      "display_name": "花坛 067",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_067.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_067.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        328,
+        922,
+        119,
+        117
+      ],
+      "width": 119,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 67
+    },
+    {
+      "id": "gb_flowerbed_02_068",
+      "display_name": "花坛 068",
+      "category": "flowerbeds",
+      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_068.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_068.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        477,
+        924,
+        118,
+        117
+      ],
+      "width": 118,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "flowerbed"
+      ],
+      "review_flags": [],
+      "sort_order": 68
+    },
+    {
+      "id": "gb_plant_02_001",
+      "display_name": "植物 001",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_001.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        627,
+        946,
+        108,
+        92
+      ],
+      "width": 108,
+      "height": 92,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 69
+    },
+    {
+      "id": "gb_plant_02_002",
+      "display_name": "植物 002",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_002.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        767,
+        948,
+        109,
+        90
+      ],
+      "width": 109,
+      "height": 90,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 70
+    },
+    {
+      "id": "gb_plant_02_003",
+      "display_name": "植物 003",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_003.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        906,
+        948,
+        104,
+        91
+      ],
+      "width": 104,
+      "height": 91,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 71
+    },
+    {
+      "id": "gb_plant_02_004",
+      "display_name": "植物 004",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_004.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1036,
+        947,
+        106,
+        91
+      ],
+      "width": 106,
+      "height": 91,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 72
+    },
+    {
+      "id": "gb_plant_02_005",
+      "display_name": "植物 005",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_005.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1164,
+        951,
+        104,
+        89
+      ],
+      "width": 104,
+      "height": 89,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 73
+    },
+    {
+      "id": "gb_plant_02_006",
+      "display_name": "植物 006",
+      "category": "plants",
+      "texture_path": "res://assets/garden_builder/textures/plants/gb_plant_02_006.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_plant_02_006.png",
+      "source_sheet": "02.png",
+      "source_rect": [
+        1292,
+        952,
+        103,
+        88
+      ],
+      "width": 103,
+      "height": 88,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "plant"
+      ],
+      "review_flags": [],
+      "sort_order": 74
+    },
+    {
+      "id": "gb_pot_03_001",
+      "display_name": "花盆 001",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_001.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        879,
+        32,
+        72,
+        100
+      ],
+      "width": 72,
+      "height": 100,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 75
+    },
+    {
+      "id": "gb_pot_03_002",
+      "display_name": "花盆 002",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_002.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        32,
+        50,
+        71,
+        76
+      ],
+      "width": 71,
+      "height": 76,
+      "footprint": [
+        2,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 76
+    },
+    {
+      "id": "gb_pot_03_003",
+      "display_name": "花盆 003",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_003.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        125,
+        58,
+        63,
+        68
+      ],
+      "width": 63,
+      "height": 68,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 77
+    },
+    {
+      "id": "gb_pot_03_004",
+      "display_name": "花盆 004",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_004.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        211,
+        58,
+        64,
+        68
+      ],
+      "width": 64,
+      "height": 68,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 78
+    },
+    {
+      "id": "gb_pot_03_005",
+      "display_name": "花盆 005",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_005.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        299,
+        50,
+        69,
+        76
+      ],
+      "width": 69,
+      "height": 76,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 79
+    },
+    {
+      "id": "gb_pot_03_006",
+      "display_name": "花盆 006",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_006.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_006.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        399,
+        41,
+        67,
+        88
+      ],
+      "width": 67,
+      "height": 88,
+      "footprint": [
+        1,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 80
+    },
+    {
+      "id": "gb_pot_03_007",
+      "display_name": "花盆 007",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_007.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_007.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        496,
+        38,
+        68,
+        92
+      ],
+      "width": 68,
+      "height": 92,
+      "footprint": [
+        1,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 81
+    },
+    {
+      "id": "gb_pot_03_008",
+      "display_name": "花盆 008",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_008.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_008.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        591,
+        42,
+        69,
+        88
+      ],
+      "width": 69,
+      "height": 88,
+      "footprint": [
+        1,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 82
+    },
+    {
+      "id": "gb_pot_03_009",
+      "display_name": "花盆 009",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_009.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_009.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        682,
+        38,
+        74,
+        94
+      ],
+      "width": 74,
+      "height": 94,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 83
+    },
+    {
+      "id": "gb_pot_03_010",
+      "display_name": "花盆 010",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_010.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_010.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        777,
+        37,
+        78,
+        95
+      ],
+      "width": 78,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 84
+    },
+    {
+      "id": "gb_pot_03_011",
+      "display_name": "花盆 011",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_011.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_011.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        972,
+        40,
+        82,
+        92
+      ],
+      "width": 82,
+      "height": 92,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 85
+    },
+    {
+      "id": "gb_pot_03_012",
+      "display_name": "花盆 012",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_012.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_012.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1071,
+        41,
+        83,
+        91
+      ],
+      "width": 83,
+      "height": 91,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 86
+    },
+    {
+      "id": "gb_pot_03_013",
+      "display_name": "花盆 013",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_013.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_013.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1170,
+        41,
+        76,
+        90
+      ],
+      "width": 76,
+      "height": 90,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 87
+    },
+    {
+      "id": "gb_pot_03_014",
+      "display_name": "花盆 014",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_014.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_014.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1263,
+        47,
+        77,
+        83
+      ],
+      "width": 77,
+      "height": 83,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 88
+    },
+    {
+      "id": "gb_pot_03_015",
+      "display_name": "花盆 015",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_015.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_015.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        30,
+        152,
+        76,
+        97
+      ],
+      "width": 76,
+      "height": 97,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 89
+    },
+    {
+      "id": "gb_pot_03_016",
+      "display_name": "花盆 016",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_016.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_016.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        128,
+        164,
+        72,
+        83
+      ],
+      "width": 72,
+      "height": 83,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 90
+    },
+    {
+      "id": "gb_pot_03_017",
+      "display_name": "花盆 017",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_017.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_017.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        223,
+        165,
+        78,
+        82
+      ],
+      "width": 78,
+      "height": 82,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 91
+    },
+    {
+      "id": "gb_pot_03_018",
+      "display_name": "花盆 018",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_018.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_018.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        328,
+        147,
+        76,
+        102
+      ],
+      "width": 76,
+      "height": 102,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 92
+    },
+    {
+      "id": "gb_pot_03_019",
+      "display_name": "花盆 019",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_019.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_019.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        431,
+        152,
+        76,
+        97
+      ],
+      "width": 76,
+      "height": 97,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 93
+    },
+    {
+      "id": "gb_pot_03_020",
+      "display_name": "花盆 020",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_020.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_020.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        536,
+        151,
+        72,
+        98
+      ],
+      "width": 72,
+      "height": 98,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 94
+    },
+    {
+      "id": "gb_pot_03_021",
+      "display_name": "花盆 021",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_021.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_021.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        629,
+        152,
+        85,
+        97
+      ],
+      "width": 85,
+      "height": 97,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 95
+    },
+    {
+      "id": "gb_pot_03_022",
+      "display_name": "花盆 022",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_022.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_022.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        733,
+        147,
+        92,
+        102
+      ],
+      "width": 92,
+      "height": 102,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 96
+    },
+    {
+      "id": "gb_pot_03_023",
+      "display_name": "花盆 023",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_023.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_023.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        844,
+        148,
+        94,
+        101
+      ],
+      "width": 94,
+      "height": 101,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 97
+    },
+    {
+      "id": "gb_pot_03_024",
+      "display_name": "花盆 024",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_024.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_024.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        960,
+        146,
+        81,
+        103
+      ],
+      "width": 81,
+      "height": 103,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 98
+    },
+    {
+      "id": "gb_pot_03_025",
+      "display_name": "花盆 025",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_025.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_025.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1062,
+        151,
+        98,
+        98
+      ],
+      "width": 98,
+      "height": 98,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 99
+    },
+    {
+      "id": "gb_pot_03_026",
+      "display_name": "花盆 026",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_026.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_026.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1176,
+        148,
+        104,
+        101
+      ],
+      "width": 104,
+      "height": 101,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 100
+    },
+    {
+      "id": "gb_pot_03_027",
+      "display_name": "花盆 027",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_027.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_027.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1308,
+        147,
+        87,
+        102
+      ],
+      "width": 87,
+      "height": 102,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 101
+    },
+    {
+      "id": "gb_pot_03_028",
+      "display_name": "花盆 028",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_028.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_028.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        29,
+        271,
+        84,
+        110
+      ],
+      "width": 84,
+      "height": 110,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 102
+    },
+    {
+      "id": "gb_pot_03_029",
+      "display_name": "花盆 029",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_029.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_029.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        139,
+        276,
+        83,
+        102
+      ],
+      "width": 83,
+      "height": 102,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 103
+    },
+    {
+      "id": "gb_pot_03_030",
+      "display_name": "花盆 030",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_030.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_030.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        248,
+        271,
+        85,
+        107
+      ],
+      "width": 85,
+      "height": 107,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 104
+    },
+    {
+      "id": "gb_pot_03_031",
+      "display_name": "花盆 031",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_031.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_031.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        359,
+        271,
+        83,
+        107
+      ],
+      "width": 83,
+      "height": 107,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 105
+    },
+    {
+      "id": "gb_pot_03_032",
+      "display_name": "花盆 032",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_032.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_032.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        469,
+        275,
+        83,
+        104
+      ],
+      "width": 83,
+      "height": 104,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 106
+    },
+    {
+      "id": "gb_furniture_03_001",
+      "display_name": "家具 001",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_001.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        574,
+        263,
+        85,
+        121
+      ],
+      "width": 85,
+      "height": 121,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 107
+    },
+    {
+      "id": "gb_pot_03_033",
+      "display_name": "花盆 033",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_033.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_033.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        684,
+        266,
+        81,
+        117
+      ],
+      "width": 81,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 108
+    },
+    {
+      "id": "gb_pot_03_034",
+      "display_name": "花盆 034",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_034.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_034.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        793,
+        267,
+        82,
+        116
+      ],
+      "width": 82,
+      "height": 116,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 109
+    },
+    {
+      "id": "gb_pot_03_035",
+      "display_name": "花盆 035",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_035.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_035.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        899,
+        269,
+        87,
+        115
+      ],
+      "width": 87,
+      "height": 115,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 110
+    },
+    {
+      "id": "gb_furniture_03_002",
+      "display_name": "家具 002",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_002.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1007,
+        256,
+        91,
+        152
+      ],
+      "width": 91,
+      "height": 152,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 111
+    },
+    {
+      "id": "gb_furniture_03_003",
+      "display_name": "家具 003",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_003.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1120,
+        256,
+        98,
+        154
+      ],
+      "width": 98,
+      "height": 154,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 112
+    },
+    {
+      "id": "gb_furniture_03_004",
+      "display_name": "家具 004",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_004.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1238,
+        258,
+        95,
+        153
+      ],
+      "width": 95,
+      "height": 153,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 113
+    },
+    {
+      "id": "gb_furniture_03_005",
+      "display_name": "家具 005",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_005.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1352,
+        266,
+        66,
+        142
+      ],
+      "width": 66,
+      "height": 142,
+      "footprint": [
+        1,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 114
+    },
+    {
+      "id": "gb_pot_03_036",
+      "display_name": "花盆 036",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_036.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_036.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        28,
+        405,
+        90,
+        119
+      ],
+      "width": 90,
+      "height": 119,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 115
+    },
+    {
+      "id": "gb_pot_03_037",
+      "display_name": "花盆 037",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_037.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_037.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        139,
+        407,
+        88,
+        117
+      ],
+      "width": 88,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 116
+    },
+    {
+      "id": "gb_furniture_03_006",
+      "display_name": "家具 006",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_006.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_006.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        246,
+        403,
+        90,
+        121
+      ],
+      "width": 90,
+      "height": 121,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 117
+    },
+    {
+      "id": "gb_furniture_03_007",
+      "display_name": "家具 007",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_007.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_007.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        357,
+        394,
+        93,
+        130
+      ],
+      "width": 93,
+      "height": 130,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 118
+    },
+    {
+      "id": "gb_furniture_03_008",
+      "display_name": "家具 008",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_008.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_008.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        476,
+        399,
+        90,
+        126
+      ],
+      "width": 90,
+      "height": 126,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 119
+    },
+    {
+      "id": "gb_furniture_03_009",
+      "display_name": "家具 009",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_009.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_009.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        586,
+        405,
+        97,
+        160
+      ],
+      "width": 97,
+      "height": 160,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 120
+    },
+    {
+      "id": "gb_furniture_03_010",
+      "display_name": "家具 010",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_010.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_010.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        688,
+        405,
+        94,
+        161
+      ],
+      "width": 94,
+      "height": 161,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 121
+    },
+    {
+      "id": "gb_furniture_03_011",
+      "display_name": "家具 011",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_011.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_011.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        792,
+        405,
+        91,
+        161
+      ],
+      "width": 91,
+      "height": 161,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 122
+    },
+    {
+      "id": "gb_furniture_03_012",
+      "display_name": "家具 012",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_012.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_012.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        898,
+        399,
+        101,
+        163
+      ],
+      "width": 101,
+      "height": 163,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 123
+    },
+    {
+      "id": "gb_furniture_03_013",
+      "display_name": "家具 013",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_013.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_013.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1031,
+        416,
+        90,
+        141
+      ],
+      "width": 90,
+      "height": 141,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 124
+    },
+    {
+      "id": "gb_furniture_03_014",
+      "display_name": "家具 014",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_014.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_014.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1143,
+        419,
+        93,
+        138
+      ],
+      "width": 93,
+      "height": 138,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 125
+    },
+    {
+      "id": "gb_furniture_03_015",
+      "display_name": "家具 015",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_015.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_015.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1250,
+        431,
+        84,
+        126
+      ],
+      "width": 84,
+      "height": 126,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 126
+    },
+    {
+      "id": "gb_pot_03_038",
+      "display_name": "花盆 038",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_038.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_038.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1349,
+        449,
+        80,
+        110
+      ],
+      "width": 80,
+      "height": 110,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 127
+    },
+    {
+      "id": "gb_furniture_03_016",
+      "display_name": "家具 016",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_016.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_016.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        21,
+        536,
+        97,
+        114
+      ],
+      "width": 97,
+      "height": 114,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 128
+    },
+    {
+      "id": "gb_furniture_03_017",
+      "display_name": "家具 017",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_017.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_017.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        142,
+        536,
+        101,
+        113
+      ],
+      "width": 101,
+      "height": 113,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 129
+    },
+    {
+      "id": "gb_furniture_03_018",
+      "display_name": "家具 018",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_018.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_018.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        266,
+        536,
+        90,
+        114
+      ],
+      "width": 90,
+      "height": 114,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 130
+    },
+    {
+      "id": "gb_furniture_03_019",
+      "display_name": "家具 019",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_019.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_019.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        377,
+        536,
+        90,
+        114
+      ],
+      "width": 90,
+      "height": 114,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 131
+    },
+    {
+      "id": "gb_pot_03_039",
+      "display_name": "花盆 039",
+      "category": "pots",
+      "texture_path": "res://assets/garden_builder/textures/pots/gb_pot_03_039.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_pot_03_039.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        489,
+        536,
+        77,
+        113
+      ],
+      "width": 77,
+      "height": 113,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "pot"
+      ],
+      "review_flags": [],
+      "sort_order": 132
+    },
+    {
+      "id": "gb_furniture_03_020",
+      "display_name": "家具 020",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_020.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_020.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        599,
+        587,
+        122,
+        97
+      ],
+      "width": 122,
+      "height": 97,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 133
+    },
+    {
+      "id": "gb_furniture_03_021",
+      "display_name": "家具 021",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_021.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_021.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        739,
+        589,
+        121,
+        95
+      ],
+      "width": 121,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 134
+    },
+    {
+      "id": "gb_furniture_03_022",
+      "display_name": "家具 022",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_022.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_022.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        879,
+        589,
+        126,
+        95
+      ],
+      "width": 126,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 135
+    },
+    {
+      "id": "gb_furniture_03_023",
+      "display_name": "家具 023",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_023.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_023.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1027,
+        590,
+        103,
+        94
+      ],
+      "width": 103,
+      "height": 94,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 136
+    },
+    {
+      "id": "gb_furniture_03_024",
+      "display_name": "家具 024",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_024.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_024.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1154,
+        587,
+        114,
+        97
+      ],
+      "width": 114,
+      "height": 97,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 137
+    },
+    {
+      "id": "gb_furniture_03_025",
+      "display_name": "家具 025",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_025.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_025.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1288,
+        591,
+        122,
+        93
+      ],
+      "width": 122,
+      "height": 93,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 138
+    },
+    {
+      "id": "gb_furniture_03_026",
+      "display_name": "家具 026",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_026.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_026.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        29,
+        682,
+        95,
+        114
+      ],
+      "width": 95,
+      "height": 114,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 139
+    },
+    {
+      "id": "gb_furniture_03_027",
+      "display_name": "家具 027",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_027.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_027.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        152,
+        682,
+        91,
+        113
+      ],
+      "width": 91,
+      "height": 113,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 140
+    },
+    {
+      "id": "gb_furniture_03_028",
+      "display_name": "家具 028",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_028.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_028.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        270,
+        670,
+        89,
+        126
+      ],
+      "width": 89,
+      "height": 126,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 141
+    },
+    {
+      "id": "gb_furniture_03_029",
+      "display_name": "家具 029",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_029.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_029.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        377,
+        681,
+        97,
+        120
+      ],
+      "width": 97,
+      "height": 120,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 142
+    },
+    {
+      "id": "gb_furniture_03_030",
+      "display_name": "家具 030",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_030.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_030.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        496,
+        684,
+        93,
+        117
+      ],
+      "width": 93,
+      "height": 117,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 143
+    },
+    {
+      "id": "gb_furniture_03_031",
+      "display_name": "家具 031",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_031.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_031.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        611,
+        715,
+        104,
+        86
+      ],
+      "width": 104,
+      "height": 86,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 144
+    },
+    {
+      "id": "gb_furniture_03_032",
+      "display_name": "家具 032",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_032.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_032.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        739,
+        706,
+        106,
+        95
+      ],
+      "width": 106,
+      "height": 95,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 145
+    },
+    {
+      "id": "gb_furniture_03_033",
+      "display_name": "家具 033",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_033.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_033.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        866,
+        711,
+        110,
+        90
+      ],
+      "width": 110,
+      "height": 90,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 146
+    },
+    {
+      "id": "gb_furniture_03_034",
+      "display_name": "家具 034",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_034.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_034.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        999,
+        711,
+        96,
+        90
+      ],
+      "width": 96,
+      "height": 90,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 147
+    },
+    {
+      "id": "gb_furniture_03_035",
+      "display_name": "家具 035",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_035.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_035.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1121,
+        706,
+        88,
+        100
+      ],
+      "width": 88,
+      "height": 100,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 148
+    },
+    {
+      "id": "gb_furniture_03_036",
+      "display_name": "家具 036",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_036.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_036.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1227,
+        711,
+        88,
+        96
+      ],
+      "width": 88,
+      "height": 96,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 149
+    },
+    {
+      "id": "gb_furniture_03_037",
+      "display_name": "家具 037",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_037.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_037.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1328,
+        718,
+        81,
+        89
+      ],
+      "width": 81,
+      "height": 89,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 150
+    },
+    {
+      "id": "gb_decoration_03_001",
+      "display_name": "装饰 001",
+      "category": "decorations",
+      "texture_path": "res://assets/garden_builder/textures/decorations/gb_decoration_03_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_decoration_03_001.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        43,
+        834,
+        60,
+        79
+      ],
+      "width": 60,
+      "height": 79,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "decoration"
+      ],
+      "review_flags": [],
+      "sort_order": 151
+    },
+    {
+      "id": "gb_furniture_03_038",
+      "display_name": "家具 038",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_038.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_038.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        278,
+        812,
+        135,
+        216
+      ],
+      "width": 135,
+      "height": 216,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 152
+    },
+    {
+      "id": "gb_furniture_03_039",
+      "display_name": "家具 039",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_039.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_039.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        432,
+        834,
+        92,
+        196
+      ],
+      "width": 92,
+      "height": 196,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 153
+    },
+    {
+      "id": "gb_tool_03_001",
+      "display_name": "工具 001",
+      "category": "tools",
+      "texture_path": "res://assets/garden_builder/textures/tools/gb_tool_03_001.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_tool_03_001.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        130,
+        848,
+        57,
+        68
+      ],
+      "width": 57,
+      "height": 68,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": false,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "tool"
+      ],
+      "review_flags": [],
+      "sort_order": 154
+    },
+    {
+      "id": "gb_decoration_03_002",
+      "display_name": "装饰 002",
+      "category": "decorations",
+      "texture_path": "res://assets/garden_builder/textures/decorations/gb_decoration_03_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_decoration_03_002.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        209,
+        840,
+        63,
+        76
+      ],
+      "width": 63,
+      "height": 76,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "decoration"
+      ],
+      "review_flags": [],
+      "sort_order": 155
+    },
+    {
+      "id": "gb_furniture_03_040",
+      "display_name": "家具 040",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_040.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_040.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        551,
+        848,
+        133,
+        179
+      ],
+      "width": 133,
+      "height": 179,
+      "footprint": [
+        2,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 156
+    },
+    {
+      "id": "gb_furniture_03_041",
+      "display_name": "家具 041",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_041.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_041.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        711,
+        856,
+        120,
+        125
+      ],
+      "width": 120,
+      "height": 125,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 157
+    },
+    {
+      "id": "gb_furniture_03_042",
+      "display_name": "家具 042",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_042.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_042.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        848,
+        841,
+        215,
+        176
+      ],
+      "width": 215,
+      "height": 176,
+      "footprint": [
+        3,
+        3
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [
+        "large_or_irregular_footprint"
+      ],
+      "sort_order": 158
+    },
+    {
+      "id": "gb_decoration_03_003",
+      "display_name": "装饰 003",
+      "category": "decorations",
+      "texture_path": "res://assets/garden_builder/textures/decorations/gb_decoration_03_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_decoration_03_003.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1156,
+        850,
+        111,
+        88
+      ],
+      "width": 111,
+      "height": 88,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "decoration"
+      ],
+      "review_flags": [],
+      "sort_order": 159
+    },
+    {
+      "id": "gb_tool_03_002",
+      "display_name": "工具 002",
+      "category": "tools",
+      "texture_path": "res://assets/garden_builder/textures/tools/gb_tool_03_002.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_tool_03_002.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1080,
+        904,
+        49,
+        85
+      ],
+      "width": 49,
+      "height": 85,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": false,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "tool"
+      ],
+      "review_flags": [],
+      "sort_order": 160
+    },
+    {
+      "id": "gb_tool_03_003",
+      "display_name": "工具 003",
+      "category": "tools",
+      "texture_path": "res://assets/garden_builder/textures/tools/gb_tool_03_003.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_tool_03_003.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1297,
+        884,
+        48,
+        60
+      ],
+      "width": 48,
+      "height": 60,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": false,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "tool"
+      ],
+      "review_flags": [],
+      "sort_order": 161
+    },
+    {
+      "id": "gb_furniture_03_043",
+      "display_name": "家具 043",
+      "category": "furniture",
+      "texture_path": "res://assets/garden_builder/textures/furniture/gb_furniture_03_043.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_furniture_03_043.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        37,
+        943,
+        128,
+        83
+      ],
+      "width": 128,
+      "height": 83,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "furniture"
+      ],
+      "review_flags": [],
+      "sort_order": 162
+    },
+    {
+      "id": "gb_decoration_03_004",
+      "display_name": "装饰 004",
+      "category": "decorations",
+      "texture_path": "res://assets/garden_builder/textures/decorations/gb_decoration_03_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_decoration_03_004.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        186,
+        938,
+        79,
+        88
+      ],
+      "width": 79,
+      "height": 88,
+      "footprint": [
+        2,
+        2
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "decoration"
+      ],
+      "review_flags": [],
+      "sort_order": 163
+    },
+    {
+      "id": "gb_decoration_03_005",
+      "display_name": "装饰 005",
+      "category": "decorations",
+      "texture_path": "res://assets/garden_builder/textures/decorations/gb_decoration_03_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_decoration_03_005.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1150,
+        947,
+        62,
+        76
+      ],
+      "width": 62,
+      "height": 76,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": true,
+      "can_rotate": true,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "decoration"
+      ],
+      "review_flags": [],
+      "sort_order": 164
+    },
+    {
+      "id": "gb_tool_03_004",
+      "display_name": "工具 004",
+      "category": "tools",
+      "texture_path": "res://assets/garden_builder/textures/tools/gb_tool_03_004.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_tool_03_004.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1229,
+        957,
+        39,
+        66
+      ],
+      "width": 39,
+      "height": 66,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": false,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "tool"
+      ],
+      "review_flags": [],
+      "sort_order": 165
+    },
+    {
+      "id": "gb_tool_03_005",
+      "display_name": "工具 005",
+      "category": "tools",
+      "texture_path": "res://assets/garden_builder/textures/tools/gb_tool_03_005.png",
+      "scene_path": "",
+      "icon_path": "res://assets/garden_builder/icons/gb_tool_03_005.png",
+      "source_sheet": "03.png",
+      "source_rect": [
+        1281,
+        964,
+        34,
+        57
+      ],
+      "width": 34,
+      "height": 57,
+      "footprint": [
+        1,
+        1
+      ],
+      "anchor": "bottom_center",
+      "allowed_surfaces": [
+        "grass",
+        "dirt",
+        "stone_path"
+      ],
+      "blocked_surfaces": [
+        "water"
+      ],
+      "walkable": false,
+      "collision": false,
+      "can_rotate": false,
+      "can_flip": false,
+      "y_sort": true,
+      "placement_layer": "prop",
+      "tags": [
+        "tool"
+      ],
+      "review_flags": [],
+      "sort_order": 166
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   "characters": [
     { "id": "father",  "name": "爸爸",   "sheet": "papa", "hframes": 3, "vframes": 4, "scale": 0.2733 },
     { "id": "mother",  "name": "妈妈",   "sheet": "mama", "hframes": 3, "vframes": 4, "scale": 0.2733 },
-    { "id": "partner", "name": "伙伴",   "sheet": "boy",  "hframes": 3, "vframes": 4, "scale": 0.46 },
+    { "id": "partner", "name": "伙伴",   "sheet": "boy",  "hframes": 3, "vframes": 4, "scale": 0.28 },
     { "id": "player",  "name": "主角",   "sheet": "girl", "hframes": 3, "vframes": 5, "scale": 0.28,
       "frame_rects": [
         [166, 27, 149, 281], [403, 27, 149, 281], [643, 27, 149, 281],

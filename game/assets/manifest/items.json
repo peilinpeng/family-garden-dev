@@ -79,7 +79,7 @@
     },
     {
       "id": "seed_bottarries",
-      "name": "瓶子莓种子",
+      "name": "瓶莓种子",
       "category": "seed",
       "max_stack": 99,
       "crop_id": "bottarries",
@@ -88,7 +88,7 @@
     },
     {
       "id": "produce_bottarries",
-      "name": "瓶子莓",
+      "name": "瓶莓",
       "category": "produce",
       "max_stack": 99,
       "crop_id": "bottarries",
@@ -136,7 +136,7 @@
     },
     {
       "id": "seed_reoin",
-      "name": "雷茎种子",
+      "name": "雷莓种子",
       "category": "seed",
       "max_stack": 99,
       "crop_id": "reoin",
@@ -145,7 +145,7 @@
     },
     {
       "id": "produce_reoin",
-      "name": "雷茎",
+      "name": "雷莓",
       "category": "produce",
       "max_stack": 99,
       "crop_id": "reoin",
@@ -330,6 +330,15 @@
       "max_stack": 20,
       "giftable": true,
       "sell": 30
+    },
+    {
+      "id": "fish_goldfish",
+      "name": "金鱼",
+      "category": "fish",
+      "max_stack": 20,
+      "sell": 18,
+      "giftable": true,
+      "icon": "res://assets/items/fish_goldfish.png"
     },
     {
       "id": "coin",

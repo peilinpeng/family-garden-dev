@@ -13,6 +13,7 @@ func _ready() -> void:
 
 	var ui_layer := CanvasLayer.new()
 	ui_layer.name = "UI"
+	ui_layer.layer = 20
 	add_child(ui_layer)
 
 	SceneManager.setup(world, ui_layer)
