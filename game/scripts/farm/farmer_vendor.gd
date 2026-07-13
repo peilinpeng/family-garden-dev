@@ -2,7 +2,7 @@ extends Node2D
 class_name FarmerVendor
 
 @export var watering_animation: StringName = &"eat"
-@export var interaction_hint: String = "E 购买种子"
+@export var interaction_hint: String = "E 农场小铺"
 
 var _anim: AnimatedSprite2D
 var _hint_label: Label

@@ -132,6 +132,8 @@ func _rebuild_detail() -> void:
 		row.add_child(_icon_rect(ItemDB.icon_texture(iid), 28))
 		var ml := Label.new()
 		ml.text = "%s    %d / %d" % [ItemDB.display_name(iid), have, need]
+		if have < need:
+			ml.text += " · " + _source_hint(iid)
 		ml.add_theme_font_size_override("font_size", 14)
 		ml.add_theme_color_override("font_color", Color(0.24, 0.19, 0.14, 1.0) if have >= need else Color(0.72, 0.28, 0.20, 1.0))
 		ml.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -159,7 +161,12 @@ func _rebuild_detail() -> void:
 	if not chk.ok:
 		var miss_names: Array = []
 		for m in chk.missing:
-			miss_names.append("%s×%d" % [ItemDB.display_name(str(m.id)), int(m.need) - int(m.have)])
+			var missing_id := str(m.id)
+			miss_names.append("%s×%d（%s）" % [
+				ItemDB.display_name(missing_id),
+				int(m.need) - int(m.have),
+				_source_hint(missing_id)
+			])
 		var miss := Label.new()
 		miss.text = "还缺：" + "、".join(miss_names)
 		miss.add_theme_font_size_override("font_size", 13)
@@ -174,3 +181,19 @@ func _icon_rect(tex: Texture2D, sz: int) -> TextureRect:
 	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return r
+
+func _source_hint(item_id: String) -> String:
+	var item: ItemDef = ItemDB.get_def(item_id) if ItemDB != null else null
+	if item != null:
+		var hint := str(item.get_field("source_hint", ""))
+		if hint != "":
+			return hint
+		if item.category == "produce" and item.crop_id() != "":
+			return "农场种植收获"
+	match item_id:
+		"egg":
+			return "鸡舍收集"
+		"milk":
+			return "牛棚收集"
+		_:
+			return "旅行/地图奖励或后续活动"

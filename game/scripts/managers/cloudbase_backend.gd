@@ -27,7 +27,7 @@ const REQUEST_TIMEOUT_SECONDS := 30.0
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
 const SNAPSHOT_TABLES := [
 	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
-	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots",
+	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots", "farm_activity_log",
 ]
 
 var _cfg: Dictionary = {}
