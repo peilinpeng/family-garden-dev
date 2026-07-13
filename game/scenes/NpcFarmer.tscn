@@ -1,6 +1,6 @@
 [gd_scene load_steps=12 format=3]
 
-[ext_resource type="Script" path="res://scripts/farm/animal.gd" id="1_anim"]
+[ext_resource type="Script" path="res://scripts/farm/farmer_vendor.gd" id="1_anim"]
 [ext_resource type="Texture2D" uid="uid://dil6qi43fkwvn" path="res://assets/farm/npc_farmer.png" id="2_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_idle"]
@@ -91,8 +91,6 @@ animations = [{
 
 [node name="NpcFarmer" type="Node2D" unique_id=3821005512]
 script = ExtResource("1_anim")
-pen = Rect2(580, 610, 120, 50)
-speed = 22.0
 
 [node name="Anim" type="AnimatedSprite2D" parent="." unique_id=3821005513]
 scale = Vector2(0.28, 0.28)

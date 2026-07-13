@@ -31,6 +31,10 @@ var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_
 var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
 var player_display_name: String = ""
+var last_scene_id: String = ""
+var last_spawn_key: String = "default"
+var last_player_position: Dictionary = {}
+var last_saved_at: String = ""
 
 # 记忆/节点/回答数据（字段对齐 backend/supabase/memory_schema.sql）。
 # 本地存档和 CloudManager 同步并行存在；UI 层只通过本管理器读写。
@@ -649,6 +653,35 @@ func _reset_all() -> void:
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
 	player_display_name = ""
+	last_scene_id = ""
+	last_spawn_key = "default"
+	last_player_position = {}
+	last_saved_at = ""
+
+func update_autosave(scene_id: String, position: Vector2, spawn_key: String = "default") -> void:
+	if selected_role_key == "" or scene_id == "":
+		return
+	last_scene_id = scene_id
+	last_spawn_key = spawn_key if spawn_key != "" else "default"
+	last_player_position = {"x": position.x, "y": position.y}
+	last_saved_at = Time.get_datetime_string_from_system()
+	save_game()
+
+func has_resume_position() -> bool:
+	return last_scene_id != "" \
+		and last_player_position is Dictionary \
+		and last_player_position.has("x") \
+		and last_player_position.has("y")
+
+func resume_position() -> Vector2:
+	if not has_resume_position():
+		return Vector2.ZERO
+	return Vector2(float(last_player_position.get("x", 0.0)), float(last_player_position.get("y", 0.0)))
+
+func reset_to_new_game() -> void:
+	_reset_all()
+	save_game()
+	mailbox_alert_changed.emit(mailbox_alert_state)
 
 # ── 远端同步接缝（迭代1a）────────────────────────────────────────────────
 # 写操作把单条记录推给 CloudManager 的持久化后端；无后端时 no-op，本地 save_game 兜底。
@@ -783,7 +816,11 @@ func save_game() -> void:
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
-		"player_display_name": player_display_name
+		"player_display_name": player_display_name,
+		"last_scene_id": last_scene_id,
+		"last_spawn_key": last_spawn_key,
+		"last_player_position": last_player_position,
+		"last_saved_at": last_saved_at
 	}
 	var file := FileAccess.open(_save_path(), FileAccess.WRITE)
 	if file:
@@ -827,6 +864,11 @@ func load_save() -> void:
 		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 		selected_role_key = str(parsed.get("selected_role_key", ""))
 		player_display_name = str(parsed.get("player_display_name", ""))
+		last_scene_id = str(parsed.get("last_scene_id", ""))
+		last_spawn_key = str(parsed.get("last_spawn_key", "default"))
+		var parsed_pos: Variant = parsed.get("last_player_position", {})
+		last_player_position = parsed_pos if parsed_pos is Dictionary else {}
+		last_saved_at = str(parsed.get("last_saved_at", ""))
 	else:
 		_reset_all()
 

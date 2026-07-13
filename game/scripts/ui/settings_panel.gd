@@ -4,6 +4,8 @@ class_name SettingsPanel
 ## 设置面板(右上设置图标打开)。音乐/音效音量、全屏、UI 缩放(占位)、退出游戏/返回主菜单(占位)。
 ## 只跟 SettingsManager 打交道,音频/显示细节由它委托 AudioManager / DisplayServer。
 
+var _delete_save_dialog: ConfirmationDialog = null
+
 func _init() -> void:
 	panel_title = "设置 / Settings"
 	card_size = Vector2(480, 470)
@@ -66,6 +68,18 @@ func _build_content() -> void:
 		replay_row.add_child(replay_btn)
 		content_root.add_child(replay_row)
 
+	var reset_row := HBoxContainer.new()
+	reset_row.add_theme_constant_override("separation", 12)
+	reset_row.add_child(_row_label("🧹 存档管理"))
+	var reset_btn := Button.new()
+	reset_btn.text = "删档 / 恢复初始状态"
+	reset_btn.custom_minimum_size = Vector2(190, 34)
+	reset_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	HUDPanel._style_soft_button(reset_btn)
+	reset_btn.pressed.connect(_show_delete_save_confirm)
+	reset_row.add_child(reset_btn)
+	content_root.add_child(reset_row)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_root.add_child(spacer)
@@ -93,6 +107,16 @@ func _build_content() -> void:
 		HUDPanel._style_soft_button(quit_btn)
 		quit_btn.pressed.connect(func() -> void: get_tree().quit())
 		actions.add_child(quit_btn)
+
+func _show_delete_save_confirm() -> void:
+	if _delete_save_dialog == null or not is_instance_valid(_delete_save_dialog):
+		_delete_save_dialog = ConfirmationDialog.new()
+		_delete_save_dialog.title = "确认删档"
+		_delete_save_dialog.dialog_text = "这会清除当前本机存档、角色进度和上次位置，并回到初始状态。确定继续吗？"
+		_delete_save_dialog.confirmed.connect(func() -> void:
+			SceneManager.call_deferred("reset_to_new_game"))
+		add_child(_delete_save_dialog)
+	_delete_save_dialog.popup_centered(Vector2(420, 170))
 
 func _slider_row(text: String, value: float, on_change: Callable) -> HBoxContainer:
 	var row := HBoxContainer.new()
