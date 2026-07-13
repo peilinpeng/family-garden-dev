@@ -18,7 +18,7 @@
       "crop_id": "corrato",
       "sell": 12,
       "giftable": true,
-      "icon": "crops_daily:6:0"
+      "icon": "res://assets/kitchen_cooking/ingredients/tomato.png"
     },
     {
       "id": "seed_tomelone",
@@ -37,7 +37,7 @@
       "crop_id": "tomelone",
       "sell": 13,
       "giftable": true,
-      "icon": "crops_daily:6:1"
+      "icon": "res://assets/kitchen_cooking/ingredients/tomelone.png"
     },
     {
       "id": "seed_peanks",
@@ -56,7 +56,7 @@
       "crop_id": "peanks",
       "sell": 14,
       "giftable": true,
-      "icon": "crops_daily:6:2"
+      "icon": "res://assets/kitchen_cooking/ingredients/peanks.png"
     },
     {
       "id": "seed_cauliviol",
@@ -75,7 +75,7 @@
       "crop_id": "cauliviol",
       "sell": 15,
       "giftable": true,
-      "icon": "crops_daily:6:3"
+      "icon": "res://assets/kitchen_cooking/ingredients/cauliviol.png"
     },
     {
       "id": "seed_bottarries",
@@ -94,7 +94,7 @@
       "crop_id": "bottarries",
       "sell": 16,
       "giftable": true,
-      "icon": "crops_daily:6:4"
+      "icon": "res://assets/kitchen_cooking/ingredients/bottleberry.png"
     },
     {
       "id": "seed_safruma",
@@ -113,7 +113,7 @@
       "crop_id": "safruma",
       "sell": 17,
       "giftable": true,
-      "icon": "crops_daily:6:5"
+      "icon": "res://assets/kitchen_cooking/ingredients/safruma.png"
     },
     {
       "id": "seed_mooam",
@@ -132,7 +132,7 @@
       "crop_id": "mooam",
       "sell": 18,
       "giftable": true,
-      "icon": "crops_daily:6:6"
+      "icon": "res://assets/kitchen_cooking/ingredients/mooam.png"
     },
     {
       "id": "seed_reoin",
@@ -151,7 +151,7 @@
       "crop_id": "reoin",
       "sell": 19,
       "giftable": true,
-      "icon": "crops_daily:6:7"
+      "icon": "res://assets/kitchen_cooking/ingredients/reoin.png"
     },
     {
       "id": "seed_rocue",
@@ -170,7 +170,7 @@
       "crop_id": "rocue",
       "sell": 20,
       "giftable": true,
-      "icon": "crops_daily:13:0"
+      "icon": "res://assets/kitchen_cooking/ingredients/rocue.png"
     },
     {
       "id": "seed_sproccili",
@@ -189,7 +189,7 @@
       "crop_id": "sproccili",
       "sell": 21,
       "giftable": true,
-      "icon": "crops_daily:13:1"
+      "icon": "res://assets/kitchen_cooking/ingredients/sproccili.png"
     },
     {
       "id": "seed_cacorange",
@@ -208,7 +208,7 @@
       "crop_id": "cacorange",
       "sell": 22,
       "giftable": true,
-      "icon": "crops_daily:13:2"
+      "icon": "res://assets/kitchen_cooking/ingredients/cacorange.png"
     },
     {
       "id": "seed_popacom",
@@ -227,7 +227,7 @@
       "crop_id": "popacom",
       "sell": 23,
       "giftable": true,
-      "icon": "crops_daily:13:3"
+      "icon": "res://assets/kitchen_cooking/ingredients/popacom.png"
     },
     {
       "id": "seed_chuf",
@@ -246,7 +246,7 @@
       "crop_id": "chuf",
       "sell": 24,
       "giftable": true,
-      "icon": "crops_daily:13:4"
+      "icon": "res://assets/kitchen_cooking/ingredients/chuf.png"
     },
     {
       "id": "seed_trevainne",
@@ -265,7 +265,7 @@
       "crop_id": "trevainne",
       "sell": 25,
       "giftable": true,
-      "icon": "crops_daily:13:5"
+      "icon": "res://assets/kitchen_cooking/ingredients/trevainne.png"
     },
     {
       "id": "seed_cacerries",
@@ -284,7 +284,7 @@
       "crop_id": "cacerries",
       "sell": 26,
       "giftable": true,
-      "icon": "crops_daily:13:6"
+      "icon": "res://assets/kitchen_cooking/ingredients/cacerries.png"
     },
     {
       "id": "seed_aubaba",
@@ -303,7 +303,7 @@
       "crop_id": "aubaba",
       "sell": 27,
       "giftable": true,
-      "icon": "crops_daily:13:7"
+      "icon": "res://assets/kitchen_cooking/ingredients/aubaba.png"
     },
     {
       "id": "tool_wateringcan",
@@ -331,17 +331,17 @@
       "giftable": true,
       "sell": 30
     },
-    { "id": "egg", "name": "鸡蛋", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 6, "icon": "crops_daily:6:1" },
-    { "id": "sugar", "name": "糖", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 5, "sell": 4, "source_hint": "农场小铺购买", "icon": "crops_daily:6:2" },
-    { "id": "honey", "name": "蜂蜜", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 12, "sell": 10, "source_hint": "农场小铺购买；以后可从蜂箱获得", "icon": "crops_daily:6:3" },
-    { "id": "lemon", "name": "柠檬", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 10, "sell": 8, "source_hint": "农场小铺购买；以后可从果树获得", "icon": "crops_daily:6:5" },
-    { "id": "bread", "name": "面包", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 9, "sell": 9, "source_hint": "农场小铺购买", "icon": "crops_daily:6:6" },
-    { "id": "dish_tomato_egg", "name": "番茄炒蛋", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "家常番茄炒蛋，酸甜下饭。", "icon": "crops_daily:6:0" },
-    { "id": "dish_strawberry_jam", "name": "草莓果酱", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "慢熬的草莓果酱，甜蜜可口。", "icon": "crops_daily:6:4" },
-    { "id": "dish_honey_lemon_tea", "name": "蜂蜜柠檬茶", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "温润的蜂蜜柠檬茶。", "icon": "crops_daily:7:0" },
-    { "id": "dish_garden_breakfast", "name": "花园早餐", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "面包配蜂蜜与煎蛋的元气早餐。", "icon": "crops_daily:7:1" },
-    { "id": "milk", "name": "牛奶", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 9, "icon": "crops_daily:7:2" },
-    { "id": "fertilizer", "name": "肥料", "category": "material", "ownership_type": "household", "max_stack": 99, "buy": 10, "source_hint": "农场小铺购买", "icon": "crops_daily:7:3" },
+    { "id": "egg", "name": "鸡蛋", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 6, "icon": "res://assets/kitchen_cooking/ingredients/egg.png" },
+    { "id": "sugar", "name": "糖", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 5, "sell": 4, "source_hint": "农场小铺购买", "icon": "res://assets/kitchen_cooking/ingredients/sugar.png" },
+    { "id": "honey", "name": "蜂蜜", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 12, "sell": 10, "source_hint": "农场小铺购买；以后可从蜂箱获得", "icon": "res://assets/kitchen_cooking/ingredients/honey.png" },
+    { "id": "lemon", "name": "柠檬", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 10, "sell": 8, "source_hint": "农场小铺购买；以后可从果树获得", "icon": "res://assets/kitchen_cooking/ingredients/lemon.png" },
+    { "id": "bread", "name": "面包", "category": "produce", "ownership_type": "household", "max_stack": 99, "buy": 9, "sell": 9, "source_hint": "农场小铺购买", "icon": "res://assets/kitchen_cooking/ingredients/bread.png" },
+    { "id": "dish_tomato_egg", "name": "番茄炒蛋", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "家常番茄炒蛋，酸甜下饭。", "icon": "res://assets/kitchen_cooking/dishes/tomato_egg.png" },
+    { "id": "dish_strawberry_jam", "name": "草莓果酱", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "慢熬的草莓果酱，甜蜜可口。", "icon": "res://assets/kitchen_cooking/dishes/strawberry_jam.png" },
+    { "id": "dish_honey_lemon_tea", "name": "蜂蜜柠檬茶", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "温润的蜂蜜柠檬茶。", "icon": "res://assets/kitchen_cooking/dishes/honey_lemon_tea.png" },
+    { "id": "dish_garden_breakfast", "name": "花园早餐", "category": "dish", "ownership_type": "household", "max_stack": 99, "description": "面包配蜂蜜与煎蛋的元气早餐。", "icon": "res://assets/kitchen_cooking/dishes/garden_breakfast.png" },
+    { "id": "milk", "name": "牛奶", "category": "produce", "ownership_type": "household", "max_stack": 99, "sell": 9, "icon": "res://assets/kitchen_cooking/ingredients/milk.png" },
+    { "id": "fertilizer", "name": "肥料", "category": "material", "ownership_type": "household", "max_stack": 99, "buy": 10, "source_hint": "农场小铺购买", "icon": "res://assets/kitchen_cooking/ingredients/fertilizer.png" },
     {
       "id": "coin",
       "name": "金币",
