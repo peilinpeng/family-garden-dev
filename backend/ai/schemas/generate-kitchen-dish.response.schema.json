@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://family-garden.local/schemas/generate-kitchen-dish.response.schema.json",
+  "title": "generate-kitchen-dish 响应",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "data", "meta"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "description", "serving_note", "family_question", "visual"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "description": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "serving_note": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "family_question": { "type": "string", "minLength": 8, "maxLength": 120 },
+                "visual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["style", "shape", "plate_color", "base_color", "accent_colors", "garnish_color"],
+                  "properties": {
+                    "style": { "const": "soft_pixel_food_icon" },
+                    "shape": {
+                      "type": "string",
+                      "enum": ["plate", "bowl", "jar", "mug", "breakfast_plate"]
+                    },
+                    "plate_color": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "base_color": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "accent_colors": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "items": {
+                        "type": "string",
+                        "pattern": "^#[0-9A-Fa-f]{6}$"
+                      }
+                    },
+                    "garnish_color": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    }
+                  }
+                },
+                "safety_note": { "type": "string", "maxLength": 200 }
+              }
+            }
+          ]
+        },
+        "meta": { "$ref": "common.schema.json#/$defs/successMeta" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "data": { "type": "null" } } },
+          "then": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "empty" } } } } },
+          "else": { "properties": { "meta": { "type": "object", "properties": { "result": { "const": "complete" } } } } }
+        }
+      ]
+    },
+    { "$ref": "common.schema.json#/$defs/failureEnvelope" }
+  ]
+}

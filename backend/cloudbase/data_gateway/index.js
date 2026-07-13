@@ -30,15 +30,16 @@ const db = app.database();
 const TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'inventories', 'travel_places', 'postcards', 'messages', 'mailbox_events',
-  'farm_plots', 'farm_activity_log',
+  'farm_plots', 'farm_activity_log', 'kitchen_dishes',
 ]);
 const AUDITED_TABLES = new Set([
   'memories', 'nodes', 'answers', 'rooms', 'room_objects', 'families',
   'travel_places', 'postcards', 'messages', 'mailbox_events',
-  'farm_plots', 'farm_activity_log',
+  'farm_plots', 'farm_activity_log', 'kitchen_dishes',
 ]);
 const AUTO_CREATE_TABLES = new Set([
   'travel_places', 'postcards', 'messages', 'mailbox_events', 'farm_plots', 'farm_activity_log',
+  'kitchen_dishes',
 ]);
 
 // 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)

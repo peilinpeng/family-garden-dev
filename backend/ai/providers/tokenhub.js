@@ -7,6 +7,7 @@ const { AppError } = require("../errors");
 const TEXT_ROUTES = new Set([
   "generate-memory-card",
   "generate-bottle-question",
+  "generate-kitchen-dish",
   "cross-memory-link",
 ]);
 const SCHEMA_ROUTES = new Set([...TEXT_ROUTES, "analyze-room-photo"]);

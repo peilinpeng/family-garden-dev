@@ -51,6 +51,7 @@ def expect_invalid(schema_name: str, value, label: str) -> None:
 cases = {
     "generate-memory-card": "memory_card_mock.json",
     "generate-bottle-question": "bottle_question_mock.json",
+    "generate-kitchen-dish": "kitchen_dish_mock.json",
     "analyze-room-photo": "room_analysis_mock.json",
     "cross-memory-link": "cross_memory_link_mock.json",
 }
@@ -184,6 +185,22 @@ expect_invalid(
     "漂流瓶问题超长",
 )
 
+bad_dish = load_json(MOCK_DIR / "kitchen_dish_mock.json")
+bad_dish["family_story"] = "这是你们去年旅行时第一次做的菜。"
+expect_invalid(
+    "generate-kitchen-dish.response.schema.json",
+    {"ok": True, "data": bad_dish, "meta": response["meta"]},
+    "厨房料理夹带额外家庭事实字段",
+)
+
+bad_dish_request = load_json(FIXTURE_DIR / "generate-kitchen-dish.request.json")
+bad_dish_request["ingredients"][0]["x"] = 12
+expect_invalid(
+    "generate-kitchen-dish.request.schema.json",
+    bad_dish_request,
+    "厨房食材夹带坐标",
+)
+
 bad_room = load_json(MOCK_DIR / "room_analysis_mock.json")
 bad_room["objects"] = bad_room["objects"] * 3
 expect_invalid(
@@ -243,4 +260,4 @@ expect_invalid(
     "非空 data 错误标记为 empty",
 )
 
-print(f"Gate 1 契约测试通过：{len(schemas)} 个 Schema，4 组生成请求/mock + 1 组内容审核，扩展拒绝与空结果场景通过。")
+print(f"Gate 1 契约测试通过：{len(schemas)} 个 Schema，5 组生成请求/mock + 1 组内容审核，扩展拒绝与空结果场景通过。")

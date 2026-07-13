@@ -12,7 +12,7 @@ const { SafetyService } = require("../safety");
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const MOCKS = path.join(__dirname, "..", "..", "mocks");
-const ROUTES = ["generate-memory-card", "generate-bottle-question", "analyze-room-photo", "cross-memory-link"];
+const ROUTES = ["generate-memory-card", "generate-bottle-question", "generate-kitchen-dish", "analyze-room-photo", "cross-memory-link"];
 
 function json(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -57,10 +57,11 @@ function makeApp(provider, config = testConfig(), overrides = {}) {
   });
 }
 
-test("四个路由均返回通过 Gate 1 Schema 的响应", async () => {
+test("五个生成路由均返回通过 Gate 1 Schema 的响应", async () => {
   const byRoute = {
     "generate-memory-card": "memory_card_mock.json",
     "generate-bottle-question": "bottle_question_mock.json",
+    "generate-kitchen-dish": "kitchen_dish_mock.json",
     "analyze-room-photo": "room_analysis_mock.json",
     "cross-memory-link": "cross_memory_link_mock.json",
   };

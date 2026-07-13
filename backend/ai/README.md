@@ -1,9 +1,10 @@
 # Family Garden AI Serverless
 
-四项生成能力与一项确认内容审核能力的独立 CloudBase 云函数：
+五项生成能力与一项确认内容审核能力的独立 CloudBase 云函数：
 
 - `generate-memory-card`
 - `generate-bottle-question`
+- `generate-kitchen-dish`
 - `analyze-room-photo`
 - `cross-memory-link`
 - `moderate-user-content`（不调用生成模型，不允许 fallback）
@@ -31,7 +32,7 @@ Godot（Gate 3 接入）
 | `index.js` | CloudBase `main` 入口、HTTP 基础校验、统一错误输出 |
 | `router.js` | 生成编排、用户确认审核、修复重采样、fallback |
 | `providers/tokenhub.js` | TokenHub OpenAI 兼容接口适配 |
-| `prompts/` | 四套独立、带版本号的 prompt |
+| `prompts/` | 五套独立、带版本号的 prompt |
 | `schemas/` | Gate 1 JSON Schema 真源 |
 | `validators/` | AJV 校验、可靠 JSON 提取与跨记忆语义约束 |
 | `safety/` | 本地前置策略 + 腾讯 TMS/IMS 审核 |
@@ -101,7 +102,7 @@ JSON Schema 后可设置 `AI_VISION_JSON_SCHEMA=true`，默认关闭以避免未
 8. 用测试家庭 member_token 对五个路由做一次真实联调；
 9. 确认日志中没有 Authorization、用户原文、签名 URL 查询参数或上游原始响应。
 
-`build:deploy` 会从 `backend/mocks/` 复制四个 Gate 1 mock 到 dist，仅用于部署打包；源文件仍是唯一真源。dist 被 `.gitignore` 排除，不提交构建产物。
+`build:deploy` 会从 `backend/mocks/` 复制五个 Gate 1 mock 到 dist，仅用于部署打包；源文件仍是唯一真源。dist 被 `.gitignore` 排除，不提交构建产物。
 
 入口同时支持两种路由方式：
 

@@ -7,6 +7,7 @@ extends RefCounted
 const ROUTES := [
 	"generate-memory-card",
 	"generate-bottle-question",
+	"generate-kitchen-dish",
 	"analyze-room-photo",
 	"cross-memory-link",
 	"moderate-user-content",
@@ -21,6 +22,8 @@ const ROOM_THEMES := ["study_corner", "reading_corner", "rest_corner", "family_c
 const ROOM_OBJECT_TYPES := ["desk", "lamp", "plant", "photo_wall", "bed", "chair"]
 const ROOM_ZONES := ["back_wall", "back_left", "back_center", "back_right", "left_side", "right_side", "front_left", "front_center", "front_right", "floor_center"]
 const AVOID_TOPICS := ["conflict", "trauma", "health", "politics", "religion", "grief"]
+const KITCHEN_STATIONS := ["stove", "prep_table", "pantry"]
+const KITCHEN_VISUAL_SHAPES := ["plate", "bowl", "jar", "mug", "breakfast_plate"]
 const SUCCESS_SOURCES := ["ai", "fallback", "mock"]
 const RESULT_TYPES := ["complete", "empty"]
 const MEMORY_SCENES := ["garden", "fishpond"]
@@ -39,6 +42,8 @@ static func validate_request(route: String, payload: Variant) -> Dictionary:
 			_validate_memory_card_request(value, errors)
 		"generate-bottle-question":
 			_validate_bottle_request(value, errors)
+		"generate-kitchen-dish":
+			_validate_kitchen_dish_request(value, errors)
 		"analyze-room-photo":
 			_validate_room_request(value, errors)
 		"cross-memory-link":
@@ -75,6 +80,8 @@ static func validate_envelope(route: String, envelope: Variant, request_payload:
 			_validate_memory_card(data, errors)
 		"generate-bottle-question":
 			_validate_bottle_question(data, errors)
+		"generate-kitchen-dish":
+			_validate_kitchen_dish(data, errors)
 		"analyze-room-photo":
 			_validate_room_analysis(data, errors)
 		"cross-memory-link":
@@ -137,6 +144,27 @@ static func _validate_bottle_request(value: Dictionary, errors: Array[String]) -
 				elif seen.has(topic):
 					errors.append("avoid_topics 不能包含重复项")
 				seen[topic] = true
+
+static func _validate_kitchen_dish_request(value: Dictionary, errors: Array[String]) -> void:
+	_string_field(value, "dish_id", 1, 128, errors)
+	_enum_field(value, "station_type", KITCHEN_STATIONS, errors)
+	_enum_field(value, "tone", ["warm"], errors)
+	_enum_field(value, "language", ["zh-CN", "en-US"], errors)
+	var ingredients: Variant = value.get("ingredients")
+	if not ingredients is Array or (ingredients as Array).is_empty() or (ingredients as Array).size() > 5:
+		errors.append("ingredients 必须包含 1..5 项")
+		return
+	for index in (ingredients as Array).size():
+		var raw: Variant = (ingredients as Array)[index]
+		if not raw is Dictionary:
+			errors.append("ingredients[%d] 必须是 Dictionary" % index)
+			continue
+		var item := raw as Dictionary
+		_string_field(item, "id", 1, 128, errors, "ingredients[%d]." % index)
+		_string_field(item, "name", 1, 40, errors, "ingredients[%d]." % index)
+		var qty: Variant = item.get("qty")
+		if typeof(qty) != TYPE_INT or int(qty) < 1 or int(qty) > 9:
+			errors.append("ingredients[%d].qty 必须是 1..9 的整数" % index)
 
 static func _validate_room_request(value: Dictionary, errors: Array[String]) -> void:
 	_string_field(value, "memory_id", 1, 128, errors)
@@ -216,6 +244,38 @@ static func _validate_bottle_question(data: Variant, errors: Array[String]) -> v
 	_enum_field(value, "suggested_scene", SCENES, errors)
 	_enum_field(value, "prompt_type", ["shared_memory", "personal_memory", "directed_memory"], errors)
 	_enum_field(value, "tone", ["warm"], errors)
+
+static func _validate_kitchen_dish(data: Variant, errors: Array[String]) -> void:
+	if not data is Dictionary:
+		errors.append("kitchen-dish data 必须是 Dictionary")
+		return
+	var value := data as Dictionary
+	_string_field(value, "name", 1, 40, errors)
+	_string_field(value, "description", 1, 240, errors)
+	_string_field(value, "serving_note", 1, 120, errors)
+	_string_field(value, "family_question", 8, 120, errors)
+	_validate_kitchen_visual(value.get("visual"), errors)
+	if value.has("safety_note"):
+		_string_field(value, "safety_note", 0, 200, errors)
+
+static func _validate_kitchen_visual(data: Variant, errors: Array[String]) -> void:
+	if not data is Dictionary:
+		errors.append("visual 必须是 Dictionary")
+		return
+	var value := data as Dictionary
+	if value.get("style") != "soft_pixel_food_icon":
+		errors.append("visual.style 必须是 soft_pixel_food_icon")
+	_enum_field(value, "shape", KITCHEN_VISUAL_SHAPES, errors, "visual.")
+	for key in ["plate_color", "base_color", "garnish_color"]:
+		if not _valid_hex_color(String(value.get(key, ""))):
+			errors.append("visual.%s 必须是 #RRGGBB" % key)
+	var accents: Variant = value.get("accent_colors")
+	if not accents is Array or (accents as Array).is_empty() or (accents as Array).size() > 4:
+		errors.append("visual.accent_colors 必须包含 1..4 个颜色")
+		return
+	for index in (accents as Array).size():
+		if not _valid_hex_color(String((accents as Array)[index])):
+			errors.append("visual.accent_colors[%d] 必须是 #RRGGBB" % index)
 
 static func _validate_room_analysis(data: Variant, errors: Array[String]) -> void:
 	if not data is Dictionary:
@@ -345,3 +405,8 @@ static func _valid_upload_id(value: String) -> bool:
 	if not value.begins_with("upload_") or value.length() != 39:
 		return false
 	return value.trim_prefix("upload_").is_valid_hex_number(false)
+
+static func _valid_hex_color(value: String) -> bool:
+	if value.length() != 7 or not value.begins_with("#"):
+		return false
+	return value.substr(1).is_valid_hex_number(false)

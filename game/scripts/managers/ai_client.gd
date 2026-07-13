@@ -58,6 +58,21 @@ const MOCK_BOTTLE_QUESTION := {
 	"tone": "warm",
 	"safety_note": "问题保持开放和低压力，不预设家庭经历。",
 }
+const MOCK_KITCHEN_DISH := {
+	"name": "花园晨光小炒",
+	"description": "把随机挑出的新鲜食材做成一盘明亮的小炒，味道清爽，适合摆在家庭餐桌中央。",
+	"serving_note": "趁热端上桌，香气会更明显。",
+	"family_question": "这道菜让你想到家里哪一次轻松的晚餐？",
+	"visual": {
+		"style": "soft_pixel_food_icon",
+		"shape": "plate",
+		"plate_color": "#F4E4C8",
+		"base_color": "#F2C14E",
+		"accent_colors": ["#D94B35", "#F07A3A", "#FFE08A"],
+		"garnish_color": "#4E9D55",
+	},
+	"safety_note": "仅基于提供的食材生成料理说明，没有编造家庭事实。",
+}
 const MOCK_LINK := {
 	"links": [],
 	"safety_note": "离线模式不创建未经验证的跨记忆连线。",
@@ -157,6 +172,16 @@ func request_bottle_question(context: Dictionary = {}) -> Dictionary:
 		if context.has(optional):
 			payload[optional] = context[optional]
 	return await _call("generate-bottle-question", payload, MOCK_BOTTLE_QUESTION)
+
+func request_kitchen_dish(dish_id: String, station_type: String, ingredients: Array) -> Dictionary:
+	var payload := {
+		"dish_id": dish_id,
+		"station_type": station_type,
+		"ingredients": ingredients.duplicate(true),
+		"tone": "warm",
+		"language": "zh-CN",
+	}
+	return await _call("generate-kitchen-dish", payload, MOCK_KITCHEN_DISH)
 
 func cross_memory_link(memory: Variant, candidates: Array = []) -> Dictionary:
 	var outcome := await request_memory_links(memory, candidates)
@@ -315,6 +340,7 @@ func _validate_mocks() -> void:
 	var samples := {
 		"generate-memory-card": MOCK_MEMORY_CARD,
 		"generate-bottle-question": MOCK_BOTTLE_QUESTION,
+		"generate-kitchen-dish": MOCK_KITCHEN_DISH,
 		"analyze-room-photo": MOCK_ROOM_ANALYSIS,
 		"cross-memory-link": MOCK_LINK,
 	}

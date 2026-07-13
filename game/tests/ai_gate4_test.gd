@@ -62,6 +62,8 @@ class FakeAIBackend:
 			"generate-bottle-question":
 				data = AIClient.MOCK_BOTTLE_QUESTION.duplicate(true)
 				data["question"] = "第 %d 次生成：你最想和家人重温哪段温暖时光？" % int(calls[route])
+			"generate-kitchen-dish":
+				data = AIClient.MOCK_KITCHEN_DISH.duplicate(true)
 			"analyze-room-photo":
 				data = AIClient.mock_room_analysis()
 			"cross-memory-link":
@@ -117,6 +119,7 @@ func _run() -> void:
 	_test_memory_visual_assets()
 	_test_family_portrait_miniature()
 	_test_null_ai_outcome_guard()
+	await _test_kitchen_dish_visual_texture()
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
@@ -129,6 +132,17 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		get_tree().quit(1)
+
+func _test_kitchen_dish_visual_texture() -> void:
+	InventoryManager.give("produce_corrato", 2, true)
+	InventoryManager.give("egg", 1, true)
+	var result: Dictionary = await KitchenManager.craft_random_ai_dish("stove")
+	_assert(result.ok, "AI 随机料理应可生成并提交")
+	var dish: Dictionary = result.get("dish", {}) if result.get("dish", {}) is Dictionary else {}
+	var dish_id := String(dish.get("id", ""))
+	var texture := KitchenManager.dish_icon(dish_id)
+	_assert(texture != null and texture.get_width() == 96 and texture.get_height() == 96, "AI 料理必须渲染 96x96 菜品图")
+	_assert(dish.get("visual", {}) is Dictionary, "AI 料理必须保存 visual 菜品图规格")
 
 func _test_image_preparation() -> void:
 	var image := Image.create(2200, 1100, false, Image.FORMAT_RGB8)

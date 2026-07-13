@@ -15,6 +15,10 @@ const ROUTES = Object.freeze({
     prompt: require("./prompts/bottle_question"),
     mock: "bottle_question_mock.json",
   },
+  "generate-kitchen-dish": {
+    prompt: require("./prompts/kitchen_dish"),
+    mock: "kitchen_dish_mock.json",
+  },
   "analyze-room-photo": {
     prompt: require("./prompts/room_analysis"),
     mock: "room_analysis_mock.json",
