@@ -56,15 +56,24 @@ func build_portals(scene: String, world: Node2D, travel_cb: Callable) -> int:
 ## fade=true 时不立即切场景:人物先锁住输入原地淡出,delay 秒后才真正传送,
 ## 避免"一脚踩进去画面突然跳走"的突兀感（见 docs/09 §14 之外的手感调整）。
 func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
+	if not bool(portal.get("enabled", true)):
+		return
 	var rect := _to_rect(portal.get("trigger_rect", [0, 0, 96, 128]))
 	var target := String(portal.get("target_scene", ""))
 	var spawn_key := String(portal.get("spawn_point", "default"))
+	if target == "":
+		return
 	var tap_enabled := bool(portal.get("tap_enabled", true))
 	var fade := bool(portal.get("fade", false))
 	var delay := float(portal.get("delay", 0.0))
 
 	var area := Area2D.new()
 	area.name = String(portal.get("portal_id", "portal"))
+	area.set_meta("portal_id", area.name)
+	area.set_meta("target_scene", target)
+	area.set_meta("target_spawn_id", spawn_key)
+	area.set_meta("cooldown_after_teleport", float(portal.get("cooldown_after_teleport", 0.8)))
+	area.set_meta("one_way", bool(portal.get("one_way", true)))
 	area.monitoring = true
 	area.collision_mask = 1  # 主控角色在 layer 1
 	area.position = rect.position + rect.size * 0.5
@@ -91,6 +100,9 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 		area.input_pickable = true
 		area.input_event.connect(func(_vp: Node, event: InputEvent, _idx: int) -> void:
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				if firing:
+					return
+				firing = true
 				get_viewport().set_input_as_handled()
 				travel_cb.call(target, spawn_key))
 

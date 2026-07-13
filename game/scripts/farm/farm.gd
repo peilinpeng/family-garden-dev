@@ -125,7 +125,7 @@ func _spawn_family(local_role: String) -> void:
 
 ## 在画面底部中心附近螺旋找一个可走点作为出生位置。
 func _find_walkable_start() -> Vector2:
-	var spawn_center := Vector2(640, 650)
+	var spawn_center := Vector2(640, 590)
 	for r in range(0, 420, 8):
 		for a in range(0, 360, 15):
 			var p: Vector2 = spawn_center + Vector2(r, 0).rotated(deg_to_rad(a))

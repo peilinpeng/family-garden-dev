@@ -69,6 +69,9 @@ size = Vector2(96, 128)
 [sub_resource type="RectangleShape2D" id="bottle_interact_shape"]
 size = Vector2(96, 96)
 
+[sub_resource type="RectangleShape2D" id="fishing_interact_shape"]
+size = Vector2(180, 120)
+
 [sub_resource type="SpriteFrames" id="SpriteFrames_water_loop"]
 animations = [{
 "frames": [{
@@ -109,9 +112,9 @@ point_count = 7
 
 [sub_resource type="Curve2D" id="Curve2D_duck_route"]
 _data = {
-"points": PackedVector2Array(0, 0, 0, 0, 330, 20, 0, 0, 0, 0, 230, 62, 0, 0, 0, 0, 80, 82, 0, 0, 0, 0, -86, 72, 0, 0, 0, 0, -210, 32, 0, 0, 0, 0, -250, -42, 0, 0, 0, 0, -150, -98, 0, 0, 0, 0, 20, -112, 0, 0, 0, 0, 180, -72, 0, 0, 0, 0, 310, -20, 0, 0, 0, 0, 330, 20)
+"points": PackedVector2Array(0, 0, 0, 0, 330, 20, 0, 0, 0, 0, 248, -28, 0, 0, 0, 0, 112, -48, 0, 0, 0, 0, -62, -72, 0, 0, 0, 0, -176, -104, 0, 0, 0, 0, -86, -142, 0, 0, 0, 0, 82, -132, 0, 0, 0, 0, 236, -82, 0, 0, 0, 0, 330, 20)
 }
-point_count = 11
+point_count = 9
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_u4p1f"]
 
@@ -258,9 +261,12 @@ metadata/prompt = "Check the drifting bottle"
 shape = SubResource("bottle_interact_shape")
 
 [node name="FishingSpot" type="Area2D" parent="." unique_id=1934565884]
-position = Vector2(330, 176)
+position = Vector2(0, 192)
 metadata/interact_action = "pond_fishing_spot"
-metadata/prompt = "Fish by the pond"
+metadata/prompt = "按 E 在钓鱼台钓鱼"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FishingSpot"]
+shape = SubResource("fishing_interact_shape")
 
 [node name="YSortObjects" type="Node2D" parent="." unique_id=2117004001]
 y_sort_enabled = true
@@ -472,6 +478,7 @@ texture = ExtResource("24_lotus_flower_01")
 offset = Vector2(0, -60.5)
 
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower01"]
+collision_layer = 1
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower01/StaticBody2D"]
@@ -487,6 +494,7 @@ texture = ExtResource("25_lotus_flower_02")
 offset = Vector2(0, -43)
 
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower02"]
+collision_layer = 1
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower02/StaticBody2D"]
@@ -502,6 +510,7 @@ texture = ExtResource("26_lotus_flower_03")
 offset = Vector2(0, -43.5)
 
 [node name="StaticBody2D" type="StaticBody2D" parent="YSortObjects/LotusFlower03"]
+collision_layer = 1
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="YSortObjects/LotusFlower03/StaticBody2D"]
