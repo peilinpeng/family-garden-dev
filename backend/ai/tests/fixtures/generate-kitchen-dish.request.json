@@ -1,0 +1,10 @@
+{
+  "dish_id": "dish_ai_contract_001",
+  "station_type": "stove",
+  "ingredients": [
+    { "id": "produce_corrato", "name": "红番茄", "qty": 2 },
+    { "id": "egg", "name": "鸡蛋", "qty": 1 }
+  ],
+  "tone": "warm",
+  "language": "zh-CN"
+}

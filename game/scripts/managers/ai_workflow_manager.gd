@@ -8,6 +8,7 @@ signal workflow_state_changed(workflow: String, state: String, detail: Dictionar
 const LINK_CONFIDENCE_THRESHOLD := 0.65
 const MAX_LINK_CANDIDATES := 12
 const SUPPORTED_MEMORY_SCENES := ["garden", "fishpond"]
+const SUPPORTED_KITCHEN_STATIONS := ["stove", "prep_table", "pantry"]
 
 func prepare_memory_draft(raw_text: String, image_bytes: PackedByteArray = PackedByteArray(), content_type: String = "") -> Dictionary:
 	var text := raw_text.strip_edges()
@@ -38,6 +39,71 @@ func prepare_memory_draft(raw_text: String, image_bytes: PackedByteArray = Packe
 	}
 	_emit("memory", "draft_ready", draft)
 	return draft
+
+func prepare_kitchen_dish_draft(ingredients: Array, station_type: String = "stove") -> Dictionary:
+	if station_type not in SUPPORTED_KITCHEN_STATIONS:
+		return _failure("INVALID_STATION", "这个厨房台面暂时不能随机做菜。")
+	var normalized: Array = []
+	for raw in ingredients:
+		if not raw is Dictionary:
+			continue
+		var item := raw as Dictionary
+		var iid := String(item.get("id", ""))
+		var qty := int(item.get("qty", 1))
+		if iid == "" or qty <= 0:
+			continue
+		normalized.append({
+			"id": iid,
+			"name": String(item.get("name", ItemDB.display_name(iid))),
+			"qty": clampi(qty, 1, 9),
+		})
+	if normalized.is_empty() or normalized.size() > 5:
+		return _failure("INVALID_INGREDIENTS", "随机食材数量需要在 1 到 5 种之间。")
+	var workflow_key := _workflow_key("kitchen", station_type + "\n" + JSON.stringify(normalized) + "\n" + str(Time.get_ticks_msec()), PackedByteArray())
+	var dish_id := "dish_ai_" + workflow_key.left(24)
+	_emit("kitchen", "generating", {"workflow_key": workflow_key, "ingredients": normalized})
+	var outcome: Dictionary = await AIClient.request_kitchen_dish(dish_id, station_type, normalized)
+	var dish := _dictionary_or_empty(outcome.get("data"))
+	if dish.is_empty():
+		return _failure_from_outcome(outcome)
+	var draft := {
+		"ok": true,
+		"kind": "kitchen_dish",
+		"workflow_key": workflow_key,
+		"dish_id": dish_id,
+		"station_type": station_type,
+		"ingredients": normalized.duplicate(true),
+		"dish": dish.duplicate(true),
+		"generation_meta": _dictionary_or_empty(outcome.get("meta")).duplicate(true),
+		"used_fallback": bool(outcome.get("used_fallback", false)),
+	}
+	_emit("kitchen", "draft_ready", draft)
+	return draft
+
+func commit_kitchen_dish_draft(draft: Dictionary) -> Dictionary:
+	if String(draft.get("kind", "")) != "kitchen_dish":
+		return _failure("INVALID_DRAFT", "这不是厨房料理草稿。")
+	var dish := _dictionary_or_empty(draft.get("dish"))
+	var validation := AIContractValidator.validate_data("generate-kitchen-dish", dish)
+	if not bool(validation.get("ok", false)):
+		return _failure("INVALID_DISH", "; ".join(validation.get("errors", [])))
+	var ingredients: Array = draft.get("ingredients", []) if draft.get("ingredients", []) is Array else []
+	for ing in ingredients:
+		if not ing is Dictionary:
+			return _failure("INVALID_INGREDIENTS", "食材数据不完整。")
+		if InventoryManager.storehouse.count(String((ing as Dictionary).get("id", ""))) < int((ing as Dictionary).get("qty", 1)):
+			return _failure("INGREDIENTS_CHANGED", "共享仓里的食材已经不够了。")
+	for ing in ingredients:
+		InventoryManager.take(String((ing as Dictionary).get("id", "")), int((ing as Dictionary).get("qty", 1)), true)
+	var row := dish.duplicate(true)
+	row["id"] = String(draft.get("dish_id", ""))
+	row["ingredients"] = ingredients.duplicate(true)
+	row["station_type"] = String(draft.get("station_type", "stove"))
+	row["quantity"] = 1
+	var saved: Dictionary = MemoryManager.create_kitchen_ai_dish(row, draft.get("generation_meta", {}), String(draft.get("workflow_key", "")))
+	var synced := await _confirm_records([{"table": "kitchen_dishes", "row": saved}])
+	_emit("kitchen", "committed", {"dish": saved})
+	return {"ok": true, "dish": saved, "sync_pending": not synced}
 
 func commit_memory_draft(draft: Dictionary, edited_card: Dictionary, wait_for_links: bool = false) -> Dictionary:
 	await flush_ai_sync_outbox()

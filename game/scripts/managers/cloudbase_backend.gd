@@ -28,6 +28,7 @@ const REQUEST_TIMEOUT_SECONDS := 30.0
 const SNAPSHOT_TABLES := [
 	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
 	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots", "farm_activity_log",
+	"kitchen_dishes",
 ]
 
 var _cfg: Dictionary = {}

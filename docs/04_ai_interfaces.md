@@ -1,9 +1,9 @@
 # 04｜AI 接口、结构化输出与内容安全规范
 
-> 契约版本：`1.1.0`
+> 契约版本：`1.3.0`
 > 状态：Gate 1 冻结
 > Schema 真源：`backend/ai/schemas/`
-> 适用接口：记忆卡片、漂流瓶问题、房间照片分析、跨记忆关联
+> 适用接口：记忆卡片、漂流瓶问题、厨房随机料理、房间照片分析、跨记忆关联
 
 ---
 
@@ -17,6 +17,7 @@ AI 可以：
 - 将用户信息整理成短标题、描述和温和问题；
 - 从冻结枚举中推荐场景、节点、房间物件和 zone；
 - 找出多段记忆之间可解释的内容重叠。
+- 基于游戏内已选食材生成创意菜名、料理说明和开放式餐桌话题。
 
 AI 不可以：
 
@@ -25,12 +26,13 @@ AI 不可以：
 - 自动生成死亡、疾病、离婚、创伤等敏感情节；
 - 输出坐标、矩形、尺寸、slot、footprint、碰撞区或资源路径；
 - 输出 Schema 未声明的字段。
+- 把创意料理描述伪装成真实家庭经历、传统或成员事实。
 
 坐标归场景系统：AI 只输出 `suggested_scene`、`node_type`、`object_type` 和 `zone`；`SlotManager`、`ZoneManager`、manifest 与场景负责人决定真实落点。
 
 ## 2. 身份与传输边界
 
-四个接口均使用：
+AI 接口均使用：
 
 ```http
 POST /api/ai/<route>
@@ -248,15 +250,80 @@ POST /api/ai/generate-bottle-question
 - `prompt_type`：`shared_memory / personal_memory / directed_memory`；
 - 若界面需要多个漂流瓶，由客户端发起多次请求或由后续批量接口解决，不让单数接口产生双重类型。
 
-## 7. 分析房间照片
+## 7. 生成厨房随机料理
 
 ### 7.1 路由
+
+```text
+POST /api/ai/generate-kitchen-dish
+```
+
+### 7.2 请求
+
+```json
+{
+  "dish_id": "dish_ai_001",
+  "station_type": "stove",
+  "ingredients": [
+    { "id": "produce_corrato", "name": "红番茄", "qty": 2 },
+    { "id": "egg", "name": "鸡蛋", "qty": 1 }
+  ],
+  "tone": "warm",
+  "language": "zh-CN"
+}
+```
+
+约束：
+
+- `dish_id` 由客户端生成，用于幂等与动态菜肴记录；
+- `station_type`：`stove / prep_table / pantry`；
+- `ingredients` 为 1～5 项，只能来自游戏已选中的真实库存食材；
+- 每项食材只传 `id / name / qty`，不传库存全量、家庭成员私人信息或坐标；
+- `tone` 当前固定为 `warm`；
+- AI 不决定扣除哪些食材，扣除由客户端/服务端玩法逻辑在确认时完成。
+
+### 7.3 `data`
+
+```json
+{
+  "name": "晨光番茄煎蛋",
+  "description": "用红番茄和鸡蛋做成的明亮家常菜，酸甜柔和，适合摆在家庭餐桌中央。",
+  "serving_note": "趁热端上桌会更香。",
+  "family_question": "这道菜让你想起家里谁最常做饭？",
+  "visual": {
+    "style": "soft_pixel_food_icon",
+    "shape": "plate",
+    "plate_color": "#F4E4C8",
+    "base_color": "#F2C14E",
+    "accent_colors": ["#D94B35", "#F07A3A"],
+    "garnish_color": "#4E9D55"
+  },
+  "safety_note": "仅基于提供的食材生成料理说明，没有编造家庭事实。"
+}
+```
+
+约束：
+
+- `name` 为 1～40 字符；
+- `description` 为 1～240 字符；
+- `serving_note` 为 1～120 字符；
+- `family_question` 为 8～120 字符，必须是开放式餐桌话题；
+- `visual` 是菜品图生成规格，客户端据此渲染一张 soft pixel 菜品图；
+- `visual.style` 固定为 `soft_pixel_food_icon`；
+- `visual.shape`：`plate / bowl / jar / mug / breakfast_plate`；
+- `plate_color / base_color / garnish_color / accent_colors[]` 均为 `#RRGGBB`；
+- `visual` 不得输出坐标、尺寸、文字、logo、人物或真实照片信息；
+- 不得编造“这是你们某年某地一起做过的菜”等家庭事实。
+
+## 8. 分析房间照片
+
+### 8.1 路由
 
 ```text
 POST /api/ai/analyze-room-photo
 ```
 
-### 7.2 请求
+### 8.2 请求
 
 ```json
 {
@@ -268,7 +335,7 @@ POST /api/ai/analyze-room-photo
 
 `memory_id`、`upload_id`、`language` 均必填。客户端先通过 data_gateway 上传图片，AI Serverless 再凭成员身份解析临时 URL；不信任客户端提供的任意图片地址。
 
-### 7.3 `data`
+### 8.3 `data`
 
 ```json
 {
@@ -294,15 +361,15 @@ POST /api/ai/analyze-room-photo
 - `photo_wall` 应使用墙面 zone；其他物件的 footprint 仍由 manifest 决定；
 - AI 输出非法 zone 时服务端按 Schema 判为 `AI_INVALID_OUTPUT`，不能让非法值直接进入数据层。
 
-## 8. 跨记忆关联
+## 9. 跨记忆关联
 
-### 8.1 路由
+### 9.1 路由
 
 ```text
 POST /api/ai/cross-memory-link
 ```
 
-### 8.2 请求
+### 9.2 请求
 
 ```json
 {
@@ -330,7 +397,7 @@ POST /api/ai/cross-memory-link
 - 标题最多 40 字符，描述最多 300 字符；
 - 服务端必须先验证所有候选属于当前家庭。
 
-### 8.3 `data`
+### 9.3 `data`
 
 ```json
 {
@@ -357,7 +424,7 @@ POST /api/ai/cross-memory-link
 - 关联不足时返回空 `links`，不得编造；
 - 输出不包含连线坐标；客户端根据两个节点的 slot 计算端点。
 
-## 9. 用户确认内容审核
+## 10. 用户确认内容审核
 
 ```text
 POST /api/ai/moderate-user-content
@@ -376,7 +443,7 @@ POST /api/ai/moderate-user-content
 
 成功时返回 `{"approved": true}`；内容不安全、审核服务不可用或身份失效时必须拒绝写入。
 
-## 10. 错误码
+## 11. 错误码
 
 | 错误码 | 推荐 HTTP | 可重试 | 使用场景 |
 |---|---:|---|---|
@@ -397,7 +464,7 @@ POST /api/ai/moderate-user-content
 
 技术失败可以返回安全 fallback；鉴权失败、越权、内容不安全和明显非法请求不得用 fallback 掩盖。
 
-## 11. 内容安全和 prompt 规则
+## 12. 内容安全和 prompt 规则
 
 每个系统 prompt 必须包含：
 
@@ -411,7 +478,7 @@ POST /api/ai/moderate-user-content
 
 Serverless 必须依次执行：身份与受控图片解析 → 输入限制 → 输入安全检查 → prompt 定界 → 模型调用 → JSON 提取 → Schema 校验 → 输出安全检查 → 返回或 fallback。用户最终编辑内容另走审核路由并 fail-closed。
 
-## 12. 数据记录与兼容
+## 13. 数据记录与兼容
 
 当 AI 结果写入 memory 或相关业务记录时，至少保留：
 
@@ -426,7 +493,7 @@ Serverless 必须依次执行：身份与受控图片解析 → 输入限制 →
 
 当前 Godot 已按请求返回 request-scoped outcome，并保留旧的 data-only 公共方法供演示种子兼容。新持久化记录只保存 `upload_id`，旧存档中的临时 `image_url` 仍可读取但不再继续写入。
 
-## 13. 验收与变更纪律
+## 14. 验收与变更纪律
 
 契约变更必须同步：
 
@@ -445,8 +512,10 @@ python3 backend/ai/tests/validate_contracts.py
 
 测试必须覆盖正常请求、mock 响应、统一错误、合法空结果、非法枚举、超长文本、过量数组和坐标注入。
 
-## 14. 变更日志
+## 15. 变更日志
 
 - `2026-07-05 / 1.0.0`：Gate 1 冻结四接口；增加统一包络、错误码、长度限制、JSON Schema、CloudBase 身份边界和兼容迁移说明；房间物件正式采用对象数组；漂流瓶正式采用单对象；跨记忆正式采用 `links` 数组。
 - `2026-07-06 / 1.1.0`：真实联调发现跨记忆请求只含新记忆 ID，模型无法可靠比较；补齐新记忆标题、描述与类型，禁止无依据关联。
 - `2026-07-11 / 1.2.0`：新增用户确认内容审核；图片改用 upload_id 受控解析；统一问题最小长度与比赛版场景；请求结果改为请求级元数据；新增 outbox、关联补偿和旧图片兼容策略。
+- `2026-07-13 / 1.3.1`：`generate-kitchen-dish` 新增 `visual` 菜品图生成规格；客户端本地渲染 soft pixel 菜品图，不让 AI 输出坐标。
+- `2026-07-13 / 1.3.0`：新增 `generate-kitchen-dish` 厨房随机料理接口；AI 只基于已选食材生成创意料理说明和开放式餐桌话题，不编造家庭事实。

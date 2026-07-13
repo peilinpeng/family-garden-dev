@@ -21,6 +21,7 @@ var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
 var kitchen_orders_done: Array = []   ## 已完成的厨房订单 id(家庭数据;v1 本地持久化,未来可接云)
+var kitchen_ai_dishes: Array = []     ## AI 随机料理 [{id,name,ingredients,description,quantity,generation_meta...}]
 var farm_activity_log: Array = []     ## 农场告示牌动态 [{id, actor_name, action, detail, created_at...}]
 # ── 启动剧情 / Chapter 1(个人 onboarding 态,与 selected_role_key 同为本设备个人字段;
 #    未来迁移点:per-member 云 profile) ──
@@ -124,6 +125,66 @@ func set_memory_link_status(memory_id: String, status: String) -> void:
 	memory["updated_at"] = Time.get_datetime_string_from_system()
 	save_game()
 	_sync("memories", memory)
+
+func create_kitchen_ai_dish(dish_data: Dictionary, generation_meta: Dictionary = {}, workflow_key: String = "") -> Dictionary:
+	var dish_id := String(dish_data.get("id", ""))
+	if dish_id == "":
+		dish_id = "dish_ai_" + (workflow_key.sha256_text().left(24) if workflow_key != "" else "%d_%03d" % [Time.get_ticks_msec(), randi() % 1000])
+	for existing in kitchen_ai_dishes:
+		if existing is Dictionary and String(existing.get("id", "")) == dish_id:
+			return existing
+	var raw_ingredients: Variant = dish_data.get("ingredients", [])
+	var raw_visual: Variant = dish_data.get("visual", {})
+	var dish := {
+		"id": dish_id,
+		"family_id": FAMILY_ID,
+		"name": String(dish_data.get("name", dish_id)),
+		"description": String(dish_data.get("description", "")),
+		"serving_note": String(dish_data.get("serving_note", "")),
+		"family_question": String(dish_data.get("family_question", "")),
+		"safety_note": String(dish_data.get("safety_note", "")),
+		"ingredients": raw_ingredients.duplicate(true) if raw_ingredients is Array else [],
+		"visual": raw_visual.duplicate(true) if raw_visual is Dictionary else {},
+		"station_type": String(dish_data.get("station_type", "stove")),
+		"quantity": int(dish_data.get("quantity", 1)),
+		"role": selected_role_key,
+		"generation_meta": generation_meta.duplicate(true),
+		"workflow_key": workflow_key,
+		"created_at": Time.get_datetime_string_from_system(),
+		"updated_at": Time.get_datetime_string_from_system(),
+	}
+	kitchen_ai_dishes.append(dish)
+	save_game()
+	_sync("kitchen_dishes", dish)
+	return dish
+
+func get_kitchen_ai_dish(dish_id: String) -> Dictionary:
+	for dish in kitchen_ai_dishes:
+		if dish is Dictionary and String(dish.get("id", "")) == dish_id:
+			return dish
+	return {}
+
+func consume_kitchen_ai_dish(dish_id: String, amount: int = 1) -> bool:
+	if amount <= 0:
+		return false
+	for index in range(kitchen_ai_dishes.size()):
+		var dish: Variant = kitchen_ai_dishes[index]
+		if not dish is Dictionary or String(dish.get("id", "")) != dish_id:
+			continue
+		var row := dish as Dictionary
+		var count := int(row.get("quantity", 0))
+		if count < amount:
+			return false
+		row["quantity"] = count - amount
+		row["updated_at"] = Time.get_datetime_string_from_system()
+		if int(row.get("quantity", 0)) <= 0:
+			kitchen_ai_dishes.remove_at(index)
+			queue_ai_delete("kitchen_dishes", dish_id)
+		else:
+			_sync("kitchen_dishes", row)
+		save_game()
+		return true
+	return false
 
 ## 注：不能叫 get_node，会覆盖 Node 原生方法（Godot 4.7 视为错误）。
 func get_node_by_id(node_id: String) -> Dictionary:
@@ -693,6 +754,7 @@ func _reset_all() -> void:
 	postcards = []
 	garden_messages = []
 	kitchen_orders_done = []
+	kitchen_ai_dishes = []
 	farm_activity_log = []
 	farm_plots = []
 	farm_livestock = {}
@@ -841,6 +903,7 @@ func pull_remote() -> void:
 	var t_messages := CloudManager.load_table("messages")
 	var t_mailbox := CloudManager.load_table("mailbox_events")
 	var t_farm_activity := CloudManager.load_table("farm_activity_log")
+	var t_kitchen_dishes := CloudManager.load_table("kitchen_dishes")
 	if cloud_ready or not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
 		apply_cloud_data({
 			"travel_places": t_places,
@@ -854,6 +917,9 @@ func pull_remote() -> void:
 		_trim_farm_activity_log()
 		farm_activity_changed.emit()
 		pulled = true
+	if cloud_ready or not t_kitchen_dishes.is_empty():
+		kitchen_ai_dishes = t_kitchen_dishes
+		pulled = true
 	if pulled:
 		save_game()
 
@@ -864,6 +930,7 @@ func save_game() -> void:
 		"postcards": postcards,
 		"garden_messages": garden_messages,
 		"kitchen_orders_done": kitchen_orders_done,
+		"kitchen_ai_dishes": kitchen_ai_dishes,
 		"farm_activity_log": farm_activity_log,
 		"farm_plots": farm_plots,
 		"farm_livestock": farm_livestock,
@@ -908,6 +975,7 @@ func load_save() -> void:
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
 		kitchen_orders_done = parsed.get("kitchen_orders_done", [])
+		kitchen_ai_dishes = parsed.get("kitchen_ai_dishes", [])
 		farm_activity_log = parsed.get("farm_activity_log", [])
 		farm_plots = parsed.get("farm_plots", [])
 		farm_livestock = parsed.get("farm_livestock", {})
