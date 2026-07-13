@@ -81,9 +81,16 @@ func can_make_random_ai_dish() -> bool:
 
 func craft_random_ai_dish(station_type: String = "stove") -> Dictionary:
 	var ingredients := random_ai_ingredients(randi_range(2, 4))
-	if ingredients.is_empty():
-		return {"ok": false, "error": {"code": "NO_INGREDIENTS", "message": "共享仓里还没有可随机料理的食材。"}}
-	var draft: Dictionary = await AIWorkflowManager.prepare_kitchen_dish_draft(ingredients, station_type)
+	return await craft_ai_dish_with_ingredients(ingredients, station_type)
+
+## 使用玩家在互动烹饪面板中选定的食材制作 AI 料理。
+## 只做白名单、去重和库存校验；真正扣料仍由 commit_kitchen_dish_draft 在 AI 成功后原子执行。
+func craft_ai_dish_with_ingredients(ingredients: Array, station_type: String = "stove") -> Dictionary:
+	var validation := validate_ai_ingredients(ingredients)
+	if not bool(validation.get("ok", false)):
+		return validation
+	var normalized: Array = validation.get("ingredients", [])
+	var draft: Dictionary = await AIWorkflowManager.prepare_kitchen_dish_draft(normalized, station_type)
 	if not bool(draft.get("ok", false)):
 		return draft
 	var result: Dictionary = await AIWorkflowManager.commit_kitchen_dish_draft(draft)
@@ -91,6 +98,31 @@ func craft_random_ai_dish(station_type: String = "stove") -> Dictionary:
 		var dish: Dictionary = result.get("dish", {})
 		ai_dish_created.emit(String(dish.get("id", "")))
 	return result
+
+## 返回 {ok, ingredients} 或稳定错误；只允许共享仓中真实存在的 produce，最多 5 种。
+func validate_ai_ingredients(ingredients: Array) -> Dictionary:
+	if ingredients.is_empty():
+		return {"ok": false, "error": {"code": "NO_INGREDIENTS", "message": "请先把食材放进锅里。"}}
+	var merged: Dictionary = {}
+	for raw in ingredients:
+		if not raw is Dictionary:
+			continue
+		var iid := String((raw as Dictionary).get("id", ""))
+		var qty := int((raw as Dictionary).get("qty", 0))
+		var item: ItemDef = ItemDB.get_def(iid)
+		if iid == "" or qty <= 0 or item == null or item.category != "produce":
+			return {"ok": false, "error": {"code": "INVALID_INGREDIENT", "message": "锅里有不能用于料理的物品。"}}
+		merged[iid] = int(merged.get(iid, 0)) + qty
+	if merged.is_empty() or merged.size() > 5:
+		return {"ok": false, "error": {"code": "INVALID_INGREDIENTS", "message": "每次请选择 1 到 5 种食材。"}}
+	var normalized: Array = []
+	for iid_value in merged:
+		var iid := String(iid_value)
+		var qty := int(merged[iid])
+		if qty > InventoryManager.storehouse.count(iid):
+			return {"ok": false, "error": {"code": "INGREDIENTS_CHANGED", "message": "%s 的库存已经不够了。" % ItemDB.display_name(iid)}}
+		normalized.append({"id": iid, "name": ItemDB.display_name(iid), "qty": qty})
+	return {"ok": true, "ingredients": normalized}
 
 ## 开发/测试用:一键把所有配方需要的材料补到家庭共享仓,方便验证厨房流程。
 ## 只发放材料到共享仓,不碰花园收获逻辑。
