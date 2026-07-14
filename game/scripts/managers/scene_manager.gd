@@ -13,6 +13,7 @@ const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
 const LOOP_TWEEN_GUARD_INTERVAL := 0.05
+const FISHPOND_PLAYER_VISUAL_SCALE := 1.35
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -3194,13 +3195,13 @@ func _scale_fishpond_player_visual() -> void:
 		return
 	var sprite := player.get_node_or_null("Sprite2D") as Sprite2D
 	if sprite != null:
-		sprite.scale *= 2.0
+		sprite.scale *= FISHPOND_PLAYER_VISUAL_SCALE
 	var shadow := player.get_node_or_null("Shadow") as Sprite2D
 	if shadow != null:
-		shadow.scale *= 1.45
+		shadow.scale *= 1.15
 	var name_label := player.get_node_or_null("NameLabel") as Label
 	if name_label != null:
-		name_label.position.y = -118.0
+		name_label.position.y = -84.0
 
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
 const FISHING_RESULTS := [
