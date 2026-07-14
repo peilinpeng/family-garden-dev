@@ -13,6 +13,8 @@ const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
 const LOOP_TWEEN_GUARD_INTERVAL := 0.05
+const FISHPOND_MEMORY_SCALE := 1.0 / 3.0
+const FISHPOND_MEMORY_SHORE_SLOTS := ["fishpond_slot_shore_01", "fishpond_slot_shore_02"]
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -80,6 +82,8 @@ const ASSETS := {
 	"icon_letter": "res://assets/ui/icons/icon_letter.png",
 	"icon_travel": "res://assets/ui/icons/icon_travel.png",
 	"icon_pin": "res://assets/ui/icons/icon_pin.png",
+	"icon_build": "res://assets/ui/icons/icon_build.png",
+	"icon_settings": "res://assets/ui/icons/icon_settings.png",
 	"mailbox_badge_dot": "res://assets/ui/badges/mailbox_badge_dot.png",
 	"mailbox_badge_letter": "res://assets/ui/badges/mailbox_badge_letter.png",
 	"pin_default": "res://assets/ui/pins/pin_default.png",
@@ -87,6 +91,11 @@ const ASSETS := {
 	"pin_selected": "res://assets/ui/pins/pin_selected.png",
 	"pin_new": "res://assets/ui/pins/pin_new.png",
 	"pin_postcard": "res://assets/ui/pins/pin_postcard.png",
+	"fishing_goldfish": "res://assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_right_01.png",
+	"fishing_bottle": "res://assets/pond/bottle/bottle_float_01.png",
+	"fishing_branch": "res://assets/pond/props/tree_branch.png",
+	"fishing_rod": "res://assets/pond/props/fishing_rod.png",
+	"fishing_bobber": "res://assets/pond/props/fishing_bobber.png",
 	"cat_sheet": "res://assets/animals/cat/cat_walk_sleep_sheet.png",
 	"bird_sheet": "res://assets/animals/bird/bird_states_sheet.png",
 	"dog_sheet": "res://assets/animals/dog/dog_states_sheet.png",
@@ -219,12 +228,14 @@ var player: CharacterBody2D
 var plant_nodes: Dictionary = {}
 var room_card: Panel = null
 var gate4_guide_card: Panel = null
-var garden_guide_expanded := false
+var garden_guide_expanded := true
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
 var game_hud: GameHUD = null   ## 常驻 HUD(角色卡/图标导航/设置/背包),setup 时创建
 var map_ui: Control = null
 var global_map_ui: Control = null
+var pond_fishing_available := false
+var pond_fishing_prompt: Label = null
 var adding_place := false
 var _garden_controls_hint_shown := false
 var pending_place_position := Vector2.ZERO
@@ -249,6 +260,14 @@ var _current_spawn_key := "default"
 var _current_room_id := ""
 var _pending_resume_position := Vector2.ZERO
 var _has_pending_resume_position := false
+
+func _unhandled_input(event: InputEvent) -> void:
+	if mode != "fishpond" or (active_modal != null and is_instance_valid(active_modal)):
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		if pond_fishing_available:
+			get_viewport().set_input_as_handled()
+			_start_fishing_sequence()
 
 func _load_cloud_data() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
@@ -583,8 +602,8 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	var panel := Panel.new()
 	panel.name = "Gate4SceneGuide"
 	gate4_guide_card = panel
-	panel.position = Vector2(1022, 116) if scene_id == "room" else Vector2(20, 20)
-	panel.size = Vector2(226, 76) if scene_id == "room" else (Vector2(324, 108) if scene_id == "garden" and garden_guide_expanded else (Vector2(324, 44) if scene_id == "garden" else Vector2(248, 92)))
+	panel.position = Vector2(1022, 116) if scene_id == "room" else (Vector2(16, 132) if scene_id == "garden" else Vector2(20, 20))
+	panel.size = Vector2(226, 76) if scene_id == "room" else (Vector2(244, 184) if scene_id == "garden" and garden_guide_expanded else (Vector2(244, 44) if scene_id == "garden" else Vector2(248, 92)))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_guide_card_style(panel, scene_id)
 	if ui_root != null and is_instance_valid(ui_root):
@@ -594,7 +613,7 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 
 	var accent := ColorRect.new()
 	accent.position = Vector2(14, 14) if scene_id == "garden" and garden_guide_expanded else (Vector2(12, 10) if scene_id == "garden" else Vector2(12, 11))
-	accent.size = Vector2(4, 80) if scene_id == "garden" and garden_guide_expanded else (Vector2(4, 24) if scene_id == "garden" else (Vector2(4, 54) if scene_id == "room" else Vector2(4, 68)))
+	accent.size = Vector2(4, 156) if scene_id == "garden" and garden_guide_expanded else (Vector2(4, 24) if scene_id == "garden" else (Vector2(4, 54) if scene_id == "room" else Vector2(4, 68)))
 	accent.color = _gate4_guide_accent(scene_id)
 	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(accent)
@@ -602,13 +621,11 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 		if garden_guide_expanded:
 			_add_garden_guide_inset(panel)
 			_add_garden_guide_title(panel)
-			_add_garden_guide_stats(panel)
-			_add_family_portrait_miniature(panel)
-			_add_garden_guide_toggle(panel, Vector2(132, 8), true)
+			_add_garden_beginner_steps(panel)
+			_add_garden_guide_toggle(panel, Vector2(206, 8), true)
 		else:
 			_add_garden_guide_compact(panel)
-			_add_family_portrait_compact(panel)
-			_add_garden_guide_toggle(panel, Vector2(290, 8), false)
+			_add_garden_guide_toggle(panel, Vector2(206, 8), false)
 		return
 
 	var title := Label.new()
@@ -642,26 +659,35 @@ func _add_garden_guide_title(parent: Control) -> void:
 
 func _add_garden_guide_compact(parent: Control) -> void:
 	var title := Label.new()
-	title.text = "花园今日"
+	title.text = "新手指引"
 	title.position = Vector2(28, 8)
-	title.size = Vector2(68, 24)
+	title.size = Vector2(76, 24)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_font_size_override("font_size", 14)
 	title.add_theme_color_override("font_color", Color(0.21, 0.18, 0.13, 0.96))
 	parent.add_child(title)
 
 	var summary := Label.new()
-	summary.text = "%d 记忆  ·  %d 藤蔓" % [
-		_demo_memories.size(),
-		MemoryManager.get_memory_links("garden").size(),
-	]
-	summary.position = Vector2(101, 10)
-	summary.size = Vector2(145, 21)
+	summary.text = "移动 · 建造 · 撤销"
+	summary.position = Vector2(106, 10)
+	summary.size = Vector2(92, 21)
 	summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary.add_theme_font_size_override("font_size", 11)
 	summary.add_theme_color_override("font_color", Color(0.36, 0.30, 0.20, 0.86))
 	parent.add_child(summary)
+
+func _add_garden_beginner_steps(parent: Control) -> void:
+	var guide := Label.new()
+	guide.name = "GardenBeginnerSteps"
+	guide.text = "WASD / 方向键    移动角色\nB / 底部锤子      开关建造\n左键拖动          绘制或摆放\nShift + 拖动      矩形铺地\nDelete            删除模式\nCtrl+Z / Ctrl+Y   撤销 / 重做"
+	guide.position = Vector2(28, 44)
+	guide.size = Vector2(198, 126)
+	guide.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	guide.add_theme_font_size_override("font_size", 12)
+	guide.add_theme_color_override("font_color", Color(0.31, 0.27, 0.19, 0.92))
+	guide.add_theme_constant_override("line_spacing", 3)
+	parent.add_child(guide)
 
 
 func _add_family_portrait_compact(parent: Control) -> void:
@@ -708,7 +734,7 @@ func _add_garden_guide_toggle(parent: Control, pos: Vector2, expanded: bool) -> 
 	toggle.size = Vector2(26, 28)
 	toggle.focus_mode = Control.FOCUS_NONE
 	toggle.mouse_filter = Control.MOUSE_FILTER_STOP
-	toggle.tooltip_text = "收起花园概览" if expanded else "展开花园概览"
+	toggle.tooltip_text = "收起新手指引" if expanded else "展开新手指引"
 	toggle.add_theme_font_size_override("font_size", 14)
 	toggle.add_theme_color_override("font_color", Color(0.35, 0.29, 0.19, 0.90))
 	var normal_style := StyleBoxFlat.new()
@@ -746,17 +772,10 @@ func _add_garden_guide_inset(parent: Control) -> void:
 
 	var title_rule := ColorRect.new()
 	title_rule.position = Vector2(32, 36)
-	title_rule.size = Vector2(126, 1)
+	title_rule.size = Vector2(190, 1)
 	title_rule.color = Color(0.45, 0.58, 0.32, 0.42)
 	title_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(title_rule)
-
-	var divider := ColorRect.new()
-	divider.position = Vector2(164, 14)
-	divider.size = Vector2(1, 80)
-	divider.color = Color(0.47, 0.36, 0.23, 0.25)
-	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(divider)
 
 
 func _add_garden_guide_stats(parent: Control) -> void:
@@ -826,7 +845,7 @@ func _gate4_guide_title(scene_id: String) -> String:
 		"room":
 			return "我的 AI 房间"
 		_:
-			return "花园今日"
+			return "新手指引"
 
 func _gate4_guide_body(scene_id: String) -> String:
 	match scene_id:
@@ -1533,16 +1552,7 @@ func _render_family_portrait() -> void:
 		var legacy_board := world.get_node_or_null("FamilyPortraitBoard")
 		if legacy_board != null:
 			legacy_board.queue_free()
-	if gate4_guide_card == null or not is_instance_valid(gate4_guide_card) or mode != "garden":
-		return
-	var existing := gate4_guide_card.get_node_or_null("FamilyPortraitMiniature")
-	if existing != null:
-		gate4_guide_card.remove_child(existing)
-		existing.queue_free()
-	if garden_guide_expanded:
-		_add_family_portrait_miniature(gate4_guide_card)
-	else:
-		_add_family_portrait_compact(gate4_guide_card)
+	# 家庭成员入口已统一到 GameHUD 左上状态卡，指引面板不再重复渲染。
 
 func _add_family_portrait_miniature(parent: Control) -> void:
 	var fp: Dictionary = MemoryManager.family_portrait
@@ -2128,15 +2138,27 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 		_render_garden_archives(cache)
 		return
 	var groups: Dictionary = {}
-	for nd in MemoryManager.get_nodes_for_scene(scene):
+	var scene_nodes: Array = MemoryManager.get_nodes_for_scene(scene)
+	var migrated_fishpond_slots := false
+	for raw_node in scene_nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var nd: Dictionary = raw_node
 		if String(nd.get("node_type", "")) == "memory_link":
 			continue  # 连线节点不是落点物，由 _render_memory_links 单独画
+		if scene == "fishpond" and String(nd.get("node_type", "")) == "memory_flower":
+			var safe_slot_id := _fishpond_memory_shore_slot(nd)
+			if String(nd.get("slot_id", "")) != safe_slot_id:
+				nd["slot_id"] = safe_slot_id
+				migrated_fishpond_slots = true
 		var slot_id := String(nd.get("slot_id", ""))
 		if slot_id == "":
 			continue
 		if not groups.has(slot_id):
 			groups[slot_id] = []
 		(groups[slot_id] as Array).append(nd)
+	if migrated_fishpond_slots:
+		MemoryManager.save_game()
 	for slot_id in groups:
 		var stack: Array = groups[slot_id]
 		if stack.is_empty():
@@ -2174,13 +2196,20 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 		_add_memory_tag(live, visual_state)
 		if items.size() > 1:
 			_add_memory_cluster_badge(live, items.size())
-		var target_scale := Vector2.ONE if visual_state == "grown" else Vector2(0.78, 0.78)
+		var target_scale := Vector2.ONE * FISHPOND_MEMORY_SCALE if scene == "fishpond" else (Vector2.ONE if visual_state == "grown" else Vector2(0.78, 0.78))
 		live.scale = target_scale
 		world.add_child(live)
 		_animate_scene_node_arrival(live, target_scale)
 		for item in items:
 			(item as Dictionary)["node"] = live
 			cache.append(item)
+
+func _fishpond_memory_shore_slot(stored_node: Dictionary) -> String:
+	var current_slot := String(stored_node.get("slot_id", ""))
+	if current_slot in FISHPOND_MEMORY_SHORE_SLOTS:
+		return current_slot
+	var stable_key := String(stored_node.get("memory_id", stored_node.get("id", "fishpond_memory")))
+	return String(FISHPOND_MEMORY_SHORE_SLOTS[absi(hash(stable_key)) % FISHPOND_MEMORY_SHORE_SLOTS.size()])
 
 func _render_garden_archives(cache: Array) -> void:
 	var archives := {
@@ -2857,7 +2886,7 @@ func _season_cn(season: String) -> String:
 		_: return "春"
 
 # 生长动画：花苞 → 开放（≤3 秒）。占位单贴图用缩放近似 seed→bud→bloom。
-func _grow_memory_node(node: Variant) -> void:
+func _grow_memory_node(node: Variant, target_scale: Vector2 = Vector2.ONE) -> void:
 	if node == null or not is_instance_valid(node):
 		return
 	var n: Node2D = node
@@ -2865,10 +2894,10 @@ func _grow_memory_node(node: Variant) -> void:
 		var tag := n.get_node("DemoTag") as Label
 		tag.text = "已确认"
 	NodeFactory.apply_memory_state(n, "grown")
-	n.scale = Vector2(0.25, 0.25)
+	n.scale = target_scale * 0.25
 	var t := create_tween()
-	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", target_scale * 0.7, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", target_scale, 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 # ── 全局导航地图（导航页 / World Map）──────────────────────────────
 # 一张拍平的世界插画，四个抠图图层正好压在底图对应区域上。鼠标悬浮时该图层
@@ -3171,8 +3200,10 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 			player_parent = ysort_objects
 			player_spawn = ysort_objects.to_local(spawn)
 	_add_player(player_spawn, player_parent)
+	_scale_fishpond_player_visual()
 	_spawn_demo_bottles()
 	_register_scene_message_bottle(pond_area)
+	_register_pond_fishing_spot(pond_area)
 	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
 	_fishpond_memories.clear()
 	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆"))
@@ -3181,7 +3212,25 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	_show_gate4_scene_guide("fishpond")
 	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
 
+func _scale_fishpond_player_visual() -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	var sprite := player.get_node_or_null("Sprite2D") as Sprite2D
+	if sprite != null:
+		sprite.scale *= 2.0
+	var shadow := player.get_node_or_null("Shadow") as Sprite2D
+	if shadow != null:
+		shadow.scale *= 1.45
+	var name_label := player.get_node_or_null("NameLabel") as Label
+	if name_label != null:
+		name_label.position.y = -118.0
+
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
+const FISHING_RESULTS := [
+	{"id": "goldfish", "item_id": "fish_goldfish", "title": "金鱼", "body": "一尾闪闪发亮的金鱼，已经放进背包。", "asset": "fishing_goldfish", "color": Color(0.96, 0.58, 0.18, 1.0)},
+	{"id": "bottle", "title": "漂流瓶", "body": "瓶子里藏着一段等待被打开的记忆。", "asset": "fishing_bottle", "color": Color(0.28, 0.54, 0.72, 1.0)},
+	{"id": "branch", "title": "树枝", "body": "只是一根被水冲来的树枝，再试一次吧。", "asset": "fishing_branch", "color": Color(0.45, 0.30, 0.16, 1.0)},
+]
 
 # Gate 4：先同步渲染已落库漂流瓶，再后台补齐真实 AI 问题；进入场景不等待网络。
 func _spawn_demo_bottles() -> void:
@@ -3233,6 +3282,439 @@ func _on_scene_message_bottle_input(_viewport: Node, event: InputEvent, _shape_i
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
 		_on_bottle_clicked("scene_bottle")
+
+func _register_pond_fishing_spot(pond_area: Node2D) -> void:
+	if pond_area == null:
+		return
+	var fishing_spot := pond_area.get_node_or_null("FishingSpot") as Area2D
+	if fishing_spot == null:
+		return
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
+	fishing_spot.monitoring = true
+	fishing_spot.collision_mask = 1
+	fishing_spot.input_pickable = true
+	if not fishing_spot.body_entered.is_connected(_on_pond_fishing_spot_body_entered):
+		fishing_spot.body_entered.connect(_on_pond_fishing_spot_body_entered)
+	if not fishing_spot.body_exited.is_connected(_on_pond_fishing_spot_body_exited):
+		fishing_spot.body_exited.connect(_on_pond_fishing_spot_body_exited)
+	if not fishing_spot.input_event.is_connected(_on_pond_fishing_spot_input):
+		fishing_spot.input_event.connect(_on_pond_fishing_spot_input)
+
+func _on_pond_fishing_spot_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if active_modal != null and is_instance_valid(active_modal):
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_start_fishing_sequence()
+
+func _on_pond_fishing_spot_body_entered(body: Node) -> void:
+	if body == null or not body.is_in_group("player"):
+		return
+	pond_fishing_available = true
+	_show_pond_fishing_prompt()
+
+func _on_pond_fishing_spot_body_exited(body: Node) -> void:
+	if body == null or not body.is_in_group("player"):
+		return
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
+
+func _show_pond_fishing_prompt() -> void:
+	if ui_layer == null:
+		return
+	if pond_fishing_prompt != null and is_instance_valid(pond_fishing_prompt):
+		pond_fishing_prompt.visible = true
+		return
+	pond_fishing_prompt = Label.new()
+	pond_fishing_prompt.name = "PondFishingPrompt"
+	pond_fishing_prompt.text = "靠近钓鱼台，按 E 开始钓鱼"
+	pond_fishing_prompt.position = Vector2(460, 616)
+	pond_fishing_prompt.size = Vector2(360, 32)
+	pond_fishing_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pond_fishing_prompt.add_theme_font_size_override("font_size", 18)
+	pond_fishing_prompt.add_theme_color_override("font_color", Color(0.96, 0.90, 0.76, 1.0))
+	pond_fishing_prompt.add_theme_color_override("font_outline_color", Color(0.10, 0.08, 0.05, 0.92))
+	pond_fishing_prompt.add_theme_constant_override("outline_size", 3)
+	ui_layer.add_child(pond_fishing_prompt)
+
+func _hide_pond_fishing_prompt() -> void:
+	if pond_fishing_prompt != null and is_instance_valid(pond_fishing_prompt):
+		pond_fishing_prompt.queue_free()
+	pond_fishing_prompt = null
+
+
+func _start_fishing_sequence() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(382, 136)
+	panel.size = Vector2(516, 392)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+
+	var title := Label.new()
+	title.text = "正在钓鱼"
+	title.position = Vector2(42, 28)
+	title.size = Vector2(432, 34)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.20, 0.24, 0.20, 1.0))
+	panel.add_child(title)
+
+	var water := ColorRect.new()
+	water.position = Vector2(78, 168)
+	water.size = Vector2(360, 34)
+	water.color = Color(0.34, 0.64, 0.72, 0.42)
+	water.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(water)
+
+	var line := Line2D.new()
+	line.width = 3.0
+	line.default_color = Color(0.45, 0.36, 0.24, 0.78)
+	line.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	line.z_index = 1
+	panel.add_child(line)
+
+	var rod := TextureRect.new()
+	rod.position = Vector2(118, 58)
+	rod.size = Vector2(88, 172)
+	rod.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rod.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rod.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rod.texture = _safe_texture(str(ASSETS.get("fishing_rod", "")))
+	rod.pivot_offset = Vector2(rod.size.x * 0.46, rod.size.y * 0.86)
+	rod.rotation = -0.08
+	rod.z_index = 2
+	rod.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(rod)
+
+	var bobber := TextureRect.new()
+	bobber.position = Vector2(292, 139)
+	bobber.size = Vector2(28, 54)
+	bobber.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bobber.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bobber.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bobber.texture = _safe_texture(str(ASSETS.get("fishing_bobber", "")))
+	bobber.z_index = 3
+	bobber.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(bobber)
+
+	var hook_item := TextureRect.new()
+	hook_item.position = bobber.position + Vector2(-12, 38)
+	hook_item.size = Vector2(52, 52)
+	hook_item.visible = false
+	hook_item.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hook_item.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hook_item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	hook_item.z_index = 4
+	hook_item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(hook_item)
+
+	var update_fishing_line := func() -> void:
+		if not is_instance_valid(line) or not is_instance_valid(rod) or not is_instance_valid(bobber):
+			return
+		var rod_tip_local := Vector2(rod.size.x * 0.76, rod.size.y * 0.05)
+		var rod_tip := rod.position + rod.pivot_offset + (rod_tip_local - rod.pivot_offset).rotated(rod.rotation)
+		var bobber_top := bobber.position + Vector2(bobber.size.x * 0.5, bobber.size.y * 0.12)
+		line.points = PackedVector2Array([rod_tip, bobber_top])
+		if is_instance_valid(hook_item):
+			hook_item.position = bobber.position + Vector2(-12, 38)
+	update_fishing_line.call()
+
+	var ripple := ColorRect.new()
+	ripple.position = Vector2(222, 166)
+	ripple.size = Vector2(42, 8)
+	ripple.color = Color(0.90, 1.0, 0.95, 0.38)
+	ripple.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(ripple)
+
+	var status := Label.new()
+	status.text = "等浮漂下沉，在绿色区域拉竿，越靠中间越容易钓到鱼"
+	status.position = Vector2(58, 216)
+	status.size = Vector2(400, 28)
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_font_size_override("font_size", 17)
+	status.add_theme_color_override("font_color", Color(0.34, 0.29, 0.22, 1.0))
+	panel.add_child(status)
+
+	var track_back := Panel.new()
+	track_back.position = Vector2(76, 258)
+	track_back.size = Vector2(364, 26)
+	track_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var track_style := StyleBoxFlat.new()
+	track_style.bg_color = Color(0.50, 0.36, 0.24, 0.22)
+	track_style.border_color = Color(0.42, 0.30, 0.18, 0.55)
+	track_style.set_border_width_all(1)
+	track_style.set_corner_radius_all(6)
+	track_back.add_theme_stylebox_override("panel", track_style)
+	panel.add_child(track_back)
+
+	var sweet_zone := ColorRect.new()
+	sweet_zone.position = Vector2(202, 258)
+	sweet_zone.size = Vector2(108, 26)
+	sweet_zone.color = Color(0.54, 0.76, 0.44, 0.78)
+	sweet_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(sweet_zone)
+
+	var marker := ColorRect.new()
+	marker.position = Vector2(78, 252)
+	marker.size = Vector2(8, 38)
+	marker.color = Color(0.90, 0.28, 0.18, 1.0)
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(marker)
+
+	var pull_btn := Button.new()
+	pull_btn.text = "拉竿"
+	pull_btn.position = Vector2(198, 318)
+	pull_btn.size = Vector2(120, 42)
+	pull_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(pull_btn, false)
+	panel.add_child(pull_btn)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(rod, "rotation", 0.03, 0.36).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(bobber, "position", Vector2(326, 142), 0.36).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(ripple, "scale", Vector2(1.35, 1.0), 0.32)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.36)
+	tween.set_parallel(false)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(status):
+			status.text = "浮漂动了，准备拉竿"
+	)
+	tween.tween_interval(0.45)
+	tween.set_parallel(true)
+	tween.tween_property(bobber, "position:y", 130.0, 0.16).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(ripple, "modulate:a", 0.12, 0.14)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.16)
+	tween.set_parallel(false)
+	tween.set_parallel(true)
+	tween.tween_property(bobber, "position:y", 154.0, 0.16).set_trans(Tween.TRANS_SINE)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.16)
+	tween.set_parallel(false)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(status):
+			status.text = "有东西上钩了，点拉竿！"
+	)
+
+	var marker_tween := create_tween()
+	marker_tween.set_loops()
+	marker_tween.tween_property(marker, "position:x", 432.0, 1.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	marker_tween.tween_property(marker, "position:x", 78.0, 1.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	pull_btn.pressed.connect(func() -> void:
+		if not is_instance_valid(marker):
+			return
+		pull_btn.disabled = true
+		if is_instance_valid(marker_tween):
+			marker_tween.kill()
+		if is_instance_valid(tween):
+			tween.kill()
+		var marker_center := marker.position.x + marker.size.x * 0.5
+		var target_center := sweet_zone.position.x + sweet_zone.size.x * 0.5
+		var distance := absf(marker_center - target_center)
+		var hit_zone := marker_center >= sweet_zone.position.x and marker_center <= sweet_zone.position.x + sweet_zone.size.x
+		var score := clampf(1.0 - distance / 72.0, 0.0, 1.0) if hit_zone else 0.0
+		var caught_result: Dictionary = {}
+		var reel_success: bool = false
+		if hit_zone:
+			caught_result = _pick_fishing_result(score)
+			reel_success = not caught_result.is_empty()
+		if not hit_zone:
+			status.text = "脱钩了，什么也没钓到"
+		elif not reel_success:
+			status.text = "鱼线一松，东西脱钩了"
+		elif score >= 0.72:
+			status.text = "时机很好，正在收线"
+		else:
+			status.text = "拉住了，慢慢收线"
+		if is_instance_valid(hook_item):
+			hook_item.visible = reel_success
+			if reel_success:
+				var asset_key: String = String(caught_result.get("asset", ""))
+				hook_item.texture = _safe_texture(str(ASSETS.get(asset_key, "")))
+				hook_item.size = Vector2(62, 42) if String(caught_result.get("id", "")) == "branch" else Vector2(52, 52)
+				update_fishing_line.call()
+		var finish_tween := create_tween()
+		finish_tween.set_parallel(true)
+		if reel_success:
+			finish_tween.tween_property(bobber, "position", Vector2(204, 96), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
+			finish_tween.tween_property(rod, "rotation", -0.22, 0.28).set_trans(Tween.TRANS_BACK)
+			finish_tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.28)
+		else:
+			finish_tween.tween_property(bobber, "position", Vector2(332, 154), 0.18).set_trans(Tween.TRANS_SINE)
+			finish_tween.tween_property(rod, "rotation", -0.04, 0.18).set_trans(Tween.TRANS_SINE)
+			finish_tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.18)
+		finish_tween.set_parallel(false)
+		finish_tween.tween_interval(0.12)
+		finish_tween.tween_callback(func() -> void:
+			if reel_success:
+				_open_fishing_result_panel(caught_result)
+			else:
+				_open_fishing_failed_panel()
+		)
+	)
+
+
+func _pick_fishing_result(score: float) -> Dictionary:
+	var escape_chance: float = 0.24
+	if score < 0.45:
+		escape_chance = 0.42
+	elif score >= 0.82:
+		escape_chance = 0.10
+	if randf() < escape_chance:
+		return {}
+	var goldfish_chance: float = 0.28
+	if score >= 0.82:
+		goldfish_chance = 0.42
+	elif score < 0.58:
+		goldfish_chance = 0.18
+	if randf() < goldfish_chance:
+		return FISHING_RESULTS[0]
+	if randf() < 0.45:
+		return FISHING_RESULTS[1]
+	return FISHING_RESULTS[2]
+
+
+func _open_fishing_failed_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(402, 184)
+	panel.size = Vector2(476, 274)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "鱼脱钩了"
+	title.position = Vector2(44, 48)
+	title.size = Vector2(388, 44)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.20, 0.24, 0.22, 1.0))
+	panel.add_child(title)
+
+	var body := Label.new()
+	body.text = "拉竿时机偏了，鱼线松了一下，水面只剩一圈涟漪。"
+	body.position = Vector2(62, 112)
+	body.size = Vector2(352, 64)
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	body.add_theme_font_size_override("font_size", 18)
+	body.add_theme_color_override("font_color", Color(0.32, 0.27, 0.20, 1.0))
+	panel.add_child(body)
+
+	_add_panel_button(panel, "再试一次", Vector2(104, 204), Vector2(130, 40), "fish_again")
+	_add_panel_button(panel, "收起鱼竿", Vector2(258, 204), Vector2(132, 40), "close")
+
+
+func _open_fishing_result_panel(result: Dictionary = {}) -> void:
+	_close_active_panel()
+	if result.is_empty():
+		_open_fishing_failed_panel()
+		return
+	_award_fishing_result(result)
+	var result_color: Color = result.get("color", Color(0.5, 0.5, 0.5, 1.0))
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(292, 150)
+	panel.size = Vector2(696, 420)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var icon_back := Panel.new()
+	icon_back.position = Vector2(42, 82)
+	icon_back.size = Vector2(150, 150)
+	icon_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon_style := StyleBoxFlat.new()
+	icon_style.bg_color = result_color.lightened(0.35)
+	icon_style.border_color = Color(0.52, 0.42, 0.28, 0.72)
+	icon_style.set_border_width_all(2)
+	icon_style.corner_radius_top_left = 8
+	icon_style.corner_radius_top_right = 8
+	icon_style.corner_radius_bottom_left = 8
+	icon_style.corner_radius_bottom_right = 8
+	icon_back.add_theme_stylebox_override("panel", icon_style)
+	panel.add_child(icon_back)
+
+	var result_icon := TextureRect.new()
+	result_icon.position = Vector2(58, 98)
+	result_icon.size = Vector2(118, 118)
+	result_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	result_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	result_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	result_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	result_icon.texture = _safe_texture(str(ASSETS.get(String(result.get("asset", "")), "")))
+	panel.add_child(result_icon)
+
+	var title := Label.new()
+	title.text = "钓到了：" + String(result.get("title", "什么东西"))
+	title.position = Vector2(228, 78)
+	title.size = Vector2(382, 44)
+	title.clip_text = true
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.18, 0.24, 0.22, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "池塘收获"
+	subtitle.position = Vector2(230, 126)
+	subtitle.size = Vector2(280, 24)
+	subtitle.add_theme_font_size_override("font_size", 15)
+	subtitle.add_theme_color_override("font_color", Color(0.48, 0.42, 0.32, 0.92))
+	panel.add_child(subtitle)
+
+	var body := Label.new()
+	body.text = String(result.get("body", "鱼线从池塘里收了回来。"))
+	body.position = Vector2(230, 166)
+	body.size = Vector2(398, 118)
+	body.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	body.clip_text = true
+	body.add_theme_font_size_override("font_size", 18)
+	body.add_theme_color_override("font_color", Color(0.25, 0.24, 0.20, 1.0))
+	panel.add_child(body)
+
+	if String(result.get("id", "")) == "bottle":
+		_add_panel_button(panel, "打开", Vector2(282, 334), Vector2(132, 42), "open_caught_bottle")
+	else:
+		_add_panel_button(panel, "再钓一次", Vector2(190, 334), Vector2(150, 42), "fish_again")
+		_add_panel_button(panel, "收下", Vector2(372, 334), Vector2(126, 42), "close")
+
+
+func _award_fishing_result(result: Dictionary) -> void:
+	var result_id := String(result.get("id", ""))
+	if result_id != "goldfish":
+		return
+	var item_id := String(result.get("item_id", "fish_goldfish"))
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv == null or not inv.has_method("give"):
+		return
+	var leftover: int = inv.give(item_id, 1)
+	if leftover > 0:
+		_show_toast("背包已满，金鱼没有放进去。")
+	else:
+		_show_toast("金鱼已放入背包。")
+
+func _open_caught_bottle_content() -> void:
+	var bid := "caught_bottle_" + str(Time.get_ticks_msec())
+	var question := "瓶中的纸条写着：你希望家人记住这个夏天的哪一刻？"
+	_demo_bottles.append({"id": bid, "question": question, "state": "floating", "answer": "", "node": null})
+	_open_bottle_panel(_find_demo_bottle(bid))
+
 
 func _find_demo_bottle(bid: String) -> Dictionary:
 	for b in _demo_bottles:
@@ -3366,15 +3848,17 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
 		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
 		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆"))
-		mem_node.scale = Vector2(0.25, 0.25)
+		mem_node.scale = Vector2.ONE * FISHPOND_MEMORY_SCALE
 		world.add_child(mem_node)
-		_grow_memory_node(mem_node)
+		_grow_memory_node(mem_node, Vector2.ONE * FISHPOND_MEMORY_SCALE)
 		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
 		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
 			"card": card, "state": "grown", "answer": text, "node": mem_node})
 	_show_toast("漂流瓶回答已成为岸边记忆。")
 
 func _clear_world() -> void:
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
 	var garden_builder := get_node_or_null("/root/GardenBuildManager")
 	if garden_builder != null and garden_builder.has_method("teardown"):
 		garden_builder.call("teardown")
@@ -3643,12 +4127,13 @@ func _setup_garden_builder() -> void:
 	var builder := get_node_or_null("/root/GardenBuildManager")
 	if builder == null or not builder.has_method("setup"):
 		return
-	var build_area := Rect2(Vector2(80, 300), Vector2(1120, 336))
+	# 向栅栏方向开放额外两行 32px 网格；首个完整可画格由 y=320 提前到 y=256。
+	var build_area := Rect2(Vector2(80, 236), Vector2(1120, 400))
 	builder.call("setup", world, ui_layer, player, build_area, _get_garden_build_blocked_rects())
 
 func _get_garden_build_blocked_rects() -> Array:
 	return [
-		Rect2(Vector2(0, 0), Vector2(1280, 286)),
+		Rect2(Vector2(0, 0), Vector2(1280, 250)),
 		Rect2(Vector2(0, 652), Vector2(1280, 68)),
 		Rect2(Vector2(0, 250), Vector2(86, 430)),
 		Rect2(Vector2(1194, 250), Vector2(86, 430)),
@@ -6227,6 +6712,10 @@ func _icon_key_for_action(action: String) -> String:
 			return "icon_home"
 		"save", "save_new_place", "save_new_message":
 			return "icon_save"
+		"fish_again":
+			return "icon_add"
+		"open_caught_bottle":
+			return "icon_letter"
 		"back_garden":
 			return "icon_back"
 		"close":
@@ -6279,6 +6768,10 @@ func _on_panel_button(action: String) -> void:
 		_open_message_board_panel()
 	elif action == "add_message":
 		_open_add_message_form()
+	elif action == "fish_again":
+		_start_fishing_sequence()
+	elif action == "open_caught_bottle":
+		_open_caught_bottle_content()
 	elif action == "back_garden":
 		_show_garden()
 	elif action == "enter_kitchen":
