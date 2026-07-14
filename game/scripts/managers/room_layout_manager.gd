@@ -1,5 +1,7 @@
 extends Node
 
+signal room_generated(room: Dictionary)
+
 ## Family Garden 房间布局管理器（autoload 单例）。
 ## 吃 AI 房间识别结果（room_analysis），把每件物件按 zone 分配落点、落库、生成家具节点。
 ## Gate 4：room_analysis 来自 AIWorkflowManager 的草稿预览，确认后才进入这里落库。
@@ -52,6 +54,7 @@ func generate(analysis: Dictionary, source_memory_id: String = "", workflow_key:
 	var room_id := String(room.get("id", ""))
 	for object in layout.get("objects", []):
 		MemoryManager.create_room_object(room_id, String(object.get("object_type", "")), String(object.get("zone", "")), String(object.get("slot_id", "")))
+	room_generated.emit(room)
 	return room
 
 func replace(room_id: String, analysis: Dictionary, source_memory_id: String, workflow_key: String, generation_meta: Dictionary = {}) -> Dictionary:

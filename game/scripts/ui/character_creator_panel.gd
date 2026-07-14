@@ -20,7 +20,7 @@ var _name_input: LineEdit
 var _family_input: LineEdit
 var _hair_choice_root: Control
 var _outfit_choice_root: Control
-var _body_buttons: Dictionary = {}
+var _role_buttons: Dictionary = {}
 var _hair_style_buttons: Dictionary = {}
 var _hair_color_buttons: Dictionary = {}
 var _outfit_buttons: Dictionary = {}
@@ -117,60 +117,39 @@ func _build_editor(panel: Panel, initial_name: String, family_code: String) -> v
 	edit_card.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.97, 0.87, 0.76), Color(0.68, 0.50, 0.30, 0.46), 13))
 	panel.add_child(edit_card)
 
-	_add_field_label(edit_card, "名字", Vector2(20, 14), Vector2(224, 20))
+	_add_field_label(edit_card, "名字", Vector2(20, 14), Vector2(350, 20))
 	_name_input = LineEdit.new()
 	_name_input.position = Vector2(20, 36)
-	_name_input.size = Vector2(224, 38)
+	_name_input.size = Vector2(350, 38)
 	_name_input.placeholder_text = "输入名字"
 	_name_input.text = initial_name if initial_name != "" else "佩林"
 	_style_input(_name_input)
 	edit_card.add_child(_name_input)
 
-	_add_field_label(edit_card, "家庭邀请码", Vector2(264, 14), Vector2(224, 20))
+	_add_field_label(edit_card, "家庭邀请码", Vector2(402, 14), Vector2(350, 20))
 	_family_input = LineEdit.new()
-	_family_input.position = Vector2(264, 36)
-	_family_input.size = Vector2(224, 38)
+	_family_input.position = Vector2(402, 36)
+	_family_input.size = Vector2(350, 38)
 	_family_input.placeholder_text = "没有可以留空"
 	_family_input.text = family_code
 	_style_input(_family_input)
 	edit_card.add_child(_family_input)
 
-	_add_field_label(edit_card, "家庭身份", Vector2(508, 14), Vector2(244, 20))
-	var role_select := OptionButton.new()
-	role_select.position = Vector2(508, 36)
-	role_select.size = Vector2(244, 38)
+	_add_section_title(edit_card, "选择角色", Vector2(20, 92))
 	var role_index := 0
-	for index in ROLE_OPTIONS.size():
-		var option: Dictionary = ROLE_OPTIONS[index]
-		role_select.add_item(String(option.label))
-		role_select.set_item_metadata(index, String(option.id))
-		if String(option.id) == _role_key:
-			role_index = index
-	role_select.select(role_index)
-	_style_input(role_select)
-	role_select.item_selected.connect(func(index: int) -> void:
-		_role_key = String(role_select.get_item_metadata(index))
-		_update_preview())
-	edit_card.add_child(role_select)
-
-	_add_section_title(edit_card, "角色类型", Vector2(20, 92))
-	var body_index := 0
-	for body_id_value in AppearanceManager.body_types().keys():
-		var body_id := String(body_id_value)
-		var body_definition: Dictionary = AppearanceManager.body_definition(body_id)
-		var sample := _appearance.duplicate(true)
-		sample["body_type"] = body_id
-		sample["hair_style"] = String(body_definition.get("default_hair_style", ""))
+	for option in ROLE_OPTIONS:
+		var role_id := String(option.id)
+		var sample := AppearanceManager.default_for_role(role_id)
 		var button := _make_avatar_choice(
 			edit_card,
-			String(body_definition.get("label", body_id)),
-			AppearanceManager.avatar_texture(sample, _role_key),
-			Vector2(20 + body_index * 178, 116),
+			String(option.label),
+			AppearanceManager.avatar_texture(sample, role_id),
+			Vector2(20 + role_index * 178, 116),
 			Vector2(166, 58)
 		)
-		button.pressed.connect(_select_body.bind(body_id))
-		_body_buttons[body_id] = button
-		body_index += 1
+		button.pressed.connect(_select_role.bind(role_id))
+		_role_buttons[role_id] = button
+		role_index += 1
 
 	_add_section_title(edit_card, "发型", Vector2(20, 188))
 	_hair_choice_root = Control.new()
@@ -205,9 +184,10 @@ func _build_actions(panel: Panel) -> void:
 		cancel.pressed.connect(func() -> void: canceled.emit())
 		panel.add_child(cancel)
 
-func _select_body(body_id: String) -> void:
-	_appearance["body_type"] = body_id
-	_appearance["hair_style"] = String(AppearanceManager.body_definition(body_id).get("default_hair_style", ""))
+func _select_role(role_id: String) -> void:
+	_role_key = role_id
+	_appearance = AppearanceManager.default_for_role(role_id)
+	_appearance["enabled"] = true
 	_rebuild_hair_choices()
 	_rebuild_outfit_choices()
 	_update_preview()
@@ -218,7 +198,7 @@ func _rebuild_hair_choices() -> void:
 	for child in _hair_choice_root.get_children():
 		child.queue_free()
 	_hair_style_buttons.clear()
-	var styles: Dictionary = AppearanceManager.hair_styles(String(_appearance.body_type))
+	var styles: Dictionary = AppearanceManager.available_hair_styles(_role_key)
 	var index := 0
 	for style_id_value in styles.keys():
 		var style_id := String(style_id_value)
@@ -278,22 +258,28 @@ func _update_preview() -> void:
 	_appearance["enabled"] = true
 	if _preview != null:
 		_preview.texture = AppearanceManager.avatar_texture(_appearance, _role_key)
-	var body_label := String(AppearanceManager.body_definition(String(_appearance.body_type)).get("label", ""))
+	var role_label := _role_label(_role_key)
 	var hair_label := String(AppearanceManager.hair_styles(String(_appearance.body_type)).get(String(_appearance.hair_style), {}).get("label", ""))
 	var outfit_label := String(AppearanceManager.outfits().get(String(_appearance.outfit), {}).get("label", ""))
 	if _summary != null:
-		_summary.text = "%s　%s\n%s" % [body_label, hair_label, outfit_label]
+		_summary.text = "%s　%s\n%s" % [role_label, hair_label, outfit_label]
 	_refresh_choice_styles()
 
 func _refresh_choice_styles() -> void:
-	for body_id in _body_buttons:
-		_style_button(_body_buttons[body_id], String(body_id) == String(_appearance.body_type))
+	for role_id in _role_buttons:
+		_style_button(_role_buttons[role_id], String(role_id) == _role_key)
 	for style_id in _hair_style_buttons:
 		_style_button(_hair_style_buttons[style_id], String(style_id) == String(_appearance.hair_style))
 	for hair_id in _hair_color_buttons:
 		_style_button(_hair_color_buttons[hair_id], String(hair_id) == String(_appearance.hair_color))
 	for outfit_id in _outfit_buttons:
 		_style_button(_outfit_buttons[outfit_id], String(outfit_id) == String(_appearance.outfit))
+
+func _role_label(role_id: String) -> String:
+	for option in ROLE_OPTIONS:
+		if String(option.id) == role_id:
+			return String(option.label)
+	return "家人"
 
 func _confirm() -> void:
 	var clean_name := _name_input.text.strip_edges()

@@ -3243,7 +3243,7 @@ func _scale_fishpond_player_visual() -> void:
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
 const FISHING_RESULTS := [
 	{"id": "goldfish", "item_id": "fish_goldfish", "title": "金鱼", "body": "一尾闪闪发亮的金鱼，已经放进背包。", "asset": "fishing_goldfish", "color": Color(0.96, 0.58, 0.18, 1.0)},
-	{"id": "bottle", "title": "漂流瓶", "body": "瓶子里藏着一段等待被打开的记忆。", "asset": "fishing_bottle", "color": Color(0.28, 0.54, 0.72, 1.0)},
+	{"id": "bottle", "title": "漂流瓶", "body": "瓶中的纸条写着：今天的风很好，希望你那里也是。", "asset": "fishing_bottle", "color": Color(0.28, 0.54, 0.72, 1.0)},
 	{"id": "branch", "title": "树枝", "body": "只是一根被水冲来的树枝，再试一次吧。", "asset": "fishing_branch", "color": Color(0.45, 0.30, 0.16, 1.0)},
 ]
 
@@ -3578,6 +3578,9 @@ func _start_fishing_sequence() -> void:
 
 
 func _pick_fishing_result(score: float) -> Dictionary:
+	# 第二章第一次有效拉竿必定带回漂流瓶，避免主线被随机结果卡住。
+	if StoryManager != null and not StoryManager.is_task_done("first_bottle"):
+		return FISHING_RESULTS[1]
 	var escape_chance: float = 0.24
 	if score < 0.45:
 		escape_chance = 0.42
@@ -3712,6 +3715,8 @@ func _open_fishing_result_panel(result: Dictionary = {}) -> void:
 
 func _award_fishing_result(result: Dictionary) -> void:
 	var result_id := String(result.get("id", ""))
+	if StoryManager != null and StoryManager.has_method("record_fishing_result"):
+		StoryManager.record_fishing_result(result_id)
 	if result_id != "goldfish":
 		return
 	var item_id := String(result.get("item_id", "fish_goldfish"))
@@ -3726,8 +3731,9 @@ func _award_fishing_result(result: Dictionary) -> void:
 
 func _open_caught_bottle_content() -> void:
 	var bid := "caught_bottle_" + str(Time.get_ticks_msec())
-	var question := "瓶中的纸条写着：你希望家人记住这个夏天的哪一刻？"
-	_demo_bottles.append({"id": bid, "question": question, "state": "floating", "answer": "", "node": null})
+	_demo_bottles.append({"id": bid, "question": "河流送来一张远方的纸条。", "state": "opened", "answer": "今天的风很好，希望你那里也是。", "node": null})
+	if StoryManager != null and StoryManager.has_method("record_fishing_result"):
+		StoryManager.record_fishing_result("bottle_opened")
 	_open_bottle_panel(_find_demo_bottle(bid))
 
 
@@ -4618,7 +4624,85 @@ func _on_generate_room(house_id: String) -> void:
 	if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty():
 		_open_room_management()
 		return
+	if StoryManager != null and StoryManager.current_chapter() == 3:
+		_open_first_room_brief_form()
+		return
 	_open_room_photo_form()
+
+func _open_first_room_brief_form() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(330, 125)
+	panel.size = Vector2(620, 470)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "生成第一间记忆房间"
+	title.position = Vector2(34, 28)
+	title.size = Vector2(550, 36)
+	title.add_theme_font_size_override("font_size", 24)
+	panel.add_child(title)
+	var sources := Label.new()
+	sources.text = "可用记忆：花园照片、第一顿料理、河边木桥、第一张明信片、第一朵记忆花"
+	sources.position = Vector2(34, 78)
+	sources.size = Vector2(550, 54)
+	sources.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sources.add_theme_font_size_override("font_size", 14)
+	sources.add_theme_color_override("font_color", Color(0.48, 0.39, 0.27, 1.0))
+	panel.add_child(sources)
+	var prompt := TextEdit.new()
+	prompt.placeholder_text = "例如：一个有河边晚风感觉的小厨房，温暖、安静，窗边放着一朵花。"
+	prompt.text = "一个有河边晚风感觉的小厨房，温暖、安静，窗边放着一朵花。"
+	prompt.position = Vector2(34, 145)
+	prompt.size = Vector2(552, 150)
+	panel.add_child(prompt)
+	var status := _make_status_label(panel, Vector2(34, 310), Vector2(552, 46), "首次生成会使用少量主线记忆，之后仍可继续布置。")
+	var generate := Button.new()
+	generate.text = "生成房间"
+	generate.position = Vector2(215, 382)
+	generate.size = Vector2(190, 44)
+	_apply_button_style(generate, true)
+	generate.pressed.connect(_generate_first_room_from_brief.bind(prompt, generate, status))
+	panel.add_child(generate)
+
+func _generate_first_room_from_brief(prompt: TextEdit, button: Button, status: Label) -> void:
+	var description := prompt.text.strip_edges()
+	if description == "":
+		_set_status(status, "先写一句你想要的房间感觉。", true)
+		return
+	_set_button_busy(button, "正在生成...")
+	_set_status(status, "正在把第一段花园生活整理成房间...")
+	await get_tree().create_timer(0.45).timeout
+	var analysis := AIClient.mock_room_analysis()
+	analysis["room_type"] = "kitchen_corner"
+	analysis["style"] = "warm_cozy"
+	analysis["suggested_room_theme"] = "memory_corner"
+	analysis["description"] = description.left(240)
+	analysis["objects"] = [
+		{"object_type": "desk", "zone": "back_left"},
+		{"object_type": "lamp", "zone": "back_right"},
+		{"object_type": "photo_wall", "zone": "back_wall"},
+		{"object_type": "plant", "zone": "right_side"},
+		{"object_type": "chair", "zone": "front_left"},
+	]
+	var room := RoomLayoutManager.generate(analysis, "first_memory_flower", "story:first_room", {
+		"source": "mock",
+		"provider": "story_memory",
+		"model": "first-room-layout",
+		"prompt_version": "chapter3-v1",
+		"memory_sources": ["garden_photo", "first_dish", "bridge_place", "first_postcard", "first_memory_flower"],
+	})
+	if room.is_empty():
+		_set_button_ready(button, "重新生成")
+		_set_status(status, "房间布局没有生成成功，请再试一次。", true)
+		return
+	_close_active_panel()
+	_enter_house("player", "我的房间")
+	_show_toast("第一间记忆房间已经生成，可以继续移动和摆放物件。")
 
 func _open_room_management() -> void:
 	_close_active_panel()
@@ -5517,6 +5601,8 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 		"photo_path": uploaded_photo_path
 	}
 	MemoryManager.postcards.append(postcard)
+	if StoryManager != null and StoryManager.has_method("record_place_and_postcard"):
+		StoryManager.record_place_and_postcard(place, postcard)
 	MemoryManager.notify_new_postcard()
 	MemoryManager.save_game()
 	_reset_selected_photo_state()

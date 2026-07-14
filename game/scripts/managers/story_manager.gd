@@ -1,114 +1,175 @@
 extends Node
 
-## 启动剧情 / 章节任务管理(autoload StoryManager)。
-## - 开场叙事:play_opening() 播放 OpeningNarrativeLayer,结束(含跳过)设 opening_seen 并存档;
-## - Chapter 1 任务:常量任务表 + 完成态存 MemoryManager.chapter1_tasks(个人 onboarding 态);
-##   农场/厨房任务由信号驱动自动打勾(FarmManager.planted/harvested、KitchenManager.crafted/meal_completed);
-## - 记忆卡:unlock_card 落 MemoryManager.memory_cards + 弹 MemoryCardPopup。
-## 未来接入点:记忆卡 → FamilyTree/Postcards/相册/云端;opening_seen → per-member 云 profile。
+## 三章主线进度管理。所有进度由真实玩法事件写入 MemoryManager.chapter1_tasks，
+## 沿用旧字段以兼容现有存档；字段现在承载完整主线而不只第一章。
 
 signal task_completed(task_id: String)
+signal chapter_changed(chapter_id: int)
 signal memory_card_unlocked(card: Dictionary)
 
-## Chapter 1 任务表(顺序即展示顺序)。tracked=false 的靠 UI 按钮完成。
-const CHAPTER1 := [
-	{ "id": "open_box",     "label": "打开旧木盒" },
-	{ "id": "first_photo",  "label": "放入第一张照片" },
-	{ "id": "first_seed",   "label": "种下第一颗种子" },
-	{ "id": "harvest_tomato", "label": "收获番茄" },
-	{ "id": "first_dish",   "label": "做第一道家常菜" },
-	{ "id": "dish_on_table", "label": "把它放到餐桌上" },
-]
-
-const CARDS := {
-	"first_photo": { "id": "first_photo", "title": "第一张照片", "desc": "这张照片被放进了家庭花园。", "emoji": "📷" },
-	"first_dish":  { "id": "first_dish",  "title": "第一道家常菜", "desc": "每个家都有自己的番茄炒蛋。", "emoji": "🍳" },
+const CHAPTERS := {
+	1: {
+		"title": "重新打开花园",
+		"subtitle": "编辑花园 → 种植 → 收获 → AI 料理",
+		"ending": "花园还没有完全整理好，但这里已经重新有了生活的气息。",
+		"tasks": [
+			{"id": "open_box", "label": "打开旧木盒"},
+			{"id": "first_photo", "label": "收好过去的花园照片"},
+			{"id": "garden_edit", "label": "移动入口处的长椅、花盆或桌子"},
+			{"id": "first_seed", "label": "在农场种下番茄"},
+			{"id": "harvest_tomato", "label": "收获番茄"},
+			{"id": "first_dish", "label": "用收获制作第一道 AI 料理"},
+			{"id": "dish_on_table", "label": "把料理摆到餐桌上"},
+		],
+	},
+	2: {
+		"title": "河流带来的惊喜",
+		"subtitle": "钓鱼 → 漂流瓶 → 地图留点 → 寄明信片",
+		"ending": "河流把远方的心意送到了这里，而你也从这里寄出了一句话。",
+		"tasks": [
+			{"id": "first_fishing", "label": "在河边完成第一次钓鱼"},
+			{"id": "first_bottle", "label": "捞起并打开漂流瓶"},
+			{"id": "first_place", "label": "在河边木桥创建第一个地图留点"},
+			{"id": "first_postcard", "label": "拍照、写一句话并寄出明信片"},
+		],
+	},
+	3: {
+		"title": "自己长出的花",
+		"subtitle": "生活行为 → 记忆花生长 → 第一次 AI 房间生成",
+		"ending": "这间房没有收藏很多东西，但它已经保存了你来到花园后的第一段生活。",
+		"tasks": [
+			{"id": "first_memory_flower", "label": "观察生活中长出的第一朵记忆花"},
+			{"id": "collect_memory_flower", "label": "把记忆花收录进图鉴"},
+			{"id": "first_ai_room", "label": "输入描述并生成第一间 AI 房间"},
+		],
+	},
 }
 
+const CARDS := {
+	"first_photo": {"id": "first_photo", "title": "第一张花园照片", "desc": "旧木盒里，花园曾经的样子还留在照片上。", "kind": "photo"},
+	"first_dish": {"id": "first_dish", "title": "第一顿料理", "desc": "收获的番茄变成了桌上的第一道料理。", "kind": "dish"},
+	"first_memory_flower": {
+		"id": "first_memory_flower",
+		"title": "来到花园后的第一段生活",
+		"desc": "河边的风吹过衣角。\n明信片上的墨还没有干。\n桌上放着刚做好的番茄料理。",
+		"kind": "memory_flower",
+	},
+}
+
+var _pending_quest_intro := false
+
 func _ready() -> void:
-	# 任务自动追踪钩子(信号驱动,无轮询)。已完成的任务重复触发无副作用。
-	FarmManager.planted.connect(func(_crop_id: String) -> void:
-		complete_task("first_seed"))
+	FarmManager.planted.connect(func(crop_id: String) -> void:
+		if crop_id == "corrato":
+			complete_task("first_seed"))
 	FarmManager.harvested.connect(func(crop_id: String, _item_id: String, _qty: int) -> void:
-		if crop_id == "corrato":   # 红番茄
+		if crop_id == "corrato":
 			complete_task("harvest_tomato"))
-	KitchenManager.crafted.connect(func(_recipe_id: String, _output_id: String) -> void:
-		if complete_task("first_dish"):
-			unlock_card("first_dish"))
+	KitchenManager.ai_dish_created.connect(func(_dish_id: String) -> void:
+		_record_first_dish())
 	KitchenManager.meal_completed.connect(func(_meal: Dictionary) -> void:
 		complete_task("dish_on_table"))
-
-# ── 开场叙事 ───────────────────────────────────────────
-
-## 播放开场(await 到结束/跳过)。host:挂载 overlay 的节点(main 根)。
-## debug replay 时传 mark_seen=false 以外的场景都会落 opening_seen。
-var _pending_quest_intro := false   ## 开场刚播完,等进入花园后自动弹一次任务面板
+	if GardenBuildManager != null and not GardenBuildManager.layout_saved.is_connected(_on_garden_layout_saved):
+		GardenBuildManager.layout_saved.connect(_on_garden_layout_saved)
+	if RoomLayoutManager != null and not RoomLayoutManager.room_generated.is_connected(_on_room_generated):
+		RoomLayoutManager.room_generated.connect(_on_room_generated)
+	call_deferred("_reconcile_existing_progress")
 
 func play_opening(host: Node) -> void:
 	var layer := OpeningNarrativeLayer.new()
 	host.add_child(layer)
 	await layer.finished
 	MemoryManager.opening_seen = true
-	complete_task("open_box", true)   # 开场里已打开旧木盒(静默,不弹 toast)
+	complete_task("open_box", true)
 	MemoryManager.save_game()
 	_pending_quest_intro = true
 
-## 进花园后调一次:开场刚播过则返回 true(并清标记),用于启动屏幕高亮引导。
 func consume_quest_intro() -> bool:
 	var pending := _pending_quest_intro
 	_pending_quest_intro = false
 	return pending
 
-## 开发用:重置并立即重播开场(SettingsPanel 的"重播开场(开发)"按钮调)。不清任务进度。
 func debug_replay_opening(host: Node) -> void:
 	MemoryManager.opening_seen = false
 	await play_opening(host)
-	consume_quest_intro()   # 重播场景里人已在花园,直接启动高亮引导
+	consume_quest_intro()
 	if SceneManager.game_hud != null:
 		SceneManager.game_hud.start_onboarding_guide(true)
 
-# ── Chapter 1 任务 ─────────────────────────────────────
+func current_chapter() -> int:
+	for chapter_id in [1, 2, 3]:
+		if not _chapter_complete(chapter_id):
+			return chapter_id
+	return 0
 
-func tasks() -> Array:
-	return CHAPTER1
+func chapter_title(chapter_id: int = current_chapter()) -> String:
+	if chapter_id == 0:
+		return "开放成长"
+	return str((CHAPTERS[chapter_id] as Dictionary).get("title", ""))
+
+func chapter_subtitle(chapter_id: int = current_chapter()) -> String:
+	if chapter_id == 0:
+		return "继续积累地点、料理、明信片、记忆花与房间素材"
+	return str((CHAPTERS[chapter_id] as Dictionary).get("subtitle", ""))
+
+func tasks(chapter_id: int = current_chapter()) -> Array:
+	if chapter_id == 0:
+		return []
+	return (CHAPTERS[chapter_id] as Dictionary).get("tasks", [])
 
 func is_task_done(task_id: String) -> bool:
 	return bool(MemoryManager.chapter1_tasks.get(task_id, false))
 
-## 当前应做的任务 id(第一个未完成);全完成返回 ""。
 func current_task() -> String:
-	for t in CHAPTER1:
-		if not is_task_done(str(t.id)):
-			return str(t.id)
+	for task in tasks():
+		if not is_task_done(str(task.id)):
+			return str(task.id)
 	return ""
 
-## 标记任务完成。返回"这次是否真的从未完成→完成"(重复调用返回 false)。
 func complete_task(task_id: String, silent: bool = false) -> bool:
 	if is_task_done(task_id):
 		return false
+	var old_chapter := current_chapter()
 	MemoryManager.chapter1_tasks[task_id] = true
 	MemoryManager.save_game()
 	task_completed.emit(task_id)
 	if not silent:
-		for t in CHAPTER1:
-			if str(t.id) == task_id:
-				SceneManager._show_toast("✅ 任务完成:" + str(t.label))
-				break
+		SceneManager._show_toast("任务完成：" + _task_label(task_id))
+	_after_progress_changed(old_chapter)
 	return true
 
-# ── 记忆卡 ─────────────────────────────────────────────
+func record_fishing_result(result_id: String) -> void:
+	complete_task("first_fishing")
+	if result_id == "bottle_opened":
+		complete_task("first_bottle")
+
+func record_place_and_postcard(place: Dictionary, postcard: Dictionary) -> void:
+	if not place.is_empty():
+		complete_task("first_place")
+	if not postcard.is_empty():
+		complete_task("first_postcard")
+
+func collect_first_memory_flower() -> void:
+	if is_task_done("first_memory_flower"):
+		complete_task("collect_memory_flower")
+
+func milestone_status() -> Array:
+	var flower_count := MemoryManager.memory_cards.filter(func(card): return card is Dictionary and str(card.get("kind", "")) == "memory_flower").size()
+	var postcard_count := MemoryManager.postcards.size()
+	var dish_count := MemoryManager.kitchen_ai_dishes.size()
+	var place_count := MemoryManager.travel_places.size()
+	return [
+		{"title": "记忆花园等级 2", "progress": "记忆花 %d/3 · 明信片 %d/3 · 料理 %d/3" % [flower_count, postcard_count, dish_count], "done": flower_count >= 3 and postcard_count >= 3 and dish_count >= 3, "reward": "解锁第二个房间"},
+		{"title": "记忆花园等级 3", "progress": "探索地点 %d/5" % place_count, "done": place_count >= 5, "reward": "解锁花园中央区域"},
+	]
 
 func has_card(card_id: String) -> bool:
-	for c in MemoryManager.memory_cards:
-		if c is Dictionary and str(c.get("id", "")) == card_id:
-			return true
-	return false
+	return MemoryManager.memory_cards.any(func(card): return card is Dictionary and str(card.get("id", "")) == card_id)
 
-## 解锁记忆卡:落存档 + 弹卡面。重复解锁忽略。
 func unlock_card(card_id: String) -> void:
 	if has_card(card_id) or not CARDS.has(card_id):
 		return
-	var card: Dictionary = CARDS[card_id].duplicate()
+	var card: Dictionary = (CARDS[card_id] as Dictionary).duplicate(true)
 	card["unlocked_at"] = Time.get_datetime_string_from_system()
 	MemoryManager.memory_cards.append(card)
 	MemoryManager.save_game()
@@ -117,3 +178,53 @@ func unlock_card(card_id: String) -> void:
 		var popup := MemoryCardPopup.new()
 		popup.card_data = card
 		SceneManager.game_hud.open_panel(popup)
+
+func _record_first_dish() -> void:
+	if complete_task("first_dish"):
+		unlock_card("first_dish")
+
+func _on_garden_layout_saved(_object_count: int) -> void:
+	complete_task("garden_edit")
+
+func _on_room_generated(_room: Dictionary) -> void:
+	complete_task("first_ai_room")
+
+func _reconcile_existing_progress() -> void:
+	if not MemoryManager.travel_places.is_empty():
+		complete_task("first_place", true)
+	if not MemoryManager.postcards.is_empty():
+		complete_task("first_postcard", true)
+	if not MemoryManager.kitchen_ai_dishes.is_empty():
+		complete_task("first_dish", true)
+	if not MemoryManager.rooms.is_empty():
+		complete_task("first_ai_room", true)
+	_after_progress_changed(current_chapter())
+
+func _after_progress_changed(old_chapter: int) -> void:
+	var new_chapter := current_chapter()
+	if old_chapter in [1, 2, 3] and _chapter_complete(old_chapter):
+		var end_key := "chapter_%d_ending_seen" % old_chapter
+		if not is_task_done(end_key):
+			MemoryManager.chapter1_tasks[end_key] = true
+			MemoryManager.save_game()
+			SceneManager._show_toast(str((CHAPTERS[old_chapter] as Dictionary).ending))
+	if new_chapter == 3 and not is_task_done("first_memory_flower"):
+		unlock_card("first_memory_flower")
+		MemoryManager.chapter1_tasks["first_memory_flower"] = true
+		MemoryManager.save_game()
+		task_completed.emit("first_memory_flower")
+	if new_chapter != old_chapter:
+		chapter_changed.emit(new_chapter)
+
+func _chapter_complete(chapter_id: int) -> bool:
+	for task in tasks(chapter_id):
+		if not is_task_done(str(task.id)):
+			return false
+	return true
+
+func _task_label(task_id: String) -> String:
+	for chapter_id in [1, 2, 3]:
+		for task in tasks(chapter_id):
+			if str(task.id) == task_id:
+				return str(task.label)
+	return task_id
