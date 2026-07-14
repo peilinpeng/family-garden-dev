@@ -68,6 +68,7 @@ func _task_row(tid: String, label: String, done: bool, is_current: bool) -> Cont
 	# task2 的完成入口:当前任务是放照片时给一个占位照片按钮
 	if tid == "first_photo" and not done and is_current:
 		var btn := Button.new()
+		btn.name = "QuestAction_first_photo"
 		btn.text = "🖼️ 放入一张照片"
 		btn.custom_minimum_size = Vector2(140, 34)
 		HUDPanel._style_soft_button(btn)

@@ -133,7 +133,9 @@ func _member_box(color: Color) -> StyleBoxFlat:
 
 func refresh() -> void:
 	if _avatar != null:
-		_avatar.texture = CharacterDB.avatar_texture(MemoryManager.selected_role_key)
+		var appearance: Dictionary = AppearanceManager.current(MemoryManager.selected_role_key)
+		_avatar.texture = AppearanceManager.avatar_texture(appearance, MemoryManager.selected_role_key) \
+			if bool(appearance.get("enabled", false)) else CharacterDB.avatar_texture(MemoryManager.selected_role_key)
 	if _name_label != null:
 		var display_name: String = MemoryManager.player_display_name.strip_edges()
 		if display_name == "":

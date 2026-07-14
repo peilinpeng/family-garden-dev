@@ -417,7 +417,8 @@ func _upsert_remote_player(peer: Dictionary) -> void:
 		remote_players[member_id] = rp
 	var display_name := str(peer.get("display_name", CharacterDB.display_name(role)))
 	if rp.has_method("configure_presence"):
-		rp.configure_presence(member_id, role, display_name)
+		var peer_appearance: Variant = peer.get("appearance", {})
+		rp.configure_presence(member_id, role, display_name, peer_appearance if peer_appearance is Dictionary else {})
 	var pos := _peer_position(peer)
 	if rp.global_position == Vector2.ZERO:
 		rp.global_position = pos

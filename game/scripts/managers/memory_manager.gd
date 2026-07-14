@@ -26,6 +26,7 @@ var farm_activity_log: Array = []     ## 农场告示牌动态 [{id, actor_name,
 # ── 启动剧情 / Chapter 1(个人 onboarding 态,与 selected_role_key 同为本设备个人字段;
 #    未来迁移点:per-member 云 profile) ──
 var opening_seen: bool = false        ## 开场叙事是否已看过(跳过也算)
+var onboarding_guide_seen: bool = false ## 开场后的屏幕高亮指引是否已完成或跳过
 var chapter1_tasks: Dictionary = {}   ## task_id -> true(Chapter 1 任务完成态)
 var memory_cards: Array = []          ## 已解锁记忆卡 [{id,title,desc,unlocked_at}](未来接家庭树/相册/云端)
 var farm_plots: Array = []            ## 农场地块状态 FarmPlotState(家庭共享;由 FarmManager 读写)
@@ -34,6 +35,7 @@ var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_
 var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
 var player_display_name: String = ""
+var character_appearance: Dictionary = {}   ## 本机玩家捏脸配置；由 AppearanceManager 校验和渲染。
 var last_scene_id: String = ""
 var last_spawn_key: String = "default"
 var last_player_position: Dictionary = {}
@@ -833,6 +835,7 @@ func _reset_all() -> void:
 	farm_plots = []
 	farm_livestock = {}
 	opening_seen = false
+	onboarding_guide_seen = false
 	chapter1_tasks = {}
 	memory_cards = []
 	memories = []
@@ -848,6 +851,7 @@ func _reset_all() -> void:
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
 	player_display_name = ""
+	character_appearance = {}
 	last_scene_id = ""
 	last_spawn_key = "default"
 	last_player_position = {}
@@ -1009,6 +1013,7 @@ func save_game() -> void:
 		"farm_plots": farm_plots,
 		"farm_livestock": farm_livestock,
 		"opening_seen": opening_seen,
+		"onboarding_guide_seen": onboarding_guide_seen,
 		"chapter1_tasks": chapter1_tasks,
 		"memory_cards": memory_cards,
 		"memories": memories,
@@ -1024,6 +1029,7 @@ func save_game() -> void:
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
 		"player_display_name": player_display_name,
+		"character_appearance": character_appearance,
 		"last_scene_id": last_scene_id,
 		"last_spawn_key": last_spawn_key,
 		"last_player_position": last_player_position,
@@ -1054,6 +1060,7 @@ func load_save() -> void:
 		farm_plots = parsed.get("farm_plots", [])
 		farm_livestock = parsed.get("farm_livestock", {})
 		opening_seen = bool(parsed.get("opening_seen", false))
+		onboarding_guide_seen = bool(parsed.get("onboarding_guide_seen", false))
 		chapter1_tasks = parsed.get("chapter1_tasks", {})
 		memory_cards = parsed.get("memory_cards", [])
 		memories = parsed.get("memories", [])
@@ -1073,6 +1080,8 @@ func load_save() -> void:
 		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 		selected_role_key = str(parsed.get("selected_role_key", ""))
 		player_display_name = str(parsed.get("player_display_name", ""))
+		var parsed_appearance: Variant = parsed.get("character_appearance", {})
+		character_appearance = parsed_appearance if parsed_appearance is Dictionary else {}
 		last_scene_id = str(parsed.get("last_scene_id", ""))
 		last_spawn_key = str(parsed.get("last_spawn_key", "default"))
 		var parsed_pos: Variant = parsed.get("last_player_position", {})

@@ -19,6 +19,8 @@ func _ready() -> void:
 	SceneManager.setup(world, ui_layer)
 	SceneManager._setup_web_photo_bridge()
 	MemoryManager.load_save()
+	if MemoryManager.selected_role_key != "":
+		AppearanceManager.ensure_current(MemoryManager.selected_role_key)
 	await SceneManager._load_cloud_data()
 	# 首次进入(或 debug 重置后)播放启动剧情;播完/跳过都会落 opening_seen,之后不再自动播。
 	if not MemoryManager.opening_seen:
@@ -35,6 +37,9 @@ func _ready() -> void:
 			display_name = CharacterDB.display_name(canonical_role)
 		await CloudManager.ensure_cloud_identity(canonical_role, display_name)
 		SceneManager.restore_last_saved_scene()
+		# 已有角色但通过开发入口重播开场时，也继续进入同一套高亮引导。
+		if StoryManager.consume_quest_intro() and SceneManager.game_hud != null:
+			SceneManager.game_hud.start_onboarding_guide()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:

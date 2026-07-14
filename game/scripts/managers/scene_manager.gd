@@ -12,6 +12,7 @@ const FARM_SCENE := "res://scenes/Farm.tscn"
 const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
+const CHARACTER_CREATOR_PANEL_SCRIPT := preload("res://scripts/ui/character_creator_panel.gd")
 const LOOP_TWEEN_GUARD_INTERVAL := 0.05
 const FISHPOND_PLAYER_VISUAL_SCALE := 1.35
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
@@ -1199,6 +1200,42 @@ func _show_role_select() -> void:
 	_current_spawn_key = "default"
 	_current_room_id = ""
 	_set_hud_context(mode)
+	info_label.text = "创建角色"
+	_add_background()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var creator: Control = CHARACTER_CREATOR_PANEL_SCRIPT.new()
+	overlay.add_child(creator)
+	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
+	creator.call("setup", MemoryManager.selected_role_key, MemoryManager.player_display_name, family_code, MemoryManager.character_appearance)
+	creator.connect("confirmed", _confirm_character_creation)
+	creator.connect("canceled", func() -> void:
+		_close_active_panel()
+		if MemoryManager.selected_role_key != "":
+			_show_garden())
+
+func _confirm_character_creation(role_key: String, display_name: String, family_code: String, appearance: Dictionary) -> void:
+	MemoryManager.selected_role_key = role_key
+	MemoryManager.player_display_name = display_name.strip_edges()
+	AppearanceManager.set_current(appearance, role_key)
+	_close_active_panel()
+	if game_hud != null:
+		game_hud.refresh_profile()
+	_show_garden()
+	if StoryManager.consume_quest_intro() and game_hud != null:
+		game_hud.start_onboarding_guide()
+	var canonical_role: String = CharacterDB.resolve(role_key)
+	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name, family_code)
+
+## 旧四卡片选择器保留为兼容参考；新游戏入口使用上面的捏脸面板。
+func _show_legacy_role_select() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	_clear_world()
+	mode = "role_select"
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
 	info_label.text = "选择角色"
 	_add_background()
 
@@ -1364,7 +1401,7 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit, family_inpu
 	_show_garden()
 	# 首次流程(开场→选角色→进花园)刚走完开场时,自动弹一次 Chapter 1 任务面板
 	if StoryManager.consume_quest_intro() and game_hud != null:
-		game_hud.show_quests()
+		game_hud.start_onboarding_guide()
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
 	var canonical_role: String = CharacterDB.resolve(role_key)
@@ -4019,10 +4056,14 @@ func _add_npcs() -> void:
 		var npc_def: Dictionary = CharacterDB.get_def(npc_asset_key)
 		var npc_frame_rects: Array = npc_def.get("frame_rects", [])
 		var npc_scale := float(npc_def.get("scale", -1.0))
+		var npc_hframes := maxi(1, int(npc_def.get("hframes", 3)))
+		var npc_vframes := maxi(1, int(npc_def.get("vframes", 4)))
 		var npc_texture_path := _character_texture_path(npc_asset_key, str(ASSETS.get(npc_asset_key, "")))
-		var npc_body := _create_character(npc_name, npc_texture_path, npc_pos, false, 3, 4, npc_frame_rects, npc_scale)
+		var npc_body := _create_character(npc_name, npc_texture_path, npc_pos, false, npc_hframes, npc_vframes, npc_frame_rects, npc_scale)
 		npc_body.name = "NPC_" + role_key
 		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
+		npc_body.set_meta("sprite_hframes", npc_hframes)
+		npc_body.set_meta("sprite_vframes", npc_vframes)
 		npc_body.set("home_position", npc_pos)
 		npc_body.set("wander_radius", float(role_data.get("wander_radius", 80.0)))
 		npc_body.set("move_speed", 34.0)
@@ -4184,6 +4225,8 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 			if r0 is Array and r0.size() >= 4:
 				sprite.region_rect = Rect2(float(r0[0]), float(r0[1]), float(r0[2]), float(r0[3]))
 			sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else 0.46)
+			# 精确裁切帧以中心为原点；阴影应落在帧底部的脚底，而不是沿用旧角色的固定 30px。
+			shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
 		else:
 			sprite.hframes = hframes
 			sprite.vframes = vframes
@@ -4706,61 +4749,167 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 	var panel := Panel.new()
-	panel.position = Vector2(300, 82)
-	panel.size = Vector2(680, 556)
+	panel.position = Vector2(250, 64)
+	panel.size = Vector2(780, 592)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
 	_add_panel_close_button(panel)
 	var analysis: Dictionary = draft.get("analysis", {})
+
 	var title := Label.new()
+	title.name = "RoomDraftTitle"
 	title.text = "语义房间预览" + (" · 示例回退布局" if bool(draft.get("used_fallback", false)) else "")
 	title.position = Vector2(34, 24)
-	title.size = Vector2(612, 34)
+	title.size = Vector2(666, 34)
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.25, 0.20, 0.14, 1.0))
 	panel.add_child(title)
+
+	var description_card := Panel.new()
+	description_card.name = "RoomDraftDescriptionCard"
+	description_card.position = Vector2(34, 72)
+	description_card.size = Vector2(712, 84)
+	description_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var description_style := StyleBoxFlat.new()
+	description_style.bg_color = Color(1.0, 0.92, 0.72, 0.42)
+	description_style.border_color = Color(0.72, 0.52, 0.30, 0.42)
+	description_style.set_border_width_all(1)
+	description_style.set_corner_radius_all(9)
+	description_card.add_theme_stylebox_override("panel", description_style)
+	panel.add_child(description_card)
+
 	var description := Label.new()
+	description.name = "RoomDraftDescription"
 	description.text = String(analysis.get("description", ""))
-	description.position = Vector2(34, 74)
-	description.size = Vector2(612, 64)
-	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(description)
+	if description.text.strip_edges() == "":
+		description.text = "AI 已完成房间结构识别，请检查下方的家具与摆放区域。"
+	description.position = Vector2(16, 12)
+	description.size = Vector2(680, 60)
+	description.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	description.max_lines_visible = 3
+	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	description.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	description.add_theme_font_size_override("font_size", 14)
+	description.add_theme_color_override("font_color", Color(0.33, 0.27, 0.20, 0.94))
+	description_card.add_child(description)
+
+	var layout: Dictionary = draft.get("layout", {})
+	var layout_objects: Array = layout.get("objects", [])
 	var object_lines: Array[String] = []
-	for object in draft.get("layout", {}).get("objects", []):
+	for object in layout_objects:
 		object_lines.append("• %s → %s" % [_room_object_display_label(String(object.get("object_type", ""))), _zone_display_label(String(object.get("zone", "")))])
 	if object_lines.is_empty():
 		object_lines.append("没有可安全摆放的家具。")
-	_add_room_preview_map(panel, Vector2(34, 154), Vector2(334, 210), draft.get("layout", {}).get("objects", []), draft.get("layout", {}).get("scene_schema", {}))
-	var objects := Label.new()
-	objects.text = "将摆放的家具\n" + "\n".join(object_lines)
-	objects.position = Vector2(392, 154)
-	objects.size = Vector2(254, 210)
-	objects.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objects.add_theme_font_size_override("font_size", 14)
-	objects.add_theme_color_override("font_color", Color(0.28, 0.23, 0.17, 0.94))
-	panel.add_child(objects)
+
+	_add_room_preview_map(panel, Vector2(34, 176), Vector2(414, 246), layout_objects, layout.get("scene_schema", {}))
+
+	var objects_card := Panel.new()
+	objects_card.name = "RoomDraftObjectCard"
+	objects_card.position = Vector2(466, 176)
+	objects_card.size = Vector2(280, 246)
+	objects_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	var objects_style := StyleBoxFlat.new()
+	objects_style.bg_color = Color(1.0, 0.96, 0.84, 0.76)
+	objects_style.border_color = Color(0.61, 0.45, 0.28, 0.48)
+	objects_style.set_border_width_all(1)
+	objects_style.set_corner_radius_all(9)
+	objects_card.add_theme_stylebox_override("panel", objects_style)
+	panel.add_child(objects_card)
+
+	var objects_title := Label.new()
+	objects_title.text = "家具清单 · %d 件" % layout_objects.size()
+	objects_title.position = Vector2(16, 13)
+	objects_title.size = Vector2(248, 26)
+	objects_title.add_theme_font_size_override("font_size", 15)
+	objects_title.add_theme_color_override("font_color", Color(0.31, 0.24, 0.17, 1.0))
+	objects_card.add_child(objects_title)
+
+	var objects_scroll := ScrollContainer.new()
+	objects_scroll.name = "RoomDraftObjectScroll"
+	objects_scroll.position = Vector2(12, 48)
+	objects_scroll.size = Vector2(256, 184)
+	objects_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	objects_card.add_child(objects_scroll)
+
+	var objects_list := VBoxContainer.new()
+	objects_list.name = "RoomDraftObjectList"
+	objects_list.custom_minimum_size = Vector2(236, 0)
+	objects_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	objects_list.add_theme_constant_override("separation", 8)
+	objects_scroll.add_child(objects_list)
+	for line in object_lines:
+		var object_label := Label.new()
+		object_label.text = line
+		object_label.custom_minimum_size = Vector2(232, 26)
+		object_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		object_label.add_theme_font_size_override("font_size", 14)
+		object_label.add_theme_color_override("font_color", Color(0.32, 0.26, 0.19, 0.94))
+		objects_list.add_child(object_label)
+
 	var meta: Dictionary = draft.get("generation_meta", {})
-	var trace := Label.new()
-	trace.text = "来源 %s · %s · %s" % [String(meta.get("source", "unknown")), String(meta.get("model", "unknown")), String(meta.get("prompt_version", "unknown"))]
-	trace.position = Vector2(34, 382)
-	trace.size = Vector2(612, 36)
-	trace.add_theme_font_size_override("font_size", 12)
-	panel.add_child(trace)
-	var status := _make_status_label(panel, Vector2(34, 426), Vector2(612, 24), "这是预览草稿；确认后才会创建或替换可探索的语义房间。")
+	var ai_badge := Panel.new()
+	ai_badge.name = "RoomDraftAIBadge"
+	ai_badge.position = Vector2(34, 440)
+	ai_badge.size = Vector2(712, 38)
+	ai_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var badge_style := StyleBoxFlat.new()
+	badge_style.bg_color = Color(0.82, 0.90, 0.68, 0.36)
+	badge_style.border_color = Color(0.45, 0.58, 0.34, 0.48)
+	badge_style.set_border_width_all(1)
+	badge_style.set_corner_radius_all(8)
+	ai_badge.add_theme_stylebox_override("panel", badge_style)
+	panel.add_child(ai_badge)
+
+	var attribution := Label.new()
+	attribution.name = "RoomDraftAIAttribution"
+	attribution.text = "由 %s 生成" % _room_ai_display_label(meta)
+	attribution.position = Vector2(14, 8)
+	attribution.size = Vector2(330, 22)
+	attribution.add_theme_font_size_override("font_size", 12)
+	attribution.add_theme_color_override("font_color", Color(0.27, 0.40, 0.23, 0.96))
+	ai_badge.add_child(attribution)
+
+	var safety_hint := Label.new()
+	safety_hint.text = "家具坐标由游戏安全布局生成"
+	safety_hint.position = Vector2(356, 8)
+	safety_hint.size = Vector2(340, 22)
+	safety_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	safety_hint.add_theme_font_size_override("font_size", 12)
+	safety_hint.add_theme_color_override("font_color", Color(0.38, 0.34, 0.27, 0.80))
+	ai_badge.add_child(safety_hint)
+
+	var status := _make_status_label(panel, Vector2(34, 492), Vector2(712, 28), "这是预览草稿；确认后才会创建或替换可探索的语义房间。")
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var cancel := Button.new()
-	cancel.text = "取消并清理照片"
-	cancel.position = Vector2(86, 458)
-	cancel.size = Vector2(180, 42)
+	cancel.text = "放弃草稿"
+	cancel.position = Vector2(166, 532)
+	cancel.size = Vector2(190, 42)
 	_apply_button_style(cancel, false)
 	cancel.pressed.connect(_discard_draft_and_close.bind(draft))
 	panel.add_child(cancel)
 	var confirm := Button.new()
 	confirm.text = "确认布局"
-	confirm.position = Vector2(414, 458)
-	confirm.size = Vector2(180, 42)
-	_apply_button_style(confirm, false)
+	confirm.position = Vector2(424, 532)
+	confirm.size = Vector2(190, 42)
+	_apply_button_style(confirm, true)
 	confirm.pressed.connect(_commit_room_preview.bind(draft, confirm, status))
 	panel.add_child(confirm)
+
+func _room_ai_display_label(meta: Dictionary) -> String:
+	var model := String(meta.get("model", "")).strip_edges()
+	var source := String(meta.get("source", "")).strip_edges().to_lower()
+	if source == "mock" or model.to_lower().contains("mock"):
+		return "本地模拟 AI"
+	match model.to_lower():
+		"hy-vision-2.0-instruct":
+			return "腾讯混元 HY Vision 2.0"
+		"hunyuan-vision":
+			return "腾讯混元视觉模型"
+		"":
+			return "AI"
+		_:
+			return model
 
 func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, objects: Array, schema: Dictionary = {}) -> void:
 	var map := Panel.new()

@@ -22,6 +22,8 @@ var _settings_btn: HUDIconButton
 var _current_panel: HUDPanel
 var _current_kind := ""
 var _active_source: HUDIconButton
+var _tutorial_overlay: TutorialHighlightOverlay
+var _tutorial_stage := ""
 
 func _ready() -> void:
 	layer = 30
@@ -31,6 +33,8 @@ func _ready() -> void:
 	if builder != null and builder.has_signal("build_mode_changed") and not builder.is_connected("build_mode_changed", build_callback):
 		builder.connect("build_mode_changed", build_callback)
 	set_context(SceneManager.mode)
+	if not StoryManager.task_completed.is_connected(_on_tutorial_task_completed):
+		StoryManager.task_completed.connect(_on_tutorial_task_completed)
 
 func _build() -> void:
 	_hud_root = Control.new()
@@ -56,6 +60,11 @@ func _build() -> void:
 	tooltip = HUDTooltip.new()
 	tooltip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(tooltip)
+
+	_tutorial_overlay = TutorialHighlightOverlay.new()
+	_tutorial_overlay.name = "TutorialHighlightOverlay"
+	_tutorial_overlay.skipped.connect(_finish_onboarding_guide)
+	add_child(_tutorial_overlay)
 
 func _build_action_dock() -> void:
 	_dock = Panel.new()
@@ -166,6 +175,9 @@ func _on_profile_pressed() -> void:
 func _create_profile_panel() -> HUDPanel:
 	var panel := ProfilePanel.new()
 	panel.settings_requested.connect(_open_settings_from_profile)
+	panel.appearance_requested.connect(func() -> void:
+		close_current()
+		SceneManager._show_role_select())
 	return panel
 
 func _open_settings_from_profile() -> void:
@@ -176,6 +188,8 @@ func _on_members_pressed() -> void:
 	SceneManager.open_family_members()
 
 func _on_map_pressed() -> void:
+	if _tutorial_stage == "map":
+		_finish_onboarding_guide()
 	_toggle("maps", _create_map_panel, _map_btn)
 
 func _create_map_panel() -> HUDPanel:
@@ -192,7 +206,10 @@ func _on_backpack_pressed() -> void:
 	_toggle("inventory", func() -> HUDPanel: return InventoryPanel.new(), _backpack_btn)
 
 func _on_quests_pressed() -> void:
+	var advance_to_task := _tutorial_stage == "quests"
 	_toggle("quests", func() -> HUDPanel: return QuestPanel.new(), _quests_btn)
+	if advance_to_task:
+		call_deferred("_highlight_first_photo_action")
 
 func _on_build_pressed() -> void:
 	close_current()
@@ -211,6 +228,52 @@ func _on_settings_pressed() -> void:
 func show_quests() -> void:
 	if _current_kind != "quests" or not has_open_panel():
 		_toggle("quests", func() -> HUDPanel: return QuestPanel.new(), _quests_btn)
+
+## 开场→角色创建→花园后的三段式高亮：任务入口→第一张照片→地图入口。
+func start_onboarding_guide(force: bool = false) -> void:
+	if _tutorial_overlay == null or (MemoryManager.onboarding_guide_seen and not force):
+		return
+	close_current()
+	if StoryManager.is_task_done("first_photo"):
+		_highlight_map_step()
+	else:
+		_tutorial_stage = "quests"
+		_tutorial_overlay.highlight(_quests_btn, "先点击这里，查看花园为你准备的新手任务。")
+
+func onboarding_guide_stage() -> String:
+	return _tutorial_stage
+
+func onboarding_guide_target() -> Control:
+	return _tutorial_overlay.target() if _tutorial_overlay != null else null
+
+func _highlight_first_photo_action() -> void:
+	await get_tree().process_frame
+	if _tutorial_stage != "quests" or _current_kind != "quests" or _current_panel == null:
+		return
+	var action := _current_panel.find_child("QuestAction_first_photo", true, false) as Control
+	if action == null:
+		if StoryManager.is_task_done("first_photo"):
+			_highlight_map_step()
+		return
+	_tutorial_stage = "photo"
+	_tutorial_overlay.highlight(action, "先放入一张照片，让家庭花园拥有第一段共同记忆。")
+
+func _on_tutorial_task_completed(task_id: String) -> void:
+	if task_id == "first_photo" and _tutorial_stage == "photo":
+		call_deferred("_highlight_map_step")
+
+func _highlight_map_step() -> void:
+	if _tutorial_overlay == null:
+		return
+	_tutorial_stage = "map"
+	_tutorial_overlay.highlight(_map_btn, "照片已经放好了。接下来打开地图，去农场种下第一颗种子。")
+
+func _finish_onboarding_guide() -> void:
+	_tutorial_stage = ""
+	if _tutorial_overlay != null:
+		_tutorial_overlay.clear_highlight()
+	MemoryManager.onboarding_guide_seen = true
+	MemoryManager.save_game()
 
 ## 角色卡不是 HUDIconButton,不参与 set_active 高亮,这里返回 null 让面板管理跳过高亮。
 func profile_card_active_proxy() -> HUDIconButton:

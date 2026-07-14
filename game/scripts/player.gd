@@ -26,6 +26,12 @@ func _ready() -> void:
 func apply_character(role_key: String) -> void:
 	if sprite == null:
 		sprite = get_node_or_null("Sprite2D")
+	var appearance_manager := get_node_or_null("/root/AppearanceManager")
+	if appearance_manager != null:
+		var appearance: Dictionary = appearance_manager.current(role_key)
+		if bool(appearance.get("enabled", false)):
+			apply_appearance(appearance, role_key)
+			return
 	var db := get_node_or_null("/root/CharacterDB")
 	if db == null or sprite == null:
 		return
@@ -35,6 +41,7 @@ func apply_character(role_key: String) -> void:
 	var tex: Texture2D = db.texture(role_key)
 	if tex != null:
 		sprite.texture = tex
+	sprite.material = null
 	sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
 	frame_rects.clear()
 	var raw_rects: Array = def.get("frame_rects", [])
@@ -59,6 +66,44 @@ func apply_character(role_key: String) -> void:
 		sprite.vframes = int(def.get("vframes", 4))
 	_rebuild_frame_offsets()
 	character_id = role_key
+
+## 应用开场捏脸结果。所有场景仍调用 apply_character()，由它自动转入这里，避免各场景各存一份外观。
+func apply_appearance(appearance: Dictionary, fallback_role: String = "player") -> void:
+	if sprite == null:
+		sprite = get_node_or_null("Sprite2D")
+	var manager := get_node_or_null("/root/AppearanceManager")
+	if manager == null or sprite == null:
+		return
+	var clean: Dictionary = manager.normalize(appearance, fallback_role)
+	var definition: Dictionary = manager.variant_definition(clean, fallback_role)
+	var tex: Texture2D = manager.texture(clean, fallback_role)
+	if definition.is_empty() or tex == null:
+		return
+	sprite.texture = tex
+	sprite.scale = Vector2.ONE * float(definition.get("scale", 0.46))
+	frame_rects.clear()
+	for raw_rect in definition.get("frame_rects", []):
+		if raw_rect is Array and raw_rect.size() >= 4:
+			frame_rects.append(Rect2(float(raw_rect[0]), float(raw_rect[1]), float(raw_rect[2]), float(raw_rect[3])))
+	if frame_rects.size() > 0:
+		sprite.region_enabled = true
+		sprite.hframes = 1
+		sprite.vframes = 1
+		sprite.frame = 0
+		var initial_index := mini(IDLE_FRAME_INDEX, frame_rects.size() - 1)
+		sprite.region_rect = frame_rects[initial_index]
+		# 发色已经离线烘焙进完整图集，运行时不再挂载换色材质。
+		sprite.material = null
+		var shadow := get_node_or_null("Shadow") as Node2D
+		if shadow != null:
+			shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
+	else:
+		sprite.region_enabled = false
+		sprite.hframes = int(definition.get("hframes", 3))
+		sprite.vframes = int(definition.get("vframes", 5))
+		sprite.material = null
+	_rebuild_frame_offsets()
+	character_id = fallback_role
 
 ## 场景传送门渐隐切换时调用:锁住/解锁移动输入,人物原地站定不再乱走。
 func set_movement_locked(locked: bool) -> void:
