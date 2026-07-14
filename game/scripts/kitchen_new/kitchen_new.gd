@@ -9,14 +9,7 @@ extends Node2D
 ## walkable_area 在画面上不显示:只当 Image 读,不需要把图加进场景树。
 
 const FEET_OFFSET := Vector2(0, 18)  ## 玩家脚底相对其原点的偏移(同 Player 碰撞体)
-const WALK_BOUNDS := Rect2(90, 300, 1090, 405)
-const NO_WALK_RECTS := [
-	Rect2(166, 378, 202, 132),  # 厨房岛台
-	Rect2(0, 568, 410, 152),    # 水槽与下方柜台
-	Rect2(518, 326, 286, 222),  # 餐桌与座椅主体
-	Rect2(948, 356, 284, 170),  # 池塘
-	Rect2(1098, 0, 182, 330),   # 柳树树冠与右上装饰
-]
+const WALKABLE_ALPHA_THRESHOLD := 0.3
 
 ## 厨房交互站点:走进 trigger_rect 显示 [E] 提示,按 E 开对应面板(经 GameHUD.open_panel)。
 ## 坐标是贴着可行走地板放的近似值,后续可在这里微调(单位=1280×720 逻辑像素,rect=[x,y,w,h])。
@@ -89,17 +82,11 @@ func _find_walkable_start() -> Vector2:
 	return Vector2(640, 500)
 
 func _walkable(feet: Vector2) -> bool:
-	if not WALK_BOUNDS.has_point(feet):
-		return false
-	for rect in NO_WALK_RECTS:
-		var blocked: Rect2 = rect
-		if blocked.has_point(feet):
-			return false
 	var x := int(feet.x)
 	var y := int(feet.y)
 	if x < 0 or y < 0 or x >= walk_img.get_width() or y >= walk_img.get_height():
 		return false
-	return walk_img.get_pixelv(Vector2i(x, y)).a > 0.3
+	return walk_img.get_pixelv(Vector2i(x, y)).a > WALKABLE_ALPHA_THRESHOLD
 
 func _physics_process(_delta: float) -> void:
 	if player == null:
