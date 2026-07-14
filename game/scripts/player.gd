@@ -11,6 +11,7 @@ var step_index := 0
 var facing_row := 0
 var idle_timer := 0.0
 var idle_frame := 0
+var frame_offsets: Array[Vector2] = []
 var frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl)按精确裁切矩形取帧,优先于 hframes/vframes
 var movement_locked := false   ## 场景切换渐隐过程中锁住输入,人物原地站定淡出
 
@@ -56,6 +57,7 @@ func apply_character(role_key: String) -> void:
 		sprite.region_enabled = false
 		sprite.hframes = int(def.get("hframes", 3))
 		sprite.vframes = int(def.get("vframes", 4))
+	_rebuild_frame_offsets()
 	character_id = role_key
 
 ## 场景传送门渐隐切换时调用:锁住/解锁移动输入,人物原地站定不再乱走。
@@ -146,3 +148,98 @@ func _set_frame(index: int) -> void:
 		sprite.region_rect = frame_rects[index]
 	else:
 		sprite.frame = index
+	if frame_offsets.size() > index:
+		sprite.offset = frame_offsets[index]
+	else:
+		sprite.offset = Vector2.ZERO
+
+func _rebuild_frame_offsets() -> void:
+	frame_offsets.clear()
+	if sprite == null or sprite.texture == null:
+		return
+	var image: Image = sprite.texture.get_image()
+	if image == null:
+		return
+	var frame_count: int = frame_rects.size()
+	if frame_count <= 0:
+		frame_count = max(1, sprite.hframes * sprite.vframes)
+	var frame_data: Array = []
+	frame_data.resize(frame_count)
+	var row_targets: Dictionary = {}
+	for i in range(frame_count):
+		var rect: Rect2 = _frame_source_rect(i)
+		var bbox: Rect2 = _alpha_bbox(image, rect)
+		if bbox.size == Vector2.ZERO:
+			frame_data[i] = {"valid": false}
+			continue
+		var row: int = _frame_row(i)
+		var rect_center: Vector2 = rect.position + rect.size * 0.5
+		var local_center_x: float = bbox.position.x + bbox.size.x * 0.5 - rect_center.x
+		var local_bottom: float = bbox.position.y + bbox.size.y - rect_center.y
+		frame_data[i] = {
+			"valid": true,
+			"row": row,
+			"local_center_x": local_center_x,
+			"local_bottom": local_bottom
+		}
+		if not row_targets.has(row):
+			row_targets[row] = {"center_sum": 0.0, "count": 0, "bottom": local_bottom}
+		var target: Dictionary = row_targets[row]
+		target["center_sum"] = float(target["center_sum"]) + local_center_x
+		target["count"] = int(target["count"]) + 1
+		target["bottom"] = max(float(target["bottom"]), local_bottom)
+		row_targets[row] = target
+	for i in range(frame_count):
+		var data: Dictionary = frame_data[i]
+		if not bool(data.get("valid", false)):
+			frame_offsets.append(Vector2.ZERO)
+			continue
+		var row: int = int(data.get("row", 0))
+		var target: Dictionary = row_targets.get(row, {})
+		var target_center: float = float(target.get("center_sum", 0.0)) / float(max(1, int(target.get("count", 1))))
+		var target_bottom: float = float(target.get("bottom", data.get("local_bottom", 0.0)))
+		frame_offsets.append(Vector2(
+			target_center - float(data.get("local_center_x", 0.0)),
+			target_bottom - float(data.get("local_bottom", 0.0))
+		))
+
+func _frame_source_rect(index: int) -> Rect2:
+	if frame_rects.size() > index:
+		return frame_rects[index]
+	var cols: int = max(1, sprite.hframes)
+	var rows: int = max(1, sprite.vframes)
+	var frame_size: Vector2 = Vector2(
+		float(sprite.texture.get_width()) / float(cols),
+		float(sprite.texture.get_height()) / float(rows)
+	)
+	var col: int = index % cols
+	var row: int = floori(float(index) / float(cols))
+	return Rect2(Vector2(float(col) * frame_size.x, float(row) * frame_size.y), frame_size)
+
+func _frame_row(index: int) -> int:
+	if frame_rects.size() > 0:
+		return floori(float(index) / 3.0)
+	return floori(float(index) / float(max(1, sprite.hframes)))
+
+func _alpha_bbox(image: Image, rect: Rect2) -> Rect2:
+	var x0: int = clampi(int(floor(rect.position.x)), 0, image.get_width())
+	var y0: int = clampi(int(floor(rect.position.y)), 0, image.get_height())
+	var x1: int = clampi(int(ceil(rect.position.x + rect.size.x)), 0, image.get_width())
+	var y1: int = clampi(int(ceil(rect.position.y + rect.size.y)), 0, image.get_height())
+	var min_x: int = x1
+	var min_y: int = y1
+	var max_x: int = x0
+	var max_y: int = y0
+	var found: bool = false
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			if image.get_pixel(x, y).a <= 0.05:
+				continue
+			found = true
+			min_x = mini(min_x, x)
+			min_y = mini(min_y, y)
+			max_x = maxi(max_x, x + 1)
+			max_y = maxi(max_y, y + 1)
+	if not found:
+		return Rect2(rect.position, Vector2.ZERO)
+	return Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))

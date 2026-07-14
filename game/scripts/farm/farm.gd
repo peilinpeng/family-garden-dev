@@ -502,7 +502,7 @@ func _plot_hint(plot_index: int) -> String:
 func _find_walkable_start() -> Vector2:
 	# 出生点必须在"回花园"传送门(trigger_rect y585-615)的内侧(上方),
 	# 否则玩家出生在门外、一往上走就踩进触发区被立刻送回花园。
-	var spawn_center := Vector2(640, 540)
+	var spawn_center := Vector2(640, 590)
 	for r in range(0, 420, 8):
 		for a in range(0, 360, 15):
 			var p: Vector2 = spawn_center + Vector2(r, 0).rotated(deg_to_rad(a))

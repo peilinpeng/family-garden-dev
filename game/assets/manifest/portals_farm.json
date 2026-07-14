@@ -4,11 +4,11 @@
   "spawn_points": {
     "default": [
       640,
-      540
+      590
     ],
     "from_garden": [
       640,
-      540
+      590
     ]
   },
   "portals": [
@@ -17,15 +17,17 @@
       "target_scene": "res://scenes/Main.tscn",
       "spawn_point": "from_farm",
       "trigger_rect": [
-        580,
-        585,
-        130,
-        30
+        600,
+        688,
+        80,
+        24
       ],
       "prompt_text": "Return to garden",
       "tap_enabled": true,
       "fade": true,
-      "delay": 1.0
+      "delay": 1.0,
+      "cooldown_after_teleport": 0.8,
+      "one_way": true
     },
     {
       "portal_id": "FarmPondPathArea",
