@@ -6,6 +6,7 @@ const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
+const MEMORY_LINK_VISUALIZER_SCRIPT := preload("res://scripts/memory_links/memory_link_visualizer.gd")
 
 
 const ASSETS := {
@@ -19,7 +20,7 @@ const ASSETS := {
 	"tree": "res://assets/garden/family_tree.png",
 	"mailbox": "res://assets/garden/mailbox.png",
 	"bench": "res://assets/garden/bench.png",
-	"flower": "res://assets/garden/flower.png",
+	"flower": "res://assets/garden/memory_flowers.png",
 	"wooden_sign": "res://assets/fishpond/items/wooden_sign.png",
 	"house_father": "res://assets/houses/house_father.png",
 	"house_mother": "res://assets/houses/house_mother.png",
@@ -42,6 +43,8 @@ const ASSETS := {
 	"icon_home": "res://assets/ui/icons/icon_home.png",
 	"icon_tree": "res://assets/ui/icons/icon_tree.png",
 	"icon_sign": "res://assets/ui/icons/icon_sign.png",
+	"icon_settings": "res://assets/ui/icons/icon_settings.png",
+	"icon_build": "res://assets/ui/icons/icon_build.png",
 	"icon_save": "res://assets/ui/icons/icon_save.png",
 	"icon_add": "res://assets/ui/icons/icon_add.png",
 	"icon_delete": "res://assets/ui/icons/icon_delete.png",
@@ -81,6 +84,18 @@ const HOUSE_DATA := [
 	{"id": "mother", "label": "妈妈的小屋", "room_label": "妈妈的房间", "asset": "house_mother", "pos": Vector2(1090, 160), "sign_pos": Vector2(1090, 246), "height": 230.0, "hotspot_size": Vector2(92, 100)},
 	{"id": "player", "label": "佩琳的小屋", "room_label": "佩琳的房间", "asset": "house_player", "pos": Vector2(682, 160), "sign_pos": Vector2(682, 246), "height": 180.0, "hotspot_size": Vector2(92, 100)},
 	{"id": "partner", "label": "路易的小屋", "room_label": "路易的房间", "asset": "house_partner", "pos": Vector2(370, 155), "sign_pos": Vector2(370, 246), "height": 180.0, "hotspot_size": Vector2(92, 100)},
+]
+
+const HOUSE_WINDOW_GLOWS := [
+	{"center": Vector2(171, 84), "size": Vector2(22, 28)},
+	{"center": Vector2(133, 154), "size": Vector2(34, 28)},
+	{"center": Vector2(274, 137), "size": Vector2(20, 31)},
+	{"center": Vector2(644, 84), "size": Vector2(22, 28)},
+	{"center": Vector2(594, 156), "size": Vector2(20, 31)},
+	{"center": Vector2(695, 156), "size": Vector2(20, 31)},
+	{"center": Vector2(767, 151), "size": Vector2(34, 31)},
+	{"center": Vector2(998, 156), "size": Vector2(24, 30)},
+	{"center": Vector2(1167, 156), "size": Vector2(24, 30)}
 ]
 
 const ROOM_DATA := {
@@ -202,6 +217,8 @@ var selected_photo_content_type: String = ""
 var selected_photo_from_web: bool = false
 var web_photo_callback: Variant = null
 var photo_texture_cache: Dictionary = {}
+var memory_link_visualizer: Node2D = null
+var night_window_glow_root: Node2D = null
 const SETTINGS_PATH := "user://family_garden_settings.json"
 var settings_brightness := 1.0
 var settings_day_night_enabled := true
@@ -314,8 +331,11 @@ func _add_button(root: Control, button_text: String, pos: Vector2, button_size: 
 	button.position = pos
 	button.size = button_size
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.pressed.connect(_on_ui_button.bind(action))
 	_apply_button_style(button, action == "toggle_plant" and plant_mode)
+	_fit_button_font(button, button_text, 13)
 	_set_button_icon(button, _icon_key_for_action(action))
 	root.add_child(button)
 	return button
@@ -571,7 +591,7 @@ func _format_world_chat_time(raw_time: String) -> String:
 func _on_ui_button(action: String) -> void:
 	match action:
 		"family_tree":
-			_open_family_tree_panel()
+			_open_family_tree_view()
 		"message_board":
 			_open_message_board_panel()
 		"role_select":
@@ -801,6 +821,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_add_collision_zones()
 	_add_garden_spawn_markers()
 	_add_houses()
+	_add_night_window_glows()
 	_add_core_objects()
 	_add_npcs()
 	_add_animals()
@@ -862,12 +883,34 @@ func _spawn_demo_memory_link() -> void:
 		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
 
 func _render_memory_links(scene: String) -> void:
-	for link in MemoryManager.get_memory_links(scene):
-		var a := _memory_flower_pos(scene, String(link.get("memory_id", "")))
-		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
-		if a == Vector2.INF or b == Vector2.INF:
+	if world == null or not is_instance_valid(world):
+		return
+	var existing := world.get_node_or_null("MemoryLinkRoot")
+	if existing != null:
+		existing.queue_free()
+	memory_link_visualizer = null
+
+	var node_map: Dictionary = {}
+	for memory_entry in _demo_memories:
+		if not (memory_entry is Dictionary):
 			continue
-		_draw_link_line(a, b, String(link.get("question", "")))
+		var row: Dictionary = memory_entry
+		var memory_id: String = String(row.get("memory_id", ""))
+		var live_node: Variant = row.get("node", null)
+		if memory_id != "" and live_node is Node2D:
+			node_map[memory_id] = live_node
+
+	var links: Array = MemoryManager.get_memory_links(scene)
+	if links.is_empty() or node_map.is_empty():
+		return
+
+	var visualizer := MEMORY_LINK_VISUALIZER_SCRIPT.new() as Node2D
+	visualizer.name = "MemoryLinkRoot"
+	world.add_child(visualizer)
+	memory_link_visualizer = visualizer
+	visualizer.call("setup", node_map, links)
+	if visualizer.has_signal("link_clicked"):
+		visualizer.connect("link_clicked", Callable(self, "_on_memory_link_clicked"))
 
 func _render_family_portrait() -> void:
 	if world == null or not is_instance_valid(world):
@@ -927,8 +970,8 @@ func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
 	var line := Line2D.new()
 	line.name = "MemoryLink"
 	line.points = PackedVector2Array([a + head, arc, b + head])
-	line.width = 4.0
-	line.default_color = Color(0.46, 0.66, 0.36, 0.9)
+	line.width = 1.0
+	line.default_color = Color(0.46, 0.66, 0.36, 0.18)
 	line.z_index = 5000
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
@@ -944,7 +987,7 @@ func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
 	shape.shape = rect
 	area.add_child(shape)
 	var tag := Label.new()
-	tag.text = "Link"
+	tag.text = "联系"
 	tag.position = Vector2(-12, -16)
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_theme_font_size_override("font_size", 22)
@@ -954,6 +997,12 @@ func _draw_link_line(a: Vector2, b: Vector2, question: String) -> void:
 			get_viewport().set_input_as_handled()
 			_show_toast("关联：" + question))
 	world.add_child(area)
+
+func _on_memory_link_clicked(_link_id: String, link: Dictionary) -> void:
+	var question: String = String(link.get("question", ""))
+	if question == "":
+		question = "这两段记忆有一条温柔的联系。"
+	_show_toast("记忆联系：" + question)
 
 func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
 	for nd in MemoryManager.get_nodes_for_scene(scene):
@@ -999,6 +1048,8 @@ func _find_demo_memory(mem_id: String) -> Dictionary:
 func _on_memory_clicked(mem_id: String) -> void:
 	var mem := _find_demo_memory(mem_id)
 	if not mem.is_empty():
+		if memory_link_visualizer != null and is_instance_valid(memory_link_visualizer):
+			memory_link_visualizer.call("set_selected_memory", String(mem.get("memory_id", "")))
 		_open_memory_card(mem)
 
 # 记忆卡片 UI：AI 推测使用浅色，家人确认后显示为正式记忆。
@@ -1572,6 +1623,17 @@ func _start_fishing_sequence() -> void:
 	bobber.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(bobber)
 
+	var hook_item := TextureRect.new()
+	hook_item.position = bobber.position + Vector2(-12, 38)
+	hook_item.size = Vector2(52, 52)
+	hook_item.visible = false
+	hook_item.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hook_item.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hook_item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	hook_item.z_index = 4
+	hook_item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(hook_item)
+
 	var update_fishing_line := func() -> void:
 		if not is_instance_valid(line) or not is_instance_valid(rod) or not is_instance_valid(bobber):
 			return
@@ -1579,6 +1641,8 @@ func _start_fishing_sequence() -> void:
 		var rod_tip := rod.position + rod.pivot_offset + (rod_tip_local - rod.pivot_offset).rotated(rod.rotation)
 		var bobber_top := bobber.position + Vector2(bobber.size.x * 0.5, bobber.size.y * 0.12)
 		line.points = PackedVector2Array([rod_tip, bobber_top])
+		if is_instance_valid(hook_item):
+			hook_item.position = bobber.position + Vector2(-12, 38)
 	update_fishing_line.call()
 
 	var ripple := ColorRect.new()
@@ -1675,15 +1739,29 @@ func _start_fishing_sequence() -> void:
 		var distance := absf(marker_center - target_center)
 		var hit_zone := marker_center >= sweet_zone.position.x and marker_center <= sweet_zone.position.x + sweet_zone.size.x
 		var score := clampf(1.0 - distance / 72.0, 0.0, 1.0) if hit_zone else 0.0
+		var caught_result: Dictionary = {}
+		var reel_success: bool = false
+		if hit_zone:
+			caught_result = _pick_fishing_result(score)
+			reel_success = not caught_result.is_empty()
 		if not hit_zone:
 			status.text = "脱钩了，什么也没钓到"
+		elif not reel_success:
+			status.text = "鱼线一松，东西脱钩了"
 		elif score >= 0.72:
-			status.text = "时机很好！"
+			status.text = "时机很好，正在收线"
 		else:
 			status.text = "拉住了，慢慢收线"
+		if is_instance_valid(hook_item):
+			hook_item.visible = reel_success
+			if reel_success:
+				var asset_key: String = String(caught_result.get("asset", ""))
+				hook_item.texture = _safe_texture(str(ASSETS.get(asset_key, "")))
+				hook_item.size = Vector2(62, 42) if String(caught_result.get("id", "")) == "branch" else Vector2(52, 52)
+				update_fishing_line.call()
 		var finish_tween := create_tween()
 		finish_tween.set_parallel(true)
-		if hit_zone:
+		if reel_success:
 			finish_tween.tween_property(bobber, "position", Vector2(204, 96), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
 			finish_tween.tween_property(rod, "rotation", -0.22, 0.28).set_trans(Tween.TRANS_BACK)
 			finish_tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.28)
@@ -1694,19 +1772,29 @@ func _start_fishing_sequence() -> void:
 		finish_tween.set_parallel(false)
 		finish_tween.tween_interval(0.12)
 		finish_tween.tween_callback(func() -> void:
-			if hit_zone:
-				_open_fishing_result_panel(_pick_fishing_result(score))
+			if reel_success:
+				_open_fishing_result_panel(caught_result)
 			else:
 				_open_fishing_failed_panel()
 		)
 	)
 
 func _pick_fishing_result(score: float) -> Dictionary:
-	if score >= 0.58:
+	var escape_chance: float = 0.24
+	if score < 0.45:
+		escape_chance = 0.42
+	elif score >= 0.82:
+		escape_chance = 0.10
+	if randf() < escape_chance:
+		return {}
+	var goldfish_chance: float = 0.28
+	if score >= 0.82:
+		goldfish_chance = 0.42
+	elif score < 0.58:
+		goldfish_chance = 0.18
+	if randf() < goldfish_chance:
 		return FISHING_RESULTS[0]
-	if randf() < 0.72:
-		return FISHING_RESULTS[0]
-	if randf() < 0.55:
+	if randf() < 0.45:
 		return FISHING_RESULTS[1]
 	return FISHING_RESULTS[2]
 
@@ -1867,7 +1955,7 @@ func _open_bottle_panel(b: Dictionary) -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "A question drifted in"
+	title.text = "漂流瓶里的问题"
 	title.position = Vector2(34, 24)
 	title.size = Vector2(490, 34)
 	title.add_theme_font_size_override("font_size", 23)
@@ -1963,6 +2051,8 @@ func _clear_world() -> void:
 	for child in world.get_children():
 		child.queue_free()
 	plant_nodes.clear()
+	memory_link_visualizer = null
+	night_window_glow_root = null
 
 func _clear_map_ui() -> void:
 	adding_place = false
@@ -2119,6 +2209,74 @@ func _add_houses() -> void:
 		)
 		_add_room_sign(house)
 
+func _add_night_window_glows() -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	var existing := world.get_node_or_null("NightWindowGlowRoot")
+	if existing != null:
+		existing.queue_free()
+
+	night_window_glow_root = Node2D.new()
+	night_window_glow_root.name = "NightWindowGlowRoot"
+	night_window_glow_root.z_as_relative = false
+	night_window_glow_root.z_index = 3
+	world.add_child(night_window_glow_root)
+
+	for raw_glow in HOUSE_WINDOW_GLOWS:
+		if not (raw_glow is Dictionary):
+			continue
+		var glow_data: Dictionary = raw_glow
+		var center := Vector2.ZERO
+		var size := Vector2(20, 24)
+		var raw_center: Variant = glow_data.get("center", Vector2.ZERO)
+		var raw_size: Variant = glow_data.get("size", Vector2(20, 24))
+		if raw_center is Vector2:
+			center = raw_center
+		if raw_size is Vector2:
+			size = raw_size
+		_add_window_glow_rect(night_window_glow_root, center, size)
+
+	var clock: Node = get_node_or_null("/root/GameClock")
+	if clock != null and clock.has_signal("phase_changed"):
+		var callback := Callable(self, "_on_garden_phase_changed")
+		if not clock.is_connected("phase_changed", callback):
+			clock.connect("phase_changed", callback)
+	_refresh_night_window_glows()
+
+func _add_window_glow_rect(parent: Node2D, center: Vector2, size: Vector2) -> void:
+	var outer := ColorRect.new()
+	outer.position = center - size * 1.45
+	outer.size = size * 2.9
+	outer.color = Color(1.0, 0.72, 0.30, 0.10)
+	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(outer)
+
+	var mid := ColorRect.new()
+	mid.position = center - size * 0.95
+	mid.size = size * 1.9
+	mid.color = Color(1.0, 0.82, 0.42, 0.18)
+	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(mid)
+
+	var core := ColorRect.new()
+	core.position = center - size * 0.5
+	core.size = size
+	core.color = Color(1.0, 0.90, 0.55, 0.44)
+	core.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(core)
+
+func _on_garden_phase_changed(_phase: String) -> void:
+	_refresh_night_window_glows()
+
+func _refresh_night_window_glows() -> void:
+	if night_window_glow_root == null or not is_instance_valid(night_window_glow_root):
+		return
+	var phase := "day"
+	var clock: Node = get_node_or_null("/root/GameClock")
+	if clock != null and clock.has_method("phase"):
+		phase = String(clock.call("phase"))
+	night_window_glow_root.visible = settings_day_night_enabled and phase == "night"
+
 func _add_invisible_hotspot(node_name: String, pos: Vector2, hotspot_size: Vector2, action: String, label_text: String) -> Node2D:
 	var root := Node2D.new()
 	root.name = node_name
@@ -2141,23 +2299,25 @@ func _add_room_sign(house: Dictionary) -> Node2D:
 	var sign := Sprite2D.new()
 	sign.texture = _safe_texture(str(ASSETS.get("wooden_sign", "")))
 	sign.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	sign.scale = Vector2.ONE * 0.92
+	sign.scale = Vector2.ONE * 1.08
 	root.add_child(sign)
 
 	var label := Label.new()
 	label.text = room_label
-	label.position = Vector2(-42, -35)
-	label.size = Vector2(84, 24)
+	label.position = Vector2(-56, -38)
+	label.size = Vector2(112, 30)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 12)
+	label.clip_text = false
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.add_theme_font_size_override("font_size", _fit_font_size_for_text(room_label, 13, 9, 6))
 	label.add_theme_color_override("font_color", Color(0.26, 0.16, 0.08, 1.0))
 	label.add_theme_color_override("font_outline_color", Color(1.0, 0.88, 0.62, 0.72))
 	label.add_theme_constant_override("outline_size", 1)
 	root.add_child(label)
 
-	_add_click_area(root, Vector2(96, 88), action, str(house.get("label", room_label)), Vector2(0, -6))
+	_add_click_area(root, Vector2(118, 88), action, str(house.get("label", room_label)), Vector2(0, -6))
 	return root
 
 func _add_npcs() -> void:
@@ -2167,7 +2327,7 @@ func _add_npcs() -> void:
 			continue
 		var npc_name := str(role_data.get("default_name", role_data.get("label", "家人")))
 		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
-		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false)
+		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false, 3, 4, role_key)
 		npc_body.name = "NPC_" + role_key
 		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
 		npc_body.set("home_position", npc_pos)
@@ -2308,7 +2468,7 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4, role_key: String = "") -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
@@ -2327,19 +2487,35 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.name = "Sprite2D"
-	var texture := _safe_texture(path)
+	var texture: Texture2D = _safe_texture(path)
+	var def: Dictionary = {}
+	if role_key != "":
+		var db: Node = get_node_or_null("/root/CharacterDB")
+		if db != null and db.has_method("get_def"):
+			def = db.call("get_def", role_key) as Dictionary
+			if not def.is_empty():
+				var db_texture: Texture2D = db.call("texture", role_key) as Texture2D
+				if db_texture != null:
+					texture = db_texture
+				hframes = int(def.get("hframes", hframes))
+				vframes = int(def.get("vframes", vframes))
 	if texture:
 		sprite.texture = texture
 		sprite.hframes = hframes
 		sprite.vframes = vframes
 		sprite.frame = 0
-		var frame_height := float(texture.get_height()) / float(vframes)
-		if frame_height > 0.0:
-			sprite.scale = Vector2.ONE * (78.0 / frame_height)
+		if not def.is_empty():
+			sprite.scale = Vector2.ONE * float(def.get("scale", 0.32))
+		else:
+			var frame_height := float(texture.get_height()) / float(vframes)
+			if frame_height > 0.0:
+				sprite.scale = Vector2.ONE * (82.0 / frame_height)
 	else:
 		sprite.texture = _solid_texture(32, 48, Color(0.92, 0.80, 0.62, 1.0))
 		sprite.scale = Vector2(1.6, 1.6)
 	body.add_child(sprite)
+	body.set_meta("sprite_hframes", hframes)
+	body.set_meta("sprite_vframes", vframes)
 
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -2456,7 +2632,7 @@ func _on_interactable_input(_viewport: Node, event: InputEvent, _shape_idx: int,
 
 func _handle_action(action: String, label_text: String) -> void:
 	if action == "tree":
-		_open_family_tree_panel()
+		_open_family_tree_view()
 	elif action.begins_with("house:"):
 		var house_id := action.split(":")[1]
 		_enter_house(house_id, label_text)
@@ -3625,6 +3801,174 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
 
 
+func _open_family_tree_view() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(300, 64)
+	panel.size = Vector2(680, 560)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "家庭树"
+	title.position = Vector2(34, 24)
+	title.size = Vector2(320, 36)
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.20, 0.15, 0.10, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = _family_tree_summary_text()
+	subtitle.position = Vector2(34, 62)
+	subtitle.size = Vector2(600, 42)
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", Color(0.40, 0.32, 0.23, 0.95))
+	panel.add_child(subtitle)
+
+	var tree_icon := TextureRect.new()
+	tree_icon.texture = _safe_texture(str(ASSETS.get("tree", "")))
+	tree_icon.position = Vector2(258, 114)
+	tree_icon.size = Vector2(164, 190)
+	tree_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tree_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tree_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tree_icon.modulate = Color(1.0, 1.0, 1.0, 0.22)
+	tree_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(tree_icon)
+
+	var trunk := ColorRect.new()
+	trunk.position = Vector2(333, 248)
+	trunk.size = Vector2(14, 168)
+	trunk.color = Color(0.50, 0.31, 0.16, 0.62)
+	trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(trunk)
+
+	var root_glow := ColorRect.new()
+	root_glow.position = Vector2(283, 402)
+	root_glow.size = Vector2(116, 22)
+	root_glow.color = Color(0.68, 0.86, 0.43, 0.25)
+	root_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(root_glow)
+
+	var card_positions: Dictionary = {
+		"papa": Vector2(62, 150),
+		"mama": Vector2(442, 150),
+		"girl": Vector2(86, 346),
+		"boy": Vector2(418, 346)
+	}
+	var branch_origin := Vector2(340, 274)
+	_add_family_tree_branch(panel, branch_origin, Vector2(170, 218))
+	_add_family_tree_branch(panel, branch_origin, Vector2(510, 218))
+	_add_family_tree_branch(panel, Vector2(340, 356), Vector2(190, 394))
+	_add_family_tree_branch(panel, Vector2(340, 356), Vector2(502, 394))
+
+	for role_data in CHARACTER_DATA:
+		var role_key: String = str(role_data.get("role", ""))
+		if not card_positions.has(role_key):
+			continue
+		var member_pos := Vector2.ZERO
+		var raw_member_pos: Variant = card_positions[role_key]
+		if raw_member_pos is Vector2:
+			member_pos = raw_member_pos
+		_add_family_member_card(panel, role_data, member_pos)
+
+	_add_panel_button(panel, "明信片", Vector2(190, 500), Vector2(130, 38), "MemoryManager.postcards")
+	_add_panel_button(panel, "留言板", Vector2(340, 500), Vector2(130, 38), "message_board")
+
+func _family_tree_summary_text() -> String:
+	var participant_count: int = MemoryManager.participants().size()
+	var memory_count: int = MemoryManager.memories.size()
+	var postcard_count: int = MemoryManager.postcards.size()
+	var warmth: int = MemoryManager.cross_member_interaction_count
+	return "家人参与 %d 位 · 记忆 %d 段 · 明信片 %d 张 · 关系温度 %d" % [participant_count, memory_count, postcard_count, warmth]
+
+func _add_family_tree_branch(parent: Control, from_pos: Vector2, to_pos: Vector2) -> void:
+	var delta: Vector2 = to_pos - from_pos
+	var branch := ColorRect.new()
+	branch.position = from_pos
+	branch.size = Vector2(delta.length(), 4)
+	branch.pivot_offset = Vector2(0, 2)
+	branch.rotation = delta.angle()
+	branch.color = Color(0.48, 0.30, 0.16, 0.40)
+	branch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(branch)
+
+func _add_family_member_card(parent: Control, role_data: Dictionary, pos: Vector2) -> void:
+	var role_key: String = str(role_data.get("role", ""))
+	var is_current: bool = role_key == MemoryManager.selected_role_key
+	var card := Panel.new()
+	card.position = pos
+	card.size = Vector2(172, 104)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_small_card_style(card)
+	parent.add_child(card)
+
+	var portrait := TextureRect.new()
+	portrait.texture = _safe_texture(str(ASSETS.get(str(role_data.get("asset", "girl")), "")))
+	portrait.position = Vector2(10, 12)
+	portrait.size = Vector2(50, 64)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(portrait)
+
+	var name_label := Label.new()
+	name_label.text = _family_member_name(role_data)
+	name_label.position = Vector2(68, 12)
+	name_label.size = Vector2(90, 24)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_label.add_theme_font_size_override("font_size", _fit_font_size_for_text(name_label.text, 15, 11, 5))
+	name_label.add_theme_color_override("font_color", Color(0.22, 0.16, 0.11, 1.0))
+	card.add_child(name_label)
+
+	var role_label := Label.new()
+	role_label.text = str(role_data.get("label", "家人")) + (" · 当前" if is_current else "")
+	role_label.position = Vector2(68, 38)
+	role_label.size = Vector2(94, 20)
+	role_label.add_theme_font_size_override("font_size", 12)
+	role_label.add_theme_color_override("font_color", Color(0.48, 0.38, 0.26, 0.95))
+	card.add_child(role_label)
+
+	var stat := Label.new()
+	stat.text = "记忆 %d · 回答 %d" % [_memory_count_for_role(role_key), _answer_count_for_role(role_key)]
+	stat.position = Vector2(12, 78)
+	stat.size = Vector2(148, 20)
+	stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stat.add_theme_font_size_override("font_size", 12)
+	stat.add_theme_color_override("font_color", Color(0.32, 0.42, 0.24, 0.95))
+	card.add_child(stat)
+
+func _family_member_name(role_data: Dictionary) -> String:
+	var role_key: String = str(role_data.get("role", ""))
+	if role_key == MemoryManager.selected_role_key and str(MemoryManager.player_display_name).strip_edges() != "":
+		return str(MemoryManager.player_display_name).strip_edges()
+	return str(role_data.get("default_name", role_data.get("label", "家人")))
+
+func _memory_count_for_role(role_key: String) -> int:
+	var count: int = 0
+	for raw_memory in MemoryManager.memories:
+		if raw_memory is Dictionary:
+			var memory: Dictionary = raw_memory
+			if str(memory.get("user_id", "")) == role_key:
+				count += 1
+	return count
+
+func _answer_count_for_role(role_key: String) -> int:
+	var count: int = 0
+	for raw_answer in MemoryManager.answers:
+		if raw_answer is Dictionary:
+			var answer: Dictionary = raw_answer
+			if str(answer.get("user_id", "")) == role_key:
+				count += 1
+	return count
+
 func _open_family_tree_panel() -> void:
 	var body := "这棵树会随着家人的记忆一起生长。\n\n家庭成员：\n"
 	for role_data in CHARACTER_DATA:
@@ -3935,6 +4279,7 @@ func _apply_settings() -> void:
 			clock.call("set_brightness", settings_brightness)
 		if clock.has_method("set_day_night_enabled"):
 			clock.call("set_day_night_enabled", settings_day_night_enabled)
+	_refresh_night_window_glows()
 	_set_audio_bus_volume("Music", settings_music_volume)
 	_set_audio_bus_volume("SFX", settings_sfx_volume)
 	var master_idx := AudioServer.get_bus_index("Master")
@@ -3955,7 +4300,10 @@ func _add_panel_button(parent: Control, button_text: String, pos: Vector2, butto
 	button.position = pos
 	button.size = button_size
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_apply_button_style(button, false)
+	_fit_button_font(button, button_text, 13)
 	_set_button_icon(button, _icon_key_for_action(action))
 	if action == "save_new_place" and args.size() >= 2:
 		button.pressed.connect(_save_new_place.bind(args[0], args[1]))
@@ -3999,7 +4347,7 @@ func _icon_key_for_action(action: String) -> String:
 		"save", "save_new_place", "save_new_message":
 			return "icon_save"
 		"settings":
-			return "icon_sign"
+			return "icon_settings"
 		"fish_again":
 			return "icon_add"
 		"back_garden":
@@ -4019,6 +4367,16 @@ func _apply_button_style(button: Button, selected: bool = false) -> void:
 	button.add_theme_font_size_override("font_size", 13)
 	button.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
 	button.add_theme_color_override("font_hover_color", Color(0.22, 0.17, 0.12, 1.0))
+
+func _fit_button_font(button: Button, text: String, max_size: int = 13) -> void:
+	button.add_theme_font_size_override("font_size", _fit_font_size_for_text(text, max_size, 10, 5))
+
+func _fit_font_size_for_text(text: String, max_size: int, min_size: int, chars_at_max: int) -> int:
+	var count: int = text.length()
+	if count <= chars_at_max:
+		return max_size
+	var extra: int = count - chars_at_max
+	return maxi(min_size, max_size - int(ceil(float(extra) * 0.85)))
 
 func _button_style(asset_key: String, fallback_color: Color, border_color: Color) -> StyleBox:
 	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
@@ -4072,6 +4430,8 @@ func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):
 		active_modal.queue_free()
 	active_modal = null
+	if memory_link_visualizer != null and is_instance_valid(memory_link_visualizer):
+		memory_link_visualizer.call("set_selected_memory", "")
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
 

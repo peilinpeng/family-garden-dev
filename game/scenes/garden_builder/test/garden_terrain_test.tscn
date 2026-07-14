@@ -1,0 +1,10 @@
+[gd_scene format=4 uid="uid://garden_terrain_test"]
+
+[node name="GardenTerrainTest" type="Node2D"]
+
+[node name="Notes" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 760.0
+offset_bottom = 96.0
+text = "DIY Garden Terrain Test: enter the main garden, press B, choose 铺地, then test click/drag/Shift rectangle/Ctrl+Z/Ctrl+Y/save reload."

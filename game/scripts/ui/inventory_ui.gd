@@ -10,6 +10,8 @@ var _inv: Node = null
 var _db: Node = null
 var _overlay: Control = null
 var _root: Panel = null
+var _side_bar: Panel = null
+var _collapse_button: Button = null
 var _hotbar_grid: GridContainer = null
 var _backpack_grid: GridContainer = null
 var _storehouse_grid: GridContainer = null
@@ -20,6 +22,7 @@ var _move_one_button: Button = null
 var _move_stack_button: Button = null
 var _selected_id := ""
 var _selected_source := BACKPACK
+var _hotbar_collapsed: bool = false
 
 func _ready() -> void:
 	layer = 40
@@ -110,17 +113,17 @@ func _build() -> void:
 	_build_detail_panel()
 
 func _build_side_bar() -> void:
-	var bar := Panel.new()
-	bar.position = Vector2(1214, 92)
-	bar.size = Vector2(54, 580)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_side_bar = Panel.new()
+	_side_bar.position = Vector2(1214, 92)
+	_side_bar.size = Vector2(54, 580)
+	_side_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bar_style := StyleBoxFlat.new()
 	bar_style.bg_color = Color(0.16, 0.12, 0.08, 0.20)
 	bar_style.border_color = Color(0.60, 0.43, 0.25, 0.45)
 	bar_style.set_border_width_all(1)
 	bar_style.set_corner_radius_all(8)
-	bar.add_theme_stylebox_override("panel", bar_style)
-	add_child(bar)
+	_side_bar.add_theme_stylebox_override("panel", bar_style)
+	add_child(_side_bar)
 
 	var quick_button := Button.new()
 	quick_button.text = ""
@@ -133,11 +136,30 @@ func _build_side_bar() -> void:
 	quick_button.pressed.connect(toggle)
 	add_child(quick_button)
 
+	_collapse_button = Button.new()
+	_collapse_button.text = "<"
+	_collapse_button.position = Vector2(1192, 154)
+	_collapse_button.size = Vector2(22, 42)
+	_collapse_button.focus_mode = Control.FOCUS_NONE
+	_collapse_button.pressed.connect(func() -> void:
+		_set_hotbar_collapsed(not _hotbar_collapsed)
+	)
+	add_child(_collapse_button)
+
 	_hotbar_grid = GridContainer.new()
 	_hotbar_grid.position = Vector2(1220, 154)
 	_hotbar_grid.columns = 1
 	_hotbar_grid.add_theme_constant_override("v_separation", 7)
 	add_child(_hotbar_grid)
+	_set_hotbar_collapsed(false)
+
+func _set_hotbar_collapsed(collapsed: bool) -> void:
+	_hotbar_collapsed = collapsed
+	if _hotbar_grid != null:
+		_hotbar_grid.visible = not collapsed
+	if _collapse_button != null:
+		_collapse_button.text = ">" if collapsed else "<"
+		_collapse_button.tooltip_text = "展开物品栏" if collapsed else "收起物品栏"
 
 func _make_inventory_column(label_text: String, pos: Vector2, source: String, visible_slots: int) -> GridContainer:
 	var label := Label.new()

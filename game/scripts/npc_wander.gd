@@ -13,6 +13,8 @@ var state_timer: float = 0.0
 var step_timer: float = 0.0
 var step_index: int = 1
 var facing_row: int = 0
+var sprite_hframes: int = 3
+var sprite_vframes: int = 4
 
 @onready var sprite: Sprite2D = get_node_or_null("Sprite2D")
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -20,6 +22,11 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	rng.randomize()
+	if sprite != null:
+		sprite_hframes = maxi(1, int(get_meta("sprite_hframes", sprite.hframes)))
+		sprite_vframes = maxi(1, int(get_meta("sprite_vframes", sprite.vframes)))
+		sprite.hframes = sprite_hframes
+		sprite.vframes = sprite_vframes
 
 	if home_position == Vector2.ZERO:
 		home_position = global_position
@@ -121,19 +128,20 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 	if sprite.texture == null:
 		return
 
-	sprite.hframes = 3
-	sprite.vframes = 4
+	sprite.hframes = sprite_hframes
+	sprite.vframes = sprite_vframes
 
 	if walking:
 		step_timer += delta
 		if step_timer > 0.24:
 			step_timer = 0.0
-			step_index = (step_index + 1) % 3
+			step_index = (step_index + 1) % sprite_hframes
 	else:
-		step_index = 1
+		step_index = mini(1, sprite_hframes - 1)
 		step_timer = 0.0
 
-	sprite.frame = facing_row * 3 + step_index
+	var row: int = clampi(facing_row, 0, maxi(0, sprite_vframes - 1))
+	sprite.frame = row * sprite_hframes + step_index
 
 
 func set_blocked_rects(rects: Array) -> void:

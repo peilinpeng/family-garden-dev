@@ -99,9 +99,16 @@ func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: S
 		"family_id": FAMILY_ID,
 		"memory_id": memory_id,
 		"linked_memory_id": linked_memory_id,
+		"source_memory_id": memory_id,
+		"target_memory_id": linked_memory_id,
 		"scene_id": scene_id,
 		"node_type": "memory_link",
 		"relation_type": relation_type,
+		"relation_strength": _relation_strength_for_type(relation_type),
+		"active_time_mode": "both",
+		"visual_style": _visual_style_for_type(relation_type),
+		"visible_when": "always",
+		"curve_points": [],
 		"question": question,
 		"slot_id": "",
 		"state": "new",
@@ -117,6 +124,20 @@ func get_memory_links(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary \
 		and String(n.get("node_type", "")) == "memory_link" \
 		and String(n.get("scene_id", "")) == scene_id)
+
+func _relation_strength_for_type(relation_type: String) -> float:
+	var text: String = relation_type.to_lower()
+	if text.find("strong") >= 0 or text.find("family") >= 0:
+		return 0.86
+	if text.find("weak") >= 0:
+		return 0.30
+	return 0.58
+
+func _visual_style_for_type(relation_type: String) -> String:
+	var text: String = relation_type.to_lower()
+	if text.find("bee") >= 0:
+		return "bee"
+	return "butterfly"
 
 func get_answer_for_memory(memory_id: String) -> String:
 	var result := ""

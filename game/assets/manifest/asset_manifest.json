@@ -26,15 +26,15 @@
     },
     {
       "asset_id": "node_garden_memory_flower_01",
-      "file_name": "node_garden_memory_flower_01_new.png",
+      "file_name": "memory_flowers.png",
       "scene": "garden",
       "category": "node",
       "width": 48, "height": 48,
-      "native_width": 48, "native_height": 48,
-      "display_width": 96, "display_height": 96,
+      "native_width": 1448, "native_height": 1086,
+      "display_width": 64, "display_height": 64,
       "pivot": "bottom_center",
       "default_x": -1, "default_y": -1,
-      "click_rect": [-48, -96, 96, 96],
+      "click_rect": [-40, -72, 80, 80],
       "collision_rect": null,
       "footprint": "2x2",
       "z_rule": "ysort",
@@ -42,8 +42,8 @@
       "interactive": "yes",
       "owner": "A",
       "priority": "P0",
-      "status": "todo",
-      "notes": "记忆花；点击打开记忆卡片；3 态(种子→花苞→开放)供生长动画"
+      "status": "done",
+      "notes": "最新记忆花透明图集；12 个花朵区域由 NodeFactory 按 slot_id 稳定选择；显示高度 64px，与 77–100px 高的角色协调；点击打开记忆卡片"
     },
     {
       "asset_id": "node_garden_sign_fishpond_01",

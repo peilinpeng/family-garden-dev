@@ -3,13 +3,28 @@ extends Node
 ## Family Garden 节点工厂（autoload 单例）。
 ## 按 asset_manifest 把记忆节点放到 slot 的落点（bottom_center 近似），
 ## 自动建 ≥80×80 点击区。AI 不输出坐标（docs/09 §5/6/9）。
-## 阶段 1 / feature/garden-mvp-loop。
-## 注：A 的正式美术尚未产出（manifest status=todo），此处贴图回退到程序化占位（_get_placeholder）。
+## 记忆花统一使用最新透明图集；其他正式美术缺失时回退到程序化占位。
 
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
+const MEMORY_FLOWER_SHEET := "res://assets/garden/memory_flowers.png"
 const FLOATING_NODE_CONTROLLER := preload("res://scripts/pond/floating_node_controller.gd")
+
+const MEMORY_FLOWER_REGIONS := [
+	Rect2(170, 110, 156, 216),
+	Rect2(483, 109, 171, 217),
+	Rect2(803, 101, 173, 226),
+	Rect2(1120, 116, 156, 207),
+	Rect2(165, 430, 149, 211),
+	Rect2(488, 437, 154, 198),
+	Rect2(813, 432, 144, 292),
+	Rect2(1115, 432, 154, 203),
+	Rect2(153, 744, 158, 210),
+	Rect2(483, 744, 155, 210),
+	Rect2(802, 724, 149, 234),
+	Rect2(1111, 744, 165, 213)
+]
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
@@ -60,7 +75,7 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable) ->
 	if node_type == "bottle":
 		_configure_bottle_sprite(root, entry)
 	else:
-		_configure_sprite(root.get_node("Sprite"), entry, node_type)
+		_configure_sprite(root.get_node("Sprite"), entry, node_type, String(slot.get("slot_id", "")))
 	_configure_click_area(root.get_node("ClickArea"), entry, on_click)
 	return root
 
@@ -107,11 +122,11 @@ func _new_root() -> Node2D:
 	root.add_child(area)
 	return root
 
-func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String) -> void:
+func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String, variant_key: String = "") -> void:
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	var tex := _resolve_texture(entry)  # 真美术优先，缺图回退程序化占位（必非 null）
+	var tex: Texture2D = _resolve_memory_flower_texture(variant_key) if node_type == "memory_flower" else _resolve_texture(entry)
 	sprite.texture = tex
 	if tex.get_height() > 0:
 		sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
@@ -168,6 +183,18 @@ func _resolve_texture(entry: Dictionary) -> Texture2D:
 		if ResourceLoader.exists(real_path):
 			return load(real_path)
 	return _get_placeholder()
+
+func _resolve_memory_flower_texture(variant_key: String) -> Texture2D:
+	if not ResourceLoader.exists(MEMORY_FLOWER_SHEET):
+		return _get_placeholder()
+	var sheet: Texture2D = load(MEMORY_FLOWER_SHEET) as Texture2D
+	if sheet == null or MEMORY_FLOWER_REGIONS.is_empty():
+		return _get_placeholder()
+	var variant_index: int = absi(hash(variant_key)) % MEMORY_FLOWER_REGIONS.size()
+	var atlas_texture := AtlasTexture.new()
+	atlas_texture.atlas = sheet
+	atlas_texture.region = MEMORY_FLOWER_REGIONS[variant_index]
+	return atlas_texture
 
 func _make_placeholder_texture(node_type: String) -> Texture2D:
 	var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)

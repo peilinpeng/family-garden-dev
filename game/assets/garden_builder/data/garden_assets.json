@@ -792,49 +792,6 @@
       "sort_order": 19
     },
     {
-      "id": "gb_flowerbed_02_020",
-      "display_name": "花坛 020",
-      "category": "flowerbeds",
-      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_020.png",
-      "scene_path": "",
-      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_020.png",
-      "source_sheet": "02.png",
-      "source_rect": [
-        402,
-        244,
-        164,
-        147
-      ],
-      "width": 164,
-      "height": 147,
-      "footprint": [
-        3,
-        3
-      ],
-      "anchor": "bottom_center",
-      "allowed_surfaces": [
-        "grass",
-        "dirt",
-        "stone_path"
-      ],
-      "blocked_surfaces": [
-        "water"
-      ],
-      "walkable": false,
-      "collision": true,
-      "can_rotate": true,
-      "can_flip": false,
-      "y_sort": true,
-      "placement_layer": "prop",
-      "tags": [
-        "flowerbed"
-      ],
-      "review_flags": [
-        "large_or_irregular_footprint"
-      ],
-      "sort_order": 20
-    },
-    {
       "id": "gb_flowerbed_02_021",
       "display_name": "花坛 021",
       "category": "flowerbeds",
@@ -874,49 +831,6 @@
       ],
       "review_flags": [],
       "sort_order": 21
-    },
-    {
-      "id": "gb_flowerbed_02_022",
-      "display_name": "花坛 022",
-      "category": "flowerbeds",
-      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_022.png",
-      "scene_path": "",
-      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_022.png",
-      "source_sheet": "02.png",
-      "source_rect": [
-        594,
-        245,
-        174,
-        146
-      ],
-      "width": 174,
-      "height": 146,
-      "footprint": [
-        3,
-        3
-      ],
-      "anchor": "bottom_center",
-      "allowed_surfaces": [
-        "grass",
-        "dirt",
-        "stone_path"
-      ],
-      "blocked_surfaces": [
-        "water"
-      ],
-      "walkable": false,
-      "collision": true,
-      "can_rotate": true,
-      "can_flip": false,
-      "y_sort": true,
-      "placement_layer": "prop",
-      "tags": [
-        "flowerbed"
-      ],
-      "review_flags": [
-        "large_or_irregular_footprint"
-      ],
-      "sort_order": 22
     },
     {
       "id": "gb_flowerbed_02_023",
@@ -1593,49 +1507,6 @@
       "sort_order": 38
     },
     {
-      "id": "gb_flowerbed_02_039",
-      "display_name": "花坛 039",
-      "category": "flowerbeds",
-      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_039.png",
-      "scene_path": "",
-      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_039.png",
-      "source_sheet": "02.png",
-      "source_rect": [
-        449,
-        513,
-        169,
-        149
-      ],
-      "width": 169,
-      "height": 149,
-      "footprint": [
-        3,
-        3
-      ],
-      "anchor": "bottom_center",
-      "allowed_surfaces": [
-        "grass",
-        "dirt",
-        "stone_path"
-      ],
-      "blocked_surfaces": [
-        "water"
-      ],
-      "walkable": false,
-      "collision": true,
-      "can_rotate": true,
-      "can_flip": false,
-      "y_sort": true,
-      "placement_layer": "prop",
-      "tags": [
-        "flowerbed"
-      ],
-      "review_flags": [
-        "large_or_irregular_footprint"
-      ],
-      "sort_order": 39
-    },
-    {
       "id": "gb_flowerbed_02_040",
       "display_name": "花坛 040",
       "category": "flowerbeds",
@@ -1675,49 +1546,6 @@
       ],
       "review_flags": [],
       "sort_order": 40
-    },
-    {
-      "id": "gb_flowerbed_02_041",
-      "display_name": "花坛 041",
-      "category": "flowerbeds",
-      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_041.png",
-      "scene_path": "",
-      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_041.png",
-      "source_sheet": "02.png",
-      "source_rect": [
-        646,
-        514,
-        157,
-        148
-      ],
-      "width": 157,
-      "height": 148,
-      "footprint": [
-        3,
-        3
-      ],
-      "anchor": "bottom_center",
-      "allowed_surfaces": [
-        "grass",
-        "dirt",
-        "stone_path"
-      ],
-      "blocked_surfaces": [
-        "water"
-      ],
-      "walkable": false,
-      "collision": true,
-      "can_rotate": true,
-      "can_flip": false,
-      "y_sort": true,
-      "placement_layer": "prop",
-      "tags": [
-        "flowerbed"
-      ],
-      "review_flags": [
-        "large_or_irregular_footprint"
-      ],
-      "sort_order": 41
     },
     {
       "id": "gb_flowerbed_02_042",
@@ -2009,49 +1837,6 @@
       ],
       "review_flags": [],
       "sort_order": 48
-    },
-    {
-      "id": "gb_flowerbed_02_049",
-      "display_name": "花坛 049",
-      "category": "flowerbeds",
-      "texture_path": "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_049.png",
-      "scene_path": "",
-      "icon_path": "res://assets/garden_builder/icons/gb_flowerbed_02_049.png",
-      "source_sheet": "02.png",
-      "source_rect": [
-        634,
-        681,
-        169,
-        152
-      ],
-      "width": 169,
-      "height": 152,
-      "footprint": [
-        3,
-        3
-      ],
-      "anchor": "bottom_center",
-      "allowed_surfaces": [
-        "grass",
-        "dirt",
-        "stone_path"
-      ],
-      "blocked_surfaces": [
-        "water"
-      ],
-      "walkable": false,
-      "collision": true,
-      "can_rotate": true,
-      "can_flip": false,
-      "y_sort": true,
-      "placement_layer": "prop",
-      "tags": [
-        "flowerbed"
-      ],
-      "review_flags": [
-        "large_or_irregular_footprint"
-      ],
-      "sort_order": 49
     },
     {
       "id": "gb_flowerbed_02_050",
