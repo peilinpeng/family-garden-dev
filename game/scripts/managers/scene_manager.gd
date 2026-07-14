@@ -101,10 +101,10 @@ const ASSETS := {
 }
 
 const HOUSE_DATA := [
-	{"id": "father", "label": "爸爸的小屋", "asset": "house_father", "pos": Vector2(155, 124), "height": 180.0},
-	{"id": "mother", "label": "妈妈的小屋", "asset": "house_mother", "pos": Vector2(1153, 145), "height": 230.0},
-	{"id": "player", "label": "佩林的小屋", "asset": "house_player", "pos": Vector2(125, 600), "height": 180.0},
-	{"id": "partner", "label": "路易的小屋", "asset": "house_partner", "pos": Vector2(126, 438), "height": 180.0},
+	{"id": "father", "label": "爸爸的小屋", "room_label": "爸爸的房间", "asset": "house_father", "pos": Vector2(205, 160), "height": 180.0, "hotspot_size": Vector2(86, 96)},
+	{"id": "mother", "label": "妈妈的小屋", "room_label": "妈妈的房间", "asset": "house_mother", "pos": Vector2(1090, 160), "height": 230.0, "hotspot_size": Vector2(92, 100)},
+	{"id": "player", "label": "佩林的小屋", "room_label": "佩林的房间", "asset": "house_player", "pos": Vector2(682, 160), "height": 180.0, "hotspot_size": Vector2(92, 100)},
+	{"id": "partner", "label": "路易的小屋", "room_label": "路易的房间", "asset": "house_partner", "pos": Vector2(370, 155), "height": 180.0, "hotspot_size": Vector2(92, 100)},
 ]
 
 const ROOM_DATA := {
@@ -1436,6 +1436,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数更新左上迷你合影
 	_render_family_portrait()
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
+	_setup_garden_builder()
 	# 花园统计已合并到左上家庭状态卡，不再叠加第二张“花园今日”。
 	if game_hud != null:
 		game_hud.refresh_profile()
@@ -3374,6 +3375,9 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 	_show_toast("漂流瓶回答已成为岸边记忆。")
 
 func _clear_world() -> void:
+	var garden_builder := get_node_or_null("/root/GardenBuildManager")
+	if garden_builder != null and garden_builder.has_method("teardown"):
+		garden_builder.call("teardown")
 	for child in world.get_children():
 		child.queue_free()
 	plant_nodes.clear()
@@ -3451,20 +3455,10 @@ func _add_garden_spawn_markers() -> void:
 	world.add_child(marker)
 
 func _add_core_objects() -> void:
-	_add_interactable_sprite(
-		"family_tree",
-		ASSETS["tree"],
-			Vector2(645, 280),
-			390.0,
-			"tree",
-			"家庭树",
-			Vector2(190, 170),
-			Vector2(0, 95)
-		)
-	# 邮箱画在花园背景里，这里用不可见热点补交互。
-	_add_mailbox_hotspot(Vector2(402, 104), Vector2(120, 120))
-	# 右下角木牌画在背景里，这里用不可见热点作为留言板按钮。
-	_add_message_board_hotspot(Vector2(1162, 584), Vector2(190, 120))
+	# 新主花园背景已经包含建筑与邮箱，场景层只补交互热点，避免重复叠图。
+	_add_invisible_hotspot("family_tree", Vector2(520, 320), Vector2(180, 130), "tree", "家庭树")
+	_add_mailbox_hotspot(Vector2(232, 172), Vector2(80, 80))
+	_add_message_board_hotspot(Vector2(1196, 456), Vector2(110, 120))
 
 func _add_mailbox_hotspot(pos: Vector2, hotspot_size: Vector2) -> void:
 	var area := Area2D.new()
@@ -3542,14 +3536,22 @@ func _on_message_board_hotspot_input(_viewport: Node, event: InputEvent, _shape_
 
 func _add_houses() -> void:
 	for house in HOUSE_DATA:
-		_add_interactable_sprite(
+		_add_invisible_hotspot(
 			"house_" + str(house["id"]),
-			ASSETS[str(house["asset"])],
 			house["pos"],
-			house["height"],
+			house.get("hotspot_size", Vector2(92, 92)),
 			"house:" + str(house["id"]),
 			str(house["label"])
 		)
+
+func _add_invisible_hotspot(node_name: String, pos: Vector2, hotspot_size: Vector2, action: String, label_text: String) -> Node2D:
+	var root := Node2D.new()
+	root.name = node_name
+	root.position = pos
+	root.z_index = int(pos.y)
+	world.add_child(root)
+	_add_click_area(root, hotspot_size, action, label_text)
+	return root
 
 func _add_npcs() -> void:
 	var selected_id := CharacterDB.resolve(MemoryManager.selected_role_key) if CharacterDB != null else MemoryManager.selected_role_key
@@ -3607,77 +3609,50 @@ func _add_animals() -> void:
 		)
 
 func _get_animal_bounds() -> Rect2:
-	# Animals may wander more naturally, but stay inside the garden play area.
-	return Rect2(Vector2(45, 105), Vector2(1185, 545))
+	return Rect2(Vector2(90, 305), Vector2(1100, 330))
 
 func _get_animal_blocked_rects() -> Array:
-	# Approximate no-walk zones for animals: water, buildings, fences, tree trunk, dense flowerbeds.
-	# These are deliberately a little larger than player collision, so animals avoid visually awkward areas.
 	return [
-		Rect2(Vector2(350, 420), Vector2(205, 115)), # left river curve
-		Rect2(Vector2(500, 500), Vector2(145, 80)), # river lower left
-		Rect2(Vector2(735, 500), Vector2(205, 85)), # river lower right
-		Rect2(Vector2(845, 460), Vector2(145, 105)), # right river curve
-		Rect2(Vector2(575, 305), Vector2(165, 165)), # family tree trunk/root
-		Rect2(Vector2(230, 280), Vector2(210, 220)), # gazebo
-		Rect2(Vector2(55, 35), Vector2(210, 190)), # upper-left house
-		Rect2(Vector2(1040, 50), Vector2(210, 190)), # upper-right house
-		Rect2(Vector2(35, 355), Vector2(205, 140)), # left middle house
-		Rect2(Vector2(35, 515), Vector2(210, 170)), # left lower house
-		Rect2(Vector2(900, 640), Vector2(350, 95)), # bottom fence / edge
-		Rect2(Vector2(1085, 360), Vector2(95, 205)), # right fence area
-		Rect2(Vector2(660, 80), Vector2(540, 70)), # upper fence
-		Rect2(Vector2(430, 250), Vector2(135, 120)), # central flowerbed left
-		Rect2(Vector2(765, 215), Vector2(290, 125)), # flowerbed / bench area
-		Rect2(Vector2(910, 390), Vector2(210, 165)), # right flower garden
-		Rect2(Vector2(375, 535), Vector2(155, 130)) # lower-left flower strip
+		Rect2(Vector2(0, 0), Vector2(1280, 275)),
+		Rect2(Vector2(0, 650), Vector2(1280, 70)),
+		Rect2(Vector2(0, 235), Vector2(88, 445)),
+		Rect2(Vector2(1192, 235), Vector2(88, 445)),
 	]
 
 func _get_character_blocked_rects() -> Array:
 	return [
-		Rect2(Vector2(350, 420), Vector2(205, 115)),
-		Rect2(Vector2(500, 500), Vector2(145, 80)),
-		Rect2(Vector2(735, 500), Vector2(205, 85)),
-		Rect2(Vector2(845, 460), Vector2(145, 105)),
-		Rect2(Vector2(575, 305), Vector2(165, 165)),
-		Rect2(Vector2(230, 280), Vector2(210, 220)),
-		Rect2(Vector2(55, 35), Vector2(210, 190)),
-		Rect2(Vector2(1040, 50), Vector2(210, 190)),
-		Rect2(Vector2(35, 355), Vector2(205, 140)),
-		Rect2(Vector2(35, 515), Vector2(210, 170)),
-		Rect2(Vector2(900, 640), Vector2(350, 95)),
-		Rect2(Vector2(1085, 360), Vector2(95, 205)),
-		Rect2(Vector2(660, 80), Vector2(540, 70)),
+		Rect2(Vector2(0, 0), Vector2(1280, 260)),
+		Rect2(Vector2(0, 670), Vector2(1280, 50)),
+		Rect2(Vector2(0, 245), Vector2(74, 425)),
+		Rect2(Vector2(1206, 245), Vector2(74, 425)),
 	]
 
 func _add_collision_zones() -> void:
-	# MVP collision zones. They are intentionally approximate rectangles.
-	# If a zone feels too restrictive, adjust its center/size here.
+	# 与新主花园背景对齐：上方住宅、四周树篱不可走，中部草坪留给 DIY。
 	_add_collision_rect("border_top", Vector2(640, -18), Vector2(1320, 36))
 	_add_collision_rect("border_bottom", Vector2(640, 738), Vector2(1320, 36))
 	_add_collision_rect("border_left", Vector2(-18, 360), Vector2(36, 760))
 	_add_collision_rect("border_right", Vector2(1298, 360), Vector2(36, 760))
 
-	# Water / bridge area: leave the bridge passable, block the main river curves.
-	_add_collision_rect("water_left", Vector2(428, 470), Vector2(150, 110))
-	_add_collision_rect("water_mid_left", Vector2(520, 530), Vector2(125, 58))
-	_add_collision_rect("water_mid_right", Vector2(770, 530), Vector2(150, 60))
-	_add_collision_rect("water_right", Vector2(895, 515), Vector2(120, 88))
+	_add_collision_rect("upper_houses_and_fence", Vector2(640, 130), Vector2(1280, 260))
+	_add_collision_rect("bottom_fence", Vector2(640, 695), Vector2(1280, 50))
+	_add_collision_rect("left_tree_edge", Vector2(36, 460), Vector2(72, 430))
+	_add_collision_rect("right_tree_edge", Vector2(1244, 460), Vector2(72, 430))
 
-	# Large objects. Character collision is only around feet, so these feel soft.
-	_add_collision_rect("family_tree_trunk", Vector2(645, 375), Vector2(135, 120))
-	_add_collision_rect("gazebo", Vector2(320, 395), Vector2(170, 175))
+func _setup_garden_builder() -> void:
+	var builder := get_node_or_null("/root/GardenBuildManager")
+	if builder == null or not builder.has_method("setup"):
+		return
+	var build_area := Rect2(Vector2(80, 300), Vector2(1120, 336))
+	builder.call("setup", world, ui_layer, player, build_area, _get_garden_build_blocked_rects())
 
-	# Houses. The visual sprites remain clickable; these bodies prevent walking through them.
-	for house in HOUSE_DATA:
-		var pos: Vector2 = house.get("pos", Vector2.ZERO)
-		var height: float = float(house.get("height", 160.0))
-		_add_collision_rect("house_collision_" + str(house.get("id", "house")), pos + Vector2(0, height * 0.10), Vector2(height * 0.86, height * 0.50))
-
-	# A few fence / edge blocks. These are approximate and can be tuned later.
-	_add_collision_rect("bottom_fence", Vector2(920, 655), Vector2(360, 70))
-	_add_collision_rect("right_fence", Vector2(1122, 438), Vector2(52, 170))
-	_add_collision_rect("upper_fence", Vector2(777, 97), Vector2(500, 50))
+func _get_garden_build_blocked_rects() -> Array:
+	return [
+		Rect2(Vector2(0, 0), Vector2(1280, 286)),
+		Rect2(Vector2(0, 652), Vector2(1280, 68)),
+		Rect2(Vector2(0, 250), Vector2(86, 430)),
+		Rect2(Vector2(1194, 250), Vector2(86, 430)),
+	]
 
 func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> StaticBody2D:
 	var body := StaticBody2D.new()

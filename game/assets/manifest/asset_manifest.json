@@ -26,7 +26,7 @@
     },
     {
       "asset_id": "node_garden_memory_flower_01",
-      "file_name": "node_garden_memory_flower_01_new.png",
+      "file_name": "memory_flowers.png",
       "state_files": {
         "new": "res://assets/pond/decorations/flower_pot.png",
         "read": "res://assets/pond/decorations/flower_pot.png",
@@ -47,8 +47,8 @@
       "interactive": "yes",
       "owner": "A",
       "priority": "P0",
-      "status": "tested",
-      "notes": "记忆花；复用同源花园资产表现花苞→开放，点击打开记忆卡片"
+      "status": "done",
+      "notes": "最新记忆花透明图集；12 个花朵区域由 NodeFactory 按 slot_id 稳定选择；显示高度 64px，点击打开记忆卡片"
     },
     {
       "asset_id": "node_garden_photo_board_01",

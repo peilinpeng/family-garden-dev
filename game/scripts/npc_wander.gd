@@ -13,6 +13,8 @@ var state_timer: float = 0.0
 var step_timer: float = 0.0
 var step_index: int = 1
 var facing_row: int = 0
+var sprite_hframes: int = 3
+var sprite_vframes: int = 4
 var _frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧,优先于 hframes/vframes
 var _label_check_timer := 0.0
 var _label_alpha := 0.0
@@ -23,6 +25,11 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	rng.randomize()
+	if sprite != null:
+		sprite_hframes = maxi(1, int(get_meta("sprite_hframes", sprite.hframes)))
+		sprite_vframes = maxi(1, int(get_meta("sprite_vframes", sprite.vframes)))
+		sprite.hframes = sprite_hframes
+		sprite.vframes = sprite_vframes
 
 	if home_position == Vector2.ZERO:
 		home_position = global_position
@@ -149,12 +156,13 @@ func _update_walk_animation(delta: float, walking: bool) -> void:
 		step_timer += delta
 		if step_timer > 0.24:
 			step_timer = 0.0
-			step_index = (step_index + 1) % 3
+			step_index = (step_index + 1) % sprite_hframes
 	else:
-		step_index = 1
+		step_index = mini(1, sprite_hframes - 1)
 		step_timer = 0.0
 
-	var index := facing_row * 3 + step_index
+	var row := clampi(facing_row, 0, maxi(0, sprite_vframes - 1))
+	var index := row * sprite_hframes + step_index
 	if _frame_rects.size() > index:
 		sprite.frame = 0
 		sprite.region_rect = _frame_rects[index]

@@ -1,0 +1,23 @@
+{
+  "day_styles": ["butterfly"],
+  "night_style": "night_bee",
+  "default_visible_when": "always",
+  "debug_shortcuts": {
+    "toggle_relation_mode": "F9",
+    "toggle_debug_mode": "F10"
+  },
+  "strengths": {
+    "weak": {
+      "carrier_count": 1,
+      "speed": 0.035
+    },
+    "medium": {
+      "carrier_count": 2,
+      "speed": 0.055
+    },
+    "strong": {
+      "carrier_count": 3,
+      "speed": 0.075
+    }
+  }
+}

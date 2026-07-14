@@ -8,12 +8,28 @@ extends Node
 const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
+const MEMORY_FLOWER_SHEET := "res://assets/garden/memory_flowers.png"
+const FLOATING_NODE_CONTROLLER := preload("res://scripts/pond/floating_node_controller.gd")
 const PULSE_TWEEN_MIN_DURATION := 0.05
 const GARDEN_ARCHIVE_NODE_TYPES := {
 	"flowers": "memory_flower",
 	"photos": "photo_board",
 	"postcards": "postcard",
 }
+const MEMORY_FLOWER_REGIONS := [
+	Rect2(170, 110, 156, 216),
+	Rect2(483, 109, 171, 217),
+	Rect2(803, 101, 173, 226),
+	Rect2(1120, 116, 156, 207),
+	Rect2(165, 430, 149, 211),
+	Rect2(488, 437, 154, 198),
+	Rect2(813, 432, 144, 292),
+	Rect2(1115, 432, 154, 203),
+	Rect2(153, 744, 158, 210),
+	Rect2(483, 744, 155, 210),
+	Rect2(802, 724, 149, 234),
+	Rect2(1111, 744, 165, 213),
+]
 
 var _by_asset_id: Dictionary = {}
 var _prefab: PackedScene  # 动态节点预制体；缺失时回退代码构建（见 _new_root）
@@ -73,7 +89,7 @@ func make_memory_node(card: Dictionary, slot: Dictionary, on_click: Callable, st
 		_configure_bottle_sprite(root, entry)
 		_decorate_bottle_node(root)
 	else:
-		_configure_sprite(root.get_node("Sprite"), entry, node_type, state)
+		_configure_sprite(root.get_node("Sprite"), entry, node_type, state, String(slot.get("slot_id", "")))
 		_decorate_memory_node(root, node_type, float(entry.get("display_height", 96)))
 		if node_type in ["photo_board", "postcard"]:
 			_decorate_memory_board(root, node_type, float(entry.get("display_height", 92)))
@@ -312,11 +328,11 @@ func _new_root() -> Node2D:
 	root.add_child(area)
 	return root
 
-func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String, state: String = "") -> void:
+func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String, state: String = "", variant_key: String = "") -> void:
 	var display_h := float(entry.get("display_height", 96))
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
-	var tex := _resolve_texture(entry, node_type, state)
+	var tex := _resolve_memory_flower_texture(variant_key) if node_type == "memory_flower" else _resolve_texture(entry, node_type, state)
 	sprite.texture = tex
 	if tex.get_height() > 0:
 		sprite.scale = Vector2.ONE * (display_h / float(tex.get_height()))
@@ -325,6 +341,11 @@ func _configure_sprite(sprite: Sprite2D, entry: Dictionary, node_type: String, s
 ## 优先按 manifest file_name 读真实美术(res://assets/<scene>/<file>)，缺图回退程序化占位。
 ## A 的正式美术到位后无需改代码，丢进对应场景目录即自动生效。
 func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
+	root.set_script(FLOATING_NODE_CONTROLLER)
+	root.set("drift_radius", Vector2(7.0, 3.5))
+	root.set("drift_seconds", 6.5 + float(absi(hash(root.name)) % 30) * 0.08)
+	root.set("phase_offset", float(absi(hash(root.name)) % 628) / 100.0)
+
 	var sprite: Sprite2D = root.get_node("Sprite")
 	sprite.visible = false
 
@@ -348,6 +369,18 @@ func _configure_bottle_sprite(root: Node2D, entry: Dictionary) -> void:
 	animated.position = Vector2(0, -display_h * 0.5)
 	root.add_child(animated)
 
+	var body := StaticBody2D.new()
+	body.name = "BottleCollision"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.position = Vector2(0, -display_h * 0.42)
+	var collision := CollisionShape2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = maxf(12.0, display_h * 0.22)
+	collision.shape = shape
+	body.add_child(collision)
+	root.add_child(body)
+
 func _resolve_texture(entry: Dictionary, node_type: String, state: String = "") -> Texture2D:
 	var state_files: Dictionary = entry.get("state_files", {})
 	var state_path := String(state_files.get(state, ""))
@@ -363,6 +396,18 @@ func _resolve_texture(entry: Dictionary, node_type: String, state: String = "") 
 		if ResourceLoader.exists(real_path):
 			return load(real_path)
 	return _get_placeholder(node_type)
+
+func _resolve_memory_flower_texture(variant_key: String) -> Texture2D:
+	if not ResourceLoader.exists(MEMORY_FLOWER_SHEET):
+		return _get_placeholder("memory_flower")
+	var sheet := load(MEMORY_FLOWER_SHEET) as Texture2D
+	if sheet == null or MEMORY_FLOWER_REGIONS.is_empty():
+		return _get_placeholder("memory_flower")
+	var variant_index := absi(hash(variant_key)) % MEMORY_FLOWER_REGIONS.size()
+	var atlas_texture := AtlasTexture.new()
+	atlas_texture.atlas = sheet
+	atlas_texture.region = MEMORY_FLOWER_REGIONS[variant_index]
+	return atlas_texture
 
 func apply_memory_state(root: Node2D, state: String) -> void:
 	if root == null or not is_instance_valid(root):
