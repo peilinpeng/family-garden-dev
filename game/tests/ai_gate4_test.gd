@@ -323,6 +323,28 @@ func _test_room_preview_commit_and_editing() -> void:
 	_assert(draft.ok, "房间图片应完成上传、分析和安全布局预览")
 	var before := MemoryManager.rooms.size()
 	_assert(before == 0, "房间预览阶段不得落库")
+	var previous_ui_layer: CanvasLayer = SceneManager.ui_layer
+	var preview_ui_layer := CanvasLayer.new()
+	add_child(preview_ui_layer)
+	SceneManager.ui_layer = preview_ui_layer
+	SceneManager._open_room_draft_preview(draft)
+	var preview_overlay := SceneManager.active_modal
+	var description := preview_overlay.find_child("RoomDraftDescription", true, false) as Label
+	var attribution := preview_overlay.find_child("RoomDraftAIAttribution", true, false) as Label
+	var object_scroll := preview_overlay.find_child("RoomDraftObjectScroll", true, false) as ScrollContainer
+	_assert(description != null and description.autowrap_mode == TextServer.AUTOWRAP_ARBITRARY and description.max_lines_visible == 3, "房间说明必须支持中文强制换行并限制行数")
+	_assert(attribution != null and attribution.text.begins_with("由 ") and not attribution.text.contains("来源") and not attribution.text.contains("room-analysis"), "玩家界面只应显示 AI 名称，不得暴露内部来源或 prompt 版本")
+	_assert(object_scroll != null, "家具清单必须使用可滚动容器避免内容越界")
+	_assert(SceneManager._room_ai_display_label({"model": "hy-vision-2.0-instruct"}) == "腾讯混元 HY Vision 2.0", "混元模型应显示玩家可理解的名称")
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		await get_tree().process_frame
+		var preview_image := get_viewport().get_texture().get_image()
+		if preview_image != null:
+			preview_image.save_png("/tmp/family_garden_room_preview.png")
+	SceneManager._close_active_panel()
+	await get_tree().process_frame
+	SceneManager.ui_layer = previous_ui_layer
+	preview_ui_layer.queue_free()
 	var committed: Dictionary = await AIWorkflowManager.commit_room_draft(draft)
 	_assert(committed.ok and MemoryManager.rooms.size() == 1, "确认后应创建一个房间")
 	_assert(ROOM_SCENE_GENERATOR.has_scene_schema(MemoryManager.rooms[0]), "确认后应保存可重建的语义房间 schema")

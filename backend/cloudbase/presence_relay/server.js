@@ -45,6 +45,19 @@ function sanitizePosition(value) {
   };
 }
 
+function sanitizeAppearance(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  if (!source.enabled) return {};
+  return {
+    version: 1,
+    enabled: true,
+    body_type: safeString(source.body_type, 24),
+    hair_style: safeString(source.hair_style, 40),
+    hair_color: safeString(source.hair_color, 24),
+    outfit: safeString(source.outfit, 24),
+  };
+}
+
 function sanitizePresenceMessage(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const type = safeString(raw.type, 24);
@@ -54,6 +67,7 @@ function sanitizePresenceMessage(raw) {
       type,
       token: safeString(raw.token, 256),
       scene_id: safeString(raw.scene_id, 40),
+      appearance: sanitizeAppearance(raw.appearance),
     };
   }
   if (type === 'move') {
@@ -144,6 +158,7 @@ function createPresenceRelay(options = {}) {
       animation_state: client.animation_state,
       timestamp: client.timestamp,
       sequence: client.sequence,
+      appearance: client.appearance,
     };
   }
 
@@ -203,6 +218,7 @@ function createPresenceRelay(options = {}) {
       animation_state: 'idle',
       timestamp: Date.now(),
       sequence: 0,
+      appearance: msg.appearance || {},
       last_seen: Date.now(),
     };
     clients.set(ws, client);

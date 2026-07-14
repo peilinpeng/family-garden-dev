@@ -26,10 +26,21 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func _ready() -> void:
 	rng.randomize()
 	if sprite != null:
-		sprite_hframes = maxi(1, int(get_meta("sprite_hframes", sprite.hframes)))
-		sprite_vframes = maxi(1, int(get_meta("sprite_vframes", sprite.vframes)))
-		sprite.hframes = sprite_hframes
-		sprite.vframes = sprite_vframes
+		if _frame_rects.size() > 0:
+			# 精确裁切时 Sprite2D 必须保持 1x1；方向与步态使用独立的逻辑网格。
+			# 不能从 sprite.hframes/vframes 反推，否则会把 3x5 动画误判成 1x1。
+			sprite_hframes = maxi(1, int(get_meta("sprite_hframes", 3)))
+			var inferred_rows := ceili(float(_frame_rects.size()) / float(sprite_hframes))
+			sprite_vframes = maxi(1, int(get_meta("sprite_vframes", inferred_rows)))
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+			sprite.frame = 0
+		else:
+			sprite_hframes = maxi(1, int(get_meta("sprite_hframes", sprite.hframes)))
+			sprite_vframes = maxi(1, int(get_meta("sprite_vframes", sprite.vframes)))
+			sprite.hframes = sprite_hframes
+			sprite.vframes = sprite_vframes
 
 	if home_position == Vector2.ZERO:
 		home_position = global_position
@@ -183,4 +194,7 @@ func set_frame_rects(rects: Array) -> void:
 		if r is Array and r.size() >= 4:
 			_frame_rects.append(Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])))
 	if sprite != null and _frame_rects.size() > 0:
+		sprite.region_enabled = true
+		sprite.hframes = 1
+		sprite.vframes = 1
 		sprite.frame = 0

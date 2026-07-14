@@ -36,8 +36,8 @@ async function makeRelay() {
   return { relay, url: `ws://127.0.0.1:${port}` };
 }
 
-async function hello(ws, token, sceneId = 'farm') {
-  ws.send(JSON.stringify({ type: 'hello', token, scene_id: sceneId }));
+async function hello(ws, token, sceneId = 'farm', appearance = {}) {
+  ws.send(JSON.stringify({ type: 'hello', token, scene_id: sceneId, appearance }));
   return await onceMessage(ws);
 }
 
@@ -45,7 +45,15 @@ test('presence relay authenticates hello and returns current peers', async () =>
   const { relay, url } = await makeRelay();
   try {
     const a = await openClient(url);
-    const helloA = await hello(a, 'token_a');
+    const appearance = {
+      enabled: true,
+      body_type: 'masculine',
+      hair_style: 'side_part',
+      hair_color: 'blonde',
+      outfit: 'ocean',
+      ignored: 'must-not-leak',
+    };
+    const helloA = await hello(a, 'token_a', 'farm', appearance);
     assert.equal(helloA.type, 'hello_ok');
     assert.equal(helloA.self.member_id, 'member_a');
     assert.deepEqual(helloA.peers, []);
@@ -55,6 +63,14 @@ test('presence relay authenticates hello and returns current peers', async () =>
     const helloB = await hello(b, 'token_b');
     assert.equal(helloB.type, 'hello_ok');
     assert.deepEqual(helloB.peers.map((peer) => peer.member_id), ['member_a']);
+    assert.deepEqual(helloB.peers[0].appearance, {
+      version: 1,
+      enabled: true,
+      body_type: 'masculine',
+      hair_style: 'side_part',
+      hair_color: 'blonde',
+      outfit: 'ocean',
+    });
     assert.equal((await joinedForA).peer.member_id, 'member_b');
   } finally {
     await relay.close();

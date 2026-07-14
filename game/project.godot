@@ -15,7 +15,7 @@ config/description="让家庭记忆长成花园。"
 config/version="1.0.0"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
 
 [autoload]
 
@@ -35,6 +35,7 @@ GameClock="*res://scripts/managers/game_clock.gd"
 ItemDB="*res://scripts/managers/item_db.gd"
 InventoryManager="*res://scripts/managers/inventory_manager.gd"
 CharacterDB="*res://scripts/managers/character_db.gd"
+AppearanceManager="*res://scripts/managers/appearance_manager.gd"
 AudioManager="*res://scripts/managers/audio_manager.gd"
 SettingsManager="*res://scripts/managers/settings_manager.gd"
 RecipeDB="*res://scripts/managers/recipe_db.gd"

@@ -53,7 +53,7 @@ func play_opening(host: Node) -> void:
 	MemoryManager.save_game()
 	_pending_quest_intro = true
 
-## 进花园后调一次:开场刚播过则返回 true(并清标记),用于自动弹任务面板。
+## 进花园后调一次:开场刚播过则返回 true(并清标记),用于启动屏幕高亮引导。
 func consume_quest_intro() -> bool:
 	var pending := _pending_quest_intro
 	_pending_quest_intro = false
@@ -63,9 +63,9 @@ func consume_quest_intro() -> bool:
 func debug_replay_opening(host: Node) -> void:
 	MemoryManager.opening_seen = false
 	await play_opening(host)
-	consume_quest_intro()   # 重播场景里人已在花园,直接弹
+	consume_quest_intro()   # 重播场景里人已在花园,直接启动高亮引导
 	if SceneManager.game_hud != null:
-		SceneManager.game_hud.show_quests()
+		SceneManager.game_hud.start_onboarding_guide(true)
 
 # ── Chapter 1 任务 ─────────────────────────────────────
 

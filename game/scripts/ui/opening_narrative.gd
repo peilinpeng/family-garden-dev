@@ -37,6 +37,9 @@ const BOX_SHEET := "res://assets/begin_plot/box.png"        ## 横排 4 帧:关�
 const OBJECTS_SHEET := "res://assets/begin_plot/objects.png"
 const BOX_FRAME_SIZE := Vector2(375, 559)
 const BOX_OPEN_FRAME_TIME := 0.16   ## 开盒动画每帧停留秒数
+const BOX_CLOSED_POSITION := Vector2(490, 180)
+const BOX_OPEN_POSITION := Vector2(490, 270)
+const BOX_ITEM_SLOT_Y := 180.0
 
 ## 5 个启动物:region = 在 objects.png 里的包围盒(留 4px 边);对应玩法见 hint。
 const BOX_ITEMS := [
@@ -92,6 +95,7 @@ func _ready() -> void:
 	_root.add_child(skip)
 
 	var hint := Label.new()
+	hint.name = "ContinueHint"
 	hint.text = "点击继续"
 	hint.position = Vector2(0, 682)
 	hint.size = Vector2(1280, 24)
@@ -263,6 +267,10 @@ var _box_title: Label
 func _enter_box() -> void:
 	_act = Act.BOX
 	_clear_stage()
+	# 木箱幕有独立的点击提示和创建按钮，隐藏全局提示，避免压住底部按钮。
+	var continue_hint := _root.get_node_or_null("ContinueHint") as Label
+	if continue_hint != null:
+		continue_hint.visible = false
 
 	_box_title = Label.new()
 	_box_title.text = "角落里,一个落了灰的旧木盒。"
@@ -284,7 +292,7 @@ func _enter_box() -> void:
 	_box_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_box_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_box_rect.size = Vector2(300, 447)   # 375×559 × 0.8
-	_box_rect.position = Vector2(490, 180)
+	_box_rect.position = BOX_CLOSED_POSITION
 	_box_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.add_child(_box_rect)
 	_box_rect.modulate.a = 0.0
@@ -327,6 +335,8 @@ func _open_box() -> void:
 	if tip != null:
 		tip.queue_free()
 	AudioManager.play_sfx("开门", -8.0)   # 暂借开门音效当开盒声,有专用音效后替换
+	# 盒盖展开后会占据上方空间；开启动画同步把箱体明显下移，为物品与说明留出间距。
+	create_tween().tween_property(_box_rect, "position", BOX_OPEN_POSITION, 0.58).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	var t := create_tween()
 	for f in [1, 2, 3]:
 		t.tween_interval(BOX_OPEN_FRAME_TIME)
@@ -342,7 +352,7 @@ func _pop_items() -> void:
 	_box_title.text = "盒子里,装着一些被留下来的东西。"
 	var box_mouth: Vector2 = _box_rect.position + Vector2(150, 260)   # 盒口(全开帧的开口处)
 	var slot_x := [140.0, 368.0, 596.0, 824.0, 1052.0]   # 上方一排 5 个落点(每格宽 228)
-	var slot_y := 150.0
+	var slot_y := BOX_ITEM_SLOT_Y
 	for i in BOX_ITEMS.size():
 		var item: Dictionary = BOX_ITEMS[i]
 		var region: Rect2 = item["region"]
@@ -354,6 +364,7 @@ func _pop_items() -> void:
 		var display := region.size * scale_f
 
 		var holder := Control.new()   # 物件 + 名字 + 说明 一组
+		holder.name = "BoxItem_%s" % str(item["id"])
 		holder.position = box_mouth
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.modulate.a = 0.0
@@ -420,6 +431,7 @@ func _pop_items() -> void:
 	t.tween_interval(BOX_ITEMS.size() * 0.14 + 0.6)
 	t.tween_callback(func() -> void:
 		var create_btn := Button.new()
+		create_btn.name = "CreateGardenButton"
 		create_btn.text = "🔑 创建家庭花园"
 		create_btn.position = Vector2(520, 640)
 		create_btn.size = Vector2(240, 46)

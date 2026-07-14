@@ -53,6 +53,8 @@ func _build() -> void:
 			sprite.hframes = 1
 			sprite.vframes = 1
 			sprite.frame = 0
+			sprite.region_rect = _frame_rects[1] if _frame_rects.size() > 1 else _frame_rects[0]
+			shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
 		else:
 			sprite.region_enabled = false
 			sprite.hframes = int(def.get("hframes", 3))
@@ -67,7 +69,7 @@ func _build() -> void:
 	label.position = Vector2(-45, -58)
 	add_child(label)
 
-func configure_presence(peer_member_id: String, peer_role: String, peer_name: String) -> void:
+func configure_presence(peer_member_id: String, peer_role: String, peer_name: String, appearance: Dictionary = {}) -> void:
 	member_id = peer_member_id
 	role_key = CharacterDB.resolve(peer_role) if CharacterDB != null else peer_role
 	display_name = peer_name if peer_name.strip_edges() != "" else CharacterDB.display_name(role_key)
@@ -78,13 +80,43 @@ func configure_presence(peer_member_id: String, peer_role: String, peer_name: St
 	if sprite != null:
 		var db := get_node_or_null("/root/CharacterDB")
 		if db != null:
-			var def: Dictionary = db.get_def(role_key)
-			var tex: Texture2D = db.texture(role_key)
+			var def: Dictionary
+			var tex: Texture2D
+			var appearance_manager := get_node_or_null("/root/AppearanceManager")
+			var clean_appearance: Dictionary = {}
+			if appearance_manager != null and bool(appearance.get("enabled", false)):
+				clean_appearance = appearance_manager.normalize(appearance, role_key)
+				def = appearance_manager.variant_definition(clean_appearance, role_key)
+				tex = appearance_manager.texture(clean_appearance, role_key)
+			else:
+				def = db.get_def(role_key)
+				tex = db.texture(role_key)
 			if tex != null:
 				sprite.texture = tex
-			sprite.hframes = int(def.get("hframes", 3))
-			sprite.vframes = int(def.get("vframes", 4))
 			sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+			if clean_appearance.is_empty():
+				sprite.material = null
+			_frame_rects.clear()
+			var raw_rects: Array = def.get("frame_rects", [])
+			for rect_value in raw_rects:
+				if rect_value is Array and rect_value.size() >= 4:
+					_frame_rects.append(Rect2(float(rect_value[0]), float(rect_value[1]), float(rect_value[2]), float(rect_value[3])))
+			if _frame_rects.size() > 0:
+				sprite.region_enabled = true
+				sprite.hframes = 1
+				sprite.vframes = 1
+				sprite.frame = 0
+				sprite.region_rect = _frame_rects[1] if _frame_rects.size() > 1 else _frame_rects[0]
+				# 联机角色同样直接使用对方组合对应的完整图集。
+				sprite.material = null
+				var shadow := get_node_or_null("Shadow") as Node2D
+				if shadow != null:
+					shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
+			else:
+				sprite.region_enabled = false
+				sprite.hframes = int(def.get("hframes", 3))
+				sprite.vframes = int(def.get("vframes", 4))
+				sprite.frame = mini(1, sprite.hframes * sprite.vframes - 1)
 
 ## 联机:由 presence 喂入目标位置。旧序列会丢弃,避免网络乱序导致回滚。
 func set_target(pos: Vector2) -> void:
