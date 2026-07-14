@@ -311,17 +311,17 @@ func _readable_asset_name(asset: Dictionary) -> String:
 func _display_scale_for_category(category: String) -> float:
 	match category:
 		"flowerbeds":
-			return 0.78
+			return 0.68
 		"plants":
-			return 0.68
-		"pots":
-			return 0.50
-		"furniture":
-			return 0.68
-		"decorations":
-			return 0.75
-		"tools":
 			return 0.58
+		"pots":
+			return 0.44
+		"furniture":
+			return 0.58
+		"decorations":
+			return 0.58
+		"tools":
+			return 0.50
 		_:
 			return 1.0
 
@@ -365,16 +365,16 @@ func _add_builtin_furniture_assets() -> void:
 		(assets_by_category["furniture"] as Array).append(entry)
 
 func _normalized_footprint(asset: Dictionary) -> Vector2i:
-	var raw: Variant = asset.get("footprint", [1, 1])
 	var category: String = _normalize_category(String(asset.get("category", "decorations")))
 	var display_scale: float = float(asset.get("display_scale", _display_scale_for_category(category)))
 	var width: int = maxi(1, int(round(float(asset.get("width", GRID_SIZE)) * display_scale)))
 	var height: int = maxi(1, int(round(float(asset.get("height", GRID_SIZE)) * display_scale)))
-	var visual_footprint: Vector2i = Vector2i(maxi(1, ceili(float(width) / float(GRID_SIZE))), maxi(1, ceili(float(height) / float(GRID_SIZE))))
-	if asset.has("footprint") and raw is Array and raw.size() >= 2:
-		var declared: Vector2i = Vector2i(maxi(1, int(raw[0])), maxi(1, int(raw[1])))
-		return Vector2i(maxi(declared.x, visual_footprint.x), maxi(declared.y, visual_footprint.y))
-	return visual_footprint
+	# 摆放冲突检查只应使用物件落地底座，不能把高处花叶、靠背及透明画布算成纵向占格。
+	# 横向仍按完整可见宽度保留空间；贴地花坛具有真实纵深，按约一半显示高度计算。
+	var width_cells: int = maxi(1, ceili(float(width) / float(GRID_SIZE)))
+	var depth_pixels: float = float(height) * 0.55 if category == "flowerbeds" else minf(float(height), float(GRID_SIZE))
+	var depth_cells: int = maxi(1, ceili(depth_pixels / float(GRID_SIZE)))
+	return Vector2i(width_cells, depth_cells)
 
 func _ensure_roots() -> void:
 	if world == null:
