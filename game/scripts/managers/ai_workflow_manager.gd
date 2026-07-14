@@ -136,6 +136,10 @@ func commit_memory_draft(draft: Dictionary, edited_card: Dictionary, wait_for_li
 		scene = "garden"
 		card["suggested_scene"] = scene
 	var node_type := String(card.get("node_type", "memory_flower"))
+	# 记忆花只在主花园陈列；AI 即使建议鱼塘，也统一落入花园花朵档案。
+	if node_type in ["memory_flower", "memory_seed"]:
+		scene = "garden"
+		card["suggested_scene"] = scene
 	if scene == "fishpond" and node_type not in ["memory_flower", "photo_board"]:
 		node_type = "memory_flower"
 	if scene == "garden" and node_type not in ["memory_flower", "memory_seed", "photo_board", "postcard"]:
@@ -287,16 +291,12 @@ func answer_bottle(bottle_id: String, answer_text: String) -> Dictionary:
 	var moderation := await AIClient.moderate_user_content([text], "bottle_answer")
 	if String(moderation.get("state", "")) != AIClient.STATE_SUCCESS:
 		return _failure_from_outcome(moderation)
-	_prepare_slots("fishpond")
-	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bottle_id + "_memory")
-	if slot == null:
-		return _failure("NO_SLOT", "鱼塘岸边暂时没有空位。")
 	var question := String(bottle.get("question", ""))
 	var card := {
 		"title": "漂流瓶里的家庭记忆",
 		"description": text.left(300),
 		"memory_type": "daily_life",
-		"suggested_scene": "fishpond",
+		"suggested_scene": "garden",
 		"question": question if question.length() >= 8 else "关于这段家庭记忆，你还想补充什么？",
 		"node_type": "memory_flower",
 		"confidence": 1.0,
@@ -305,7 +305,7 @@ func answer_bottle(bottle_id: String, answer_text: String) -> Dictionary:
 	var workflow_key := "bottle_answer:" + bottle_id
 	var memory := MemoryManager.create_memory(card, "bottle_answer", text, "", bottle.get("generation_meta", {}), workflow_key)
 	if MemoryManager.mark_bottle_answered(bottle_id, text, String(memory.get("id", ""))):
-		var node := MemoryManager.create_node(String(memory.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")), "", "bottle_node:" + bottle_id)
+		var node := MemoryManager.create_node(String(memory.get("id", "")), "garden", "memory_flower", "garden_archive_flowers", "", "bottle_node:" + bottle_id)
 		MemoryManager.answer_memory(String(memory.get("id", "")), text)
 		var records: Array = [{"table": "memories", "row": memory}, {"table": "nodes", "row": node}]
 		for answer in MemoryManager.answers:
@@ -315,7 +315,6 @@ func answer_bottle(bottle_id: String, answer_text: String) -> Dictionary:
 		return {"ok": true, "memory": memory, "duplicate": false, "sync_pending": not synced}
 	else:
 		MemoryManager.delete_memory(String(memory.get("id", "")))
-		SlotManager.release("fishpond", String(slot.get("slot_id", "")))
 		return _failure("SAVE_FAILED", "漂流瓶回答没有成功保存。")
 
 func save_memory_answer(memory_id: String, answer_text: String) -> Dictionary:

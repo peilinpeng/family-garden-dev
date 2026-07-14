@@ -13,8 +13,6 @@ const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
 const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
 const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
 const LOOP_TWEEN_GUARD_INTERVAL := 0.05
-const FISHPOND_MEMORY_SCALE := 1.0 / 3.0
-const FISHPOND_MEMORY_SHORE_SLOTS := ["fishpond_slot_shore_01", "fishpond_slot_shore_02"]
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -850,11 +848,7 @@ func _gate4_guide_title(scene_id: String) -> String:
 func _gate4_guide_body(scene_id: String) -> String:
 	match scene_id:
 		"fishpond":
-			return "%d 只漂流瓶 · %d 段岸边记忆\n%d 根记忆藤蔓可回看" % [
-				_demo_bottles.size(),
-				_fishpond_memories.size(),
-				MemoryManager.get_memory_links("fishpond").size(),
-			]
+			return "%d 只漂流瓶 · 靠近钓鱼台按 E\n回答会收进主花园的记忆花园" % _demo_bottles.size()
 		"room":
 			var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
 			var object_count := 0 if room.is_empty() else MemoryManager.get_room_objects(String(room.get("id", ""))).size()
@@ -1471,7 +1465,7 @@ var _pending_memory_arrival_id := ""
 
 # 鱼塘漂流瓶当前场景 view model；已保存问题来自 MemoryManager，缺口由 AIWorkflowManager 后台补齐。
 var _demo_bottles: Array = []
-# 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
+# 兼容旧代码的空缓存；鱼塘不再渲染记忆花，旧数据进入主花园档案。
 var _fishpond_memories: Array = []
 # 玩家房间已渲染的家具节点缓存（每项 { id(obj_id), object_type, node }）。
 var _room_objects: Array = []
@@ -2123,9 +2117,7 @@ func _refresh_current_memory_scene(scene: String) -> void:
 	SlotManager.reset(scene)
 	if scene == "garden":
 		_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
-	else:
-		_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆"))
-	_render_memory_links(scene)
+		_render_memory_links(scene)
 	if scene == "garden":
 		MemoryManager.maybe_recompute_family_portrait()
 		_render_family_portrait()
@@ -2139,26 +2131,18 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 		return
 	var groups: Dictionary = {}
 	var scene_nodes: Array = MemoryManager.get_nodes_for_scene(scene)
-	var migrated_fishpond_slots := false
 	for raw_node in scene_nodes:
 		if not (raw_node is Dictionary):
 			continue
 		var nd: Dictionary = raw_node
 		if String(nd.get("node_type", "")) == "memory_link":
 			continue  # 连线节点不是落点物，由 _render_memory_links 单独画
-		if scene == "fishpond" and String(nd.get("node_type", "")) == "memory_flower":
-			var safe_slot_id := _fishpond_memory_shore_slot(nd)
-			if String(nd.get("slot_id", "")) != safe_slot_id:
-				nd["slot_id"] = safe_slot_id
-				migrated_fishpond_slots = true
 		var slot_id := String(nd.get("slot_id", ""))
 		if slot_id == "":
 			continue
 		if not groups.has(slot_id):
 			groups[slot_id] = []
 		(groups[slot_id] as Array).append(nd)
-	if migrated_fishpond_slots:
-		MemoryManager.save_game()
 	for slot_id in groups:
 		var stack: Array = groups[slot_id]
 		if stack.is_empty():
@@ -2196,7 +2180,7 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 		_add_memory_tag(live, visual_state)
 		if items.size() > 1:
 			_add_memory_cluster_badge(live, items.size())
-		var target_scale := Vector2.ONE * FISHPOND_MEMORY_SCALE if scene == "fishpond" else (Vector2.ONE if visual_state == "grown" else Vector2(0.78, 0.78))
+		var target_scale := Vector2.ONE if visual_state == "grown" else Vector2(0.78, 0.78)
 		live.scale = target_scale
 		world.add_child(live)
 		_animate_scene_node_arrival(live, target_scale)
@@ -2204,14 +2188,8 @@ func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> voi
 			(item as Dictionary)["node"] = live
 			cache.append(item)
 
-func _fishpond_memory_shore_slot(stored_node: Dictionary) -> String:
-	var current_slot := String(stored_node.get("slot_id", ""))
-	if current_slot in FISHPOND_MEMORY_SHORE_SLOTS:
-		return current_slot
-	var stable_key := String(stored_node.get("memory_id", stored_node.get("id", "fishpond_memory")))
-	return String(FISHPOND_MEMORY_SHORE_SLOTS[absi(hash(stable_key)) % FISHPOND_MEMORY_SHORE_SLOTS.size()])
-
 func _render_garden_archives(cache: Array) -> void:
+	MemoryManager.migrate_fishpond_memories_to_garden()
 	var archives := {
 		"flowers": [],
 		"photos": [],
@@ -3204,13 +3182,12 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 	_spawn_demo_bottles()
 	_register_scene_message_bottle(pond_area)
 	_register_pond_fishing_spot(pond_area)
-	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
+	# 旧版鱼塘记忆花迁移到主花园；鱼塘只保留漂流瓶与钓鱼交互。
+	var migrated_memories := MemoryManager.migrate_fishpond_memories_to_garden()
 	_fishpond_memories.clear()
-	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆"))
-	_render_memory_links("fishpond")
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	_show_gate4_scene_guide("fishpond")
-	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
+	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 已迁移主花园记忆=", migrated_memories)
 
 func _scale_fishpond_player_visual() -> void:
 	if player == null or not is_instance_valid(player):
@@ -3771,7 +3748,7 @@ func _open_bottle_panel(b: Dictionary) -> void:
 		input.position = Vector2(34, 160)
 		input.size = Vector2(492, 130)
 		panel.add_child(input)
-		var status := _make_status_label(panel, Vector2(34, 294), Vector2(492, 22), "保存后，岸边会长出一朵新的记忆花。")
+		var status := _make_status_label(panel, Vector2(34, 294), Vector2(492, 22), "保存后，主花园会收下一朵新的记忆花。")
 		_add_panel_button(panel, "取消", Vector2(150, 312), Vector2(120, 40), "close")
 		var submit := Button.new()
 		submit.text = "回答"
@@ -3783,7 +3760,7 @@ func _open_bottle_panel(b: Dictionary) -> void:
 		panel.add_child(submit)
 	else:
 		var ans_title := Label.new()
-		ans_title.text = "你的回答已经成为岸边记忆"
+		ans_title.text = "你的回答已经收进主花园"
 		ans_title.position = Vector2(34, 160)
 		ans_title.size = Vector2(492, 22)
 		ans_title.add_theme_font_size_override("font_size", 13)
@@ -3812,7 +3789,7 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 		_set_status(status, "回答不能超过 2000 个字符。", true)
 		return
 	_set_button_busy(button, "正在保存...")
-	_set_status(status, "正在把回答保存成岸边记忆...")
+	_set_status(status, "正在把回答保存到主花园...")
 	if bid != "scene_bottle":
 		var result: Dictionary = await AIWorkflowManager.answer_bottle(bid, text)
 		if not bool(result.get("ok", false)):
@@ -3838,23 +3815,14 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 	b["answer"] = text
 	b["state"] = "opened"
 	_close_active_panel()
-	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆），并落库持久化（关游戏重开仍在）。
-	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bid + "_mem")
-	if slot != null:
-		var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
-			"suggested_scene": "fishpond", "question": String(b.get("question", "")),
-			"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
-		var mem := MemoryManager.create_memory(card, "bottle")
-		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
-		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
-		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆"))
-		mem_node.scale = Vector2.ONE * FISHPOND_MEMORY_SCALE
-		world.add_child(mem_node)
-		_grow_memory_node(mem_node, Vector2.ONE * FISHPOND_MEMORY_SCALE)
-		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
-		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
-			"card": card, "state": "grown", "answer": text, "node": mem_node})
-	_show_toast("漂流瓶回答已成为岸边记忆。")
+	# 漂流瓶只产生主花园记忆；池塘场景不再实例化记忆花。
+	var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
+		"suggested_scene": "garden", "question": String(b.get("question", "")),
+		"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
+	var mem := MemoryManager.create_memory(card, "bottle")
+	MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", "garden_archive_flowers")
+	MemoryManager.answer_memory(String(mem.get("id", "")), text)
+	_show_toast("漂流瓶回答已收进主花园的记忆花园。")
 
 func _clear_world() -> void:
 	pond_fishing_available = false
@@ -5641,10 +5609,9 @@ func _open_memory_draft_preview(draft: Dictionary) -> void:
 	scene_select.size = Vector2(220, 38)
 	scene_select.add_item("家庭花园", 0)
 	scene_select.set_item_metadata(0, "garden")
-	scene_select.add_item("爸爸鱼塘", 1)
-	scene_select.set_item_metadata(1, "fishpond")
-	if String(card.get("suggested_scene", "garden")) == "fishpond":
-		scene_select.select(1)
+	scene_select.select(0)
+	scene_select.disabled = true
+	scene_select.tooltip_text = "记忆花统一陈列在主花园"
 	panel.add_child(scene_select)
 	var source := Label.new()
 	var meta: Dictionary = draft.get("generation_meta", {})
