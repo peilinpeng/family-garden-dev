@@ -1,6 +1,8 @@
 extends HUDPanel
 class_name SeedSelectionPanel
 
+signal seed_planted(plot_index: int, crop_id: String)
+
 ## 播种选种面板。列出玩家拥有的种子(家庭共享仓 + 背包合并),点一下在目标地块播种。
 ## 打开前由 farm.gd 设 target_plot。播种走 FarmManager.plant(消耗种子、进 farm_plots 持久化)。
 
@@ -13,7 +15,7 @@ func _init() -> void:
 
 func _build_content() -> void:
 	var hint := Label.new()
-	hint.text = "🌱 选一种种子种到这块地"
+	hint.text = "选择一种已有的种子"
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 1.0))
 	content_root.add_child(hint)
@@ -43,7 +45,7 @@ func _rebuild() -> void:
 		_list.add_child(_seed_row(cid, sid, count))
 	if not any:
 		var empty := Label.new()
-		empty.text = "还没有任何种子。\n用 F9 调试面板发一套测试种子，或去商店/花园获取。"
+		empty.text = "还没有种子。可以去农场小铺购买。"
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty.custom_minimum_size = Vector2(400, 0)
 		empty.add_theme_font_size_override("font_size", 14)
@@ -85,7 +87,8 @@ func _seed_row(crop_id: String, seed_id: String, count: int) -> Control:
 
 	btn.pressed.connect(func() -> void:
 		if FarmManager.plant(target_plot, crop_id):
-			SceneManager._show_toast("种下了 %s 🌱" % CropDB.display_name(crop_id))
+			seed_planted.emit(target_plot, crop_id)
+			SceneManager._show_toast("种下了 %s" % CropDB.display_name(crop_id))
 			close_requested.emit()
 		else:
 			SceneManager._show_toast("种不了(没有种子或地已占用)"))

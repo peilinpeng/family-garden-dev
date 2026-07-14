@@ -1,6 +1,7 @@
 extends Node
 
 signal build_mode_changed(active: bool)
+signal layout_saved(object_count: int)
 
 const DATA_PATH := "res://assets/garden_builder/data/garden_assets.json"
 const SAVE_PATH := "user://garden_layout_v1.json"
@@ -1434,6 +1435,7 @@ func _save_layout() -> void:
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify({"version": 3, "scene_id": "main_garden", "terrain_cells": terrain_by_type, "placed_objects": entries, "objects": entries}, "\t"))
+	layout_saved.emit(entries.size())
 
 func _load_layout() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):

@@ -42,7 +42,15 @@ const FARMER_POS := Vector2(1040, 260)
 const FARMER_REACH := 115.0
 const FARMER_CLICK := 72.0
 const SEED_SHOP_PANEL_SCRIPT := preload("res://scripts/ui/seed_shop_panel.gd")
+const SEED_SELECTION_PANEL_SCRIPT := preload("res://scripts/ui/seed_selection_panel.gd")
 const NOTICE_BOARD_PANEL_SCRIPT := preload("res://scripts/ui/farm_notice_board_panel.gd")
+const ACTION_ICONS := {
+	"seed": preload("res://assets/farm/action_icons/seed.png"),
+	"water": preload("res://assets/farm/action_icons/water.png"),
+	"fertilize": preload("res://assets/farm/action_icons/fertilize.png"),
+	"grow": preload("res://assets/farm/action_icons/grow.png"),
+	"harvest": preload("res://assets/farm/action_icons/harvest.png"),
+}
 const NOTEBOARD_PATH := "Objects/Noteboard"
 const NOTEBOARD_REACH := 125.0
 const NOTEBOARD_CLICK := 86.0
@@ -69,6 +77,10 @@ var farm_hud: CanvasLayer
 var seed_label: Label
 var farm_status_label: Label
 var farm_hint_label: Label
+var action_prompt_panel: PanelContainer
+var action_prompt_icon: TextureRect
+var action_prompt_label: Label
+var plot_action_icon: TextureRect
 var _farm_refresh_pending := false
 var _farm_refresh_running := false
 var _farm_busy := false
@@ -274,6 +286,46 @@ func _build_farm_hud() -> void:
 	farm_hint_label.add_theme_color_override("font_color", Color(0.22, 0.42, 0.20, 0.95))
 	box.add_child(farm_hint_label)
 
+	action_prompt_panel = PanelContainer.new()
+	action_prompt_panel.position = Vector2(438, 615)
+	action_prompt_panel.custom_minimum_size = Vector2(404, 66)
+	action_prompt_panel.visible = false
+	var prompt_style := StyleBoxFlat.new()
+	prompt_style.bg_color = Color(0.98, 0.94, 0.80, 0.96)
+	prompt_style.border_color = Color(0.48, 0.36, 0.20, 0.92)
+	prompt_style.set_border_width_all(2)
+	prompt_style.set_corner_radius_all(12)
+	prompt_style.content_margin_left = 12
+	prompt_style.content_margin_right = 14
+	prompt_style.content_margin_top = 8
+	prompt_style.content_margin_bottom = 8
+	action_prompt_panel.add_theme_stylebox_override("panel", prompt_style)
+	farm_hud.add_child(action_prompt_panel)
+	var prompt_row := HBoxContainer.new()
+	prompt_row.add_theme_constant_override("separation", 12)
+	action_prompt_panel.add_child(prompt_row)
+	action_prompt_icon = TextureRect.new()
+	action_prompt_icon.custom_minimum_size = Vector2(48, 48)
+	action_prompt_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	action_prompt_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	action_prompt_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	prompt_row.add_child(action_prompt_icon)
+	action_prompt_label = Label.new()
+	action_prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	action_prompt_label.add_theme_font_size_override("font_size", 17)
+	action_prompt_label.add_theme_color_override("font_color", Color(0.25, 0.19, 0.12, 1.0))
+	prompt_row.add_child(action_prompt_label)
+
+	plot_action_icon = TextureRect.new()
+	plot_action_icon.size = Vector2(42, 42)
+	plot_action_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	plot_action_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	plot_action_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	plot_action_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plot_action_icon.visible = false
+	farm_hud.add_child(plot_action_icon)
+
 func _setup_shared_farm() -> void:
 	if FarmManager != null and not FarmManager.changed.is_connected(_on_farm_manager_changed):
 		FarmManager.changed.connect(_on_farm_manager_changed)
@@ -454,7 +506,37 @@ func _update_presence_hud(text: String) -> void:
 func _update_interaction_hint() -> void:
 	if farm_hint_label == null:
 		return
-	farm_hint_label.text = _interaction_hint_text()
+	var hint := _interaction_hint_text()
+	farm_hint_label.text = hint
+	_update_plot_action_prompt(hint)
+
+func _update_plot_action_prompt(hint: String) -> void:
+	if action_prompt_panel == null or player == null:
+		return
+	var plot_index := _nearest_reachable_plot(player.position)
+	if plot_index < 0:
+		action_prompt_panel.visible = false
+		plot_action_icon.visible = false
+		return
+	var action := _plot_action(plot_index)
+	action_prompt_panel.visible = true
+	action_prompt_icon.texture = ACTION_ICONS.get(action, ACTION_ICONS.grow)
+	action_prompt_label.text = hint
+	plot_action_icon.texture = action_prompt_icon.texture
+	plot_action_icon.position = PLOTS[plot_index] - Vector2(21, 70)
+	plot_action_icon.visible = true
+
+func _plot_action(plot_index: int) -> String:
+	if not crops.has(plot_index):
+		return "seed"
+	var row: Dictionary = crop_rows.get(plot_index, {})
+	if not bool(row.get("watered", false)):
+		return "water"
+	if FarmManager != null and FarmManager.is_mature(plot_index):
+		return "harvest"
+	if not bool(row.get("fertilized", false)) and _has_item_anywhere(FERTILIZER):
+		return "fertilize"
+	return "grow"
 
 func _interaction_hint_text() -> String:
 	if player == null:
@@ -485,7 +567,7 @@ func _plot_hint(plot_index: int) -> String:
 	if FarmManager == null:
 		return "按 E 查看这块田。"
 	if not crops.has(plot_index):
-		return "按 E 种下：" + _selected_seed_name() + "。"
+		return "按 E 选择种子并播种。"
 	var row: Dictionary = crop_rows.get(plot_index, {})
 	var crop_id := str(row.get("crop_id", ""))
 	var crop_name := _item_name("produce_" + crop_id)
@@ -710,8 +792,25 @@ func _try_plot_index(plot_index: int) -> void:
 		_try_existing_crop(plot_index)
 		return
 
-	var data := CropDB.get_crop(selected)
-	_plant_plot(plot_index, data)
+	_open_seed_selection(plot_index)
+
+func _open_seed_selection(plot_index: int) -> void:
+	var panel: SeedSelectionPanel = SEED_SELECTION_PANEL_SCRIPT.new()
+	panel.target_plot = plot_index
+	panel.seed_planted.connect(_on_seed_planted)
+	if SceneManager.game_hud != null and is_instance_valid(SceneManager.game_hud):
+		SceneManager.game_hud.open_panel(panel)
+	else:
+		var layer := CanvasLayer.new()
+		layer.layer = 40
+		add_child(layer)
+		panel.close_requested.connect(func() -> void: layer.queue_free())
+		layer.add_child(panel)
+	_set_farm_status("请选择要播种的种子。")
+
+func _on_seed_planted(_plot_index: int, crop_id: String) -> void:
+	_set_farm_status("种下了 " + _item_name("seed_" + crop_id) + "。")
+	_record_farm_activity("plant", "播种", "种下了%s" % _item_name("seed_" + crop_id), "seed_" + crop_id, 1)
 
 func _nearest_plot(point: Vector2, max_distance: float) -> int:
 	var best := -1

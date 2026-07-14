@@ -4,6 +4,18 @@ extends Node
 ## 所有场景只读取 MemoryManager.character_appearance，运行时不再使用遮罩或 Shader 换色。
 
 const CATALOG_PATH := "res://assets/manifest/appearances.json"
+const ROLE_BODY_TYPES := {
+	"player": "feminine",
+	"partner": "masculine",
+	"father": "masculine",
+	"mother": "feminine",
+}
+const ROLE_DEFAULT_HAIR := {
+	"player": "braid_hat",
+	"partner": "tousled",
+	"father": "side_part",
+	"mother": "soft_bob",
+}
 var _catalog: Dictionary = {}
 var _avatar_cache: Dictionary = {}
 
@@ -18,13 +30,13 @@ func _load_catalog() -> void:
 
 func default_for_role(role_key: String) -> Dictionary:
 	var canonical := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
-	var body_type := "masculine" if canonical in ["partner", "father"] else "feminine"
+	var body_type := String(ROLE_BODY_TYPES.get(canonical, "feminine"))
 	var body: Dictionary = body_definition(body_type)
 	return {
 		"version": 1,
 		"enabled": true,
 		"body_type": body_type,
-		"hair_style": String(body.get("default_hair_style", "tousled")),
+		"hair_style": String(ROLE_DEFAULT_HAIR.get(canonical, body.get("default_hair_style", "tousled"))),
 		"hair_color": "brown",
 		"outfit": "original",
 	}
@@ -32,14 +44,16 @@ func default_for_role(role_key: String) -> Dictionary:
 func normalize(raw: Dictionary, fallback_role: String = "player") -> Dictionary:
 	var fallback := default_for_role(fallback_role)
 	var result := raw.duplicate(true) if raw is Dictionary else {}
-	var body_type := String(result.get("body_type", fallback.body_type))
-	if not body_types().has(body_type):
-		body_type = String(fallback.body_type)
+	var canonical := CharacterDB.resolve(fallback_role) if CharacterDB != null else fallback_role
+	# 家庭身份同时决定基础身体。爸爸妈妈沿用儿子/女儿的统一身体比例，
+	# 但使用各自烘焙好的脸部和发型图集，避免旧 papa/mama 画风混入。
+	var body_type := String(ROLE_BODY_TYPES.get(canonical, fallback.body_type))
 	var body := body_definition(body_type)
 	var styles: Dictionary = body.get("hair_styles", {})
 	var hair_style := String(result.get("hair_style", body.get("default_hair_style", "")))
-	if not styles.has(hair_style):
-		hair_style = String(body.get("default_hair_style", styles.keys()[0] if not styles.is_empty() else ""))
+	var allowed_styles := available_hair_styles(fallback_role)
+	if not allowed_styles.has(hair_style):
+		hair_style = String(ROLE_DEFAULT_HAIR.get(canonical, body.get("default_hair_style", styles.keys()[0] if not styles.is_empty() else "")))
 	var hair_color := String(result.get("hair_color", "brown"))
 	if not hair_colors().has(hair_color):
 		hair_color = "brown"
@@ -89,6 +103,18 @@ func body_definition(body_type: String) -> Dictionary:
 func hair_styles(body_type: String) -> Dictionary:
 	return body_definition(body_type).get("hair_styles", {})
 
+func available_hair_styles(role_key: String) -> Dictionary:
+	var canonical := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
+	var body_type := String(ROLE_BODY_TYPES.get(canonical, "feminine"))
+	var styles := hair_styles(body_type)
+	if canonical in ["father", "mother"]:
+		var style_id := String(ROLE_DEFAULT_HAIR.get(canonical, ""))
+		var filtered: Dictionary = {}
+		if styles.has(style_id):
+			filtered[style_id] = styles[style_id]
+		return filtered
+	return styles
+
 func hair_colors() -> Dictionary:
 	return _catalog.get("hair_colors", {})
 
@@ -114,6 +140,12 @@ func _resolved_definition(appearance: Dictionary, fallback_role: String) -> Dict
 	var color_id := "brown"
 	if hair_sheets.has(color_id):
 		result["sheet"] = String(hair_sheets[color_id])
+	var canonical := CharacterDB.resolve(fallback_role) if CharacterDB != null else fallback_role
+	if canonical in ["father", "mother"]:
+		var parent_sheet := "parents/%s_%s" % [canonical, String(clean.outfit)]
+		var parent_path := "res://assets/characters/%s.png" % parent_sheet
+		if ResourceLoader.exists(parent_path):
+			result["sheet"] = parent_sheet
 	return result
 
 func variant_definition(appearance: Dictionary, fallback_role: String = "player") -> Dictionary:
