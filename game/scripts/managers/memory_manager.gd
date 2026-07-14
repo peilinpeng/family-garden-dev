@@ -196,6 +196,62 @@ func get_node_by_id(node_id: String) -> Dictionary:
 func get_nodes_for_scene(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
 
+## 记忆花统一陈列在主花园。兼容旧存档及云端曾写入鱼塘的花与关联藤蔓。
+func migrate_fishpond_memories_to_garden() -> int:
+	var migrated := 0
+	var changed := false
+	var migrated_memory_ids := {}
+	for raw_node in nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var node: Dictionary = raw_node
+		if String(node.get("scene_id", "")) != "fishpond":
+			continue
+		var node_type := String(node.get("node_type", ""))
+		if node_type not in ["memory_flower", "memory_seed"]:
+			continue
+		node["scene_id"] = "garden"
+		node["slot_id"] = "garden_archive_flowers"
+		var memory_id := String(node.get("memory_id", ""))
+		if memory_id != "":
+			migrated_memory_ids[memory_id] = true
+		_sync("nodes", node)
+		migrated += 1
+		changed = true
+	# 同步修正所有已位于花园的花朵卡片，避免旧 AI 建议仍把界面指向鱼塘。
+	for raw_node in nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var garden_node: Dictionary = raw_node
+		if String(garden_node.get("scene_id", "")) == "garden" \
+			and String(garden_node.get("node_type", "")) in ["memory_flower", "memory_seed"]:
+			migrated_memory_ids[String(garden_node.get("memory_id", ""))] = true
+	for raw_memory in memories:
+		if not (raw_memory is Dictionary):
+			continue
+		var memory: Dictionary = raw_memory
+		if not migrated_memory_ids.has(String(memory.get("id", ""))):
+			continue
+		var card: Dictionary = memory.get("ai_card", {})
+		if String(card.get("suggested_scene", "garden")) == "garden":
+			continue
+		card["suggested_scene"] = "garden"
+		memory["ai_card"] = card
+		_sync("memories", memory)
+		changed = true
+	# 旧鱼塘记忆之间的藤蔓也随记忆迁入花园，避免成为不可见的孤立数据。
+	for raw_link in nodes:
+		if not (raw_link is Dictionary):
+			continue
+		var link: Dictionary = raw_link
+		if String(link.get("scene_id", "")) == "fishpond" and String(link.get("node_type", "")) == "memory_link":
+			link["scene_id"] = "garden"
+			_sync("nodes", link)
+			changed = true
+	if changed:
+		save_game()
+	return migrated
+
 ## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link 或空存档演示种子）。
 func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String, confidence: float = 1.0, generation_meta: Dictionary = {}) -> Dictionary:
 	if memory_id == "" or linked_memory_id == "" or memory_id == linked_memory_id:
