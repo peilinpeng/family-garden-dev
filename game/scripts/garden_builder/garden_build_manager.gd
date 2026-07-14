@@ -9,7 +9,6 @@ const GROUND_TILE_TEXTURE := "res://assets/garden/tileset/ground/Tileset_Ground.
 const DIRT_TILE_TEXTURE := "res://assets/garden/tileset/ground/Tileset_Dirt.png"
 const ROAD_TILE_TEXTURE := "res://assets/garden/tileset/ground/Tileset_Road.png"
 const WATER_TILE_TEXTURE := "res://assets/garden/tileset/water/Tileset_Water.png"
-const BUILD_ICON := "res://assets/ui/icons/icon_build.png"
 const TerrainResolver = preload("res://scripts/garden_builder/terrain_autotile_resolver.gd")
 const GRID_SIZE := 32
 const TILE_TEXTURE_SIZE := 16
@@ -51,9 +50,11 @@ var tile_layer: TileMapLayer = null
 var water_layer: TileMapLayer = null
 var object_root: Node2D = null
 var preview_root: Node2D = null
-var build_button_layer: CanvasLayer = null
 var toolbar: PanelContainer = null
-var build_toggle_button: Button = null
+var toolbar_top_row: HBoxContainer = null
+var toolbar_scroll: ScrollContainer = null
+var toolbar_title: Label = null
+var toolbar_collapse_button: Button = null
 var asset_scroll_row: HBoxContainer = null
 var status_label: Label = null
 var preview_sprite: Sprite2D = null
@@ -61,6 +62,7 @@ var tile_preview: Sprite2D = null
 var delete_preview: Polygon2D = null
 var terrain_preview_root: Node2D = null
 var build_active: bool = false
+var toolbar_collapsed: bool = false
 var delete_mode: bool = false
 var active_tab: String = "terrain"
 var selected_terrain_id: String = ""
@@ -110,10 +112,6 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer, p_player: Node, p_editable_
 func teardown() -> void:
 	if player != null and is_instance_valid(player) and player.has_method("set_movement_locked"):
 		player.call("set_movement_locked", false)
-	if build_toggle_button != null and is_instance_valid(build_toggle_button):
-		build_toggle_button.queue_free()
-	if build_button_layer != null and is_instance_valid(build_button_layer):
-		build_button_layer.queue_free()
 	if toolbar != null and is_instance_valid(toolbar):
 		toolbar.queue_free()
 	if preview_root != null and is_instance_valid(preview_root):
@@ -127,8 +125,10 @@ func teardown() -> void:
 	if water_layer != null and is_instance_valid(water_layer):
 		water_layer.queue_free()
 	toolbar = null
-	build_button_layer = null
-	build_toggle_button = null
+	toolbar_top_row = null
+	toolbar_scroll = null
+	toolbar_title = null
+	toolbar_collapse_button = null
 	asset_scroll_row = null
 	status_label = null
 	tile_layer = null
@@ -444,33 +444,11 @@ func _add_tileset_source(tile_set: TileSet, texture_path: String, source_id: int
 func _build_toolbar() -> void:
 	if ui_layer == null:
 		return
-	build_button_layer = CanvasLayer.new()
-	build_button_layer.name = "GardenBuildButtonLayer"
-	build_button_layer.layer = 41
-	add_child(build_button_layer)
-
-	build_toggle_button = Button.new()
-	build_toggle_button.name = "GardenBuildToggleButton"
-	build_toggle_button.text = "建造"
-	build_toggle_button.tooltip_text = "打开花园建造"
-	build_toggle_button.position = Vector2(1170, 118)
-	build_toggle_button.size = Vector2(76, 38)
-	build_toggle_button.text = ""
-	build_toggle_button.icon = load(BUILD_ICON) as Texture2D
-	build_toggle_button.expand_icon = true
-	build_toggle_button.tooltip_text = "打开花园建造"
-	build_toggle_button.position = Vector2(1219, 626)
-	build_toggle_button.size = Vector2(44, 42)
-	build_toggle_button.focus_mode = Control.FOCUS_NONE
-	build_toggle_button.pressed.connect(func() -> void:
-		_set_build_active(not build_active)
-	)
-	build_button_layer.add_child(build_toggle_button)
 
 	toolbar = PanelContainer.new()
 	toolbar.name = "GardenBuildToolbar"
 	toolbar.visible = false
-	toolbar.position = Vector2(120, 552)
+	toolbar.position = Vector2(120, 500)
 	toolbar.size = Vector2(1040, 146)
 	toolbar.mouse_filter = Control.MOUSE_FILTER_STOP
 	ui_layer.add_child(toolbar)
@@ -489,17 +467,19 @@ func _build_toolbar() -> void:
 	root.add_theme_constant_override("separation", 8)
 	toolbar.add_child(root)
 
-	var top_row: HBoxContainer = HBoxContainer.new()
-	top_row.add_theme_constant_override("separation", 8)
-	root.add_child(top_row)
+	toolbar_top_row = HBoxContainer.new()
+	toolbar_top_row.name = "ToolbarHeader"
+	toolbar_top_row.add_theme_constant_override("separation", 8)
+	root.add_child(toolbar_top_row)
 
-	var title: Label = Label.new()
-	title.text = "花园建造"
-	title.custom_minimum_size = Vector2(78, 28)
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color(0.20, 0.16, 0.10, 1.0))
-	top_row.add_child(title)
+	toolbar_title = Label.new()
+	toolbar_title.name = "ToolbarTitle"
+	toolbar_title.text = "花园建造"
+	toolbar_title.custom_minimum_size = Vector2(118, 28)
+	toolbar_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	toolbar_title.add_theme_font_size_override("font_size", 18)
+	toolbar_title.add_theme_color_override("font_color", Color(0.20, 0.16, 0.10, 1.0))
+	toolbar_top_row.add_child(toolbar_title)
 
 	var terrain_tab_button: Button = Button.new()
 	terrain_tab_button.text = "铺地"
@@ -507,7 +487,7 @@ func _build_toolbar() -> void:
 	terrain_tab_button.pressed.connect(func() -> void:
 		_select_tab("terrain")
 	)
-	top_row.add_child(terrain_tab_button)
+	toolbar_top_row.add_child(terrain_tab_button)
 
 	var objects_tab_button: Button = Button.new()
 	objects_tab_button.text = "摆设"
@@ -515,7 +495,7 @@ func _build_toolbar() -> void:
 	objects_tab_button.pressed.connect(func() -> void:
 		_select_tab("objects")
 	)
-	top_row.add_child(objects_tab_button)
+	toolbar_top_row.add_child(objects_tab_button)
 
 	for category_key in CATEGORY_ORDER:
 		var key: String = String(category_key)
@@ -529,11 +509,11 @@ func _build_toolbar() -> void:
 		button.pressed.connect(func() -> void:
 			_select_category(key)
 		)
-		top_row.add_child(button)
+		toolbar_top_row.add_child(button)
 
 	var spacer: Control = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_row.add_child(spacer)
+	toolbar_top_row.add_child(spacer)
 
 	var delete_button: Button = Button.new()
 	delete_button.text = "删除"
@@ -542,25 +522,37 @@ func _build_toolbar() -> void:
 	delete_button.pressed.connect(func() -> void:
 		_toggle_delete_mode()
 	)
-	top_row.add_child(delete_button)
+	toolbar_top_row.add_child(delete_button)
+
+	toolbar_collapse_button = Button.new()
+	toolbar_collapse_button.name = "ToolbarCollapseButton"
+	toolbar_collapse_button.text = "收起"
+	toolbar_collapse_button.tooltip_text = "收起工具栏但保留当前建造工具"
+	toolbar_collapse_button.custom_minimum_size = Vector2(64, 30)
+	toolbar_collapse_button.pressed.connect(func() -> void:
+		_set_toolbar_collapsed(not toolbar_collapsed)
+	)
+	toolbar_top_row.add_child(toolbar_collapse_button)
 
 	var close_button: Button = Button.new()
+	close_button.name = "ToolbarCloseButton"
 	close_button.text = "关闭"
 	close_button.custom_minimum_size = Vector2(64, 30)
 	close_button.pressed.connect(func() -> void:
 		_set_build_active(false)
 	)
-	top_row.add_child(close_button)
+	toolbar_top_row.add_child(close_button)
 
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(996, 78)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
+	toolbar_scroll = ScrollContainer.new()
+	toolbar_scroll.name = "ToolbarAssetScroll"
+	toolbar_scroll.custom_minimum_size = Vector2(996, 78)
+	toolbar_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	toolbar_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(toolbar_scroll)
 
 	asset_scroll_row = HBoxContainer.new()
 	asset_scroll_row.add_theme_constant_override("separation", 8)
-	scroll.add_child(asset_scroll_row)
+	toolbar_scroll.add_child(asset_scroll_row)
 
 	status_label = Label.new()
 	status_label.text = "选择铺地材料后点击或拖动绘制；切到摆设后放置花盆、家具等物件。"
@@ -569,6 +561,31 @@ func _build_toolbar() -> void:
 	root.add_child(status_label)
 
 	_select_tab("terrain")
+	_set_toolbar_collapsed(false)
+
+func _set_toolbar_collapsed(collapsed: bool) -> void:
+	toolbar_collapsed = collapsed
+	if toolbar == null:
+		return
+	toolbar.position = Vector2(454, 604) if collapsed else Vector2(120, 500)
+	toolbar.size = Vector2(372, 40) if collapsed else Vector2(1040, 146)
+	if toolbar_scroll != null:
+		toolbar_scroll.visible = not collapsed
+	if status_label != null:
+		status_label.visible = not collapsed
+	if toolbar_title != null:
+		toolbar_title.text = "花园建造（工具已保留）" if collapsed else "花园建造"
+	if toolbar_collapse_button != null:
+		toolbar_collapse_button.text = "展开" if collapsed else "收起"
+	if toolbar_top_row != null:
+		for child in toolbar_top_row.get_children():
+			var control := child as Control
+			if control == null:
+				continue
+			if control == toolbar_title or control == toolbar_collapse_button or String(control.name) == "ToolbarCloseButton":
+				control.visible = true
+			else:
+				control.visible = not collapsed
 
 func _select_tab(tab: String) -> void:
 	active_tab = tab
@@ -753,11 +770,6 @@ func _set_build_active(active: bool) -> void:
 	build_active = active
 	if toolbar != null:
 		toolbar.visible = active
-	if build_toggle_button != null:
-		build_toggle_button.text = "退出" if active else "建造"
-		build_toggle_button.text = ""
-		build_toggle_button.tooltip_text = "关闭花园建造" if active else "打开花园建造"
-		build_toggle_button.modulate = Color(1.0, 0.90, 0.58, 1.0) if active else Color.WHITE
 	if not active:
 		delete_mode = false
 		selected_asset.clear()
@@ -772,6 +784,12 @@ func _set_build_active(active: bool) -> void:
 		player.call("set_movement_locked", active)
 	set_process(active)
 	emit_signal("build_mode_changed", active)
+
+func toggle_build_mode() -> void:
+	_set_build_active(not build_active)
+
+func is_build_mode_active() -> bool:
+	return build_active
 
 func _unhandled_input(event: InputEvent) -> void:
 	if world == null:

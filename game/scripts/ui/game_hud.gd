@@ -17,6 +17,8 @@ var _map_btn: HUDIconButton
 var _backpack_btn: HUDIconButton
 var _quests_btn: HUDIconButton
 var _chat_btn: HUDIconButton
+var _build_btn: HUDIconButton
+var _settings_btn: HUDIconButton
 var _current_panel: HUDPanel
 var _current_kind := ""
 var _active_source: HUDIconButton
@@ -24,6 +26,10 @@ var _active_source: HUDIconButton
 func _ready() -> void:
 	layer = 30
 	_build()
+	var builder := get_node_or_null("/root/GardenBuildManager")
+	var build_callback := Callable(self, "_on_build_mode_changed")
+	if builder != null and builder.has_signal("build_mode_changed") and not builder.is_connected("build_mode_changed", build_callback):
+		builder.connect("build_mode_changed", build_callback)
 	set_context(SceneManager.mode)
 
 func _build() -> void:
@@ -105,27 +111,26 @@ func _build_action_dock() -> void:
 	_quests_btn.button_size = Vector2(40, 40)
 	_dock.add_child(_quests_btn)
 
+	_build_btn = _make_icon(_tex("icon_build"), "花园建造 / Build (B)", "build", HUDIconButton.Side.TOP, _on_build_pressed)
+	_build_btn.position = Vector2(412, 7)
+	_build_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_build_btn)
+
+	_settings_btn = _make_icon(_tex("icon_settings"), "游戏设置 / Settings", "settings", HUDIconButton.Side.TOP, _on_settings_pressed)
+	_settings_btn.position = Vector2(468, 7)
+	_settings_btn.button_size = Vector2(40, 40)
+	_dock.add_child(_settings_btn)
+
 	var labels := Label.new()
 	labels.name = "ActionLabels"
-	labels.text = "地图       背包       聊天       任务"
+	labels.text = "地图       背包       聊天       任务       建造       设置"
 	labels.position = Vector2(178, 36)
-	labels.size = Vector2(236, 14)
+	labels.size = Vector2(340, 14)
 	labels.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	labels.add_theme_font_size_override("font_size", 9)
 	labels.add_theme_color_override("font_color", Color(0.39, 0.31, 0.22, 0.72))
 	_dock.add_child(labels)
-
-	var shortcut := Label.new()
-	shortcut.name = "GardenMoodLabel"
-	shortcut.text = "宁静花园 · 与家人共享"
-	shortcut.position = Vector2(418, 17)
-	shortcut.size = Vector2(144, 20)
-	shortcut.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	shortcut.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shortcut.add_theme_font_size_override("font_size", 10)
-	shortcut.add_theme_color_override("font_color", Color(0.43, 0.35, 0.24, 0.66))
-	_dock.add_child(shortcut)
 
 func _action_box(bg: Color, border: Color) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
@@ -188,6 +193,19 @@ func _on_backpack_pressed() -> void:
 
 func _on_quests_pressed() -> void:
 	_toggle("quests", func() -> HUDPanel: return QuestPanel.new(), _quests_btn)
+
+func _on_build_pressed() -> void:
+	close_current()
+	var builder := get_node_or_null("/root/GardenBuildManager")
+	if builder != null and builder.has_method("toggle_build_mode"):
+		builder.call("toggle_build_mode")
+
+func _on_build_mode_changed(active: bool) -> void:
+	if _build_btn != null:
+		_build_btn.set_active(active)
+
+func _on_settings_pressed() -> void:
+	_toggle("settings", func() -> HUDPanel: return SettingsPanel.new(), _settings_btn)
 
 ## 开场结束后自动弹一次任务面板(StoryManager 经 SceneManager 调)。
 func show_quests() -> void:
@@ -258,12 +276,14 @@ func set_context(scene_id: String) -> void:
 		_backpack_btn.position.x = 244.0
 		_chat_btn.position.x = 300.0
 		_quests_btn.position.x = 356.0
+		_build_btn.position.x = 412.0
+		_settings_btn.position.x = 468.0
+		_build_btn.visible = scene_id == "garden"
+		_settings_btn.visible = show_global_hud
 		var action_labels := _dock.get_node_or_null("ActionLabels") as Label
 		if action_labels != null:
 			action_labels.visible = show_global_hud
-		var mood_label := _dock.get_node_or_null("GardenMoodLabel") as Label
-		if mood_label != null:
-			mood_label.visible = show_global_hud
+			action_labels.text = "地图       背包       聊天       任务       建造       设置" if scene_id == "garden" else "地图       背包       聊天       任务                    设置"
 	if profile_card != null and show_global_hud:
 		profile_card.refresh()
 	if not show_global_hud:
