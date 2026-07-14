@@ -2,13 +2,24 @@
 
 ## Summary
 
-- Total sliced assets: 166
+- Total sliced source assets: 166
+- Active DIY assets: 161
 - decorations: 5
-- flowerbeds: 68
+- flowerbeds: 63 active / 68 sliced
 - furniture: 43
 - plants: 6
 - pots: 39
 - tools: 5
+
+## Excluded From DIY
+
+- `gb_flowerbed_02_020`
+- `gb_flowerbed_02_022`
+- `gb_flowerbed_02_039`
+- `gb_flowerbed_02_041`
+- `gb_flowerbed_02_049`
+
+以上 5 项均包含与 L 形主体断裂的右上角大块残片。源 PNG 保留供重新裁切，运行时资产库与有效 CSV 已排除。
 
 ## Needs Review
 
@@ -17,8 +28,6 @@
 - gb_flowerbed_02_017 (?? 017): flags=large_or_irregular_footprint, size=52x147, footprint=[1, 3], source=02.png:[184, 244, 52, 147]
 - gb_flowerbed_02_018 (?? 018): flags=large_or_irregular_footprint, size=52x147, footprint=[1, 3], source=02.png:[255, 244, 52, 147]
 - gb_flowerbed_02_019 (?? 019): flags=large_or_irregular_footprint, size=53x147, footprint=[1, 3], source=02.png:[326, 244, 53, 147]
-- gb_flowerbed_02_020 (?? 020): flags=large_or_irregular_footprint, size=164x147, footprint=[3, 3], source=02.png:[402, 244, 164, 147]
-- gb_flowerbed_02_022 (?? 022): flags=large_or_irregular_footprint, size=174x146, footprint=[3, 3], source=02.png:[594, 245, 174, 146]
 - gb_flowerbed_02_024 (?? 024): flags=large_or_irregular_footprint, size=128x146, footprint=[2, 3], source=02.png:[858, 245, 128, 146]
 - gb_flowerbed_02_025 (?? 025): flags=large_or_irregular_footprint, size=165x146, footprint=[3, 3], source=02.png:[1014, 245, 165, 146]
 - gb_flowerbed_02_026 (?? 026): flags=large_or_irregular_footprint, size=175x147, footprint=[3, 3], source=02.png:[1208, 244, 175, 147]
@@ -28,11 +37,8 @@
 - gb_flowerbed_02_036 (?? 036): flags=large_or_irregular_footprint, size=57x149, footprint=[1, 3], source=02.png:[205, 513, 57, 149]
 - gb_flowerbed_02_037 (?? 037): flags=large_or_irregular_footprint, size=57x148, footprint=[1, 3], source=02.png:[286, 514, 57, 148]
 - gb_flowerbed_02_038 (?? 038): flags=large_or_irregular_footprint, size=58x149, footprint=[1, 3], source=02.png:[366, 513, 58, 149]
-- gb_flowerbed_02_039 (?? 039): flags=large_or_irregular_footprint, size=169x149, footprint=[3, 3], source=02.png:[449, 513, 169, 149]
-- gb_flowerbed_02_041 (?? 041): flags=large_or_irregular_footprint, size=157x148, footprint=[3, 3], source=02.png:[646, 514, 157, 148]
 - gb_flowerbed_02_043 (?? 043): flags=large_or_irregular_footprint, size=166x144, footprint=[3, 3], source=02.png:[876, 518, 166, 144]
 - gb_flowerbed_02_044 (?? 044): flags=large_or_irregular_footprint, size=188x145, footprint=[3, 3], source=02.png:[1071, 517, 188, 145]
-- gb_flowerbed_02_049 (?? 049): flags=large_or_irregular_footprint, size=169x152, footprint=[3, 3], source=02.png:[634, 681, 169, 152]
 - gb_flowerbed_02_051 (?? 051): flags=large_or_irregular_footprint, size=140x150, footprint=[2, 3], source=02.png:[859, 683, 140, 150]
 - gb_flowerbed_02_052 (?? 052): flags=large_or_irregular_footprint, size=115x149, footprint=[2, 3], source=02.png:[1030, 684, 115, 149]
 - gb_flowerbed_02_053 (?? 053): flags=large_or_irregular_footprint, size=103x149, footprint=[2, 3], source=02.png:[1165, 684, 103, 149]
