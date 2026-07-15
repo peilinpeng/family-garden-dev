@@ -1,7 +1,7 @@
 extends HUDPanel
 class_name SettingsPanel
 
-## 设置面板(右上设置图标打开)。音乐/音效音量、全屏、UI 缩放(占位)、退出游戏/返回主菜单(占位)。
+## 设置面板(右上设置图标打开)。音量、全屏、昼夜滤镜、关怀模式与存档操作。
 ## 只跟 SettingsManager 打交道,音频/显示细节由它委托 AudioManager / DisplayServer。
 
 var _delete_save_dialog: ConfirmationDialog = null
@@ -40,16 +40,18 @@ func _build_content() -> void:
 	dn_row.add_child(dn_toggle)
 	content_root.add_child(dn_row)
 
-	# UI 缩放 —— 占位(后续接 content_scale_factor)
+	# 关怀模式:只放大 Control UI 的文字与交互尺寸，不改变游戏画面与可视范围。
 	var scale_row := HBoxContainer.new()
 	scale_row.add_theme_constant_override("separation", 12)
-	scale_row.add_child(_row_label("🔍 UI 缩放"))
-	var scale_hint := Label.new()
-	scale_hint.text = "即将开放"
-	scale_hint.add_theme_font_size_override("font_size", 13)
-	scale_hint.add_theme_color_override("font_color", Color(0.55, 0.45, 0.32, 0.8))
-	scale_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	scale_row.add_child(scale_hint)
+	scale_row.add_child(_row_label("👓 关怀模式"))
+	var care_toggle := CheckButton.new()
+	care_toggle.name = "CareModeToggle"
+	care_toggle.text = ""
+	care_toggle.button_pressed = SettingsManager.care_mode
+	care_toggle.mouse_filter = Control.MOUSE_FILTER_STOP
+	care_toggle.tooltip_text = "开启后只放大文字、按钮和输入控件，不改变游戏画面与可视范围。"
+	care_toggle.toggled.connect(func(on: bool) -> void: SettingsManager.set_care_mode(on))
+	scale_row.add_child(care_toggle)
 	content_root.add_child(scale_row)
 
 	# 重播开场 —— 仅开发/debug 构建可见(编辑器运行与 debug 导出;正式 release 导出自动隐藏)。

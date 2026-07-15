@@ -27,6 +27,7 @@ const ASSETS := {
 	"globalmap_garden": "res://assets/globalmap/garden.png",
 	"globalmap_house": "res://assets/globalmap/house.png",
 	"globalmap_pond": "res://assets/globalmap/pond.png",
+	"globalmap_familygarden_sign": "res://assets/globalmap/familygarden.png",
 	"tree": "res://assets/garden/family_tree.png",
 	"mailbox": "res://assets/garden/mailbox.png",
 	"bench": "res://assets/garden/bench.png",
@@ -1478,7 +1479,6 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_add_garden_spawn_markers()
 	_add_houses()
 	_add_core_objects()
-	_add_npcs()
 	_add_animals()
 	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
 	_add_player(spawn)
@@ -1493,7 +1493,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 		game_hud.refresh_profile()
 	if not _garden_controls_hint_shown:
 		_garden_controls_hint_shown = true
-		_show_toast("方向键 / WASD 移动 · 靠近家人或点击花园物件互动")
+		_show_toast("方向键 / WASD 移动 · 点击花园物件互动")
 
 # 场景层只负责渲染和交互；AI 生成、草稿确认和持久化由 AIClient / AIWorkflowManager / MemoryManager 处理。
 # 这里缓存当前场景已渲染的节点 view model，离场后可由数据层重建。
@@ -2924,6 +2924,9 @@ const GLOBAL_MAP_REGIONS := [
 	{"id": "house", "asset": "globalmap_house", "label": "小屋", "target": "house"},
 	{"id": "pond", "asset": "globalmap_pond", "label": "鱼塘", "target": "fishpond"},
 ]
+const GLOBAL_MAP_DECORATIONS := [
+	{"id": "familygarden_sign", "asset": "globalmap_familygarden_sign"},
+]
 
 func _show_global_map() -> void:
 	save_current_progress()
@@ -2945,13 +2948,16 @@ func _show_global_map() -> void:
 	AudioManager.play_music("globalmap")
 	AudioManager.play_sfx("打开地图")
 
-	# 整张导航页放在 ui_layer（在 world 之上），但移到底部导航栏之后，保证那些按钮仍可点。
+	# 整张导航页放在固定设计尺寸的 ui_root（在 world 之上），底部导航栏仍由更高层 GameHUD 保持可点。
 	var view := Control.new()
 	view.name = "GlobalMapView"
-	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = GAME_SIZE
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(view)
-	ui_layer.move_child(view, 0)
+	# 地图严格使用 1280×720 设计画布，并复用 ui_root 的居中定位；不能直接铺满可变宽高的 Viewport。
+	ui_root.add_child(view)
+	ui_root.move_child(view, 0)
 	global_map_ui = view
 
 	# 美术没导入时的柔色兜底。
@@ -2979,11 +2985,28 @@ func _show_global_map() -> void:
 	for region in GLOBAL_MAP_REGIONS:
 		if _add_global_map_region(view, region):
 			loaded += 1
+	for decoration in GLOBAL_MAP_DECORATIONS:
+		_add_global_map_decoration(view, decoration)
 
 	if loaded == 0:
 		_show_toast("世界地图美术还没导入 — 用 Godot 打开一次项目即可。")
 	else:
 		_show_toast("把鼠标移到某个地点，点击即可进入。")
+
+func _add_global_map_decoration(view: Control, decoration: Dictionary) -> bool:
+	var tex := _safe_texture(ASSETS[str(decoration["asset"])])
+	if tex == null:
+		return false
+	var layer := TextureRect.new()
+	layer.name = "Decoration_" + str(decoration["id"])
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	layer.stretch_mode = TextureRect.STRETCH_SCALE
+	layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.texture = tex
+	view.add_child(layer)
+	return true
 
 func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 	var tex := _safe_texture(ASSETS[str(region["asset"])])
@@ -4048,37 +4071,6 @@ func _add_invisible_hotspot(node_name: String, pos: Vector2, hotspot_size: Vecto
 	world.add_child(root)
 	_add_click_area(root, hotspot_size, action, label_text)
 	return root
-
-func _add_npcs() -> void:
-	var selected_id := CharacterDB.resolve(MemoryManager.selected_role_key) if CharacterDB != null else MemoryManager.selected_role_key
-	for role_data in CHARACTER_DATA:
-		var role_key := str(role_data.get("role", ""))
-		var role_id := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
-		if role_id == selected_id:
-			continue
-		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
-		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
-		var npc_asset_key := str(role_data.get("asset", "girl"))
-		var npc_def: Dictionary = CharacterDB.get_def(npc_asset_key)
-		var npc_frame_rects: Array = npc_def.get("frame_rects", [])
-		var npc_scale := float(npc_def.get("scale", -1.0))
-		var npc_hframes := maxi(1, int(npc_def.get("hframes", 3)))
-		var npc_vframes := maxi(1, int(npc_def.get("vframes", 4)))
-		var npc_texture_path := _character_texture_path(npc_asset_key, str(ASSETS.get(npc_asset_key, "")))
-		var npc_body := _create_character(npc_name, npc_texture_path, npc_pos, false, npc_hframes, npc_vframes, npc_frame_rects, npc_scale)
-		npc_body.name = "NPC_" + role_key
-		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
-		npc_body.set_meta("sprite_hframes", npc_hframes)
-		npc_body.set_meta("sprite_vframes", npc_vframes)
-		npc_body.set("home_position", npc_pos)
-		npc_body.set("wander_radius", float(role_data.get("wander_radius", 80.0)))
-		npc_body.set("move_speed", 34.0)
-		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
-		# 这两个 setter 不依赖 _ready，立即注入可避免 NPC 第一帧仍按 1×1 网格取帧。
-		npc_body.call("set_blocked_rects", _get_character_blocked_rects())
-		npc_body.call("set_frame_rects", npc_frame_rects)
-		world.add_child(npc_body)
-		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
 
 func _add_animals() -> void:
 	animal_nodes.clear()

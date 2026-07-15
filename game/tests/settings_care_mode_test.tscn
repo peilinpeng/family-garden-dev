@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://tests/settings_care_mode_test.gd" type="Script" id="1"]
+
+[node name="SettingsCareModeTest" type="Node"]
+script = ExtResource("1")
