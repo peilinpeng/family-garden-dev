@@ -70,7 +70,6 @@ var seed_vendor: Node2D
 var noteboard: Node2D
 var noteboard_point := Vector2.ZERO
 var remote_players: Dictionary = {}      ## member_id -> RemotePlayer
-var placeholder_players: Dictionary = {} ## role_key -> RemotePlayer
 var presence_hud: CanvasLayer
 var presence_label: Label
 var farm_hud: CanvasLayer
@@ -169,30 +168,7 @@ func _spawn_player() -> void:
 	var role: String = identity.local_role(local_fallback) if identity != null else local_fallback
 	if player.has_method("apply_character"):
 		player.apply_character(role)
-	_spawn_family(role)
 	_setup_presence()
-
-func _spawn_family(local_role: String) -> void:
-	var db := get_node_or_null("/root/CharacterDB")
-	if db == null:
-		return
-	var local_id: String = db.resolve(local_role)
-	var spots := {
-		"mother":  [Vector2(705, 235), Rect2(660, 222, 95, 36)],
-		"partner": [Vector2(1120, 600), Rect2(1075, 582, 95, 44)],
-		"player":  [Vector2(470, 640), Rect2(430, 622, 95, 44)],
-		"father":  [Vector2(640, 250), Rect2(600, 236, 95, 36)],
-	}
-	for cid in db.all_ids():
-		if cid == local_id or not spots.has(cid):
-			continue
-		var rp: Node2D = preload("res://scenes/RemotePlayer.tscn").instantiate()
-		rp.role_key = cid
-		rp.placeholder_wander = true
-		rp.wander_area = spots[cid][1]
-		add_child(rp)
-		rp.position = spots[cid][0]
-		placeholder_players[cid] = rp
 
 func _setup_presence() -> void:
 	if PresenceChannel == null:
@@ -445,7 +421,7 @@ func _on_presence_status_changed(status: String) -> void:
 		"waiting_identity":
 			_update_presence_hud("等待身份")
 		"disabled":
-			_update_presence_hud("离线演示")
+			_update_presence_hud("离线")
 		_:
 			_update_presence_hud("离线")
 
@@ -456,12 +432,10 @@ func _upsert_remote_player(peer: Dictionary) -> void:
 	if str(peer.get("scene_id", "")) != "farm":
 		_remove_remote_player(member_id)
 		return
+	if GameIdentity != null and GameIdentity.is_ready() and member_id == GameIdentity.member_id:
+		_remove_remote_player(member_id)
+		return
 	var role := CharacterDB.resolve(str(peer.get("role", "father")))
-	if placeholder_players.has(role):
-		var placeholder := placeholder_players[role] as Node
-		placeholder_players.erase(role)
-		if placeholder != null:
-			placeholder.queue_free()
 	var rp: Node2D = remote_players.get(member_id, null)
 	if rp == null:
 		rp = preload("res://scenes/RemotePlayer.tscn").instantiate()
