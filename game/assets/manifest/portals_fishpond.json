@@ -11,10 +11,16 @@
     {
       "portal_id": "GardenReturnArea",
       "target_scene": "res://scenes/Main.tscn",
-      "spawn_point": "GardenFromPondSpawnPoint",
-      "trigger_rect": [1184, 300, 96, 128],
-      "prompt_text": "Return to garden",
-      "tap_enabled": true
+      "spawn_point": "from_fishpond",
+      "trigger_rect": [1192, 336, 56, 56],
+      "prompt_text": "返回主花园",
+      "marker_text": "返回花园 →  E / 点击",
+      "marker_position": [1064, 300],
+      "show_marker": true,
+      "tap_enabled": true,
+      "key_interact": true,
+      "fade": true,
+      "delay": 0.35
     }
   ]
 }

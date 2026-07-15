@@ -84,6 +84,7 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 	area.monitoring = true
 	area.collision_mask = 1  # 主控角色在 layer 1
 	area.position = rect.position + rect.size * 0.5
+	_add_portal_marker(portal, rect, world)
 
 	var shape := CollisionShape2D.new()
 	var box := RectangleShape2D.new()
@@ -127,6 +128,28 @@ func _build_one(portal: Dictionary, world: Node2D, travel_cb: Callable) -> void:
 				travel_cb.call(target, spawn_key))
 
 	world.add_child(area)
+
+## 可选的常驻入口标识。manifest 明确开启才显示，避免给未校准的门口增加 UI。
+func _add_portal_marker(portal: Dictionary, rect: Rect2, world: Node2D) -> void:
+	if not bool(portal.get("show_marker", false)):
+		return
+	var marker := Label.new()
+	marker.name = String(portal.get("portal_id", "portal")) + "Marker"
+	marker.text = String(portal.get("marker_text", portal.get("prompt_text", "入口")))
+	var marker_position: Variant = portal.get("marker_position", [])
+	marker.position = _to_vec(marker_position) if marker_position is Array and (marker_position as Array).size() >= 2 \
+		else rect.position + Vector2(-40.0, -30.0)
+	marker.size = Vector2(176, 26)
+	marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	marker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marker.z_as_relative = false
+	marker.z_index = 490
+	marker.add_theme_font_size_override("font_size", 14)
+	marker.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75, 0.96))
+	marker.add_theme_color_override("font_outline_color", Color(0.18, 0.13, 0.08, 0.92))
+	marker.add_theme_constant_override("outline_size", 4)
+	world.add_child(marker)
 
 ## 站在 key_interact 传送门触发区内按 E:淡出(若配置)后调用同一个 travel_cb。
 func _unhandled_input(event: InputEvent) -> void:
