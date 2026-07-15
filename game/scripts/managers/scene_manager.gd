@@ -2261,11 +2261,12 @@ func _render_garden_archives(cache: Array) -> void:
 	for raw_key in GARDEN_ARCHIVE_ORDER:
 		var archive_key := String(raw_key)
 		var items: Array = archives.get(archive_key, [])
-		if items.is_empty():
+		# 记忆花圃是默认固定景观，即使尚无记忆也必须存在；另外两类档案仍按内容出现。
+		if items.is_empty() and archive_key != "flowers":
 			continue
 		items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 			return String(a.get("created_at", "")) > String(b.get("created_at", "")))
-		var visual_state := "new"
+		var visual_state := "grown" if archive_key == "flowers" else "new"
 		for item in items:
 			if String((item as Dictionary).get("state", "new")) == "grown":
 				visual_state = "grown"
@@ -2306,7 +2307,7 @@ func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) 
 	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, {})
 	var caption := Panel.new()
 	caption.name = "ArchiveCaption"
-	caption.position = Vector2(-68, -132 if archive_key == "flowers" else -108)
+	caption.position = Vector2(-68, -174 if archive_key == "flowers" else -108)
 	caption.size = Vector2(136, 42)
 	caption.visible = false
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4153,6 +4154,8 @@ func _get_garden_build_blocked_rects() -> Array:
 		Rect2(Vector2(0, 652), Vector2(1280, 68)),
 		Rect2(Vector2(0, 250), Vector2(86, 430)),
 		Rect2(Vector2(1194, 250), Vector2(86, 430)),
+		# 记忆花圃是默认固定区域，禁止铺地和 DIY 物件覆盖。
+		Rect2(Vector2(840, 414), Vector2(180, 142)),
 	]
 
 func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> StaticBody2D:
