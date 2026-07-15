@@ -9,6 +9,8 @@ const MANIFEST_PATH := "res://assets/manifest/asset_manifest.json"
 const DYNAMIC_NODE_PREFAB := "res://scenes/prefabs/DynamicNode.tscn"
 const BOTTLE_FLOAT_FRAMES := "res://assets/pond/bottle/bottle_float_sprite_frames.tres"
 const MEMORY_FLOWER_SHEET := "res://assets/garden/memory_flowers.png"
+const MEMORY_ARCHIVE_FLOWERBED := "res://assets/garden_builder/textures/flowerbeds/gb_flowerbed_02_044.png"
+const MEMORY_ARCHIVE_FLOWERBED_WIDTH := 164.0
 const FLOATING_NODE_CONTROLLER := preload("res://scripts/pond/floating_node_controller.gd")
 const PULSE_TWEEN_MIN_DURATION := 0.05
 const GARDEN_ARCHIVE_NODE_TYPES := {
@@ -121,26 +123,53 @@ func garden_archive_key(node_type: String) -> String:
 			return "flowers"
 
 func _configure_background_flower_archive(root: Node2D) -> void:
-	# 右下角背景花丛本身就是景观，不再叠加一盆独立的记忆花。
+	# 记忆花圃是花园内永久存在的固定景观；记忆数据只改变其档案内容，不改变实体是否出现。
 	var sprite := root.get_node_or_null("Sprite") as Sprite2D
-	if sprite != null:
-		sprite.visible = false
+	var display_size := Vector2(164, 126)
+	if sprite != null and ResourceLoader.exists(MEMORY_ARCHIVE_FLOWERBED):
+		var texture := load(MEMORY_ARCHIVE_FLOWERBED) as Texture2D
+		if texture != null:
+			var scale_factor := MEMORY_ARCHIVE_FLOWERBED_WIDTH / float(texture.get_width())
+			display_size = Vector2(texture.get_width(), texture.get_height()) * scale_factor
+			sprite.texture = texture
+			sprite.region_enabled = false
+			sprite.hframes = 1
+			sprite.vframes = 1
+			sprite.frame = 0
+			sprite.centered = true
+			sprite.position = Vector2(0, -display_size.y * 0.5)
+			sprite.scale = Vector2.ONE * scale_factor
+			sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			sprite.visible = true
 	for decoration_name in ["NodeShadow", "MemoryAura", "MemoryRing"]:
 		var decoration := root.get_node_or_null(decoration_name) as CanvasItem
 		if decoration != null:
 			decoration.visible = false
 	var area := root.get_node_or_null("ClickArea") as Area2D
 	if area != null:
-		area.position = Vector2.ZERO
+		area.position = Vector2(0, -display_size.y * 0.5)
 		var shape := area.get_node_or_null("Shape") as CollisionShape2D
 		if shape != null:
 			var rect := RectangleShape2D.new()
-			rect.size = Vector2(188, 124)
+			rect.size = display_size
 			shape.shape = rect
+	var body := StaticBody2D.new()
+	body.name = "FixedFlowerbedCollision"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.position = Vector2(0, -14)
+	var collision := CollisionShape2D.new()
+	var collision_shape := RectangleShape2D.new()
+	collision_shape.size = Vector2(display_size.x - 18.0, 28)
+	collision.shape = collision_shape
+	body.add_child(collision)
+	root.add_child(body)
+	root.add_to_group("fixed_garden_landmark")
+	root.set_meta("fixed_landmark_kind", "memory_flowerbed")
 	var glow := _add_soft_disc(
 		root,
 		"ArchiveAmbientGlow",
-		Vector2(0, -4),
+		Vector2(0, -display_size.y * 0.45),
 		Vector2(1.58, 0.78),
 		Color(1.0, 0.91, 0.58, 0.08),
 		128,
@@ -150,7 +179,7 @@ func _configure_background_flower_archive(root: Node2D) -> void:
 	var hover_glow := _add_soft_disc(
 		root,
 		"ArchiveHoverGlow",
-		Vector2(0, -4),
+		Vector2(0, -display_size.y * 0.45),
 		Vector2(1.68, 0.84),
 		Color(1.0, 0.94, 0.64, 0.22),
 		128,
