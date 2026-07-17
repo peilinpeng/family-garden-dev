@@ -3,6 +3,7 @@ class_name ProfilePanel
 
 signal settings_requested
 signal appearance_requested
+signal family_tree_requested
 
 ## 玩家个人资料面板(点左上角色卡打开)。头像 / 昵称 / 家庭名称 / 家庭成员入口 / 收集成就(占位)。
 ## 复用 CharacterDB.avatar_texture 取头像、MemoryManager.player_display_name 取昵称;
@@ -14,7 +15,7 @@ const FAMILY_NAME_PLACEHOLDER := "温馨小家"
 
 func _init() -> void:
 	panel_title = "我的资料"
-	card_size = Vector2(500, 470)
+	card_size = Vector2(500, 520)
 
 func _build_content() -> void:
 	# ---- 头像 + 昵称 + 家庭名 ----
@@ -80,6 +81,17 @@ func _build_content() -> void:
 	HUDPanel._style_soft_button(members_btn)
 	members_btn.pressed.connect(_on_members)
 	content_root.add_child(members_btn)
+
+	var family_tree_btn := Button.new()
+	family_tree_btn.name = "ProfileFamilyTreeButton"
+	family_tree_btn.text = "家庭树"
+	family_tree_btn.custom_minimum_size = Vector2(0, 42)
+	family_tree_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	HUDPanel._style_soft_button(family_tree_btn)
+	family_tree_btn.pressed.connect(func() -> void:
+		close_requested.emit()
+		family_tree_requested.emit())
+	content_root.add_child(family_tree_btn)
 
 	var appearance_btn := Button.new()
 	appearance_btn.text = "修改角色形象"

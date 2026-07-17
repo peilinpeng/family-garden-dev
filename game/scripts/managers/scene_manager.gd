@@ -6517,6 +6517,9 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 
 
 func _open_family_tree_panel() -> void:
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("open_family_tree"):
+		game_hud.open_family_tree()
+		return
 	var stage := MemoryManager.family_tree_stage()
 	var interactions := MemoryManager.cross_member_interaction_count
 	var next_threshold := MemoryManager.family_tree_next_threshold()
@@ -6550,7 +6553,16 @@ func _open_family_tree_panel() -> void:
 func _offer_family_tree_welcome_gift() -> void:
 	if mode != "garden" or MemoryManager.selected_role_key == "":
 		return
-	if not MemoryManager.grant_family_tree_gift():
+	if MemoryManager.has_planted_family_tree():
+		return
+	MemoryManager.grant_family_tree_gift()
+	if MemoryManager.family_tree_planting_hint_seen:
+		return
+	MemoryManager.family_tree_planting_hint_seen = true
+	MemoryManager.save_game()
+	_show_toast("家庭树幼苗等待种植 · 点击底部“建造”→“家庭树”")
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("open_family_tree"):
+		game_hud.open_family_tree()
 		return
 	_show_cozy_panel(
 		"送给你的家庭树幼苗",
@@ -6563,17 +6575,23 @@ func _offer_family_tree_welcome_gift() -> void:
 
 func _begin_family_tree_placement() -> void:
 	_close_active_panel()
+	# 先记录“已经从面板主动进入种植”，避免从厨房等场景切回花园后，
+	# 延迟执行的首次提示再次打开面板并打断正在进行的放置。
+	MemoryManager.family_tree_gift_received = true
+	MemoryManager.family_tree_planting_hint_seen = true
+	MemoryManager.save_game()
 	if mode != "garden":
 		_show_garden()
 	if MemoryManager.has_planted_family_tree():
 		_show_toast("家庭树已经种在花园里了。")
 		return
-	MemoryManager.family_tree_gift_received = true
-	MemoryManager.save_game()
 	selected_plant_type = "family_tree"
 	plant_mode = true
 	_update_plant_button()
 	_show_toast("点击花园中的空地，种下家庭树幼苗。")
+
+func begin_family_tree_placement() -> void:
+	_begin_family_tree_placement()
 
 func _open_family_members_panel() -> void:
 	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
@@ -7008,6 +7026,8 @@ func _on_panel_button(action: String) -> void:
 		_open_postcards_panel()
 	elif action == "message_board":
 		_open_message_board_panel()
+	elif action == "family_tree":
+		_open_family_tree_panel()
 	elif action == "plant_family_tree":
 		_begin_family_tree_placement()
 	elif action == "add_message":

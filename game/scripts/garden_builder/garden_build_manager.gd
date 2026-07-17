@@ -498,6 +498,21 @@ func _build_toolbar() -> void:
 	)
 	toolbar_top_row.add_child(objects_tab_button)
 
+	var family_tree_button := Button.new()
+	family_tree_button.name = "FamilyTreeEntryButton"
+	family_tree_button.text = "家庭树"
+	family_tree_button.tooltip_text = "查看成长进度或种下家庭树幼苗"
+	family_tree_button.custom_minimum_size = Vector2(82, 30)
+	var family_tree_icon_path := "res://assets/garden/family_tree/stage_1.png"
+	if ResourceLoader.exists(family_tree_icon_path):
+		family_tree_button.icon = load(family_tree_icon_path)
+		family_tree_button.expand_icon = true
+	family_tree_button.pressed.connect(func() -> void:
+		_set_build_active(false)
+		SceneManager.open_family_tree()
+	)
+	toolbar_top_row.add_child(family_tree_button)
+
 	for category_key in CATEGORY_ORDER:
 		var key: String = String(category_key)
 		if key == "ground_tiles" or key == "path_tiles":

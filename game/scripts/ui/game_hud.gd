@@ -175,6 +175,7 @@ func _on_profile_pressed() -> void:
 func _create_profile_panel() -> HUDPanel:
 	var panel := ProfilePanel.new()
 	panel.settings_requested.connect(_open_settings_from_profile)
+	panel.family_tree_requested.connect(open_family_tree)
 	panel.appearance_requested.connect(func() -> void:
 		close_current()
 		SceneManager._show_role_select())
@@ -186,6 +187,16 @@ func _open_settings_from_profile() -> void:
 func _on_members_pressed() -> void:
 	close_current()
 	SceneManager.open_family_members()
+
+func open_family_tree() -> void:
+	_toggle("family_tree", _create_family_tree_panel, null)
+
+func _create_family_tree_panel() -> HUDPanel:
+	var panel := FamilyTreePanel.new()
+	panel.plant_requested.connect(func() -> void:
+		close_current()
+		SceneManager.begin_family_tree_placement())
+	return panel
 
 func _on_map_pressed() -> void:
 	if _tutorial_stage == "map":
