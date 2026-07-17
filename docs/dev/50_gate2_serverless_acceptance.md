@@ -170,7 +170,7 @@ CloudBase 云存储临时 HTTPS 链接可稳定通过。生产图片应使用 Cl
 `CONTENT_SAFETY_SECRET_KEY` 与 `CONTENT_SAFETY_REGION`，并重新完成本地测试和部署构建。
 
 同日确认原线上 `data_gateway` 版本缺少 `join_family`。更新为仓库当前版本后，带非法参数的
-无副作用探针正确返回 `family_id required, role must be one of father/mother/partner/player`；
+无副作用探针正确返回 `family_id required, role must be one of father/mother/grandfather/grandmother/partner/player`；
 Godot 随后生成本地 `cloud_identity.json`，`whoami` 返回测试家庭 `family1`、角色 `partner`。
 
 ## 9. 影响范围

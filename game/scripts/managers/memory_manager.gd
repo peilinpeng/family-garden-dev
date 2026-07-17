@@ -7,6 +7,7 @@ extends Node
 
 signal mailbox_alert_changed(state: String)
 signal farm_activity_changed
+signal family_tree_changed(stage: int)
 
 const SAVE_PATH := "user://family_garden_save_v2.json"
 const TEST_SAVE_PATH := "user://family_garden_save_v2.test.json"
@@ -15,8 +16,13 @@ const FAMILY_ID := "Happy_birthday_David"
 const MAILBOX_ALERT_NONE := "none"
 const MAILBOX_ALERT_DOT := "dot"
 const MAILBOX_ALERT_LETTER := "letter"
+const FAMILY_TREE_ID := "family_tree_unique"
+const FAMILY_TREE_STAGE_THRESHOLDS := [0, 1, 3, 6, 10]
 
 var plants: Array = []
+## 家庭树是每个家庭唯一的开局礼物。是否已种植由 plants 中的固定 id 推导，
+## gift_received 单独保存，以便移除后仍可重新种植而不会重复发放。
+var family_tree_gift_received: bool = false
 var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
@@ -606,10 +612,41 @@ func register_cross_member_answer(memory_id: String, answerer: String) -> bool:
 	var pair := memory_id + "|" + answerer
 	if pair in cross_member_pairs:
 		return false
+	var previous_stage := family_tree_stage()
 	cross_member_pairs.append(pair)
 	cross_member_interaction_count += 1
 	save_game()
 	_sync("families", _family_row())
+	var current_stage := family_tree_stage()
+	if current_stage != previous_stage:
+		family_tree_changed.emit(current_stage)
+	return true
+
+## 五阶段家庭树：家庭成员间的有效互动达到 0 / 1 / 3 / 6 / 10 次时成长。
+func family_tree_stage() -> int:
+	var stage := 1
+	for i in FAMILY_TREE_STAGE_THRESHOLDS.size():
+		if cross_member_interaction_count >= int(FAMILY_TREE_STAGE_THRESHOLDS[i]):
+			stage = i + 1
+	return stage
+
+func family_tree_next_threshold() -> int:
+	var stage := family_tree_stage()
+	if stage >= FAMILY_TREE_STAGE_THRESHOLDS.size():
+		return -1
+	return int(FAMILY_TREE_STAGE_THRESHOLDS[stage])
+
+func has_planted_family_tree() -> bool:
+	for plant in plants:
+		if plant is Dictionary and String(plant.get("id", "")) == FAMILY_TREE_ID:
+			return true
+	return false
+
+func grant_family_tree_gift() -> bool:
+	if family_tree_gift_received:
+		return false
+	family_tree_gift_received = true
+	save_game()
 	return true
 
 ## 参与过的成员 key（上传记忆 或 回答过的人）。
@@ -826,6 +863,7 @@ func clear_mailbox_alert() -> void:
 
 func _reset_all() -> void:
 	plants = []
+	family_tree_gift_received = false
 	travel_places = []
 	postcards = []
 	garden_messages = []
@@ -1004,6 +1042,7 @@ func pull_remote() -> void:
 func save_game() -> void:
 	var data := {
 		"plants": plants,
+		"family_tree_gift_received": family_tree_gift_received,
 		"travel_places": travel_places,
 		"postcards": postcards,
 		"garden_messages": garden_messages,
@@ -1051,6 +1090,7 @@ func load_save() -> void:
 	var parsed = JSON.parse_string(text)
 	if parsed is Dictionary:
 		plants = parsed.get("plants", [])
+		family_tree_gift_received = bool(parsed.get("family_tree_gift_received", false))
 		travel_places = parsed.get("travel_places", [])
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])

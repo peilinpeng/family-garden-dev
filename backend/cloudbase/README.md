@@ -124,7 +124,7 @@ db.collection('members').add({
 - ✅ **members 表不可通用访问**:不在 CRUD 白名单,客户端无法查询/写入/回传 member_token；
   只开放 `list_family_members` 只读动作,且只返回同家庭公开字段。
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
-- ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/partner/player` 四个合法角色,乱传会被拒绝。
+- ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/grandfather/grandmother/partner/player` 六个合法角色,乱传会被拒绝。
 - ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
 - ✅ **AI 图片受控上传**:服务端生成隔离路径；元数据表不对 CRUD 白名单开放；家庭外不可解析、非上传者不可删除。
 - **轮换/吊销**:删/换某成员的 member_token 行即可让其失效,不影响其他成员。

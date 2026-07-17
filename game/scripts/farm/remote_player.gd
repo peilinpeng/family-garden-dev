@@ -86,9 +86,11 @@ func configure_presence(peer_member_id: String, peer_role: String, peer_name: St
 			var clean_appearance: Dictionary = {}
 			if appearance_manager != null and bool(appearance.get("enabled", false)):
 				clean_appearance = appearance_manager.normalize(appearance, role_key)
+			if not clean_appearance.is_empty() and bool(clean_appearance.get("enabled", false)):
 				def = appearance_manager.variant_definition(clean_appearance, role_key)
 				tex = appearance_manager.texture(clean_appearance, role_key)
 			else:
+				clean_appearance.clear()
 				def = db.get_def(role_key)
 				tex = db.texture(role_key)
 			if tex != null:

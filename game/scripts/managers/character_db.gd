@@ -24,6 +24,20 @@ func _load() -> void:
 		return
 	for c in parsed.get("characters", []):
 		if c is Dictionary and c.has("id"):
+			var frame_size: Array = c.get("frame_size", [])
+			if c.get("frame_rects", []).is_empty() and frame_size.size() >= 2:
+				var frame_width := float(frame_size[0])
+				var frame_height := float(frame_size[1])
+				var generated_rects: Array = []
+				for row in range(maxi(1, int(c.get("vframes", 1)))):
+					for column in range(maxi(1, int(c.get("hframes", 1)))):
+						generated_rects.append([
+							float(column) * frame_width,
+							float(row) * frame_height,
+							frame_width,
+							frame_height,
+						])
+				c["frame_rects"] = generated_rects
 			_defs[str(c.id)] = c
 			_order.append(str(c.id))
 	_aliases = parsed.get("aliases", {})

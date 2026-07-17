@@ -9,6 +9,8 @@ const ROLE_BODY_TYPES := {
 	"partner": "masculine",
 	"father": "masculine",
 	"mother": "feminine",
+	"grandfather": "masculine",
+	"grandmother": "feminine",
 }
 const ROLE_DEFAULT_HAIR := {
 	"player": "braid_hat",
@@ -34,7 +36,7 @@ func default_for_role(role_key: String) -> Dictionary:
 	var body: Dictionary = body_definition(body_type)
 	return {
 		"version": 1,
-		"enabled": true,
+		"enabled": supports_customization(role_key),
 		"body_type": body_type,
 		"hair_style": String(ROLE_DEFAULT_HAIR.get(canonical, body.get("default_hair_style", "tousled"))),
 		"hair_color": "brown",
@@ -62,7 +64,7 @@ func normalize(raw: Dictionary, fallback_role: String = "player") -> Dictionary:
 		outfit = "original"
 	return {
 		"version": 1,
-		"enabled": bool(result.get("enabled", not result.is_empty())),
+		"enabled": supports_customization(fallback_role) and bool(result.get("enabled", not result.is_empty())),
 		"body_type": body_type,
 		"hair_style": hair_style,
 		"hair_color": hair_color,
@@ -78,7 +80,7 @@ func set_current(appearance: Dictionary, fallback_role: String = "player") -> vo
 	if MemoryManager == null:
 		return
 	var enabled_appearance := appearance.duplicate(true)
-	enabled_appearance["enabled"] = true
+	enabled_appearance["enabled"] = supports_customization(fallback_role) and bool(appearance.get("enabled", true))
 	MemoryManager.character_appearance = normalize(enabled_appearance, fallback_role)
 	_avatar_cache.clear()
 	MemoryManager.save_game()
@@ -105,6 +107,8 @@ func hair_styles(body_type: String) -> Dictionary:
 
 func available_hair_styles(role_key: String) -> Dictionary:
 	var canonical := CharacterDB.resolve(role_key) if CharacterDB != null else role_key
+	if not supports_customization(canonical):
+		return {}
 	var body_type := String(ROLE_BODY_TYPES.get(canonical, "feminine"))
 	var styles := hair_styles(body_type)
 	if canonical in ["father", "mother"]:
@@ -114,6 +118,12 @@ func available_hair_styles(role_key: String) -> Dictionary:
 			filtered[style_id] = styles[style_id]
 		return filtered
 	return styles
+
+func supports_customization(role_key: String) -> bool:
+	if CharacterDB == null:
+		return true
+	var definition := CharacterDB.get_def(role_key)
+	return bool(definition.get("customizable", true))
 
 func hair_colors() -> Dictionary:
 	return _catalog.get("hair_colors", {})
