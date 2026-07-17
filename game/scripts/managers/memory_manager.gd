@@ -23,6 +23,7 @@ var plants: Array = []
 ## 家庭树是每个家庭唯一的开局礼物。是否已种植由 plants 中的固定 id 推导，
 ## gift_received 单独保存，以便移除后仍可重新种植而不会重复发放。
 var family_tree_gift_received: bool = false
+var family_tree_planting_hint_seen: bool = false
 var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
@@ -864,6 +865,7 @@ func clear_mailbox_alert() -> void:
 func _reset_all() -> void:
 	plants = []
 	family_tree_gift_received = false
+	family_tree_planting_hint_seen = false
 	travel_places = []
 	postcards = []
 	garden_messages = []
@@ -1043,6 +1045,7 @@ func save_game() -> void:
 	var data := {
 		"plants": plants,
 		"family_tree_gift_received": family_tree_gift_received,
+		"family_tree_planting_hint_seen": family_tree_planting_hint_seen,
 		"travel_places": travel_places,
 		"postcards": postcards,
 		"garden_messages": garden_messages,
@@ -1091,6 +1094,7 @@ func load_save() -> void:
 	if parsed is Dictionary:
 		plants = parsed.get("plants", [])
 		family_tree_gift_received = bool(parsed.get("family_tree_gift_received", false))
+		family_tree_planting_hint_seen = bool(parsed.get("family_tree_planting_hint_seen", false))
 		travel_places = parsed.get("travel_places", [])
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
