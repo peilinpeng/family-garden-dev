@@ -69,7 +69,10 @@ func _ready() -> void:
 
 	_name_label = Label.new()
 	_name_label.position = Vector2(74, 8)
-	_name_label.size = Vector2(214, 24)
+	# 右侧 250px 起是成员按钮；限制文字绘制范围，关怀模式放大字号后也不能越界叠字。
+	_name_label.size = Vector2(168, 24)
+	_name_label.clip_text = true
+	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name_label.add_theme_font_size_override("font_size", 17)
 	_name_label.add_theme_color_override("font_color", Color(0.24, 0.19, 0.14, 1.0))
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -77,7 +80,9 @@ func _ready() -> void:
 
 	_stats_label = Label.new()
 	_stats_label.position = Vector2(74, 35)
-	_stats_label.size = Vector2(214, 20)
+	_stats_label.size = Vector2(168, 20)
+	_stats_label.clip_text = true
+	_stats_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_stats_label.add_theme_font_size_override("font_size", 11)
 	_stats_label.add_theme_color_override("font_color", Color(0.43, 0.35, 0.24, 0.88))
 	_stats_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -16,6 +16,7 @@ const SFX_POOL_SIZE := 8
 var _music_players: Array[AudioStreamPlayer] = []
 var _active_music_index := 0
 var _current_music_key := ""
+var _pending_web_music_key := ""
 var _sfx_pool: Array[AudioStreamPlayer] = []
 var _sfx_next := 0
 var _stream_cache: Dictionary = {}   ## "dir/name" -> AudioStream(或 null,记过的"找不到"也缓存,省重复扫盘)
@@ -28,6 +29,9 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		p.name = "Music%d" % i
 		p.bus = "Music"
+		# Godot Web 默认把播放器视为 Sample；动态加载的长音乐、总线与淡入淡出
+		# 统一强制走 Stream，避免浏览器端播放器显示 playing 却没有实际输出。
+		p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 		p.volume_db = MUSIC_VOLUME_DB
 		add_child(p)
 		_music_players.append(p)
@@ -36,8 +40,12 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		p.name = "Sfx%d" % i
 		p.bus = "SFX"
+		p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 		add_child(p)
 		_sfx_pool.append(p)
+
+	# 浏览器会在首次真实点击/按键前暂停 Web Audio。保留输入监听，在用户手势内重试启动 BGM。
+	set_process_input(OS.has_feature("web"))
 
 func _exit_tree() -> void:
 	for p in _music_players:
@@ -61,9 +69,14 @@ func _ensure_bus(bus_name: String) -> void:
 func play_music(scene_key: String) -> void:
 	if _audio_disabled_for_headless():
 		return
-	if scene_key == _current_music_key:
+	if scene_key == _current_music_key and _active_music_is_playing():
 		return
+	_start_music(scene_key)
+
+func _start_music(scene_key: String) -> void:
 	_current_music_key = scene_key
+	if OS.has_feature("web") and scene_key != "":
+		_pending_web_music_key = scene_key
 
 	var outgoing: AudioStreamPlayer = _music_players[_active_music_index]
 	var stream := _load_first(MUSIC_DIR, scene_key)
@@ -86,6 +99,26 @@ func play_music(scene_key: String) -> void:
 
 	if outgoing != incoming:
 		_fade_out_and_stop(outgoing)
+
+func _input(event: InputEvent) -> void:
+	if _pending_web_music_key == "" or not _is_audio_unlock_event(event):
+		return
+	# 必须在浏览器用户手势的同步输入回调中重播；call_deferred 会错过自动播放授权窗口。
+	var scene_key := _pending_web_music_key
+	_pending_web_music_key = ""
+	_start_music(scene_key)
+	set_process_input(false)
+
+func _active_music_is_playing() -> bool:
+	return not _music_players.is_empty() \
+		and _active_music_index >= 0 \
+		and _active_music_index < _music_players.size() \
+		and _music_players[_active_music_index].playing
+
+func _is_audio_unlock_event(event: InputEvent) -> bool:
+	return (event is InputEventMouseButton and event.pressed) \
+		or (event is InputEventKey and event.pressed and not event.echo) \
+		or (event is InputEventScreenTouch and event.pressed)
 
 ## 不同音频格式的循环开关字段不一样(MP3/OGG 是 loop 布尔,WAV 是 loop_mode 枚举),分别设。
 func _enable_loop(stream: AudioStream) -> void:

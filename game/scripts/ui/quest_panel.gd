@@ -92,7 +92,7 @@ func _task_row(tid: String, label: String, done: bool, is_current: bool) -> Cont
 	elif tid == "garden_edit" and is_current:
 		row.add_child(_where_hint("在花园打开编辑"))
 	elif tid in ["first_seed", "harvest_tomato"] and is_current:
-		row.add_child(_where_hint("去农场"))
+		row.add_child(_travel_button("去农场", "farm"))
 	elif tid in ["first_dish", "dish_on_table"] and is_current:
 		row.add_child(_where_hint("去厨房"))
 	elif tid in ["first_fishing", "first_bottle"] and is_current:
@@ -124,3 +124,15 @@ func _where_hint(text: String) -> Label:
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color(0.60, 0.48, 0.30, 0.85))
 	return l
+
+func _travel_button(text: String, target: String) -> Button:
+	var button := Button.new()
+	button.name = "QuestTravel_" + target
+	button.text = text
+	button.custom_minimum_size = Vector2(86, 30)
+	button.focus_mode = Control.FOCUS_NONE
+	HUDPanel._style_soft_button(button)
+	button.pressed.connect(func() -> void:
+		close_requested.emit()
+		SceneManager.goto_scene(target))
+	return button

@@ -32,3 +32,10 @@ backend/ai/dist/
 # Python cache
 __pycache__/
 *.pyc
+
+# Tencent Cloud EdgeOne 构建产物
+.edgeone/
+.tef_dist/
+
+# Microsoft Office 临时锁文件
+~$*
