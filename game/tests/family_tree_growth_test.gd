@@ -45,7 +45,10 @@ func _run() -> void:
 	_assert(MemoryManager.family_tree_gift_received, "收回家庭树不能重复触发开局赠礼")
 
 	var previous_height := 0
+	var previous_display_height := 0.0
+	var stage_thresholds := [0, 1, 3, 6, 10]
 	for stage in range(1, 6):
+		MemoryManager.cross_member_interaction_count = stage_thresholds[stage - 1]
 		var texture := load(STAGE_TEXTURE_PATTERN % stage) as Texture2D
 		_assert(texture != null, "第 %d 阶段家庭树贴图应成功导入" % stage)
 		if texture == null:
@@ -54,6 +57,12 @@ func _run() -> void:
 		previous_height = texture.get_height()
 		var image := texture.get_image()
 		_assert(image.get_pixel(0, 0).a == 0.0, "第 %d 阶段贴图背景必须透明" % stage)
+		var display_height := float(texture.get_height()) * SceneManager._family_tree_display_scale()
+		_assert(display_height > previous_display_height, "家庭树场景显示高度应随阶段逐步增长")
+		previous_display_height = display_height
+
+	_assert(previous_display_height >= 220.0, "最终家庭树应保持足够醒目的完整尺寸")
+	MemoryManager.cross_member_interaction_count = 0
 
 	var item := preload("res://scripts/placeable_item.gd").new()
 	add_child(item)
@@ -62,10 +71,11 @@ func _run() -> void:
 		"id": MemoryManager.FAMILY_TREE_ID,
 		"type": "family_tree",
 		"position": Vector2(500, 400),
-		"display_scale": 0.19,
+		"display_scale": SceneManager._family_tree_display_scale(),
 		"bottom_anchored": true,
 	}, seedling)
 	_assert(is_equal_approx(item.sprite.position.y + seedling.get_height() * item.sprite.scale.y * 0.5, 0.0), "树根应固定在种植坐标")
+	_assert(seedling.get_height() * item.sprite.scale.y < 100.0, "第 1 阶段幼苗应低于成年角色的视觉高度")
 	item.queue_free()
 
 	MemoryManager._reset_all()
