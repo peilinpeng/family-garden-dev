@@ -29,13 +29,25 @@ const PLANT_REACH := 90.0   ## 玩家离种植点多近才能交互
 const CLICK_SNAP := 32.0    ## 点击离种植点多近算选中该点
 const FEET_OFFSET := Vector2(0, 18)  ## 玩家脚底相对其原点的偏移(同 Player 碰撞体)
 const WALKABLE_ALPHA_THRESHOLD := 0.3
+const ACTION_PROMPT_POSITION := Vector2(438, 548)
 
-const DOOR_PATHS := ["Objects/DoorChickenHouse", "Objects/DoorCowHouse"]
 const DOOR_REACH := 110.0   ## 玩家离门多近才能开
 const DOOR_CLICK := 44.0    ## 点击离门多近算点到门
+const DOOR_AUTO_CLOSE_SECONDS := 5.0
+const DOOR_CLOSE_RETRY_SECONDS := 0.2
+# 门素材是 1280×720 透明整图；blocker 使用玩家脚底坐标，并在门图四周留出半个碰撞体宽度。
+const DOOR_DEFINITIONS := [
+	{
+		"path": "Objects/DoorChickenHouse",
+		"blocker": Rect2(190, 365, 60, 24),
+	},
+	{
+		"path": "Objects/DoorCowHouse",
+		"blocker": Rect2(102, 445, 65, 25),
+	},
+]
 const FARM_TABLE := "farm_plots"
 const FARM_SYNC_DEBOUNCE := 0.35
-const TOOL_WATERING_CAN := "tool_wateringcan"
 const FERTILIZER := "fertilizer"
 const FARMER_PATH := "Objects/NpcFarmer"
 const FARMER_POS := Vector2(1040, 260)
@@ -53,7 +65,8 @@ const ACTION_ICONS := {
 }
 const NOTEBOARD_PATH := "Objects/Noteboard"
 const NOTEBOARD_REACH := 125.0
-const NOTEBOARD_CLICK := 86.0
+# noteboard.png 是 1280×720 透明整图，实际告示牌只占这个可见矩形。
+const NOTEBOARD_CLICK_RECT := Rect2(784, 559, 161, 153)
 const LIVESTOCK_TARGETS := {
 	"chicken_coop": {"point": Vector2(274, 300), "reach": 150.0, "click": 150.0},
 	"cow_shed": {"point": Vector2(214, 545), "reach": 155.0, "click": 175.0},
@@ -65,7 +78,7 @@ var last_safe: Vector2
 var crops: Dictionary = {}   ## plot_index -> Crop
 var crop_rows: Dictionary = {} ## plot_index -> FarmManager farm_plots 行
 var selected: int = 0        ## 当前选中的作物种类(按数字键 1-9 切换)
-var doors: Array = []        ## [{node, point}] 门节点 + 其参考点(Farm 本地坐标)
+var doors: Array = []        ## [{node, point, blocker, open, close_left}] 两扇畜牧栏门
 var seed_vendor: Node2D
 var noteboard: Node2D
 var noteboard_point := Vector2.ZERO
@@ -79,7 +92,6 @@ var farm_hint_label: Label
 var action_prompt_panel: PanelContainer
 var action_prompt_icon: TextureRect
 var action_prompt_label: Label
-var plot_action_icon: TextureRect
 var _farm_refresh_pending := false
 var _farm_refresh_running := false
 var _farm_busy := false
@@ -106,14 +118,20 @@ func _exit_tree() -> void:
 
 func _setup_doors() -> void:
 	doors.clear()
-	for path in DOOR_PATHS:
-		var n := get_node_or_null(path) as Sprite2D
+	for definition in DOOR_DEFINITIONS:
+		var n := get_node_or_null(str(definition.get("path", ""))) as Sprite2D
 		if n == null:
 			continue
 		n.visible = true
 		var anchor := n.get_node_or_null("SortAnchor") as Node2D
 		var pt: Vector2 = to_local(anchor.global_position if anchor != null else n.global_position)
-		doors.append({"node": n, "point": pt})
+		doors.append({
+			"node": n,
+			"point": pt,
+			"blocker": definition.get("blocker", Rect2()),
+			"open": false,
+			"close_left": 0.0,
+		})
 
 func _setup_seed_vendor() -> void:
 	seed_vendor = get_node_or_null(FARMER_PATH) as Node2D
@@ -134,6 +152,7 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		_sync_object_z()
 	else:
+		_update_doors(delta)
 		_update_seed_vendor_hint()
 		_update_interaction_hint()
 		_crop_stage_tick += delta
@@ -222,7 +241,9 @@ func _build_farm_hud() -> void:
 	add_child(farm_hud)
 
 	var panel := PanelContainer.new()
-	panel.position = Vector2(18, 18)
+	panel.name = "FarmStatusPanel"
+	# 全局玩家卡占据左上角 16,16 ~ 320,84；农场状态从其下方开始，避免两层文字重叠。
+	panel.position = Vector2(16, 96)
 	panel.custom_minimum_size = Vector2(360, 96)
 	farm_hud.add_child(panel)
 	var style := StyleBoxFlat.new()
@@ -263,7 +284,8 @@ func _build_farm_hud() -> void:
 	box.add_child(farm_hint_label)
 
 	action_prompt_panel = PanelContainer.new()
-	action_prompt_panel.position = Vector2(438, 615)
+	# 主界面导航栏占据画布底部，提示框固定放在其上方并留出间距。
+	action_prompt_panel.position = ACTION_PROMPT_POSITION
 	action_prompt_panel.custom_minimum_size = Vector2(404, 66)
 	action_prompt_panel.visible = false
 	var prompt_style := StyleBoxFlat.new()
@@ -276,31 +298,26 @@ func _build_farm_hud() -> void:
 	prompt_style.content_margin_top = 8
 	prompt_style.content_margin_bottom = 8
 	action_prompt_panel.add_theme_stylebox_override("panel", prompt_style)
+	action_prompt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	farm_hud.add_child(action_prompt_panel)
 	var prompt_row := HBoxContainer.new()
 	prompt_row.add_theme_constant_override("separation", 12)
+	prompt_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	action_prompt_panel.add_child(prompt_row)
 	action_prompt_icon = TextureRect.new()
 	action_prompt_icon.custom_minimum_size = Vector2(48, 48)
 	action_prompt_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	action_prompt_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	action_prompt_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	action_prompt_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prompt_row.add_child(action_prompt_icon)
 	action_prompt_label = Label.new()
 	action_prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	action_prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	action_prompt_label.add_theme_font_size_override("font_size", 17)
 	action_prompt_label.add_theme_color_override("font_color", Color(0.25, 0.19, 0.12, 1.0))
+	action_prompt_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prompt_row.add_child(action_prompt_label)
-
-	plot_action_icon = TextureRect.new()
-	plot_action_icon.size = Vector2(42, 42)
-	plot_action_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	plot_action_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	plot_action_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	plot_action_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plot_action_icon.visible = false
-	farm_hud.add_child(plot_action_icon)
 
 func _setup_shared_farm() -> void:
 	if FarmManager != null and not FarmManager.changed.is_connected(_on_farm_manager_changed):
@@ -490,15 +507,11 @@ func _update_plot_action_prompt(hint: String) -> void:
 	var plot_index := _nearest_reachable_plot(player.position)
 	if plot_index < 0:
 		action_prompt_panel.visible = false
-		plot_action_icon.visible = false
 		return
 	var action := _plot_action(plot_index)
 	action_prompt_panel.visible = true
 	action_prompt_icon.texture = ACTION_ICONS.get(action, ACTION_ICONS.grow)
 	action_prompt_label.text = hint
-	plot_action_icon.texture = action_prompt_icon.texture
-	plot_action_icon.position = PLOTS[plot_index] - Vector2(21, 70)
-	plot_action_icon.visible = true
 
 func _plot_action(plot_index: int) -> String:
 	if not crops.has(plot_index):
@@ -519,6 +532,8 @@ func _interaction_hint_text() -> String:
 		return "按 E 打开农场小铺。"
 	if _can_reach_noteboard():
 		return "按 E 查看农场告示牌。"
+	if _nearest_closed_door(player.position) != null:
+		return "按 E 开门。"
 	var livestock_id := _nearest_livestock(player.position, false)
 	if livestock_id != "" and _can_reach_livestock(livestock_id):
 		return _livestock_hint(livestock_id)
@@ -546,9 +561,7 @@ func _plot_hint(plot_index: int) -> String:
 	var crop_id := str(row.get("crop_id", ""))
 	var crop_name := _item_name("produce_" + crop_id)
 	if not bool(row.get("watered", false)):
-		if _has_item_anywhere(TOOL_WATERING_CAN):
-			return "按 E 给%s浇水。" % crop_name
-		return "需要浇水壶才能给%s浇水。" % crop_name
+		return "按 E 给%s浇水。" % crop_name
 	if FarmManager.is_mature(plot_index):
 		return "按 E 收获%s。" % crop_name
 	if not bool(row.get("fertilized", false)) and _has_item_anywhere(FERTILIZER):
@@ -575,7 +588,14 @@ func _walkable_point(feet: Vector2) -> bool:
 	return walk_img.get_pixelv(Vector2i(x, y)).a > WALKABLE_ALPHA_THRESHOLD
 
 func _position_walkable(origin: Vector2) -> bool:
-	return _walkable_point(origin + FEET_OFFSET)
+	var feet := origin + FEET_OFFSET
+	return _walkable_point(feet) and not _door_blocks_feet(feet)
+
+func _door_blocks_feet(feet: Vector2) -> bool:
+	for door in doors:
+		if not bool(door.get("open", false)) and (door.get("blocker", Rect2()) as Rect2).has_point(feet):
+			return true
+	return false
 
 func _physics_process(_delta: float) -> void:
 	if player == null:
@@ -623,6 +643,8 @@ func _try_context_interact() -> bool:
 		return true
 	if player == null:
 		return false
+	if _try_door_interact():
+		return true
 	var livestock_id := _nearest_livestock(player.position, false)
 	if livestock_id != "" and _can_reach_livestock(livestock_id):
 		_collect_livestock(livestock_id)
@@ -673,11 +695,10 @@ func _try_noteboard_interact() -> bool:
 func _try_noteboard_click(click: Vector2) -> bool:
 	if noteboard == null:
 		return false
-	if click.distance_to(noteboard_point) > NOTEBOARD_CLICK:
+	if not NOTEBOARD_CLICK_RECT.has_point(click):
 		return false
-	if not _can_reach_noteboard():
-		_set_farm_status("再走近一点，告示牌在这里。")
-		return true
+	# 鼠标点击代表直接查看告示牌，不再额外要求角色走到锚点；
+	# 键盘 E 的沉浸式交互仍由 _try_noteboard_interact 保留距离判定。
 	_open_noteboard()
 	return true
 
@@ -739,14 +760,67 @@ func _collect_livestock(id: String) -> void:
 	_set_farm_status(str(def.get("interaction_label", "收集")) + "还要 " + _format_wait(left) + "。")
 
 func _try_doors(click: Vector2) -> bool:
-	for d in doors:
-		if click.distance_to(d.point) > DOOR_CLICK:
+	if player == null:
+		return false
+	for door in doors:
+		if bool(door.get("open", false)):
 			continue
-		if player.position.distance_to(d.point) <= DOOR_REACH:
-			d.node.visible = not d.node.visible
-			AudioManager.play_sfx("开门" if not d.node.visible else "门")
+		if click.distance_to(door.point) > DOOR_CLICK:
+			continue
+		if player.position.distance_to(door.point) <= DOOR_REACH:
+			_open_door(door)
 		return true
 	return false
+
+func _try_door_interact() -> bool:
+	if player == null:
+		return false
+	var door: Variant = _nearest_closed_door(player.position)
+	if door == null:
+		return false
+	_open_door(door)
+	return true
+
+func _nearest_closed_door(point: Vector2) -> Variant:
+	var nearest: Variant = null
+	var nearest_distance := INF
+	for door in doors:
+		if bool(door.get("open", false)):
+			continue
+		var distance: float = point.distance_to(door.point)
+		if distance <= DOOR_REACH and distance < nearest_distance:
+			nearest = door
+			nearest_distance = distance
+	return nearest
+
+func _open_door(door: Dictionary) -> void:
+	door["open"] = true
+	door["close_left"] = DOOR_AUTO_CLOSE_SECONDS
+	var node := door.get("node") as CanvasItem
+	if node != null:
+		node.visible = false
+	AudioManager.play_sfx("开门")
+
+func _update_doors(delta: float) -> void:
+	for door in doors:
+		if not bool(door.get("open", false)):
+			continue
+		door["close_left"] = float(door.get("close_left", 0.0)) - delta
+		if float(door["close_left"]) > 0.0:
+			continue
+		var blocker := door.get("blocker", Rect2()) as Rect2
+		if player != null and blocker.has_point(player.position + FEET_OFFSET):
+			door["close_left"] = DOOR_CLOSE_RETRY_SECONDS
+			continue
+		_close_door(door)
+
+func _close_door(door: Dictionary) -> void:
+	door["open"] = false
+	door["close_left"] = 0.0
+	var node := door.get("node") as CanvasItem
+	if node != null:
+		node.visible = true
+	AudioManager.play_sfx("门")
 
 func _try_plant(click: Vector2) -> void:
 	if _farm_busy:
@@ -806,9 +880,6 @@ func _try_existing_crop(plot_index: int) -> void:
 	var row: Dictionary = crop_rows.get(plot_index, {})
 	var crop_id := str(row.get("crop_id", ""))
 	if not bool(row.get("watered", false)):
-		if not _has_item_anywhere(TOOL_WATERING_CAN):
-			_set_farm_status("需要浇水壶。")
-			return
 		if FarmManager.water(plot_index):
 			_set_farm_status("浇水了，" + _item_name("produce_" + crop_id) + "开始生长。")
 			_record_farm_activity("water", "浇水", "给%s浇水了" % _item_name("produce_" + crop_id), "produce_" + crop_id)

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>$GODOT_PROJECT_NAME</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: white;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
+
+#status {
+	background-color: $GODOT_SPLASH_COLOR;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-splash.show-image--false {
+	display: none;
+}
+
+#status-splash.fullsize--true {
+	height: 100%;
+	width: 100%;
+	object-fit: contain;
+}
+
+#status-splash.use-filter--false {
+	image-rendering: pixelated;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: 10%;
+	width: 50%;
+	margin: 0 auto;
+}
+
+#status-notice {
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans SC', 'Noto Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+
+#audio-launch {
+	position: fixed;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(28, 38, 28, 0.92);
+	font-family: 'Noto Sans SC', 'Noto Sans', Arial, sans-serif;
+}
+
+#audio-launch-card {
+	box-sizing: border-box;
+	width: min(420px, calc(100vw - 40px));
+	padding: 34px 30px 30px;
+	border: 2px solid rgba(139, 105, 63, 0.9);
+	border-radius: 22px;
+	background: #fff3d3;
+	box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
+	color: #493620;
+	text-align: center;
+}
+
+#audio-launch-title {
+	margin: 0 0 10px;
+	font-size: 30px;
+}
+
+#audio-launch-message {
+	min-height: 24px;
+	margin: 0 0 22px;
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+#audio-launch-button {
+	min-width: 220px;
+	min-height: 52px;
+	padding: 10px 24px;
+	border: 2px solid #6d8a42;
+	border-radius: 14px;
+	background: #cde49c;
+	color: #26351a;
+	font: inherit;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+#audio-launch-button:disabled {
+	border-color: #a69b84;
+	background: #ded7c7;
+	color: #746d60;
+	cursor: wait;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">你的浏览器不支持 Canvas。</canvas>
+		<noscript>你的浏览器不支持 JavaScript。</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="$GODOT_SPLASH_CLASSES" src="$GODOT_SPLASH" alt="">
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<div id="audio-launch">
+			<div id="audio-launch-card">
+				<h1 id="audio-launch-title">家庭花园</h1>
+				<p id="audio-launch-message">正在准备花园与声音…</p>
+				<button id="audio-launch-button" type="button" disabled>加载中…</button>
+			</div>
+		</div>
+
+		<script>
+// Capture every Web Audio context created by Godot so the explicit launch button can
+// resume it inside a trusted browser click. The game never reads this diagnostic list.
+window.__familyGardenAudioContexts = [];
+for (const constructorName of ['AudioContext', 'webkitAudioContext']) {
+	const NativeAudioContext = window[constructorName];
+	if (!NativeAudioContext || NativeAudioContext.__familyGardenWrapped) {
+		continue;
+	}
+	class FamilyGardenAudioContext extends NativeAudioContext {
+		constructor(...args) {
+			super(...args);
+			window.__familyGardenAudioContexts.push(this);
+		}
+	}
+	FamilyGardenAudioContext.__familyGardenWrapped = true;
+	window[constructorName] = FamilyGardenAudioContext;
+}
+		</script>
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+
+// EdgeOne Makers limits one static file to 25 MiB. Reassemble Godot's PCK/WASM
+// from 20 MiB chunks; part counts and response sizes follow the generated config.
+const EDGEONE_CHUNK_BYTES = 20 * 1024 * 1024;
+const splitFiles = {};
+for (const fileName of ['index.pck', 'index.wasm']) {
+	const size = GODOT_CONFIG.fileSizes[fileName];
+	if (!size) {
+		continue;
+	}
+	const partCount = Math.ceil(size / EDGEONE_CHUNK_BYTES);
+	splitFiles[fileName] = {
+		size,
+		type: fileName.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream',
+		parts: Array.from({ length: partCount }, (_, index) =>
+			`chunks/${fileName}.part${String(index).padStart(2, '0')}`),
+	};
+}
+
+const nativeFetch = window.fetch.bind(window);
+window.fetch = function (input, init) {
+	const sourceRequest = input instanceof Request ? input : new Request(input, init);
+	const fileName = new URL(sourceRequest.url, document.baseURI).pathname.split('/').pop();
+	const splitFile = splitFiles[fileName];
+	if (!splitFile || sourceRequest.method !== 'GET') {
+		return nativeFetch(input, init);
+	}
+	const stream = new ReadableStream({
+		async start(controller) {
+			try {
+				for (const part of splitFile.parts) {
+					const response = await nativeFetch(new Request(new URL(part, document.baseURI), sourceRequest));
+					if (!response.ok || response.body == null) {
+						throw new Error(`Failed to load ${part}: HTTP ${response.status}`);
+					}
+					const reader = response.body.getReader();
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						controller.enqueue(value);
+					}
+				}
+				controller.close();
+			} catch (error) {
+				controller.error(error);
+			}
+		},
+	});
+	return Promise.resolve(new Response(stream, {
+		status: 200,
+		headers: {
+			'Content-Length': String(splitFile.size),
+			'Content-Type': splitFile.type,
+		},
+	}));
+};
+
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+	const launchOverlay = document.getElementById('audio-launch');
+	const launchMessage = document.getElementById('audio-launch-message');
+	const launchButton = document.getElementById('audio-launch-button');
+	const canvas = document.getElementById('canvas');
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) return;
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		statusNotice.replaceChildren();
+		for (const line of text.split('\n')) {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		}
+	}
+
+	function displayFailureNotice(error) {
+		console.error(error);
+		setStatusNotice(error instanceof Error ? error.message : String(error));
+		setStatusMode('notice');
+		launchMessage.textContent = '加载失败，请刷新页面后重试。';
+		launchButton.textContent = '暂时无法进入';
+		launchButton.disabled = true;
+		initializing = false;
+	}
+
+	async function enterGarden() {
+		launchButton.disabled = true;
+		launchButton.textContent = '正在开启声音…';
+		try {
+			const contexts = window.__familyGardenAudioContexts || [];
+			if (contexts.length === 0 && (window.AudioContext || window.webkitAudioContext)) {
+				throw new Error('声音初始化失败，请刷新页面后重试。');
+			}
+			await Promise.race([
+				Promise.all(contexts.map((context) => context.state === 'running' ? null : context.resume())),
+				new Promise((_, reject) => setTimeout(
+					() => reject(new Error('声音开启超时，请再次点击。')),
+					2500,
+				)),
+			]);
+			const blocked = contexts.some((context) => context.state !== 'running');
+			if (blocked) {
+				throw new Error('浏览器仍在阻止声音，请再次点击。');
+			}
+			launchOverlay.remove();
+			canvas.focus();
+			canvas.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+			canvas.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+		} catch (error) {
+			launchMessage.textContent = error instanceof Error ? error.message : '无法开启声音，请重试。';
+			launchButton.textContent = '再次尝试';
+			launchButton.disabled = false;
+		}
+	}
+
+	launchButton.addEventListener('click', enterGarden);
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	if (missing.length !== 0) {
+		displayFailureNotice(`浏览器缺少运行游戏所需功能：\n${missing.join('\n')}`);
+		return;
+	}
+
+	setStatusMode('progress');
+	engine.startGame({
+		onProgress(current, total) {
+			if (current > 0 && total > 0) {
+				statusProgress.value = current;
+				statusProgress.max = total;
+				launchMessage.textContent = `正在加载花园… ${Math.round(current / total * 100)}%`;
+			} else {
+				statusProgress.removeAttribute('value');
+				statusProgress.removeAttribute('max');
+			}
+		},
+	}).then(() => {
+		setStatusMode('hidden');
+		launchMessage.textContent = '点击后将开启背景音乐与游戏音效。';
+		launchButton.textContent = '进入家庭花园';
+		launchButton.disabled = false;
+	}, displayFailureNotice);
+}());
+		</script>
+	</body>
+</html>

@@ -33,6 +33,27 @@ func _run() -> void:
 
 	_assert(farm.remote_players.is_empty(), "农场初始不应生成离线占位家人")
 	_assert(_remote_player_nodes(farm).is_empty(), "未收到 Presence 在线事件时不应显示其他玩家")
+	_assert(not FileAccess.get_file_as_string("res://scripts/farm/farm.gd").contains("plot_action_icon"),
+		"农场不应再创建偏移的田块世界操作图标")
+
+	# 浇水是基础操作：即使背包和共享仓都没有浇水壶，也不应让旧存档卡关。
+	while InventoryManager.has("tool_wateringcan", 1, false):
+		InventoryManager.take("tool_wateringcan", 1, false)
+	while InventoryManager.has("tool_wateringcan", 1, true):
+		InventoryManager.take("tool_wateringcan", 1, true)
+	MemoryManager.farm_plots = [{
+		"plot": 0,
+		"crop_id": "corrato",
+		"planted_at": Time.get_unix_time_from_system(),
+		"watered": false,
+		"watered_at": 0.0,
+		"fertilized": false,
+		"fertilized_at": 0.0,
+	}]
+	farm.crop_rows[0] = MemoryManager.farm_plots[0]
+	_assert(not farm._plot_hint(0).contains("需要浇水壶"), "缺少浇水壶时不应显示卡关文案")
+	farm._try_existing_crop(0)
+	_assert(FarmManager.is_watered(0), "没有浇水壶时仍应能正常给作物浇水")
 
 	var peer := {
 		"member_id": "remote-member-test",

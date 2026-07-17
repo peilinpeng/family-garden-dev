@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://tests/quest_panel_travel_test.gd" type="Script" id="1"]
+
+[node name="QuestPanelTravelTest" type="Node"]
+script = ExtResource("1")
