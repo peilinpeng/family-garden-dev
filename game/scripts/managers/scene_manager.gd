@@ -109,6 +109,8 @@ const ASSETS := {
 	"room_louis_fg": "res://assets/rooms/louis_room_fg.png",
 	"room_anna_fg": "res://assets/rooms/anna_room_fg.png",
 }
+const FAMILY_TREE_TEXTURE_PATTERN := "res://assets/garden/family_tree/stage_%d.png"
+const FAMILY_TREE_DISPLAY_SCALE := 0.19
 
 const HOUSE_DATA := [
 	{"id": "father", "label": "爸爸的小屋", "room_label": "爸爸的房间", "asset": "house_father", "pos": Vector2(205, 160), "height": 180.0, "hotspot_size": Vector2(86, 96)},
@@ -149,6 +151,8 @@ const CHARACTER_DATA := [
 	{"role": "boy", "label": "儿子", "default_name": "路易", "asset": "boy", "house_id": "partner", "house_label": "路易的小屋", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
 	{"role": "papa", "label": "爸爸", "default_name": "爸爸", "asset": "papa", "house_id": "father", "house_label": "爸爸的小屋", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
 	{"role": "mama", "label": "妈妈", "default_name": "妈妈", "asset": "mama", "house_id": "mother", "house_label": "妈妈的小屋", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
+	{"role": "grandfather", "label": "爷爷（外公）", "default_name": "爷爷", "asset": "grandfather", "house_id": "father", "house_label": "爷爷的小屋", "npc_pos": Vector2(865, 385), "wander_radius": 76.0},
+	{"role": "grandmother", "label": "奶奶（外婆）", "default_name": "奶奶", "asset": "grandmother", "house_id": "mother", "house_label": "奶奶的小屋", "npc_pos": Vector2(435, 430), "wander_radius": 76.0},
 ]
 
 const GARDEN_ARCHIVES := {
@@ -1172,6 +1176,8 @@ func _on_ui_button(action: String) -> void:
 		"toggle_plant":
 			plant_mode = not plant_mode
 			_update_plant_button()
+		"plant_family_tree":
+			_begin_family_tree_placement()
 		"global_map":
 			_show_global_map()
 		"travel_map":
@@ -1488,6 +1494,7 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_render_family_portrait()
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
 	_setup_garden_builder()
+	call_deferred("_offer_family_tree_welcome_gift")
 	# 花园统计已合并到左上家庭状态卡，不再叠加第二张“花园今日”。
 	if game_hud != null:
 		game_hud.refresh_profile()
@@ -2887,6 +2894,7 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 		_grow_memory_node(mem.get("node"))
 	if bumped:
 		_update_season_overlay()
+		_refresh_family_tree_visual()
 		var season_message := "记忆开花了 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season())
 		if bool(result.get("sync_pending", false)):
 			season_message += " · 联网后自动同步"
@@ -6509,7 +6517,12 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 
 
 func _open_family_tree_panel() -> void:
-	var body := "这棵树会随着家庭记忆一起长大。\n\n家庭成员：\n"
+	var stage := MemoryManager.family_tree_stage()
+	var interactions := MemoryManager.cross_member_interaction_count
+	var next_threshold := MemoryManager.family_tree_next_threshold()
+	var planted_text := "已种在花园中" if MemoryManager.has_planted_family_tree() else "幼苗正在等待种植"
+	var progress_text := "已长成最终形态" if next_threshold < 0 else "再完成 %d 次跨成员互动进入下一阶段" % max(0, next_threshold - interactions)
+	var body := "家庭树 · 第 %d / 5 阶段\n%s\n家庭互动量：%d\n%s\n\n家庭成员：\n" % [stage, planted_text, interactions, progress_text]
 	for role_data in CHARACTER_DATA:
 		var role_key := str(role_data.get("role", ""))
 		var member_name := MemoryManager.player_display_name if role_key == MemoryManager.selected_role_key else str(role_data.get("default_name", role_data.get("label", "家人")))
@@ -6521,15 +6534,46 @@ func _open_family_tree_panel() -> void:
 	else:
 		for postcard in MemoryManager.postcards:
 			body += "• " + str(postcard.get("title", "明信片")) + "\n"
+	var buttons: Array = []
+	if MemoryManager.family_tree_gift_received and not MemoryManager.has_planted_family_tree():
+		buttons.append({"text": "种下幼苗", "action": "plant_family_tree"})
+	buttons.append({"text": "明信片", "action": "MemoryManager.postcards"})
+	buttons.append({"text": "留言板", "action": "message_board"})
+	if buttons.size() < 3:
+		buttons.append({"text": "关闭", "action": "close"})
 	_show_cozy_panel(
 		"家庭树",
 		body,
+		buttons
+	)
+
+func _offer_family_tree_welcome_gift() -> void:
+	if mode != "garden" or MemoryManager.selected_role_key == "":
+		return
+	if not MemoryManager.grant_family_tree_gift():
+		return
+	_show_cozy_panel(
+		"送给你的家庭树幼苗",
+		"欢迎来到家庭花园。\n\n这株幼苗会记录家人之间真实的互动，并逐渐长成一棵属于你们的家庭树。你可以先为它选择一个喜欢的位置。",
 		[
-			{"text": "明信片", "action": "MemoryManager.postcards"},
-			{"text": "留言板", "action": "message_board"},
-			{"text": "关闭", "action": "close"}
+			{"text": "现在种下", "action": "plant_family_tree"},
+			{"text": "稍后再种", "action": "close"}
 		]
 	)
+
+func _begin_family_tree_placement() -> void:
+	_close_active_panel()
+	if mode != "garden":
+		_show_garden()
+	if MemoryManager.has_planted_family_tree():
+		_show_toast("家庭树已经种在花园里了。")
+		return
+	MemoryManager.family_tree_gift_received = true
+	MemoryManager.save_game()
+	selected_plant_type = "family_tree"
+	plant_mode = true
+	_update_plant_button()
+	_show_toast("点击花园中的空地，种下家庭树幼苗。")
 
 func _open_family_members_panel() -> void:
 	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
@@ -6892,7 +6936,7 @@ func _icon_key_for_action(action: String) -> String:
 			return "icon_add"
 		"global_map":
 			return "icon_map"
-		"family_tree", "plant_tree":
+		"family_tree", "plant_tree", "plant_family_tree":
 			return "icon_tree"
 		"family_members":
 			return "icon_home"
@@ -6964,6 +7008,8 @@ func _on_panel_button(action: String) -> void:
 		_open_postcards_panel()
 	elif action == "message_board":
 		_open_message_board_panel()
+	elif action == "plant_family_tree":
+		_begin_family_tree_placement()
 	elif action == "add_message":
 		_open_add_message_form()
 	elif action == "fish_again":
@@ -7036,10 +7082,24 @@ func set_player_input_locked(locked: bool) -> void:
 		player.set_movement_locked(locked)
 
 func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
-	var item_id := existing_id if existing_id != "" else "plant_" + str(Time.get_ticks_msec())
-	var item_data := {"id": item_id, "type": plant_type, "position": pos}
+	var is_family_tree := plant_type == "family_tree"
+	if is_family_tree and existing_id == "" and MemoryManager.has_planted_family_tree():
+		plant_mode = false
+		_update_plant_button()
+		_show_toast("家庭树已经种在花园里了。")
+		return
+	var item_id := existing_id if existing_id != "" else (MemoryManager.FAMILY_TREE_ID if is_family_tree else "plant_" + str(Time.get_ticks_msec()))
+	var item_data := {
+		"id": item_id,
+		"type": plant_type,
+		"position": pos,
+		"display_scale": FAMILY_TREE_DISPLAY_SCALE if is_family_tree else 0.0,
+		"bottom_anchored": is_family_tree,
+	}
 	var texture_path := "res://assets/garden/" + plant_type + ".png"
-	if not ResourceLoader.exists(texture_path):
+	if is_family_tree:
+		texture_path = FAMILY_TREE_TEXTURE_PATTERN % MemoryManager.family_tree_stage()
+	elif not ResourceLoader.exists(texture_path):
 		match plant_type:
 			"flower":
 				texture_path = "res://assets/pond/decorations/flower_bed.png"
@@ -7058,6 +7118,11 @@ func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> v
 
 	if existing_id == "":
 		MemoryManager.plants.append({"id": item_id, "type": plant_type, "x": pos.x, "y": pos.y})
+		if is_family_tree:
+			plant_mode = false
+			selected_plant_type = "tree"
+			_update_plant_button()
+			_show_toast("家庭树幼苗已经种下。家人互动会陪它一起成长。")
 
 func _rebuild_plants() -> void:
 	for plant in MemoryManager.plants:
@@ -7069,7 +7134,10 @@ func _on_plant_deleted(item_id: String) -> void:
 		plant_nodes.erase(item_id)
 	MemoryManager.plants = MemoryManager.plants.filter(func(p): return str(p.get("id", "")) != item_id)
 	MemoryManager.save_game()
-	_show_toast("Removed.")
+	if item_id == MemoryManager.FAMILY_TREE_ID:
+		_show_toast("家庭树已收回，可以从家庭树面板重新种植。")
+	else:
+		_show_toast("已移除。")
 
 func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
 	for p in MemoryManager.plants:
@@ -7078,6 +7146,16 @@ func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
 			p["y"] = new_position.y
 			break
 	MemoryManager.save_game()
+
+func _refresh_family_tree_visual() -> void:
+	if not plant_nodes.has(MemoryManager.FAMILY_TREE_ID):
+		return
+	var item: Node = plant_nodes[MemoryManager.FAMILY_TREE_ID]
+	if item == null or not is_instance_valid(item) or not item.has_method("set_texture"):
+		return
+	var texture := _safe_texture(FAMILY_TREE_TEXTURE_PATTERN % MemoryManager.family_tree_stage())
+	if texture:
+		item.set_texture(texture, FAMILY_TREE_DISPLAY_SCALE, true)
 
 func _get_house_intro(id: String) -> String:
 	match id:

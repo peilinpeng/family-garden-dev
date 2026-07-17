@@ -183,6 +183,14 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.get('members', result.member_id).family_id, 'family_a');
   });
 
+  await scenario('join_family 接受祖辈家庭身份', async () => {
+    for (const role of ['grandfather', 'grandmother']) {
+      const result = await invoke({ action: 'join_family', family_id: 'family_a', role, display_name: role });
+      assert.equal(result.ok, true);
+      assert.equal(db.get('members', result.member_id).role, role);
+    }
+  });
+
   await scenario('join_family 拒绝非法角色', async () => {
     assert.equal((await invoke({ action: 'join_family', family_id: 'family_a', role: 'admin' })).ok, false);
   });

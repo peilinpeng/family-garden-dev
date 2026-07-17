@@ -9,6 +9,8 @@ const ROLE_OPTIONS := [
 	{"id": "boy", "label": "儿子"},
 	{"id": "papa", "label": "爸爸"},
 	{"id": "mama", "label": "妈妈"},
+	{"id": "grandfather", "label": "爷爷（外公）"},
+	{"id": "grandmother", "label": "奶奶（外婆）"},
 ]
 
 var _role_key := "girl"
@@ -20,6 +22,9 @@ var _name_input: LineEdit
 var _family_input: LineEdit
 var _hair_choice_root: Control
 var _outfit_choice_root: Control
+var _hair_title: Label
+var _outfit_title: Label
+var _fixed_role_note: Label
 var _role_buttons: Dictionary = {}
 var _hair_style_buttons: Dictionary = {}
 var _hair_color_buttons: Dictionary = {}
@@ -29,7 +34,7 @@ func setup(initial_role: String, initial_name: String, family_code: String, save
 	_role_key = initial_role if initial_role != "" else "girl"
 	_can_cancel = initial_role != ""
 	_appearance = AppearanceManager.normalize(saved_appearance, _role_key) if not saved_appearance.is_empty() else AppearanceManager.default_for_role(_role_key)
-	_appearance["enabled"] = true
+	_appearance["enabled"] = AppearanceManager.supports_customization(_role_key)
 	_build(initial_name, family_code)
 
 func _build(initial_name: String, family_code: String) -> void:
@@ -143,28 +148,40 @@ func _build_editor(panel: Panel, initial_name: String, family_code: String) -> v
 		var button := _make_avatar_choice(
 			edit_card,
 			String(option.label),
-			AppearanceManager.avatar_texture(sample, role_id),
-			Vector2(20 + role_index * 178, 116),
-			Vector2(166, 58)
+			_role_avatar(sample, role_id),
+			Vector2(20 + (role_index % 3) * 244, 116 + int(role_index / 3) * 66),
+			Vector2(230, 58)
 		)
 		button.pressed.connect(_select_role.bind(role_id))
 		_role_buttons[role_id] = button
 		role_index += 1
 
-	_add_section_title(edit_card, "发型", Vector2(20, 188))
+	_hair_title = _add_section_title(edit_card, "发型", Vector2(20, 252))
 	_hair_choice_root = Control.new()
-	_hair_choice_root.position = Vector2(20, 212)
+	_hair_choice_root.position = Vector2(20, 276)
 	_hair_choice_root.size = Vector2(732, 72)
 	edit_card.add_child(_hair_choice_root)
 	_rebuild_hair_choices()
 
 	# 发色功能暂时隐藏，但 _appearance.hair_color 仍按原值保存，便于以后恢复。
-	_add_section_title(edit_card, "服装", Vector2(20, 296))
+	_outfit_title = _add_section_title(edit_card, "服装", Vector2(20, 354))
 	_outfit_choice_root = Control.new()
-	_outfit_choice_root.position = Vector2(20, 320)
+	_outfit_choice_root.position = Vector2(20, 378)
 	_outfit_choice_root.size = Vector2(732, 70)
 	edit_card.add_child(_outfit_choice_root)
 	_rebuild_outfit_choices()
+
+	_fixed_role_note = Label.new()
+	_fixed_role_note.position = Vector2(20, 266)
+	_fixed_role_note.size = Vector2(732, 150)
+	_fixed_role_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_fixed_role_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_fixed_role_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fixed_role_note.text = "该家庭角色使用完整固定形象。\n头像、四方向行走与在线显示会保持一致。"
+	_fixed_role_note.add_theme_font_size_override("font_size", 16)
+	_fixed_role_note.add_theme_color_override("font_color", Color(0.40, 0.31, 0.22, 0.92))
+	edit_card.add_child(_fixed_role_note)
+	_refresh_customization_visibility()
 
 func _build_actions(panel: Panel) -> void:
 	var confirm := Button.new()
@@ -187,9 +204,10 @@ func _build_actions(panel: Panel) -> void:
 func _select_role(role_id: String) -> void:
 	_role_key = role_id
 	_appearance = AppearanceManager.default_for_role(role_id)
-	_appearance["enabled"] = true
+	_appearance["enabled"] = AppearanceManager.supports_customization(role_id)
 	_rebuild_hair_choices()
 	_rebuild_outfit_choices()
+	_refresh_customization_visibility()
 	_update_preview()
 
 func _rebuild_hair_choices() -> void:
@@ -198,6 +216,8 @@ func _rebuild_hair_choices() -> void:
 	for child in _hair_choice_root.get_children():
 		child.queue_free()
 	_hair_style_buttons.clear()
+	if not AppearanceManager.supports_customization(_role_key):
+		return
 	var styles: Dictionary = AppearanceManager.available_hair_styles(_role_key)
 	var index := 0
 	for style_id_value in styles.keys():
@@ -236,6 +256,8 @@ func _rebuild_outfit_choices() -> void:
 	for child in _outfit_choice_root.get_children():
 		child.queue_free()
 	_outfit_buttons.clear()
+	if not AppearanceManager.supports_customization(_role_key):
+		return
 	var index := 0
 	for outfit_id_value in AppearanceManager.outfits().keys():
 		var outfit_id := String(outfit_id_value)
@@ -255,15 +277,34 @@ func _rebuild_outfit_choices() -> void:
 
 func _update_preview() -> void:
 	_appearance = AppearanceManager.normalize(_appearance, _role_key)
-	_appearance["enabled"] = true
+	var customizable := AppearanceManager.supports_customization(_role_key)
+	_appearance["enabled"] = customizable
 	if _preview != null:
-		_preview.texture = AppearanceManager.avatar_texture(_appearance, _role_key)
+		_preview.texture = _role_avatar(_appearance, _role_key)
 	var role_label := _role_label(_role_key)
 	var hair_label := String(AppearanceManager.hair_styles(String(_appearance.body_type)).get(String(_appearance.hair_style), {}).get("label", ""))
 	var outfit_label := String(AppearanceManager.outfits().get(String(_appearance.outfit), {}).get("label", ""))
 	if _summary != null:
-		_summary.text = "%s　%s\n%s" % [role_label, hair_label, outfit_label]
+		_summary.text = ("%s\n固定完整形象" % role_label) if not customizable else ("%s　%s\n%s" % [role_label, hair_label, outfit_label])
 	_refresh_choice_styles()
+
+func _role_avatar(appearance: Dictionary, role_id: String) -> Texture2D:
+	if AppearanceManager.supports_customization(role_id):
+		return AppearanceManager.avatar_texture(appearance, role_id)
+	return CharacterDB.avatar_texture(role_id)
+
+func _refresh_customization_visibility() -> void:
+	var customizable := AppearanceManager.supports_customization(_role_key)
+	if _hair_title != null:
+		_hair_title.visible = customizable
+	if _hair_choice_root != null:
+		_hair_choice_root.visible = customizable
+	if _outfit_title != null:
+		_outfit_title.visible = customizable
+	if _outfit_choice_root != null:
+		_outfit_choice_root.visible = customizable
+	if _fixed_role_note != null:
+		_fixed_role_note.visible = not customizable
 
 func _refresh_choice_styles() -> void:
 	for role_id in _role_buttons:
@@ -356,7 +397,7 @@ func _add_field_label(parent: Control, text_value: String, pos: Vector2, label_s
 	label.add_theme_color_override("font_color", Color(0.39, 0.31, 0.23, 0.92))
 	parent.add_child(label)
 
-func _add_section_title(parent: Control, text_value: String, pos: Vector2) -> void:
+func _add_section_title(parent: Control, text_value: String, pos: Vector2) -> Label:
 	var label := Label.new()
 	label.text = text_value
 	label.position = pos
@@ -364,6 +405,7 @@ func _add_section_title(parent: Control, text_value: String, pos: Vector2) -> vo
 	label.add_theme_font_size_override("font_size", 15)
 	label.add_theme_color_override("font_color", Color(0.30, 0.24, 0.18, 1.0))
 	parent.add_child(label)
+	return label
 
 func _panel_style(bg: Color, border: Color, radius: int, border_width: int = 1) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

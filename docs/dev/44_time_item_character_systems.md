@@ -81,7 +81,7 @@
 ## 3. 角色系统(成员即角色,和联机绑定)· 已实现 ✅
 
 落地文件:`assets/manifest/characters.json`、`scripts/managers/character_db.gd`(autoload `CharacterDB`)、`scripts/player.gd`(加 `apply_character`)、`scripts/farm/remote_player.gd` + `scenes/RemotePlayer.tscn`。
-- `CharacterDB`:4 角色(father/mother/partner/player),每个配 sheet/hframes/vframes/scale;`resolve(role_key)` 解析别名(papa→father、girl→player…)。girl 表分辨率大,单独缩放归一。
+- `CharacterDB`:6 个家庭身份(`father/mother/grandfather/grandmother/partner/player`),每个配 sheet/hframes/vframes/scale；`resolve(role_key)` 解析别名(papa→father、grandpa→grandfather、girl→player…)。女儿、儿子继续使用可定制外观，父母与祖辈使用固定完整 15 帧形象。
 - `Player.apply_character(role)`:数据驱动换贴图/帧网格/缩放;本地玩家按存档 `selected_role_key`(独立运行回退 father)。
 - `RemotePlayer`:渲染任意角色 + 名字标签 + `set_target()` 接收位置 + 插值 + 走路动画;z=脚底。**联机时由 presence 喂位置**;现在用 `placeholder_wander` 当占位家庭成员在花园里溜达。
 - Farm:本地玩家 + 其余 3 个家庭成员可见。
@@ -105,7 +105,18 @@
 
 ---
 
-## 5. 待拍板 / 下一步
+## 5. 家庭树成长系统 · 已实现 ✅
+
+- 新玩家首次进入花园会收到唯一一株家庭树幼苗，可自行选择种植位置。
+- 家庭树使用固定 id `family_tree_unique`；移除后可以重新种植，但不会重复领取或生成多棵。
+- 家庭树阶段由既有 `cross_member_interaction_count` 驱动，阈值为 `0 / 1 / 3 / 6 / 10`，分别显示 5 张透明像素素材。
+- 有效互动仍沿用既有口径：回答者与上传者不同，且同一 `(memory_id, answerer)` 只计一次。
+- 种植位置与赠礼状态进入 `MemoryManager` 本地存档；成长阶段由家庭互动量即时推导，不额外保存重复状态。
+- 树根使用统一底部锚点，换阶段时只向上生长，不缩放游戏画面，也不改变 1280×720 可见范围。
+
+---
+
+## 6. 待拍板 / 下一步
 
 - `ItemDef` / `CharacterDef` 用 Godot `Resource(.tres)` 还是 JSON(建议跟 `zones_*.json` 一致用 JSON,AI 也好生成)。
 - 共享仓的并发裁决放云函数的哪个接口。

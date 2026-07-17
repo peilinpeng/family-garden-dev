@@ -42,8 +42,8 @@ const AUTO_CREATE_TABLES = new Set([
   'kitchen_dishes',
 ]);
 
-// 自助加入时允许选的角色(对应客户端 characters.json 里的 4 套立绘)
-const VALID_ROLES = new Set(['father', 'mother', 'partner', 'player']);
+// 自助加入时允许选的角色（对应客户端 characters.json 里的 6 个家庭身份）。
+const VALID_ROLES = new Set(['father', 'mother', 'grandfather', 'grandmother', 'partner', 'player']);
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const IMAGE_MIME_TO_EXT = new Map([
   ['image/jpeg', 'jpg'],
@@ -370,7 +370,7 @@ exports.main = async (event) => {
     const role = String(body.role || '').trim();
     const displayName = String(body.display_name || '').trim().slice(0, 60);
     if (!famId || !VALID_ROLES.has(role)) {
-      return { ok: false, error: 'family_id required, role must be one of father/mother/partner/player' };
+      return { ok: false, error: 'family_id required, role must be one of father/mother/grandfather/grandmother/partner/player' };
     }
     try {
       const memberToken = crypto.randomBytes(24).toString('hex');

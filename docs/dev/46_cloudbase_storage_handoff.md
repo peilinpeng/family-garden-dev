@@ -66,7 +66,7 @@ Godot(HTTP)
 
 - 身份完全由服务端从 `member_token` 解析(`{family_id, member_id, role}`),**客户端传的任何 id 一律忽略**。
 - 个人库存(`backpack`)按 `owner_member_id` 强隔离,家庭成员之间互相看不到对方背包;共享仓(`storehouse`)按 `family_id` 家庭共享。
-- `join_family` 的角色参数有白名单(`father/mother/partner/player`),乱传会被拒绝。
+- `join_family` 的角色参数有白名单(`father/mother/grandfather/grandmother/partner/player`),乱传会被拒绝。
 - 跨家庭写入/删除会被 403 拒绝;未鉴权(无效令牌)一律 401。
 - 详细的验证记录(21 项逻辑测试 + 真实线上多成员交叉验证)见 `docs/dev/45` §7/§8/§9,或 `backend/cloudbase/README.md` §6。
 
