@@ -110,7 +110,8 @@ const ASSETS := {
 	"room_anna_fg": "res://assets/rooms/anna_room_fg.png",
 }
 const FAMILY_TREE_TEXTURE_PATTERN := "res://assets/garden/family_tree/stage_%d.png"
-const FAMILY_TREE_DISPLAY_SCALE := 0.19
+## 幼苗应低于成年角色，之后逐级长高；最终形态保持原定尺寸。
+const FAMILY_TREE_DISPLAY_SCALES := [0.11, 0.115, 0.135, 0.16, 0.19]
 
 const HOUSE_DATA := [
 	{"id": "father", "label": "爸爸的小屋", "room_label": "爸爸的房间", "asset": "house_father", "pos": Vector2(205, 160), "height": 180.0, "hotspot_size": Vector2(86, 96)},
@@ -7103,6 +7104,7 @@ func set_player_input_locked(locked: bool) -> void:
 
 func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
 	var is_family_tree := plant_type == "family_tree"
+	var family_tree_scale := _family_tree_display_scale()
 	if is_family_tree and existing_id == "" and MemoryManager.has_planted_family_tree():
 		plant_mode = false
 		_update_plant_button()
@@ -7113,7 +7115,7 @@ func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> v
 		"id": item_id,
 		"type": plant_type,
 		"position": pos,
-		"display_scale": FAMILY_TREE_DISPLAY_SCALE if is_family_tree else 0.0,
+		"display_scale": family_tree_scale if is_family_tree else 0.0,
 		"bottom_anchored": is_family_tree,
 	}
 	var texture_path := "res://assets/garden/" + plant_type + ".png"
@@ -7175,7 +7177,11 @@ func _refresh_family_tree_visual() -> void:
 		return
 	var texture := _safe_texture(FAMILY_TREE_TEXTURE_PATTERN % MemoryManager.family_tree_stage())
 	if texture:
-		item.set_texture(texture, FAMILY_TREE_DISPLAY_SCALE, true)
+		item.set_texture(texture, _family_tree_display_scale(), true)
+
+func _family_tree_display_scale() -> float:
+	var index := clampi(MemoryManager.family_tree_stage() - 1, 0, FAMILY_TREE_DISPLAY_SCALES.size() - 1)
+	return float(FAMILY_TREE_DISPLAY_SCALES[index])
 
 func _get_house_intro(id: String) -> String:
 	match id:
