@@ -3,18 +3,16 @@
   "version": "1.0.0",
   "description": "Family Garden · CloudBase 数据网关云函数(Godot HTTP CRUD 入口)",
   "main": "index.js",
-  "engines": {
-    "node": ">=20.19.0"
-  },
   "scripts": {
     "test": "node --test tests/*.test.js",
     "smoke:gate5:real": "node scripts/gate5_real_smoke.js",
     "smoke:gate6:farm:real": "node scripts/gate6_farm_real_smoke.js",
     "smoke:gate6:members:real": "node scripts/gate6_members_real_smoke.js",
+    "smoke:m1:photo:real": "node scripts/m1_photo_real_smoke.js",
     "audit:prod": "npm audit --omit=dev --audit-level=critical"
   },
   "dependencies": {
-    "@cloudbase/node-sdk": "4.0.3",
+    "@cloudbase/node-sdk": "3.18.3",
     "ws": "8.21.0"
   },
   "overrides": {

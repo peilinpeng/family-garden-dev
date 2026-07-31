@@ -181,9 +181,26 @@ FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
 该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在 `members`
 集合中，显示名带 `Gate6 Members` 前缀。
 
+M1 照片隐私真实联调会创建两个同家庭成员和一个隔离成员，验证私有上传、同家庭临时解析、
+跨家庭 404、永久公开路径丢弃、业务引用保护和地点级联回收：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_M1_PHOTO_REAL_SMOKE=1 npm run smoke:m1:photo:real
+```
+
+业务记录和私有图片会在成功或失败后尽力清理；三个测试成员没有客户端删除入口，会保留在
+`members` 集合中，显示名带 `M1 Photo` 前缀。默认使用独立临时家庭标识，不污染配置家庭。
+执行前需确认 `data_gateway` 的 `AvailableStatus` 为 `Available`；若云端返回
+`InsufficientBalance`，请求会在进入函数代码前失败，应先恢复云函数计费状态再重跑。
+
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
 待腾讯 SDK 4.x 的云函数初始化迁移验证完成后再升级，不在未验证时强行跨 major。
+当前线上 `data_gateway` 是创建时确定的 Node.js 18.15 运行时，腾讯 SCF 不支持既有函数原地
+修改 Runtime。SDK 4.0.3 在该运行时的真实 Storage 上传返回 `AccessDenied`，因此生产锁定
+已通过数据库和私有对象真实烟测的 3.18.3。迁移 SDK 4.x 时应新建 Node.js 20.19 并行函数，
+完成同等烟测后再切换 HTTP 路由，不能直接删除当前可用函数。
 
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。
