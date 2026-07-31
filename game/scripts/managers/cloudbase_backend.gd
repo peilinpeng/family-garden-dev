@@ -125,15 +125,16 @@ func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
 	return res
 
-## Gate 4 图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
-## 临时 image_url 只用于本次 AI 调用，不应当作永久地址写入业务数据。
-func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+## 私有图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
+## 临时 image_url 只用于本次展示或 AI 调用，不应当作永久地址写入业务数据。
+func upload_image(bytes: PackedByteArray, content_type: String, purpose: String = "ai") -> Dictionary:
 	if bytes.is_empty():
 		return {"ok": false, "error": "empty image"}
 	return await _request({
 		"action": "upload_image",
 		"content_type": content_type,
 		"base64_data": Marshalls.raw_to_base64(bytes),
+		"purpose": purpose,
 	})
 
 func resolve_image(upload_id: String) -> Dictionary:
@@ -142,6 +143,29 @@ func resolve_image(upload_id: String) -> Dictionary:
 func delete_image(upload_id: String) -> bool:
 	var result: Dictionary = await _request({"action": "delete_image", "upload_id": upload_id})
 	return bool(result.get("ok", false)) or int(result.get("code", 0)) == 404
+
+func delete_place_bundle(place_id: String) -> Dictionary:
+	var result: Dictionary = await _request({
+		"action": "delete_place_bundle",
+		"place_id": place_id,
+	})
+	if not bool(result.get("ok", false)):
+		return result
+	if _cache.has("travel_places"):
+		_cache["travel_places"] = (_cache["travel_places"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) != place_id
+		)
+	var postcard_ids: Array = result.get("postcard_ids", [])
+	if _cache.has("postcards"):
+		_cache["postcards"] = (_cache["postcards"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) not in postcard_ids
+		)
+	var event_ids: Array = result.get("event_ids", [])
+	if _cache.has("mailbox_events"):
+		_cache["mailbox_events"] = (_cache["mailbox_events"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) not in event_ids
+		)
+	return result
 
 func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)

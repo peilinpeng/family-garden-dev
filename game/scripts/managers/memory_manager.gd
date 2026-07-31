@@ -728,6 +728,7 @@ func apply_cloud_data(data: Dictionary, force: bool = false) -> void:
 					"postcard_id": "",
 					"created_by": "",
 					"role": "",
+					"photo_upload_id": str(row.get("photo_upload_id", "")),
 					"photo_path": str(row.get("photo_path", ""))
 				})
 
@@ -745,6 +746,7 @@ func apply_cloud_data(data: Dictionary, force: bool = false) -> void:
 					"is_new": bool(row.get("is_new", false)),
 					"created_by": "",
 					"role": "",
+					"photo_upload_id": str(row.get("photo_upload_id", "")),
 					"photo_path": str(row.get("photo_path", ""))
 				})
 
