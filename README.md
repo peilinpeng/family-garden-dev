@@ -123,27 +123,32 @@ open game/project.godot
 公开的项目级 endpoint 位于 `game/config/`。个人成员令牌保存在 `user://`，不会进入源码仓库。
 如果 CloudBase 未启用或额度不可用，核心本地玩法仍可运行，但真实 AI、身份和云端协作不可用。
 
-## 常用测试
+## 本地测试
+
+首次运行时安装三个 Node 工作区依赖，并在仓库根目录创建已忽略的 `.venv`：
 
 ```bash
-GODOT=/Applications/Godot.app/Contents/MacOS/Godot
-
-$GODOT --headless --path game res://tests/settings_care_mode_test.tscn
-$GODOT --headless --path game res://tests/online_character_visibility_test.tscn
-$GODOT --headless --path game res://tests/farm_gate_interaction_test.tscn
-$GODOT --headless --path game res://tests/quest_panel_travel_test.tscn
-$GODOT --headless --path game res://tests/web_ui_audio_regression_test.tscn
-$GODOT --headless --path game res://tests/kitchen_new_walkable_test.tscn
+./tools/test_all.sh --bootstrap
 ```
 
-后端测试：
+日常全量回归使用同一个入口：
 
 ```bash
-cd backend/ai
-npm test
+./tools/test_all.sh
 ```
 
-真实云端冒烟测试会调用外部服务并可能产生费用，不应在普通本地回归中自动执行。
+脚本会运行全部 Godot 测试场景、AI Gateway Node 测试、Gate 1 Python
+JSON Schema 契约测试、Data Gateway 测试和 Presence Relay 测试。它只使用本地
+mock，不调用真实 AI、CloudBase、Presence 线上服务或收费接口。
+
+项目要求 Godot 4.7 和 Node.js 20.19+。macOS 会自动发现
+`/Applications/Godot.app/Contents/MacOS/Godot`；其他环境可通过 `GODOT_BIN`
+指定可执行文件。失败日志会保留在脚本输出的临时目录，设置
+`KEEP_TEST_LOGS=1` 可同时保留成功日志。
+
+真实云端冒烟测试会调用外部服务并可能产生费用，因此不包含在普通本地回归中。
+M0 测试范围与基线结果见
+[`docs/dev/60_m0_quality_baseline.md`](docs/dev/60_m0_quality_baseline.md)。
 
 ## Web 导出
 
