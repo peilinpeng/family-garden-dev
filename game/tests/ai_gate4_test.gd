@@ -202,11 +202,18 @@ func _test_memory_visual_assets() -> void:
 		var archive := NodeFactory.make_memory_archive(String(archive_key), slot, Callable(), "grown")
 		_assert((archive.get_node("Sprite") as Sprite2D).texture != null, "%s 归档景观必须可渲染" % archive_key)
 		if archive_key == "flowers":
-			_assert(not (archive.get_node("Sprite") as Sprite2D).visible, "记忆花圃应复用背景花丛，不再叠加独立花盆")
-			_assert(archive.has_node("ArchiveAmbientGlow") and archive.has_node("ArchiveHoverGlow"), "背景花圃必须有轻量可发现反馈")
+			var archive_sprite := archive.get_node("Sprite") as Sprite2D
+			_assert(archive_sprite.visible, "记忆花圃必须显示独立的固定花圃景观")
+			_assert(archive.is_in_group("fixed_garden_landmark") and String(archive.get_meta("fixed_landmark_kind", "")) == "memory_flowerbed", "记忆花圃必须注册为固定花园景观")
+			_assert(archive.has_node("ArchiveAmbientGlow") and archive.has_node("ArchiveHoverGlow"), "固定花圃必须有轻量可发现反馈")
 			var archive_shape := archive.get_node("ClickArea/Shape") as CollisionShape2D
 			var archive_rect := archive_shape.shape as RectangleShape2D
-			_assert(archive_rect != null and archive_rect.size.x >= 180.0 and archive_rect.size.y >= 120.0, "背景花圃点击区必须覆盖整片花丛")
+			var rendered_size := archive_sprite.texture.get_size() * archive_sprite.scale
+			_assert(archive_rect != null and archive_rect.size.is_equal_approx(rendered_size), "固定花圃点击区必须与实际渲染尺寸一致")
+			_assert(archive_rect != null and archive_rect.size.x >= 80.0 and archive_rect.size.y >= 80.0, "固定花圃点击区必须满足最小可点击尺寸")
+			var fixed_body := archive.get_node_or_null("FixedFlowerbedCollision") as StaticBody2D
+			var fixed_shape := fixed_body.get_child(0) as CollisionShape2D if fixed_body != null and fixed_body.get_child_count() > 0 else null
+			_assert(fixed_shape != null and fixed_shape.shape is RectangleShape2D, "固定花圃必须提供玩家碰撞体")
 		else:
 			_assert(not (archive.get_node("Sprite") as Sprite2D).visible, "%s 归档不应继续显示通用木牌" % archive_key)
 			_assert(archive.has_node("ArchiveVisual") and archive.has_node("ArchiveObjectGlow"), "%s 必须使用回忆角专属景观物件" % archive_key)
