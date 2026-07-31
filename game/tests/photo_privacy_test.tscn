@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://tests/photo_privacy_test.gd" type="Script" id="1"]
+
+[node name="PhotoPrivacyTest" type="Node"]
+script = ExtResource("1")

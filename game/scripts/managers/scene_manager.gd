@@ -5531,32 +5531,24 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 
 	var place_id: String = "place_" + str(Time.get_ticks_msec())
 	var postcard_id: String = "postcard_" + str(Time.get_ticks_msec())
-	var uploaded_photo_path: String = ""
+	var photo_upload_id: String = ""
 	print("[FamilyGarden] Save place photo state: from_web=", selected_photo_from_web, " bytes=", selected_photo_bytes.size(), " path=", selected_photo_path, " name=", selected_photo_filename, " type=", selected_photo_content_type)
 
-	if selected_photo_from_web and selected_photo_bytes.size() > 0:
+	var source_photo_bytes: PackedByteArray = selected_photo_bytes
+	if source_photo_bytes.is_empty() and selected_photo_path != "":
+		source_photo_bytes = FileAccess.get_file_as_bytes(selected_photo_path)
+	if not source_photo_bytes.is_empty():
 		if CloudManager != null:
-			_show_toast("正在上传照片...")
-			uploaded_photo_path = await CloudManager.upload_photo_bytes_with_name(
-				selected_photo_bytes,
-				selected_photo_filename,
-				place_title,
+			_show_toast("正在压缩照片并安全上传...")
+			var upload_result: Dictionary = await CloudManager.upload_private_photo(
+				source_photo_bytes,
 				selected_photo_content_type
 			)
-			if uploaded_photo_path == "":
-				_show_toast("照片上传失败，将不带照片保存。")
+			if not bool(upload_result.get("ok", false)):
+				_show_toast(_result_error_message(upload_result, "照片上传失败，将不带照片保存。"))
 			else:
-				_show_toast("照片已上传。")
-		else:
-			_show_toast("云端尚未就绪，将不带照片保存。")
-	elif selected_photo_path != "":
-		if CloudManager != null:
-			_show_toast("正在上传照片...")
-			uploaded_photo_path = await CloudManager.upload_photo_from_path(selected_photo_path, place_title)
-			if uploaded_photo_path == "":
-				_show_toast("照片上传失败，将不带照片保存。")
-			else:
-				_show_toast("照片已上传。")
+				photo_upload_id = String(upload_result.get("upload_id", ""))
+				_show_toast("照片已安全上传。")
 		else:
 			_show_toast("云端尚未就绪，将不带照片保存。")
 
@@ -5568,14 +5560,14 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 			pending_place_position.x,
 			pending_place_position.y,
 			"",
-			uploaded_photo_path
+			photo_upload_id
 		)
 		if created.has("place") and created["place"] is Dictionary:
 			var cloud_place: Dictionary = created["place"]
 			if str(cloud_place.get("id", "")) != "":
 				place_id = str(cloud_place.get("id", ""))
-			if str(cloud_place.get("photo_path", "")) != "":
-				uploaded_photo_path = str(cloud_place.get("photo_path", ""))
+			if str(cloud_place.get("photo_upload_id", "")) != "":
+				photo_upload_id = str(cloud_place.get("photo_upload_id", ""))
 		if created.has("postcard") and created["postcard"] is Dictionary:
 			var cloud_postcard: Dictionary = created["postcard"]
 			if str(cloud_postcard.get("id", "")) != "":
@@ -5590,7 +5582,8 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 		"postcard_id": postcard_id,
 		"created_by": MemoryManager.player_display_name,
 		"role": MemoryManager.selected_role_key,
-		"photo_path": uploaded_photo_path
+		"photo_upload_id": photo_upload_id,
+		"photo_path": ""
 	}
 	MemoryManager.travel_places.append(place)
 
@@ -5602,7 +5595,8 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 		"is_new": true,
 		"created_by": MemoryManager.player_display_name,
 		"role": MemoryManager.selected_role_key,
-		"photo_path": uploaded_photo_path
+		"photo_upload_id": photo_upload_id,
+		"photo_path": ""
 	}
 	MemoryManager.postcards.append(postcard)
 	if StoryManager != null and StoryManager.has_method("record_place_and_postcard"):
@@ -5664,10 +5658,10 @@ func _open_postcard_for_place(place_id: String) -> void:
 	var postcard := MemoryManager.find_postcard_by_place(place_id)
 	var title_text := str(postcard.get("title", "来自%s的明信片" % str(place.get("title", "地点"))))
 	var message := str(postcard.get("message", place.get("note", "A small memory.")))
-	var photo_path := str(postcard.get("photo_path", ""))
-	if photo_path == "":
-		photo_path = str(place.get("photo_path", ""))
-	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+	var photo_reference := _photo_reference(postcard)
+	if photo_reference == "":
+		photo_reference = _photo_reference(place)
+	_open_postcard_detail_panel(title_text, message, photo_reference, place_id)
 
 func _choose_photo_for_place() -> void:
 	if OS.has_feature("web"):
@@ -6187,9 +6181,9 @@ func _open_postcard_detail_panel(title_text: String, message: String, photo_path
 		photo_status.text = "正在加载照片..."
 		_load_photo_into_rect(clean_photo_path, photo_rect, photo_status)
 
-func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_status: Label) -> void:
-	var clean_photo_path: String = photo_path.strip_edges()
-	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
+func _load_photo_into_rect(photo_reference: String, photo_rect: TextureRect, photo_status: Label) -> void:
+	var clean_reference: String = photo_reference.strip_edges()
+	if clean_reference == "" or clean_reference.to_lower() in ["null", "<null>", "nil", "none"]:
 		if is_instance_valid(photo_status):
 			photo_status.text = "未附加照片。"
 		return
@@ -6198,10 +6192,8 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 		photo_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		photo_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 
-	var photo_url: String = _photo_public_url(clean_photo_path)
-
-	if photo_texture_cache.has(photo_url):
-		var cached_texture: Texture2D = photo_texture_cache[photo_url]
+	if photo_texture_cache.has(clean_reference):
+		var cached_texture: Texture2D = photo_texture_cache[clean_reference]
 		if is_instance_valid(photo_rect):
 			photo_rect.texture = cached_texture
 		if is_instance_valid(photo_status):
@@ -6211,9 +6203,14 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 	if is_instance_valid(photo_status):
 		photo_status.text = "正在加载照片..."
 
+	var photo_url: String = await _resolve_photo_url(clean_reference)
+	if photo_url == "":
+		if is_instance_valid(photo_status):
+			photo_status.text = "照片不可访问或已被删除。"
+		return
 	var texture: Texture2D = await _download_photo_texture(photo_url)
 	if texture != null:
-		photo_texture_cache[photo_url] = texture
+		photo_texture_cache[clean_reference] = texture
 		if is_instance_valid(photo_rect):
 			photo_rect.texture = texture
 		if is_instance_valid(photo_status):
@@ -6223,14 +6220,28 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 			photo_status.text = "照片加载失败。"
 
 
-func _photo_public_url(photo_path: String) -> String:
-	if photo_path.begins_with("http://") or photo_path.begins_with("https://"):
-		return photo_path
+func _resolve_photo_url(photo_reference: String) -> String:
+	if photo_reference.begins_with("upload_"):
+		if CloudManager == null:
+			return ""
+		var resolved: Dictionary = await CloudManager.resolve_private_photo(photo_reference)
+		var temporary_url := String(resolved.get("image_url", ""))
+		return temporary_url if bool(resolved.get("ok", false)) and temporary_url.begins_with("https://") else ""
+
+	# 历史存档只读兼容：M1 后的新数据不会再写入永久 URL 或 Supabase 路径。
+	if photo_reference.begins_with("http://") or photo_reference.begins_with("https://"):
+		return photo_reference
 
 	if CloudManager != null:
-		return CloudManager.public_url_from_photo_path(photo_path)
+		return CloudManager.public_url_from_photo_path(photo_reference)
 
-	return photo_path
+	return photo_reference
+
+func _photo_reference(row: Dictionary) -> String:
+	var upload_id := String(row.get("photo_upload_id", "")).strip_edges()
+	if upload_id != "":
+		return upload_id
+	return String(row.get("photo_path", "")).strip_edges()
 
 
 func _download_photo_texture(url: String) -> Texture2D:
@@ -6281,8 +6292,11 @@ func _pin_asset_for_place(place: Dictionary) -> String:
 	return ASSETS["pin_saved"] if ResourceLoader.exists(ASSETS["pin_saved"]) else ASSETS["pin_default"]
 
 func _delete_place(place_id: String) -> void:
-	if CloudManager != null and not place_id.begins_with("place_"):
-		await CloudManager.delete_place_and_postcards(place_id)
+	if CloudManager != null:
+		var delete_result: Dictionary = await CloudManager.delete_place_and_postcards(place_id)
+		if CloudManager.has_cloud_records() and not bool(delete_result.get("ok", false)):
+			_show_toast(_result_error_message(delete_result, "云端删除失败，请稍后重试。"))
+			return
 
 	MemoryManager.travel_places = MemoryManager.travel_places.filter(func(place): return str(place.get("id", "")) != place_id)
 	MemoryManager.postcards = MemoryManager.postcards.filter(func(postcard): return str(postcard.get("place_id", "")) != place_id)
@@ -6465,7 +6479,7 @@ func _open_postcards_panel() -> void:
 
 			var card_title := Label.new()
 			var badge := "新 · " if bool(postcard.get("is_new", false)) else ""
-			var has_photo := str(postcard.get("photo_path", "")) != ""
+			var has_photo := _photo_reference(postcard) != ""
 			var photo_label := "有照片 · " if has_photo else "无照片 · "
 			card_title.text = badge + photo_label + str(postcard.get("title", "明信片"))
 			card_title.position = Vector2(18, 12)
@@ -6509,12 +6523,12 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 	var place := MemoryManager.find_place(place_id)
 	var title_text := str(postcard.get("title", "明信片"))
 	var message := str(postcard.get("message", "一段小小的记忆。"))
-	var photo_path := str(postcard.get("photo_path", ""))
+	var photo_reference := _photo_reference(postcard)
 
-	if photo_path == "" and not place.is_empty():
-		photo_path = str(place.get("photo_path", ""))
+	if photo_reference == "" and not place.is_empty():
+		photo_reference = _photo_reference(place)
 
-	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+	_open_postcard_detail_panel(title_text, message, photo_reference, place_id)
 
 
 func _open_family_tree_panel() -> void:

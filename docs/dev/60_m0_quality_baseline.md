@@ -162,10 +162,11 @@ AJV、腾讯云 SDK 或其他生产依赖。同时增加反斜杠 host-confusion
 
 ## 10. 下一阶段入口
 
-M0 通过后，可进入 M1 照片隐私迁移。开始 M1 前应先运行：
+M0 通过后进入 M1 照片隐私迁移。M1 已按要求在修改前运行：
 
 ```bash
 ./tools/test_all.sh
 ```
 
-M1 完成后必须再次执行同一命令，并补充照片跨家庭隔离、受控解析和删除测试。
+M1 已补充照片跨家庭隔离、受控解析和删除测试，完整验收与上线步骤见
+[`61_m1_photo_privacy_acceptance.md`](61_m1_photo_privacy_acceptance.md)。
