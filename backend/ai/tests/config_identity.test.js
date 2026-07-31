@@ -77,7 +77,7 @@ test("身份客户端转发 Authorization，并区分无效身份与上游故障
   await assert.rejects(() => failed.authorize("Bearer token", "req_4"), (error) => error.code === "AI_UPSTREAM_ERROR");
 });
 
-test("图片地址拒绝 HTTP、本机、云元数据与常见私网", () => {
+test("图片地址拒绝 HTTP、本机、云元数据、常见私网与 host confusion", () => {
   const blocked = [
     "http://example.com/a.jpg",
     "https://localhost/a.jpg",
@@ -96,4 +96,5 @@ test("图片地址拒绝 HTTP、本机、云元数据与常见私网", () => {
   assert.doesNotThrow(() => assertSafeImageUrl("https://example.com/a.jpg"));
   assert.doesNotThrow(() => assertSafeImageUrl("https://img.example.com/a.jpg", ["example.com"]));
   assert.throws(() => assertSafeImageUrl("https://evil.example.net/a.jpg", ["example.com"]), (error) => error.code === "IMAGE_UNSUPPORTED");
+  assert.throws(() => assertSafeImageUrl("https://evil.example.net\\@img.example.com/a.jpg", ["example.com"]), (error) => error.code === "IMAGE_UNSUPPORTED");
 });

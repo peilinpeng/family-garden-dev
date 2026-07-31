@@ -117,18 +117,38 @@ Node 测试合计 80/80 通过。脚本计时不包含 `--bootstrap` 的依赖�
 当前 Web preset 使用 `export_filter="all_resources"`，因此 PCK 会包含测试、工具和未被主流程
 使用的资源。M0 只记录基线，不调整导出范围；包体积优化应作为后续独立任务处理并验证资源完整性。
 
-## 7. 已知限制
+## 7. M0.1 依赖安全修复
+
+M0 首次执行 `npm audit --omit=dev` 时发现：
+
+```text
+ajv@8.20.0 → fast-uri@3.1.3
+```
+
+`fast-uri 3.1.3` 受 GHSA-v2hh-gcrm-f6hx / CVE-2026-16221 影响。该问题可能使
+URI 校验器与 Node WHATWG `URL` 对反斜杠 authority 分隔符产生不同解释，造成
+host allowlist、SSRF 过滤或重定向校验与实际请求目标不一致。
+
+M0.1 将 lockfile 中的传递依赖最小升级到官方修复版本 `fast-uri 3.1.4`，没有升级
+AJV、腾讯云 SDK 或其他生产依赖。同时增加反斜杠 host-confusion 图片地址回归用例，
+确认应用层 `assertSafeImageUrl` 仍按 Node 实际请求语义拒绝伪装域名。
+
+修复后：
+
+- `npm ls fast-uri ajv --all` 显示 `ajv@8.20.0 → fast-uri@3.1.4`；
+- `npm audit --omit=dev` 返回 0 个漏洞；
+- AI Node 测试和 Gate 1 Python 契约测试通过；
+- 项目统一全量回归通过。
+
+## 8. 已知限制
 
 1. 普通回归不调用真实 AI、CloudBase、腾讯内容安全或线上 Presence；
 2. 尚未建立 CI，当前脚本先保证本地执行方式唯一；
 3. 尚未加入浏览器自动化 E2E，Web 部分目前验证导出成功和 Godot UI 回归；
 4. 测试耗时是单次本机结果，不代表 CI 或其他设备性能；
-5. `backend/ai` 的生产依赖审计报告 `fast-uri 3.0.0–3.1.3`
-   存在 1 个 high 级 host confusion 告警（GHSA-v2hh-gcrm-f6hx），上游报告已有修复；
-   M0 不擅自升级生产依赖，应在独立依赖修复任务中更新 lockfile 并重新执行全部 AI 测试；
-6. 仓库现有未跟踪副本和提交材料不属于 M0，没有删除或修改。
+5. 仓库现有未跟踪副本和提交材料不属于 M0，没有删除或修改。
 
-## 8. M0 完成标准
+## 9. M0 完成标准
 
 - [x] 已知花圃回归测试修复；
 - [x] 19 个 Godot 测试场景全部通过；
@@ -137,9 +157,10 @@ Node 测试合计 80/80 通过。脚本计时不包含 `--bootstrap` 的依赖�
 - [x] 一条命令可运行完整本地回归；
 - [x] Web Release 导出成功并记录包体积；
 - [x] README 已指向统一测试入口；
+- [x] `fast-uri` high 级告警修复，生产依赖审计为 0；
 - [ ] CI 门禁——进入后续 M3 阶段。
 
-## 9. 下一阶段入口
+## 10. 下一阶段入口
 
 M0 通过后，可进入 M1 照片隐私迁移。开始 M1 前应先运行：
 
