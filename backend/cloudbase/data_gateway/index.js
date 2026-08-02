@@ -55,6 +55,7 @@ const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const TEMP_URL_TTL_SECONDS = 10 * 60;
 const ORPHAN_UPLOAD_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_UPLOAD_DELETE_LIMIT = 25;
+const CASCADE_DELETE_BATCH_SIZE = 100;
 const FARM_PLOT_COUNT = 36;
 const FARM_CROP_ID_RE = /^[a-z0-9_]{1,40}$/;
 
@@ -206,8 +207,7 @@ async function isUploadReferenced(uploadId, familyId) {
     const result = await db.collection(table)
       .where({ family_id: familyId, [field]: uploadId })
       .limit(1)
-      .get()
-      .catch(() => ({ data: [] }));
+      .get();
     if (result.data && result.data.length > 0) return true;
   }
   return false;
@@ -223,41 +223,52 @@ async function removeUpload(uploadId, familyId) {
 
 async function deletePlaceBundle(placeId, familyId) {
   if (!placeId) return { ok: false, code: 400, error: 'missing place id' };
-  const got = await db.collection('travel_places').doc(placeId).get().catch(() => ({ data: [] }));
+  const got = await db.collection('travel_places').doc(placeId).get();
   const place = got.data && got.data[0];
   if (!place) return { ok: false, code: 404, error: 'place not found' };
   if (String(place.family_id) !== familyId) return { ok: false, code: 403, error: 'forbidden' };
 
-  const postcardResult = await db.collection('postcards')
-    .where({ family_id: familyId, place_id: placeId })
-    .limit(100)
-    .get()
-    .catch(() => ({ data: [] }));
-  const postcards = postcardResult.data || [];
   const uploadIds = new Set();
   const placeUploadId = String(place.photo_upload_id || '');
   if (placeUploadId) uploadIds.add(placeUploadId);
 
   const deletedPostcardIds = [];
   const deletedEventIds = [];
-  for (const postcard of postcards) {
-    const postcardId = String(postcard._id || postcard.id || '');
-    const postcardUploadId = String(postcard.photo_upload_id || '');
-    if (postcardUploadId) uploadIds.add(postcardUploadId);
-    if (!postcardId) continue;
-    const eventResult = await db.collection('mailbox_events')
-      .where({ family_id: familyId, target_id: postcardId })
-      .limit(100)
-      .get()
-      .catch(() => ({ data: [] }));
-    for (const event of eventResult.data || []) {
-      const eventId = String(event._id || event.id || '');
-      if (!eventId) continue;
-      await db.collection('mailbox_events').doc(eventId).remove();
-      deletedEventIds.push(eventId);
+
+  // 每批删除后重新查询第一页，避免 skip + delete 导致后续记录移位漏删。
+  // 任意查询或删除失败都会抛出，由入口返回失败并保留地点，下一次可安全重试。
+  while (true) {
+    const postcardResult = await db.collection('postcards')
+      .where({ family_id: familyId, place_id: placeId })
+      .limit(CASCADE_DELETE_BATCH_SIZE)
+      .get();
+    const postcards = postcardResult.data || [];
+    if (postcards.length === 0) break;
+
+    for (const postcard of postcards) {
+      const postcardId = String(postcard._id || postcard.id || '');
+      if (!postcardId) throw new Error('linked postcard missing id');
+      const postcardUploadId = String(postcard.photo_upload_id || '');
+      if (postcardUploadId) uploadIds.add(postcardUploadId);
+
+      while (true) {
+        const eventResult = await db.collection('mailbox_events')
+          .where({ family_id: familyId, target_id: postcardId })
+          .limit(CASCADE_DELETE_BATCH_SIZE)
+          .get();
+        const events = eventResult.data || [];
+        if (events.length === 0) break;
+        for (const event of events) {
+          const eventId = String(event._id || event.id || '');
+          if (!eventId) throw new Error('linked mailbox event missing id');
+          await db.collection('mailbox_events').doc(eventId).remove();
+          deletedEventIds.push(eventId);
+        }
+      }
+
+      await db.collection('postcards').doc(postcardId).remove();
+      deletedPostcardIds.push(postcardId);
     }
-    await db.collection('postcards').doc(postcardId).remove();
-    deletedPostcardIds.push(postcardId);
   }
   await db.collection('travel_places').doc(placeId).remove();
 
