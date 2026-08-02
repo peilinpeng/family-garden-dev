@@ -152,6 +152,15 @@ M0 测试范围与基线结果见
 
 ## Web 导出
 
+提交 Web 发布变更前，先运行独立导出审计：
+
+```bash
+./tools/check_web_export.sh
+```
+
+该脚本会执行 Release 导出，校验 PCK 体积上限、动态加载资源、生产排除边界和导出包启动。
+它不访问任何线上服务；需要本机已安装 Godot 4.7 Web 导出模板。
+
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot \
   --headless --path game \
@@ -165,6 +174,9 @@ M0 测试范围与基线结果见
 - 为 EdgeOne 的单文件限制重组分片 PCK/WASM。
 
 `export_web/`、`.edgeone/` 与 `.tef_dist/` 都是构建产物，不进入源码仓库。
+
+M2 的资源取舍、体积对比和验收记录见
+[`docs/dev/62_m2_web_export_optimization.md`](docs/dev/62_m2_web_export_optimization.md)。
 
 本地预览可使用：
 
