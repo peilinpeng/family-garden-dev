@@ -150,6 +150,15 @@ mock，不调用真实 AI、CloudBase、Presence 线上服务或收费接口。
 M0 测试范围与基线结果见
 [`docs/dev/60_m0_quality_baseline.md`](docs/dev/60_m0_quality_baseline.md)。
 
+## 持续集成
+
+GitHub Actions 会在 `main`、`dev`、`feature/**` 推送，以及面向 `main` 或 `dev` 的 PR 上运行
+“M3 质量门禁”。门禁固定 Godot、Node.js 和 Python 版本，执行全量本地回归、生产依赖
+critical 漏洞审计与 Web Release 审计；不会调用真实 AI、CloudBase、Presence 或收费接口。
+
+CI 失败时会保留 7 天测试与导出日志。具体触发规则、安全边界和维护方式见
+[`docs/dev/63_m3_ci_quality_gate.md`](docs/dev/63_m3_ci_quality_gate.md)。
+
 ## Web 导出
 
 提交 Web 发布变更前，先运行独立导出审计：
