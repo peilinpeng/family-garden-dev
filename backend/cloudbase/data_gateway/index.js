@@ -50,10 +50,12 @@ const IMAGE_MIME_TO_EXT = new Map([
   ['image/png', 'png'],
   ['image/webp', 'webp'],
 ]);
+const IMAGE_UPLOAD_PURPOSES = new Set(['ai', 'travel']);
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const TEMP_URL_TTL_SECONDS = 10 * 60;
 const ORPHAN_UPLOAD_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_UPLOAD_DELETE_LIMIT = 25;
+const CASCADE_DELETE_BATCH_SIZE = 100;
 const FARM_PLOT_COUNT = 36;
 const FARM_CROP_ID_RE = /^[a-z0-9_]{1,40}$/;
 
@@ -196,8 +198,91 @@ async function findUpload(uploadId, familyId) {
 }
 
 async function isUploadReferenced(uploadId, familyId) {
-  const result = await db.collection('memories').where({ family_id: familyId, upload_id: uploadId }).limit(1).get();
-  return Boolean(result.data && result.data.length > 0);
+  const references = [
+    ['memories', 'upload_id'],
+    ['travel_places', 'photo_upload_id'],
+    ['postcards', 'photo_upload_id'],
+  ];
+  for (const [table, field] of references) {
+    const result = await db.collection(table)
+      .where({ family_id: familyId, [field]: uploadId })
+      .limit(1)
+      .get();
+    if (result.data && result.data.length > 0) return true;
+  }
+  return false;
+}
+
+async function removeUpload(uploadId, familyId) {
+  const upload = await findUpload(uploadId, familyId);
+  if (!upload || await isUploadReferenced(uploadId, familyId)) return false;
+  await app.deleteFile({ fileList: [String(upload.file_id)] });
+  await db.collection('uploads').doc(uploadId).remove();
+  return true;
+}
+
+async function deletePlaceBundle(placeId, familyId) {
+  if (!placeId) return { ok: false, code: 400, error: 'missing place id' };
+  const got = await db.collection('travel_places').doc(placeId).get();
+  const place = got.data && got.data[0];
+  if (!place) return { ok: false, code: 404, error: 'place not found' };
+  if (String(place.family_id) !== familyId) return { ok: false, code: 403, error: 'forbidden' };
+
+  const uploadIds = new Set();
+  const placeUploadId = String(place.photo_upload_id || '');
+  if (placeUploadId) uploadIds.add(placeUploadId);
+
+  const deletedPostcardIds = [];
+  const deletedEventIds = [];
+
+  // 每批删除后重新查询第一页，避免 skip + delete 导致后续记录移位漏删。
+  // 任意查询或删除失败都会抛出，由入口返回失败并保留地点，下一次可安全重试。
+  while (true) {
+    const postcardResult = await db.collection('postcards')
+      .where({ family_id: familyId, place_id: placeId })
+      .limit(CASCADE_DELETE_BATCH_SIZE)
+      .get();
+    const postcards = postcardResult.data || [];
+    if (postcards.length === 0) break;
+
+    for (const postcard of postcards) {
+      const postcardId = String(postcard._id || postcard.id || '');
+      if (!postcardId) throw new Error('linked postcard missing id');
+      const postcardUploadId = String(postcard.photo_upload_id || '');
+      if (postcardUploadId) uploadIds.add(postcardUploadId);
+
+      while (true) {
+        const eventResult = await db.collection('mailbox_events')
+          .where({ family_id: familyId, target_id: postcardId })
+          .limit(CASCADE_DELETE_BATCH_SIZE)
+          .get();
+        const events = eventResult.data || [];
+        if (events.length === 0) break;
+        for (const event of events) {
+          const eventId = String(event._id || event.id || '');
+          if (!eventId) throw new Error('linked mailbox event missing id');
+          await db.collection('mailbox_events').doc(eventId).remove();
+          deletedEventIds.push(eventId);
+        }
+      }
+
+      await db.collection('postcards').doc(postcardId).remove();
+      deletedPostcardIds.push(postcardId);
+    }
+  }
+  await db.collection('travel_places').doc(placeId).remove();
+
+  const deletedUploadIds = [];
+  for (const uploadId of uploadIds) {
+    if (await removeUpload(uploadId, familyId)) deletedUploadIds.push(uploadId);
+  }
+  return {
+    ok: true,
+    place_id: placeId,
+    postcard_ids: deletedPostcardIds,
+    event_ids: deletedEventIds,
+    deleted_upload_ids: deletedUploadIds,
+  };
 }
 
 async function cleanupOrphanUploads(familyId, memberId) {
@@ -403,9 +488,13 @@ exports.main = async (event) => {
     if (action === 'upload_image') {
       const decoded = decodeImage(body);
       if (decoded.error) return { ok: false, code: 400, error: decoded.error };
+      const purpose = String(body.purpose || 'ai');
+      if (!IMAGE_UPLOAD_PURPOSES.has(purpose)) {
+        return { ok: false, code: 400, error: 'unsupported image purpose' };
+      }
       const uploadId = uploadDocumentId();
       const cloudPath = [
-        'ai_uploads', stableScope(familyId), stableScope(memberId),
+        'private_uploads', stableScope(familyId), stableScope(memberId), purpose,
         uploadId + '.' + decoded.extension,
       ].join('/');
       const uploaded = await app.uploadFile({ cloudPath, fileContent: decoded.bytes });
@@ -421,6 +510,7 @@ exports.main = async (event) => {
         size_bytes: decoded.bytes.length,
         width: decoded.width,
         height: decoded.height,
+        purpose,
         created_at: new Date().toISOString(),
       };
       try {
@@ -438,6 +528,7 @@ exports.main = async (event) => {
         size_bytes: decoded.bytes.length,
         width: decoded.width,
         height: decoded.height,
+        purpose,
         expires_in: TEMP_URL_TTL_SECONDS,
       };
     }
@@ -454,6 +545,7 @@ exports.main = async (event) => {
         size_bytes: Number(upload.size_bytes || 0),
         width: Number(upload.width || 0),
         height: Number(upload.height || 0),
+        purpose: String(upload.purpose || 'ai'),
         expires_in: TEMP_URL_TTL_SECONDS,
       };
     }
@@ -475,6 +567,10 @@ exports.main = async (event) => {
 
     if (action === 'cleanup_orphan_images') {
       return { ok: true, deleted: await cleanupOrphanUploads(familyId, memberId) };
+    }
+
+    if (action === 'delete_place_bundle') {
+      return await deletePlaceBundle(String(body.place_id || ''), familyId);
     }
 
     if (action === 'snapshot') {
@@ -517,6 +613,18 @@ exports.main = async (event) => {
         incoming.actor_member_id = memberId;
         incoming.actor_role = identity.role;
         incoming.actor_name = identity.display_name || identity.role || '家人';
+      }
+
+      if (body.table === 'travel_places' || body.table === 'postcards') {
+        // 新写入不再接受永久公开地址；历史 photo_path 仅通过 existing 保留只读兼容。
+        delete incoming.photo_path;
+        const uploadId = String(incoming.photo_upload_id || '');
+        if (uploadId) {
+          const upload = await findUpload(uploadId, familyId);
+          if (!upload || String(upload.purpose || 'ai') !== 'travel') {
+            return { ok: false, code: 400, error: 'invalid travel photo upload' };
+          }
+        }
       }
 
       // 通用表:强制 family_id,保留服务端已有字段,客户端不能覆盖别家的行

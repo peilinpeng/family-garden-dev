@@ -123,29 +123,52 @@ open game/project.godot
 公开的项目级 endpoint 位于 `game/config/`。个人成员令牌保存在 `user://`，不会进入源码仓库。
 如果 CloudBase 未启用或额度不可用，核心本地玩法仍可运行，但真实 AI、身份和云端协作不可用。
 
-## 常用测试
+## 本地测试
+
+首次运行时安装三个 Node 工作区依赖，并在仓库根目录创建已忽略的 `.venv`：
 
 ```bash
-GODOT=/Applications/Godot.app/Contents/MacOS/Godot
-
-$GODOT --headless --path game res://tests/settings_care_mode_test.tscn
-$GODOT --headless --path game res://tests/online_character_visibility_test.tscn
-$GODOT --headless --path game res://tests/farm_gate_interaction_test.tscn
-$GODOT --headless --path game res://tests/quest_panel_travel_test.tscn
-$GODOT --headless --path game res://tests/web_ui_audio_regression_test.tscn
-$GODOT --headless --path game res://tests/kitchen_new_walkable_test.tscn
+./tools/test_all.sh --bootstrap
 ```
 
-后端测试：
+日常全量回归使用同一个入口：
 
 ```bash
-cd backend/ai
-npm test
+./tools/test_all.sh
 ```
 
-真实云端冒烟测试会调用外部服务并可能产生费用，不应在普通本地回归中自动执行。
+脚本会运行全部 Godot 测试场景、AI Gateway Node 测试、Gate 1 Python
+JSON Schema 契约测试、Data Gateway 测试和 Presence Relay 测试。它只使用本地
+mock，不调用真实 AI、CloudBase、Presence 线上服务或收费接口。
+
+项目要求 Godot 4.7 和 Node.js 20.19+。macOS 会自动发现
+`/Applications/Godot.app/Contents/MacOS/Godot`；其他环境可通过 `GODOT_BIN`
+指定可执行文件。失败日志会保留在脚本输出的临时目录，设置
+`KEEP_TEST_LOGS=1` 可同时保留成功日志。
+
+真实云端冒烟测试会调用外部服务并可能产生费用，因此不包含在普通本地回归中。
+M0 测试范围与基线结果见
+[`docs/dev/60_m0_quality_baseline.md`](docs/dev/60_m0_quality_baseline.md)。
+
+## 持续集成
+
+GitHub Actions 会在 `main`、`dev`、`feature/**` 推送，以及面向 `main` 或 `dev` 的 PR 上运行
+“M3 质量门禁”。门禁固定 Godot、Node.js 和 Python 版本，执行全量本地回归、生产依赖
+critical 漏洞审计与 Web Release 审计；不会调用真实 AI、CloudBase、Presence 或收费接口。
+
+CI 失败时会保留 7 天测试与导出日志。具体触发规则、安全边界和维护方式见
+[`docs/dev/63_m3_ci_quality_gate.md`](docs/dev/63_m3_ci_quality_gate.md)。
 
 ## Web 导出
+
+提交 Web 发布变更前，先运行独立导出审计：
+
+```bash
+./tools/check_web_export.sh
+```
+
+该脚本会执行 Release 导出，校验 PCK 体积上限、动态加载资源、生产排除边界和导出包启动。
+它不访问任何线上服务；需要本机已安装 Godot 4.7 Web 导出模板。
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot \
@@ -160,6 +183,9 @@ npm test
 - 为 EdgeOne 的单文件限制重组分片 PCK/WASM。
 
 `export_web/`、`.edgeone/` 与 `.tef_dist/` 都是构建产物，不进入源码仓库。
+
+M2 的资源取舍、体积对比和验收记录见
+[`docs/dev/62_m2_web_export_optimization.md`](docs/dev/62_m2_web_export_optimization.md)。
 
 本地预览可使用：
 

@@ -101,16 +101,25 @@ db.collection('members').add({
 | `query` | `{table}` | `{ok, rows}` | 需要 |
 | `upsert` | `{table, row}` | `{ok, id}` | 需要 |
 | `delete` | `{table, id}` | `{ok}` | 需要 |
-| `upload_image` | `{content_type, base64_data}` | `{ok, upload_id, image_url, expires_in}` | 需要 |
+| `upload_image` | `{content_type, base64_data, purpose?}` | `{ok, upload_id, image_url, expires_in}` | 需要；`purpose=ai/travel` |
 | `resolve_image` | `{upload_id}` | `{ok, image_url, expires_in}` | 需要 |
 | `delete_image` | `{upload_id}` | `{ok}` | 需要，且仅上传者可删 |
-| `cleanup_orphan_images` | `{}` | `{ok, deleted}` | 需要；只清理本人超过 24 小时且未被记忆引用的上传 |
+| `delete_place_bundle` | `{place_id}` | `{ok, postcard_ids, event_ids, deleted_upload_ids}` | 需要；仅限同家庭地点 |
+| `cleanup_orphan_images` | `{}` | `{ok, deleted}` | 需要；只清理本人超过 24 小时且未被业务记录引用的上传 |
 
 `uploads` 是网关内部元数据集合，不在通用表白名单中。客户端只持久化 `upload_id`；
 `image_url` 是短期签名地址，只用于预览和本次 AI 调用，重启后通过 `resolve_image` 刷新。
 上传网关会同时校验 MIME、文件魔数、真实宽高和总像素上限，不能仅靠伪造 Content-Type 上传任意字节。
 上传只接受 JPEG/PNG/WebP，解码前后均限制为 6 MB；存储路径由服务端按家庭与成员生成，
 不接受客户端自定义路径。
+
+旅行地点和明信片的新照片使用 `purpose=travel`，业务表只保存 `photo_upload_id`。网关会
+丢弃客户端新写入的 `photo_path`，并校验 `photo_upload_id` 确实属于当前家庭；展示时由
+当前成员身份换取 10 分钟临时 URL。`delete_place_bundle` 在服务端依次删除邮箱事件、
+明信片和地点，确认无其他业务引用后再回收私有对象，避免客户端异步删除产生残留或竞态。
+级联记录按 100 条一批持续处理直至清空，不会在单批上限处静默截断；任一业务引用查询失败
+都会停止删除并保留地点或照片，待数据库恢复后安全重试，不会把读取故障误判为“没有引用”。
+历史 `photo_path` 只在 Godot 客户端保留只读兼容，不再用于新写入。
 
 除 `join_family` 外,无效/缺失令牌 → `{ok:false, code:401}`。
 
@@ -126,7 +135,8 @@ db.collection('members').add({
 - ✅ **删除限定所有者**:通用表限本家庭;背包删除额外限 `owner_member_id` 匹配本人。
 - ✅ **自助加入的角色白名单**:`join_family` 只接受 `father/mother/grandfather/grandmother/partner/player` 六个合法角色,乱传会被拒绝。
 - ✅ **危险对象结构拒绝**:进入数据库 SDK 前拒绝原型链键、超深或异常庞大的对象。
-- ✅ **AI 图片受控上传**:服务端生成隔离路径；元数据表不对 CRUD 白名单开放；家庭外不可解析、非上传者不可删除。
+- ✅ **图片受控上传**:AI 与旅行照片均由服务端生成隔离路径；元数据表不对 CRUD 白名单开放；家庭外不可解析、非上传者不可直接删除。
+- ✅ **旅行照片最小暴露**:共享表只存 `photo_upload_id`，永久公开 URL 会被网关丢弃；展示时签发短期 URL，地点删除时服务端级联回收对象。
 - **轮换/吊销**:删/换某成员的 member_token 行即可让其失效,不影响其他成员。
 - **已知权衡**:`join_family` 没有邀请码校验,任何知道 `family_id` 的人都能自助加入
   (产品侧已确认接受,私人家庭游戏场景)。
@@ -173,9 +183,26 @@ FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
 该脚本不写业务表；`join_family` 生成的测试成员记录没有客户端删除入口，会留在 `members`
 集合中，显示名带 `Gate6 Members` 前缀。
 
+M1 照片隐私真实联调会创建两个同家庭成员和一个隔离成员，验证私有上传、同家庭临时解析、
+跨家庭 404、永久公开路径丢弃、业务引用保护和地点级联回收：
+
+```bash
+cd backend/cloudbase/data_gateway
+FG_M1_PHOTO_REAL_SMOKE=1 npm run smoke:m1:photo:real
+```
+
+业务记录和私有图片会在成功或失败后尽力清理；三个测试成员没有客户端删除入口，会保留在
+`members` 集合中，显示名带 `M1 Photo` 前缀。默认使用独立临时家庭标识，不污染配置家庭。
+执行前需确认 `data_gateway` 的 `AvailableStatus` 为 `Available`；若云端返回
+`InsufficientBalance`，请求会在进入函数代码前失败，应先恢复云函数计费状态再重跑。
+
 依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
 带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
 待腾讯 SDK 4.x 的云函数初始化迁移验证完成后再升级，不在未验证时强行跨 major。
+当前线上 `data_gateway` 是创建时确定的 Node.js 18.15 运行时，腾讯 SCF 不支持既有函数原地
+修改 Runtime。SDK 4.0.3 在该运行时的真实 Storage 上传返回 `AccessDenied`，因此生产锁定
+已通过数据库和私有对象真实烟测的 3.18.3。迁移 SDK 4.x 时应新建 Node.js 20.19 并行函数，
+完成同等烟测后再切换 HTTP 路由，不能直接删除当前可用函数。
 
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。
@@ -185,7 +212,8 @@ FG_GATE6_MEMBERS_REAL_SMOKE=1 npm run smoke:gate6:members:real
 ## 6. 还没做(下一步)
 
 - **实时同步**(看到家人走动、共享仓即时刷新)= CloudBase 实时,建在存储之上,见 `docs/dev/43`。
-- 把旧的 Supabase 直连读路径(`CloudService.load_family_data`)也迁到本网关。
+- CloudBase 未配置或尚未取得成员身份时仍保留旧 Supabase 数据的只读兼容；正式下线旧环境前，
+  需单独执行历史 `photo_path` 对象迁移与数据清理，不应由客户端静默搬运。
 
 ## 7. Gate 6 Presence Relay
 

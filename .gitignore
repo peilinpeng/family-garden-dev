@@ -32,6 +32,7 @@ backend/ai/dist/
 # Python cache
 __pycache__/
 *.pyc
+.venv/
 
 # Tencent Cloud EdgeOne 构建产物
 .edgeone/
