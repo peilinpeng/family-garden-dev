@@ -4,7 +4,7 @@
 >
 > 分支：`feature/quality-optimization`
 >
-> 状态：本地实现与验证完成，待提交推送后完成 GitHub Actions 首次线上运行
+> 状态：已完成本地验证、GitHub Actions 冷缓存修复与线上完整验收
 
 ## 1. 目标与范围
 
@@ -73,23 +73,47 @@ Godot 安装步骤同时安装版本匹配的 Web 导出模板，并缓存引擎
 - [x] 三个生产 Node 工作区 critical 漏洞审计通过；
 - [x] `./tools/check_web_export.sh` 通过，PCK 为 128,473,164 bytes；
 - [x] `git diff --check` 通过且未包含敏感信息；
-- [ ] 推送后 GitHub Actions 首次线上运行通过。
+- [x] 推送后 GitHub Actions 线上完整运行通过。
 
-前五项在本地实现完成后更新；最后一项必须在提交推送后通过 GitHub Actions 页面或 API 核验，
-不能用本地结果替代。
+线上结果通过 GitHub Actions API 与完整 job 日志核验，没有使用本地结果替代。
 
 Data Gateway 因线上 Node.js 18.15 兼容边界继续锁定 `@cloudbase/node-sdk 3.18.3`，本次审计仍
 报告该 SDK 的 3 个 high 和 1 个 moderate 传递依赖告警，但 critical 为 0。该风险和迁移边界已在
 M1 验收文档记录；CI 使用 `--audit-level=critical` 会完整打印这些告警，同时只阻断 critical，
 不会把结果描述成“零漏洞”。
 
-## 6. 启用分支保护
+## 6. GitHub Actions 线上验收
+
+最终成功运行：
+
+- 提交：`4e830facc93880bb6bd1f862157d4124c384e3fd`；
+- Run：<https://github.com/peilinpeng/family-garden-dev/actions/runs/30741815632>；
+- Runner：Ubuntu 24.04；
+- Job：`全量回归与 Web 导出`；
+- 结果：成功；
+- 总耗时：1 分 40 秒；
+- Godot 导入缓存：命中；
+- 全量回归：24/24 通过，0 失败，用时 37 秒；
+- 三个 Node 工作区：critical 漏洞门禁通过；
+- Web Release：PCK 为 128,473,164 bytes，完整审计通过。
+
+线上首轮验证同时发现并修复了两个只在全新 Linux runner 暴露的问题：
+
+1. 初始工作流让第一个测试隐式承担全项目资源导入，20 分钟 job 超时；现已改为显式
+   `godot --import`、缓存 `game/.godot` 并设置分层超时；
+2. GNU `timeout` 不能直接执行 Bash 内部函数，导致三个 Node 测试未启动；现已改为
+   `npm --prefix` 外部命令，并在本地和线上确认 24/24 执行单元通过。
+
+失败轮次的日志均用于定位后续最小修复；最终成功轮次证明缓存恢复、版本固定、回归、依赖审计
+和 Web 导出链路可以在真实 GitHub-hosted Linux runner 上闭环运行。
+
+## 7. 启用分支保护
 
 首次线上运行通过后，在 GitHub 的 `dev` 与 `main` 分支保护中把
 `全量回归与 Web 导出` 设为 required status check。该操作会改变远端仓库合并策略，不由
 工作流自动执行，应由仓库管理员确认后完成。
 
-## 7. 后续方向
+## 8. 后续方向
 
 M3 完成后优先进入 M4 浏览器端关键路径 E2E：在真实 Web 导出中覆盖启动页音频解锁、主场景
 进入、地图旅行和至少一条离线核心玩法。E2E 应继续与真实云端烟测分离，默认使用 mock 或
