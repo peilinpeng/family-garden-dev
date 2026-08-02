@@ -29,6 +29,7 @@ function createMemoryDatabase() {
   const tables = new Map();
   const missingCollections = new Set();
   const createdCollections = new Set();
+  const queryFailures = new Map();
   let nextId = 1;
 
   function rows(name) {
@@ -47,13 +48,19 @@ function createMemoryDatabase() {
     return {
       where(query) {
         return {
-          limit() {
+          limit(maxRows) {
             return {
               async get() {
                 assertCollectionExists(name);
+                const remainingFailures = queryFailures.get(name) || 0;
+                if (remainingFailures > 0) {
+                  queryFailures.set(name, remainingFailures - 1);
+                  throw new Error(`simulated query failure: ${name}`);
+                }
                 return {
                   data: [...rows(name).values()].filter((row) =>
-                    Object.entries(query).every(([key, value]) => row[key] === value)),
+                    Object.entries(query).every(([key, value]) => row[key] === value))
+                    .slice(0, maxRows),
                 };
               },
             };
@@ -101,6 +108,7 @@ function createMemoryDatabase() {
       tables.clear();
       missingCollections.clear();
       createdCollections.clear();
+      queryFailures.clear();
       nextId = 1;
     },
     markMissing(name) {
@@ -108,6 +116,9 @@ function createMemoryDatabase() {
     },
     wasCreated(name) {
       return createdCollections.has(String(name));
+    },
+    failNextQuery(name, count = 1) {
+      queryFailures.set(String(name), count);
     },
     seed(name, id, value) {
       rows(name).set(String(id), { ...structuredClone(value), _id: String(id) });
@@ -376,6 +387,77 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(storage.size, 0);
   });
 
+  await scenario('地点级联删除查询失败时保留父记录并可安全重试', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image',
+      purpose: 'travel',
+      content_type: 'image/png',
+      base64_data: fakePng('retry-bundle').toString('base64'),
+    }, 'token_a');
+    db.seed('travel_places', 'place_retry', {
+      family_id: 'family_a', photo_upload_id: uploaded.upload_id,
+    });
+    db.seed('postcards', 'postcard_retry', {
+      family_id: 'family_a', place_id: 'place_retry', photo_upload_id: uploaded.upload_id,
+    });
+
+    db.failNextQuery('postcards');
+    const failed = await invoke({ action: 'delete_place_bundle', place_id: 'place_retry' }, 'token_a');
+    assert.equal(failed.ok, false);
+    assert.match(String(failed.error), /simulated query failure/);
+    assert.notEqual(db.get('travel_places', 'place_retry'), undefined);
+    assert.notEqual(db.get('postcards', 'postcard_retry'), undefined);
+    assert.notEqual(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 1);
+
+    const retried = await invoke({ action: 'delete_place_bundle', place_id: 'place_retry' }, 'token_a');
+    assert.equal(retried.ok, true);
+    assert.equal(db.get('travel_places', 'place_retry'), undefined);
+    assert.equal(db.get('postcards', 'postcard_retry'), undefined);
+    assert.equal(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 0);
+  });
+
+  await scenario('地点级联删除完整处理超过单批上限的关联记录', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image',
+      purpose: 'travel',
+      content_type: 'image/png',
+      base64_data: fakePng('large-bundle').toString('base64'),
+    }, 'token_a');
+    db.seed('travel_places', 'place_large', {
+      family_id: 'family_a', photo_upload_id: uploaded.upload_id,
+    });
+    for (let index = 0; index < 101; index += 1) {
+      const postcardId = `postcard_large_${index}`;
+      db.seed('postcards', postcardId, {
+        family_id: 'family_a',
+        place_id: 'place_large',
+        photo_upload_id: uploaded.upload_id,
+      });
+      db.seed('mailbox_events', `event_large_${index}`, {
+        family_id: 'family_a', target_id: postcardId,
+      });
+    }
+    for (let index = 0; index < 100; index += 1) {
+      db.seed('mailbox_events', `event_large_extra_${index}`, {
+        family_id: 'family_a', target_id: 'postcard_large_0',
+      });
+    }
+
+    const deleted = await invoke({ action: 'delete_place_bundle', place_id: 'place_large' }, 'token_a');
+    assert.equal(deleted.ok, true);
+    assert.equal(deleted.postcard_ids.length, 101);
+    assert.equal(new Set(deleted.postcard_ids).size, 101);
+    assert.equal(deleted.event_ids.length, 201);
+    assert.equal(new Set(deleted.event_ids).size, 201);
+    assert.equal(db.get('travel_places', 'place_large'), undefined);
+    assert.equal(db.get('postcards', 'postcard_large_100'), undefined);
+    assert.equal(db.get('mailbox_events', 'event_large_extra_99'), undefined);
+    assert.equal(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 0);
+  });
+
   await scenario('只清理当前成员超过一天且未被业务记录引用的上传', async () => {
     const png = fakePng('cleanup').toString('base64');
     const orphan = await invoke({ action: 'upload_image', content_type: 'image/png', base64_data: png }, 'token_a');
@@ -390,6 +472,35 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(result.deleted, 1);
     assert.equal(db.get('uploads', orphan.upload_id), undefined);
     assert.notEqual(db.get('uploads', referenced.upload_id), undefined);
+  });
+
+  await scenario('引用查询失败时直接删除和孤儿清理都必须保留照片', async () => {
+    const uploaded = await invoke({
+      action: 'upload_image',
+      purpose: 'travel',
+      content_type: 'image/png',
+      base64_data: fakePng('fail-closed').toString('base64'),
+    }, 'token_a');
+    db.get('uploads', uploaded.upload_id).created_at = '2000-01-01T00:00:00.000Z';
+    db.seed('travel_places', 'place_fail_closed', {
+      family_id: 'family_a', photo_upload_id: uploaded.upload_id,
+    });
+
+    db.failNextQuery('travel_places');
+    const directDelete = await invoke({
+      action: 'delete_image', upload_id: uploaded.upload_id,
+    }, 'token_a');
+    assert.equal(directDelete.ok, false);
+    assert.match(String(directDelete.error), /simulated query failure/);
+    assert.notEqual(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 1);
+
+    db.failNextQuery('travel_places');
+    const cleanup = await invoke({ action: 'cleanup_orphan_images' }, 'token_a');
+    assert.equal(cleanup.ok, true);
+    assert.equal(cleanup.deleted, 0);
+    assert.notEqual(db.get('uploads', uploaded.upload_id), undefined);
+    assert.equal(storage.size, 1);
   });
 
   await scenario('图片上传拒绝不支持类型、非法 base64 与超限输入', async () => {
