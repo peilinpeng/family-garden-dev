@@ -169,12 +169,6 @@ safe_log_name() {
   printf '%s' "$1" | tr '/ :()' '______' | tr -cd '[:alnum:]_.-'
 }
 
-run_in_directory() {
-  local directory="$1"
-  shift
-  (cd "$directory" && "$@")
-}
-
 run_test() {
   local label="$1"
   shift
@@ -223,13 +217,13 @@ while IFS= read -r scene_path; do
 done < <(find "$ROOT_DIR/game/tests" -maxdepth 1 -type f -name '*.tscn' | sort)
 
 run_test "AI Gateway Node tests" \
-  run_in_directory "$ROOT_DIR/backend/ai" npm test
+  npm --prefix "$ROOT_DIR/backend/ai" test
 run_test "AI JSON Schema contracts" \
   "$CONTRACT_PYTHON" "$ROOT_DIR/backend/ai/tests/validate_contracts.py"
 run_test "Data Gateway Node tests" \
-  run_in_directory "$ROOT_DIR/backend/cloudbase/data_gateway" npm test
+  npm --prefix "$ROOT_DIR/backend/cloudbase/data_gateway" test
 run_test "Presence Relay Node tests" \
-  run_in_directory "$ROOT_DIR/backend/cloudbase/presence_relay" npm test
+  npm --prefix "$ROOT_DIR/backend/cloudbase/presence_relay" test
 
 FINISHED_AT="$(date +%s)"
 printf '\n结果: %s/%s 通过，%s 失败，总耗时 %ss\n' \
