@@ -23,7 +23,7 @@ jobs:
   quality:
     name: 全量回归与 Web 导出
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -31,6 +31,7 @@ jobs:
       CI: "true"
       GODOT_BIN: godot
       PYTHON_BIN: python
+      TEST_TIMEOUT_SECONDS: "180"
       TMPDIR: /tmp
 
     steps:
@@ -63,6 +64,15 @@ jobs:
           use-dotnet: false
           include-templates: true
 
+      - name: 恢复 Godot 资源导入缓存
+        id: godot-import-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: game/.godot
+          key: ${{ runner.os }}-godot-4.7-import-${{ hashFiles('game/**') }}
+          restore-keys: |
+            ${{ runner.os }}-godot-4.7-import-
+
       - name: 核对工具链版本
         run: |
           godot --version
@@ -70,7 +80,19 @@ jobs:
           npm --version
           python --version
 
+      - name: 导入 Godot 资源
+        timeout-minutes: 30
+        run: godot --headless --path game --import
+
+      - name: 保存 Godot 资源导入缓存
+        if: steps.godot-import-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: game/.godot
+          key: ${{ steps.godot-import-cache.outputs.cache-primary-key }}
+
       - name: 安装依赖并运行全量回归
+        timeout-minutes: 10
         run: ./tools/test_all.sh --bootstrap
 
       - name: 审计生产依赖关键漏洞

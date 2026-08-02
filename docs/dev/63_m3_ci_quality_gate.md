@@ -33,19 +33,22 @@ CI 使用 `ubuntu-24.04`，固定以下版本：
 | Python | 3.13.5 |
 | Runner | Ubuntu 24.04 |
 
-Godot 安装步骤同时安装版本匹配的 Web 导出模板，并缓存引擎与模板。`setup-node` 根据三个
-生产 lockfile 缓存 npm 下载目录，`setup-python` 根据契约 requirements 缓存 pip 下载目录；
-依赖安装仍使用 `npm ci` 和独立虚拟环境，避免把可变的 `node_modules` 当作构建结果复用。
+Godot 安装步骤同时安装版本匹配的 Web 导出模板，并缓存引擎与模板。工作流另行缓存
+`game/.godot` 导入结果，缓存键包含 Godot 版本和 `game/**` 内容哈希；命中旧前缀时仍会执行
+`godot --import`，让 Godot 自行更新变更资源。`setup-node` 根据三个生产 lockfile 缓存 npm
+下载目录，`setup-python` 根据契约 requirements 缓存 pip 下载目录；依赖安装仍使用
+`npm ci` 和独立虚拟环境，避免把可变的 `node_modules` 当作构建结果复用。
 
 ## 3. 门禁内容
 
 工作流 `M3 质量门禁` 只有一个必需 job：`全量回归与 Web 导出`，按顺序执行：
 
-1. 核对 Godot、Node、npm 和 Python 实际版本；
-2. `./tools/test_all.sh --bootstrap`；
-3. 三个 Node 工作区执行 `npm audit --omit=dev --audit-level=critical`；
-4. `./tools/check_web_export.sh`；
-5. 任一步失败时上传测试与导出日志，保留 7 天。
+1. 恢复 Godot 导入缓存并核对 Godot、Node、npm 和 Python 实际版本；
+2. 显式执行 `godot --headless --path game --import`，完成后立即保存导入缓存；
+3. `./tools/test_all.sh --bootstrap`，每个执行单元最多运行 180 秒；
+4. 三个 Node 工作区执行 `npm audit --omit=dev --audit-level=critical`；
+5. `./tools/check_web_export.sh`；
+6. 任一步失败时上传测试与导出日志，保留 7 天。
 
 统一回归目前包含 20 个 Godot 测试场景和 4 个后端/契约执行单元。Web 审计继续使用 M2 的
 130,000,000 bytes PCK 门禁，并检查动态资源、生产引用边界和导出包启动。
@@ -59,6 +62,8 @@ Godot 安装步骤同时安装版本匹配的 Web 导出模板，并缓存引擎
 - 所有 Action 固定到完整提交 SHA，并在行尾标记对应发布版本；
 - 同一 PR 或分支的新提交会取消旧运行，减少重复 Actions 时长；
 - 只在失败时上传纯本地测试日志，且 7 天后过期；
+- 冷缓存 job 上限为 45 分钟，资源导入最多 30 分钟，测试步骤最多 10 分钟；
+- 每个测试执行单元独立限制 180 秒，避免单场景挂起吞掉整个 job；
 - 真实云端冒烟测试继续由对应验收流程显式触发。
 
 ## 5. 本地验收
