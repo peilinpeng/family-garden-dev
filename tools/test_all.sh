@@ -9,6 +9,7 @@ set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOTSTRAP=false
 KEEP_LOGS="${KEEP_TEST_LOGS:-0}"
+TEST_TIMEOUT_SECONDS="${TEST_TIMEOUT_SECONDS:-0}"
 FAILURES=0
 PASSES=0
 TOTALS=0
@@ -22,7 +23,8 @@ usage() {
     "可选环境变量:" \
     "  GODOT_BIN       Godot 可执行文件路径" \
     "  PYTHON_BIN      Python 3 可执行文件路径" \
-    "  KEEP_TEST_LOGS  设为 1 时保留成功测试日志"
+    "  KEEP_TEST_LOGS  设为 1 时保留成功测试日志" \
+    "  TEST_TIMEOUT_SECONDS  单个执行单元超时秒数，默认 0（不限制）"
 }
 
 for argument in "$@"; do
@@ -45,6 +47,23 @@ done
 command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
+
+if ! [[ "$TEST_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+  printf 'TEST_TIMEOUT_SECONDS 必须是非负整数。\n' >&2
+  exit 2
+fi
+
+TIMEOUT_EXECUTABLE=""
+if [ "$TEST_TIMEOUT_SECONDS" -gt 0 ]; then
+  if command_exists timeout; then
+    TIMEOUT_EXECUTABLE="$(command -v timeout)"
+  elif command_exists gtimeout; then
+    TIMEOUT_EXECUTABLE="$(command -v gtimeout)"
+  else
+    printf '启用 TEST_TIMEOUT_SECONDS 需要 timeout（GNU coreutils）。\n' >&2
+    exit 2
+  fi
+fi
 
 resolve_godot() {
   if [ -n "${GODOT_BIN:-}" ]; then
@@ -167,7 +186,15 @@ run_test() {
   TOTALS=$((TOTALS + 1))
 
   printf 'RUN  %s\n' "$label"
-  "$@" >"$log_file" 2>&1
+  if [ "$TEST_TIMEOUT_SECONDS" -gt 0 ]; then
+    "$TIMEOUT_EXECUTABLE" \
+      --signal=TERM \
+      --kill-after=10s \
+      "$TEST_TIMEOUT_SECONDS" \
+      "$@" >"$log_file" 2>&1
+  else
+    "$@" >"$log_file" 2>&1
+  fi
   status=$?
   finished="$(date +%s)"
 
