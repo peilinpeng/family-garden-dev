@@ -45,3 +45,20 @@ chore(repo): update gitignore
 ## 红线
 
 1. 不回退 main；2. 不删除已有可运行功能；3. 不为重构而重构；4. AI 功能必须有 mock/fallback；5. 密钥不进仓库；6. P0 美术资产必须经导入测试（manifest status 推进到 tested）；7. 7.08 后只修 bug 和包装。
+
+## 提交前验收
+
+日常修改运行：
+
+```bash
+./tools/test_all.sh
+```
+
+涉及 Web 发布范围、动态资源或导出配置时，还必须运行：
+
+```bash
+./tools/check_web_export.sh
+```
+
+GitHub Actions 的必需检查名为 `全量回归与 Web 导出`。功能分支合入 `dev`、`dev` 合入
+`main` 前必须通过；真实云端烟测不在自动门禁内，仍按对应阶段验收文档人工执行。
