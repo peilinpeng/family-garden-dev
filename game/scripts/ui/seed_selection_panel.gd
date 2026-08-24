@@ -86,7 +86,7 @@ func _seed_row(crop_id: String, seed_id: String, count: int) -> Control:
 	row.add_child(lbl)
 
 	btn.pressed.connect(func() -> void:
-		if FarmManager.plant(target_plot, crop_id):
+		if await FarmManager.plant(target_plot, crop_id):
 			seed_planted.emit(target_plot, crop_id)
 			SceneManager._show_toast("种下了 %s" % CropDB.display_name(crop_id))
 			close_requested.emit()

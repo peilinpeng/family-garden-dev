@@ -206,6 +206,6 @@ func _on_complete() -> void:
 	if dishes.is_empty():
 		SceneManager._show_toast("先摆上至少一道料理吧~")
 		return
-	if KitchenManager.complete_meal(dishes):
+	if await KitchenManager.complete_meal(dishes):
 		SceneManager._show_toast("家庭晚餐已准备好 🍽️")
 		close_requested.emit()

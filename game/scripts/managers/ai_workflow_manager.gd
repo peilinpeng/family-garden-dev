@@ -93,8 +93,19 @@ func commit_kitchen_dish_draft(draft: Dictionary) -> Dictionary:
 			return _failure("INVALID_INGREDIENTS", "食材数据不完整。")
 		if InventoryManager.storehouse.count(String((ing as Dictionary).get("id", ""))) < int((ing as Dictionary).get("qty", 1)):
 			return _failure("INGREDIENTS_CHANGED", "共享仓里的食材已经不够了。")
+	var consumes: Array = []
 	for ing in ingredients:
-		InventoryManager.take(String((ing as Dictionary).get("id", "")), int((ing as Dictionary).get("qty", 1)), true)
+		consumes.append({
+			"id": String((ing as Dictionary).get("id", "")),
+			"quantity": int((ing as Dictionary).get("qty", 1)),
+		})
+	var inventory_result: Dictionary = await InventoryManager.mutate_storehouse_confirmed(
+		consumes,
+		[],
+		"ai-kitchen:" + String(draft.get("dish_id", "draft")),
+	)
+	if not bool(inventory_result.get("ok", false)):
+		return _failure("INGREDIENTS_CHANGED", "共享仓里的食材已经被家人使用了，请重新选择。")
 	var row := dish.duplicate(true)
 	row["id"] = String(draft.get("dish_id", ""))
 	row["ingredients"] = ingredients.duplicate(true)

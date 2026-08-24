@@ -49,9 +49,16 @@ func craft(recipe_id: String) -> bool:
 		return false
 	if not can_craft(recipe_id).ok:
 		return false
+	var consumes: Array = []
 	for ing in recipe.ingredients:
-		InventoryManager.take(str(ing.get("id", "")), int(ing.get("qty", 1)), true)
-	InventoryManager.give(recipe.output_item_id, recipe.output_quantity, true)
+		consumes.append({"id": str(ing.get("id", "")), "quantity": int(ing.get("qty", 1))})
+	var result: Dictionary = await InventoryManager.mutate_storehouse_confirmed(
+		consumes,
+		[{"id": recipe.output_item_id, "quantity": recipe.output_quantity}],
+		_new_operation_id("craft:" + recipe_id),
+	)
+	if not bool(result.get("ok", false)):
+		return false
 	crafted.emit(recipe_id, recipe.output_item_id)
 	return true
 
@@ -170,31 +177,64 @@ func submit_order(order_id: String) -> int:
 	if not can_fulfill(order_id):
 		return -1
 	var order := get_order(order_id)
+	var consumes: Array = []
 	for req in order.get("requires", []):
-		InventoryManager.take(str(req.get("id", "")), int(req.get("qty", 1)), true)
+		consumes.append({"id": str(req.get("id", "")), "quantity": int(req.get("qty", 1))})
 	var reward: int = int(order.get("reward_coin", 0))
+	var grants: Array = []
 	if reward > 0:
-		InventoryManager.give("coin", reward, true)
+		grants.append({"id": "coin", "quantity": reward})
+	var result: Dictionary = await InventoryManager.mutate_storehouse_confirmed(
+		consumes,
+		grants,
+		"kitchen-order:" + order_id,
+	)
+	if not bool(result.get("ok", false)):
+		return -1
 	MemoryManager.kitchen_orders_done.append(order_id)
 	MemoryManager.save_game()
 	order_submitted.emit(order_id, reward)
 	return reward
+
+func _new_operation_id(prefix: String) -> String:
+	return "%s:%d:%d" % [prefix, Time.get_ticks_usec(), randi() % 1000000]
 
 # ── 餐桌 ───────────────────────────────────────────────
 
 ## 完成晚餐:扣除摆放到餐桌的料理,emit meal_completed。dish_ids 为已摆放的料理 id 列表。
 ## 至少一份才算完成,返回是否完成。回忆/照片/留言等留作 meal_data 的扩展 hook。
 func complete_meal(dish_ids: Array) -> bool:
-	var placed: Array = []
+	var normal_counts: Dictionary = {}
+	var ai_counts: Dictionary = {}
 	for did in dish_ids:
 		var sid := str(did)
-		if is_ai_dish(sid) and MemoryManager.consume_kitchen_ai_dish(sid, 1):
-			placed.append(sid)
-		elif sid != "" and _count_in_storehouse(sid) > 0:
-			InventoryManager.take(sid, 1, true)
-			placed.append(sid)
-	if placed.is_empty():
+		if sid == "":
+			continue
+		if is_ai_dish(sid):
+			ai_counts[sid] = int(ai_counts.get(sid, 0)) + 1
+		else:
+			normal_counts[sid] = int(normal_counts.get(sid, 0)) + 1
+	if normal_counts.is_empty() and ai_counts.is_empty():
 		return false
+	for sid in normal_counts:
+		if _count_in_storehouse(str(sid)) < int(normal_counts[sid]):
+			return false
+	for sid in ai_counts:
+		if ai_dish_count(str(sid)) < int(ai_counts[sid]):
+			return false
+	var consumes: Array = []
+	for sid in normal_counts:
+		consumes.append({"id": str(sid), "quantity": int(normal_counts[sid])})
+	if not consumes.is_empty():
+		var result: Dictionary = await InventoryManager.mutate_storehouse_confirmed(
+			consumes, [], _new_operation_id("meal")
+		)
+		if not bool(result.get("ok", false)):
+			return false
+	for sid in ai_counts:
+		if not MemoryManager.consume_kitchen_ai_dish(str(sid), int(ai_counts[sid])):
+			return false
+	var placed := dish_ids.filter(func(did): return str(did) != "")
 	var meal_data := {
 		"dishes": placed,
 		"role": MemoryManager.selected_role_key,

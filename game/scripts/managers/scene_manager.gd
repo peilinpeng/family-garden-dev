@@ -319,7 +319,7 @@ func _cloud_world_toast(table: String) -> String:
 			return "家人的明信片已同步。"
 		"inventories":
 			return "共享仓已同步。"
-		"farm_plots":
+		"farm_plots", "farm_livestock":
 			return "家庭农场已同步。"
 		"farm_activity_log":
 			return "农场告示牌已同步。"

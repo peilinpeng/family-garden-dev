@@ -31,6 +31,7 @@ function createMemoryDatabase() {
   const createdCollections = new Set();
   const queryFailures = new Map();
   let nextId = 1;
+  let transactionTail = Promise.resolve();
 
   function rows(name) {
     if (!tables.has(name)) tables.set(name, new Map());
@@ -98,6 +99,18 @@ function createMemoryDatabase() {
 
   return {
     collection,
+    async runTransaction(updateFunction) {
+      const previous = transactionTail;
+      let release;
+      transactionTail = new Promise((resolve) => { release = resolve; });
+      await previous;
+      try {
+        const result = await updateFunction({ collection });
+        return { result, errMsg: 'runTransaction:ok' };
+      } finally {
+        release();
+      }
+    },
     async createCollection(name) {
       missingCollections.delete(String(name));
       createdCollections.add(String(name));
@@ -110,6 +123,7 @@ function createMemoryDatabase() {
       createdCollections.clear();
       queryFailures.clear();
       nextId = 1;
+      transactionTail = Promise.resolve();
     },
     markMissing(name) {
       missingCollections.add(String(name));
@@ -559,10 +573,45 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(db.get('inventories', result.id).owner_member_id, 'member_a');
   });
 
-  await scenario('共享仓 upsert 强制当前家庭 ID', async () => {
+  await scenario('共享仓拒绝客户端整份快照覆盖', async () => {
     const result = await invoke({ action: 'upsert', table: 'inventories', row: { kind: 'storehouse', family_id: 'family_b', stacks: [] } }, 'token_a');
-    assert.equal(result.id, 'storehouse:family_a');
-    assert.equal(db.get('inventories', result.id).family_id, 'family_a');
+    assert.equal(result.code, 409);
+    assert.equal(db.get('inventories', 'storehouse:family_a'), undefined);
+  });
+
+  await scenario('共享仓事务原子扣发、幂等并返回权威版本', async () => {
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 4,
+      stacks: [{ id: 'produce_corrato', count: 2 }],
+    });
+    const body = {
+      action: 'mutate_storehouse', operation_id: 'craft:test:0001',
+      consumes: [{ id: 'produce_corrato', quantity: 2, max_stack: 99 }],
+      grants: [{ id: 'dish_tomato_egg', quantity: 1, max_stack: 99 }],
+    };
+    const result = await invoke(body, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(result.version, 5);
+    assert.deepEqual(result.stacks, [{ id: 'dish_tomato_egg', count: 1 }]);
+    const duplicate = await invoke(body, 'token_a');
+    assert.equal(duplicate.ok, true);
+    assert.equal(duplicate.duplicate, true);
+    assert.equal(duplicate.version, 5);
+  });
+
+  await scenario('共享仓并发争抢最后一份库存只允许一个成功', async () => {
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 0,
+      stacks: [{ id: 'dish_tomato_egg', count: 1 }],
+    });
+    const makeRequest = (operationId) => invoke({
+      action: 'mutate_storehouse', operation_id: operationId,
+      consumes: [{ id: 'dish_tomato_egg', quantity: 1, max_stack: 99 }], grants: [],
+    }, 'token_a');
+    const results = await Promise.all([makeRequest('meal:concurrent:1'), makeRequest('meal:concurrent:2')]);
+    assert.equal(results.filter((result) => result.ok).length, 1);
+    assert.equal(results.filter((result) => result.code === 409).length, 1);
+    assert.deepEqual(db.get('inventories', 'storehouse:family_a').stacks, []);
   });
 
   await scenario('库存 upsert 拒绝未知 kind', async () => {
@@ -646,53 +695,147 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     db.seed('members', 'member_a2', {
       family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
     });
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 0,
+      stacks: [{ id: 'seed_corrato', count: 1 }, { id: 'seed_tomelone', count: 1 }],
+    });
     const created = await invoke({
-      action: 'upsert',
-      table: 'farm_plots',
-      row: {
-        id: 'forged_plot',
-        family_id: 'family_b',
-        plot_index: 2,
-        crop_id: 'corrato',
-        planted_at_unix: 1800000000,
-      },
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:stable-id:a',
+      plot_index: 2, crop_id: 'corrato',
     }, 'token_a');
     assert.equal(created.ok, true);
-    assert.equal(created.id, 'farm_plot:family_a:2');
-    assert.equal(db.get('farm_plots', created.id).family_id, 'family_a');
-    assert.equal(db.get('farm_plots', created.id).plot_index, 2);
-    assert.equal(db.get('farm_plots', created.id).crop_id, 'corrato');
-    assert.equal(db.get('farm_plots', created.id).created_by_member_id, 'member_a');
+    assert.equal(created.plot.id, 'farm_plot:family_a:2');
+    assert.equal(db.get('farm_plots', created.plot.id).family_id, 'family_a');
+    assert.equal(db.get('farm_plots', created.plot.id).plot_index, 2);
+    assert.equal(db.get('farm_plots', created.plot.id).crop_id, 'corrato');
+    assert.equal(db.get('farm_plots', created.plot.id).created_by_member_id, 'member_a');
 
     const visibleToSameFamily = await invoke({ action: 'query', table: 'farm_plots' }, 'token_a2');
     assert.deepEqual(visibleToSameFamily.rows.map((row) => row.id), ['farm_plot:family_a:2']);
 
     const occupied = await invoke({
-      action: 'upsert',
-      table: 'farm_plots',
-      row: { plot_index: 2, crop_id: 'tomelone', planted_at_unix: 1800000060 },
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:stable-id:a2',
+      plot_index: 2, crop_id: 'tomelone',
     }, 'token_a2');
     assert.equal(occupied.code, 409);
     assert.equal(db.get('farm_plots', 'farm_plot:family_a:2').crop_id, 'corrato');
 
     const hiddenFromOtherFamily = await invoke({ action: 'query', table: 'farm_plots' }, 'token_b');
     assert.deepEqual(hiddenFromOtherFamily.rows, []);
+
+    const uprooted = await invoke({
+      action: 'farm_action', farm_action: 'uproot', operation_id: 'farm:stable-id:uproot', plot_index: 2,
+    }, 'token_a2');
+    assert.equal(uprooted.ok, true);
+    assert.equal(uprooted.deleted_plot_id, 'farm_plot:family_a:2');
+    assert.equal(db.get('farm_plots', 'farm_plot:family_a:2'), undefined);
   });
 
   await scenario('农场地块拒绝非法 plot 与 crop', async () => {
     assert.equal((await invoke({
-      action: 'upsert',
-      table: 'farm_plots',
-      row: { plot_index: -1, crop_id: 'corrato' },
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:invalid:plot',
+      plot_index: -1, crop_id: 'corrato',
     }, 'token_a')).code, 400);
     assert.equal((await invoke({
-      action: 'upsert',
-      table: 'farm_plots',
-      row: { plot_index: 2, crop_id: '../bad' },
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:invalid:crop',
+      plot_index: 2, crop_id: '../bad',
     }, 'token_a')).code, 400);
   });
 
-  await scenario('农场地块不能跨家庭删除', async () => {
+  await scenario('农场事务原子完成播种、浇水、施肥和收获', async () => {
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 0,
+      stacks: [{ id: 'seed_corrato', count: 1 }, { id: 'fertilizer', count: 1 }],
+    });
+    const planted = await invoke({
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:plant:0001', plot_index: 1, crop_id: 'corrato',
+    }, 'token_a');
+    assert.equal(planted.ok, true);
+    assert.equal(planted.plot.plot_index, 1);
+    assert.deepEqual(planted.storehouse.stacks, [{ id: 'fertilizer', count: 1 }]);
+    const plantedRetry = await invoke({
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:plant:0001', plot_index: 1, crop_id: 'corrato',
+    }, 'token_a');
+    assert.equal(plantedRetry.duplicate, true);
+    assert.equal(plantedRetry.plot.id, 'farm_plot:family_a:1');
+    assert.deepEqual(plantedRetry.storehouse.stacks, [{ id: 'fertilizer', count: 1 }]);
+
+    const watered = await invoke({
+      action: 'farm_action', farm_action: 'water', operation_id: 'farm:water:0001', plot_index: 1,
+    }, 'token_a');
+    assert.equal(watered.ok, true);
+    assert.equal(watered.plot.watered, true);
+
+    const fertilized = await invoke({
+      action: 'farm_action', farm_action: 'fertilize', operation_id: 'farm:fertilize:0001', plot_index: 1,
+    }, 'token_a');
+    assert.equal(fertilized.ok, true);
+    assert.equal(fertilized.plot.fertilized, true);
+    const mature = db.get('farm_plots', 'farm_plot:family_a:1');
+    mature.watered_at_unix = Math.floor(Date.now() / 1000) - 1000;
+    db.seed('farm_plots', 'farm_plot:family_a:1', mature);
+
+    const harvested = await invoke({
+      action: 'farm_action', farm_action: 'harvest', operation_id: 'farm:harvest:0001', plot_index: 1,
+    }, 'token_a');
+    assert.equal(harvested.ok, true);
+    assert.equal(harvested.amount, 3);
+    assert.equal(db.get('farm_plots', 'farm_plot:family_a:1'), undefined);
+    assert.deepEqual(harvested.storehouse.stacks, [{ id: 'produce_corrato', count: 3 }]);
+    const harvestedRetry = await invoke({
+      action: 'farm_action', farm_action: 'harvest', operation_id: 'farm:harvest:0001', plot_index: 1,
+    }, 'token_a');
+    assert.equal(harvestedRetry.duplicate, true);
+    assert.equal(harvestedRetry.deleted_plot_id, 'farm_plot:family_a:1');
+    assert.equal(harvestedRetry.amount, 3);
+    assert.deepEqual(harvestedRetry.storehouse.stacks, [{ id: 'produce_corrato', count: 3 }]);
+  });
+
+  await scenario('两个家庭成员并发播种同一地块只消耗一颗种子', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
+    });
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 0,
+      stacks: [{ id: 'seed_corrato', count: 1 }],
+    });
+    const request = (token, operationId) => invoke({
+      action: 'farm_action', farm_action: 'plant', operation_id: operationId, plot_index: 2, crop_id: 'corrato',
+    }, token);
+    const results = await Promise.all([
+      request('token_a', 'farm:plant:member-a'),
+      request('token_a2', 'farm:plant:member-a2'),
+    ]);
+    assert.equal(results.filter((result) => result.ok).length, 1);
+    assert.equal(results.filter((result) => result.code === 409).length, 1);
+    assert.deepEqual(db.get('inventories', 'storehouse:family_a').stacks, []);
+  });
+
+  await scenario('畜牧收集使用家庭远端冷却并阻止并发重复领取', async () => {
+    db.seed('members', 'member_a2', {
+      family_id: 'family_a', member_token: 'token_a2', role: 'player', display_name: 'A2',
+    });
+    const request = (token, operationId) => invoke({
+      action: 'farm_action', farm_action: 'collect_livestock', operation_id: operationId, source_id: 'chicken_coop',
+    }, token);
+    const results = await Promise.all([
+      request('token_a', 'farm:livestock:member-a'),
+      request('token_a2', 'farm:livestock:member-a2'),
+    ]);
+    assert.equal(results.filter((result) => result.ok).length, 1);
+    assert.equal(results.filter((result) => result.code === 409).length, 1);
+    assert.deepEqual(db.get('inventories', 'storehouse:family_a').stacks, [{ id: 'egg', count: 1 }]);
+    assert.equal(db.get('farm_livestock', 'farm_livestock:family_a:chicken_coop').family_id, 'family_a');
+    const successfulIndex = results.findIndex((result) => result.ok);
+    const retryToken = successfulIndex === 0 ? 'token_a' : 'token_a2';
+    const retryOperation = successfulIndex === 0 ? 'farm:livestock:member-a' : 'farm:livestock:member-a2';
+    const retry = await request(retryToken, retryOperation);
+    assert.equal(retry.duplicate, true);
+    assert.equal(retry.livestock.source_id, 'chicken_coop');
+    assert.deepEqual(db.get('inventories', 'storehouse:family_a').stacks, [{ id: 'egg', count: 1 }]);
+  });
+
+  await scenario('农场权威表拒绝通用写删绕过事务', async () => {
     db.seed('farm_plots', 'farm_plot:family_a:3', {
       id: 'farm_plot:family_a:3',
       family_id: 'family_a',
@@ -700,10 +843,25 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
       crop_id: 'corrato',
     });
     assert.equal((await invoke({
+      action: 'upsert',
+      table: 'farm_plots',
+      row: { plot_index: 3, crop_id: 'tomelone' },
+    }, 'token_a')).code, 409);
+    assert.equal((await invoke({
       action: 'delete',
       table: 'farm_plots',
       id: 'farm_plot:family_a:3',
-    }, 'token_b')).code, 403);
+    }, 'token_a')).code, 409);
+    assert.equal((await invoke({
+      action: 'upsert',
+      table: 'farm_livestock',
+      row: { id: 'forged', source_id: 'chicken_coop' },
+    }, 'token_a')).code, 409);
+    assert.equal((await invoke({
+      action: 'delete',
+      table: 'farm_livestock',
+      id: 'farm_livestock:family_a:chicken_coop',
+    }, 'token_a')).code, 409);
     assert.equal(db.get('farm_plots', 'farm_plot:family_a:3').crop_id, 'corrato');
   });
 
@@ -721,10 +879,13 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
 
   await scenario('farm_plots 集合缺失时自动创建并重试写入', async () => {
     db.markMissing('farm_plots');
+    db.seed('inventories', 'storehouse:family_a', {
+      id: 'storehouse:family_a', family_id: 'family_a', kind: 'storehouse', version: 0,
+      stacks: [{ id: 'seed_corrato', count: 1 }],
+    });
     const result = await invoke({
-      action: 'upsert',
-      table: 'farm_plots',
-      row: { plot_index: 4, crop_id: 'corrato' },
+      action: 'farm_action', farm_action: 'plant', operation_id: 'farm:auto-create:plot',
+      plot_index: 4, crop_id: 'corrato',
     }, 'token_a');
     assert.equal(result.ok, true);
     assert.equal(db.wasCreated('farm_plots'), true);

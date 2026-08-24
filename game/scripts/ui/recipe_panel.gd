@@ -217,7 +217,7 @@ func _rebuild_detail() -> void:
 	if bool(chk.get("ok", false)):
 		action.text = "制作 %s ×%d" % [ItemDB.display_name(recipe.output_item_id), recipe.output_quantity]
 		action.pressed.connect(func() -> void:
-			if KitchenManager.craft(recipe.id):
+			if await KitchenManager.craft(recipe.id):
 				SceneManager._show_toast("做好了：%s" % recipe.display_name)
 				_rebuild())
 	else:

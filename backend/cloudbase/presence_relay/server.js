@@ -20,6 +20,7 @@ const WORLD_EVENT_TABLES = new Set([
   'mailbox_events',
   'inventories',
   'farm_plots',
+  'farm_livestock',
   'farm_activity_log',
 ]);
 const WORLD_EVENT_ACTIONS = new Set(['upsert', 'delete', 'refresh']);

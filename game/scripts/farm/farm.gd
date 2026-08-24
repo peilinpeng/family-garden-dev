@@ -47,6 +47,7 @@ const DOOR_DEFINITIONS := [
 	},
 ]
 const FARM_TABLE := "farm_plots"
+const FARM_LIVESTOCK_TABLE := "farm_livestock"
 const FARM_SYNC_DEBOUNCE := 0.35
 const FERTILIZER := "fertilizer"
 const FARMER_PATH := "Objects/NpcFarmer"
@@ -331,7 +332,7 @@ func _on_farm_manager_changed() -> void:
 	_load_shared_farm_plots()
 
 func _on_cloud_world_changed(event: Dictionary) -> void:
-	if str(event.get("table", "")) != FARM_TABLE:
+	if str(event.get("table", "")) not in [FARM_TABLE, FARM_LIVESTOCK_TABLE]:
 		return
 	_schedule_farm_refresh("家人的农场更新已同步。")
 
@@ -750,7 +751,7 @@ func _collect_livestock(id: String) -> void:
 	if FarmManager == null:
 		return
 	var def: Dictionary = FarmManager.livestock_def(id)
-	var qty: int = FarmManager.collect(id)
+	var qty: int = await FarmManager.collect(id)
 	if qty > 0:
 		var item_id := str(def.get("output_item_id", ""))
 		_set_farm_status("收集到 " + _item_name(item_id) + " ×" + str(qty) + "。")
@@ -880,7 +881,7 @@ func _try_existing_crop(plot_index: int) -> void:
 	var row: Dictionary = crop_rows.get(plot_index, {})
 	var crop_id := str(row.get("crop_id", ""))
 	if not bool(row.get("watered", false)):
-		if FarmManager.water(plot_index):
+		if await FarmManager.water(plot_index):
 			_set_farm_status("浇水了，" + _item_name("produce_" + crop_id) + "开始生长。")
 			_record_farm_activity("water", "浇水", "给%s浇水了" % _item_name("produce_" + crop_id), "produce_" + crop_id)
 		return
@@ -888,7 +889,7 @@ func _try_existing_crop(plot_index: int) -> void:
 		_harvest_plot(plot_index)
 		return
 	if not bool(row.get("fertilized", false)) and _has_item_anywhere(FERTILIZER):
-		if _take_item_anywhere(FERTILIZER, 1) and FarmManager.fertilize(plot_index):
+		if await FarmManager.fertilize(plot_index):
 			_set_farm_status("施肥了，成熟后会多收一点。")
 			_record_farm_activity("fertilize", "施肥", "给%s施肥了" % _item_name("produce_" + crop_id), FERTILIZER, 1)
 		return
@@ -899,7 +900,9 @@ func _plant_plot(plot_index: int, data: Dictionary) -> void:
 	var crop_id := str(data.get("id", ""))
 	_farm_busy = true
 	_set_farm_status("正在种下 " + _item_name("seed_" + crop_id) + "...")
-	var planted := FarmManager != null and FarmManager.plant(plot_index, crop_id)
+	var planted := false
+	if FarmManager != null:
+		planted = await FarmManager.plant(plot_index, crop_id)
 	_farm_busy = false
 	if planted:
 		_set_farm_status("种下了 " + _item_name("seed_" + crop_id) + "。")
@@ -910,7 +913,9 @@ func _plant_plot(plot_index: int, data: Dictionary) -> void:
 func _harvest_plot(plot_index: int) -> void:
 	var row: Dictionary = crop_rows.get(plot_index, {})
 	var crop_id := str(row.get("crop_id", ""))
-	var amount := FarmManager.harvest(plot_index) if FarmManager != null else 0
+	var amount := 0
+	if FarmManager != null:
+		amount = await FarmManager.harvest(plot_index)
 	if amount > 0:
 		_set_farm_status("收获 " + _item_name("produce_" + crop_id) + " ×" + str(amount) + "。")
 		_record_farm_activity("harvest", "收获", "收获了%s ×%d" % [_item_name("produce_" + crop_id), amount], "produce_" + crop_id, amount)

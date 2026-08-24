@@ -63,8 +63,9 @@ Godot(HTTP)
 | `members` | 服务端(`join_family` 内部) | `family_id, member_token, role, display_name`。**不进 API 白名单,客户端永远查不到、改不了**,只能被网关内部 `resolveMember()` 直接查。 |
 | `families` | `MemoryManager._sync` | `id=family_id, cross_member_interaction_count, family_portrait` |
 | `memories/nodes/answers/rooms/room_objects` | `MemoryManager._sync` | 各自 id + 业务字段,按 `family_id` 隔离 |
-| `inventories` | `InventoryManager` | `id`(`backpack:`+member_id 或 `storehouse:`+family_id)、`kind`、`owner_member_id`(仅 backpack)、`stacks[]` |
+| `inventories` | `InventoryManager` | `id`(`backpack:`+member_id 或 `storehouse:`+family_id)、`kind`、`owner_member_id`(仅 backpack)、`stacks[]`、共享仓 `version/recent_operations` |
 | `travel_places/postcards/messages/mailbox_events` | 已接入 CloudBase；旅行照片只保存 `photo_upload_id`，不再新写永久公开 URL |
+| `farm_plots/farm_livestock` | `FarmManager` + data_gateway 事务 | 家庭地块状态、家庭畜牧冷却；详见 `docs/dev/64_p1_review_blockers_resolution.md` |
 
 ## 5. 安全模型
 

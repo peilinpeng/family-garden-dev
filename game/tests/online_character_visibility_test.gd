@@ -52,7 +52,7 @@ func _run() -> void:
 	}]
 	farm.crop_rows[0] = MemoryManager.farm_plots[0]
 	_assert(not farm._plot_hint(0).contains("需要浇水壶"), "缺少浇水壶时不应显示卡关文案")
-	farm._try_existing_crop(0)
+	await farm._try_existing_crop(0)
 	_assert(FarmManager.is_watered(0), "没有浇水壶时仍应能正常给作物浇水")
 
 	var peer := {

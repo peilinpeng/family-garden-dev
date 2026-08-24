@@ -118,7 +118,7 @@ func _order_row(order: Dictionary) -> Control:
 	elif KitchenManager.can_fulfill(oid):
 		btn.text = "提交"
 		btn.pressed.connect(func() -> void:
-			var reward: int = KitchenManager.submit_order(oid)
+			var reward: int = await KitchenManager.submit_order(oid)
 			if reward >= 0:
 				SceneManager._show_toast("订单完成！获得金币×%d 💰" % reward)
 				_reopen())

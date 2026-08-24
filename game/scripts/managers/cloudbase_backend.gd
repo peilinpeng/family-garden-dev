@@ -28,7 +28,7 @@ const REQUEST_TIMEOUT_SECONDS := 30.0
 const SNAPSHOT_TABLES := [
 	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
 	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots", "farm_activity_log",
-	"kitchen_dishes",
+	"farm_livestock", "kitchen_dishes",
 ]
 
 var _cfg: Dictionary = {}
@@ -123,6 +123,40 @@ func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
 		res = {"ok": true, "already_deleted": true}
 	if bool(res.get("ok", false)) and _cache.has(table):
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
+	return res
+
+func mutate_storehouse(consumes: Array, grants: Array, operation_id: String) -> Dictionary:
+	var res: Dictionary = await _request({
+		"action": "mutate_storehouse",
+		"operation_id": operation_id,
+		"consumes": consumes,
+		"grants": grants,
+	})
+	if res.has("stacks"):
+		_cache_inventory_result("storehouse", res)
+	return res
+
+func perform_farm_action(action: String, payload: Dictionary, operation_id: String) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["action"] = "farm_action"
+	body["farm_action"] = action
+	body["operation_id"] = operation_id
+	var res: Dictionary = await _request(body)
+	if not bool(res.get("ok", false)):
+		return res
+	if res.get("storehouse", null) is Dictionary:
+		_cache_upsert("inventories", res["storehouse"])
+	if res.get("backpack", null) is Dictionary:
+		_cache_upsert("inventories", res["backpack"])
+	if res.get("plot", null) is Dictionary and not (res["plot"] as Dictionary).is_empty():
+		_cache_upsert("farm_plots", res["plot"])
+	var deleted_plot_id := str(res.get("deleted_plot_id", ""))
+	if deleted_plot_id != "" and _cache.has("farm_plots"):
+		_cache["farm_plots"] = (_cache["farm_plots"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) != deleted_plot_id
+		)
+	if res.get("livestock", null) is Dictionary:
+		_cache_upsert("farm_livestock", res["livestock"])
 	return res
 
 ## 私有图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
@@ -258,3 +292,12 @@ func _cache_upsert(table: String, row: Dictionary) -> void:
 				return
 	arr.append(row)
 	_cache[table] = arr
+
+func _cache_inventory_result(kind: String, result: Dictionary) -> void:
+	var row := {
+		"id": str(result.get("id", kind)),
+		"kind": kind,
+		"stacks": (result.get("stacks", []) as Array).duplicate(true),
+		"version": int(result.get("version", 0)),
+	}
+	_cache_upsert("inventories", row)

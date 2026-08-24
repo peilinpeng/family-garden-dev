@@ -99,7 +99,7 @@ async function run() {
 
   console.log(`Gate6 farm real smoke endpoint: ${endpoint}`);
   console.log(`Gate6 farm real smoke family: ${familyId}`);
-  console.log('注意: join_family 会留下少量测试 members 记录；farm_plots 测试记录会在结束时清理。');
+  console.log('注意: join_family 会留下少量测试 members 记录；地块会通过 uproot 事务清理。');
 
   try {
     const joinA = await expectOk('join member A', request(endpoint, {
@@ -115,19 +115,19 @@ async function run() {
     memberB = { token: joinB.member_token, id: joinB.member_id };
     memberC = { token: joinC.member_token, id: joinC.member_id };
 
-    const plantedAtUnix = Math.floor(Date.now() / 1000) - 3600;
-    const planted = await expectOk('A plants farm plot', request(endpoint, {
-      action: 'upsert',
-      table: 'farm_plots',
-      row: {
-        id: 'forged',
-        family_id: isolatedFamilyId,
-        plot_index: 0,
-        crop_id: 'corrato',
-        planted_at_unix: plantedAtUnix,
-      },
+    await expectOk('grant one seed atomically', request(endpoint, {
+      action: 'mutate_storehouse',
+      operation_id: `${runId}:grant-seed`,
+      grants: [{ id: 'seed_corrato', quantity: 1, max_stack: 99 }],
     }, memberA.token));
-    assert.equal(planted.id, plotId);
+    const planted = await expectOk('A plants farm plot', request(endpoint, {
+      action: 'farm_action',
+      farm_action: 'plant',
+      operation_id: `${runId}:plant-a`,
+      plot_index: 0,
+      crop_id: 'corrato',
+    }, memberA.token));
+    assert.equal(planted.plot.id, plotId);
 
     const sameFamilyRows = await queryPlots(endpoint, memberB.token);
     const plot = findPlot(sameFamilyRows, 0);
@@ -139,29 +139,35 @@ async function run() {
     assert.equal(plot.updated_by_member_id, memberA.id);
 
     await expectRejected('B cannot overwrite occupied plot', request(endpoint, {
-      action: 'upsert',
-      table: 'farm_plots',
-      row: { plot_index: 0, crop_id: 'tomelone' },
+      action: 'farm_action',
+      farm_action: 'plant',
+      operation_id: `${runId}:plant-b`,
+      plot_index: 0,
+      crop_id: 'tomelone',
     }, memberB.token), 409);
 
     const isolatedRows = await queryPlots(endpoint, memberC.token);
     assert.equal(findPlot(isolatedRows, 0), undefined, '隔离家庭不应看到 farm_plots');
 
-    await expectRejected('isolated member cannot harvest other family plot', request(endpoint, {
-      action: 'delete',
-      table: 'farm_plots',
-      id: plotId,
-    }, memberC.token), 403);
+    await expectRejected('isolated member cannot uproot other family plot', request(endpoint, {
+      action: 'farm_action',
+      farm_action: 'uproot',
+      operation_id: `${runId}:uproot-isolated`,
+      plot_index: 0,
+    }, memberC.token), 404);
 
-    await expectOk('B harvests farm plot', request(endpoint, {
-      action: 'delete',
-      table: 'farm_plots',
-      id: plotId,
+    await expectOk('B uproots farm plot', request(endpoint, {
+      action: 'farm_action',
+      farm_action: 'uproot',
+      operation_id: `${runId}:uproot-b`,
+      plot_index: 0,
     }, memberB.token));
-    assert.equal(findPlot(await queryPlots(endpoint, memberA.token), 0), undefined, '收获后 A 不应再看到该地块');
+    assert.equal(findPlot(await queryPlots(endpoint, memberA.token), 0), undefined, '铲除后 A 不应再看到该地块');
   } finally {
     if (memberA?.token) {
-      await request(endpoint, { action: 'delete', table: 'farm_plots', id: plotId }, memberA.token).catch(() => {});
+      await request(endpoint, {
+        action: 'farm_action', farm_action: 'uproot', operation_id: `${runId}:cleanup`, plot_index: 0,
+      }, memberA.token).catch(() => {});
     }
   }
 

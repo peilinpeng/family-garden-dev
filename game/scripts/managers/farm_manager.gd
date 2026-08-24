@@ -41,6 +41,17 @@ func plant(plot: int, crop_id: String) -> bool:
 		return false
 	if CropDB.find(crop_id).is_empty():
 		return false
+	if _cloud_ready():
+		var result: Dictionary = await CloudManager.perform_farm_action_confirmed(
+			"plant",
+			{"plot_index": plot, "crop_id": crop_id},
+			_new_operation_id("farm:plant"),
+		)
+		if not bool(result.get("ok", false)):
+			return false
+		_apply_cloud_result(result)
+		planted.emit(crop_id)
+		return true
 	if not _consume_seed(crop_id):
 		return false
 	MemoryManager.farm_plots.append({
@@ -60,6 +71,14 @@ func water(plot: int) -> bool:
 	var p := get_plot(plot)
 	if p.is_empty():
 		return false
+	if _cloud_ready():
+		var result: Dictionary = await CloudManager.perform_farm_action_confirmed(
+			"water", {"plot_index": plot}, _new_operation_id("farm:water")
+		)
+		if not bool(result.get("ok", false)):
+			return false
+		_apply_cloud_result(result)
+		return true
 	p["watered"] = true
 	p["watered_at"] = _now()
 	_save()
@@ -73,6 +92,16 @@ func is_watered(plot: int) -> bool:
 func fertilize(plot: int) -> bool:
 	var p := get_plot(plot)
 	if p.is_empty() or bool(p.get("fertilized", false)):
+		return false
+	if _cloud_ready():
+		var result: Dictionary = await CloudManager.perform_farm_action_confirmed(
+			"fertilize", {"plot_index": plot}, _new_operation_id("farm:fertilize")
+		)
+		if not bool(result.get("ok", false)):
+			return false
+		_apply_cloud_result(result)
+		return true
+	if not _consume_item_anywhere("fertilizer", 1):
 		return false
 	p["fertilized"] = true
 	p["fertilized_at"] = _now()
@@ -118,6 +147,16 @@ func harvest(plot: int) -> int:
 	if p.is_empty() or not is_mature(plot):
 		return 0
 	var crop_id: String = str(p.get("crop_id", ""))
+	if _cloud_ready():
+		var result: Dictionary = await CloudManager.perform_farm_action_confirmed(
+			"harvest", {"plot_index": plot}, _new_operation_id("farm:harvest")
+		)
+		if not bool(result.get("ok", false)):
+			return 0
+		var cloud_amount := int(result.get("amount", 0))
+		_apply_cloud_result(result)
+		harvested.emit(crop_id, CropDB.harvest_item_id(crop_id), cloud_amount)
+		return cloud_amount
 	var amount: int = CropDB.base_yield(crop_id) + (1 if bool(p.get("fertilized", false)) else 0)
 	InventoryManager.give(CropDB.harvest_item_id(crop_id), amount, true)
 	MemoryManager.farm_plots.erase(p)
@@ -126,13 +165,13 @@ func harvest(plot: int) -> int:
 	return amount
 
 func _consume_seed(crop_id: String) -> bool:
-	var sid := CropDB.seed_item_id(crop_id)
-	if InventoryManager.has(sid, 1, true):
-		InventoryManager.take(sid, 1, true)
-		return true
-	if InventoryManager.has(sid, 1, false):
-		InventoryManager.take(sid, 1, false)
-		return true
+	return _consume_item_anywhere(CropDB.seed_item_id(crop_id), 1)
+
+func _consume_item_anywhere(item_id: String, amount: int) -> bool:
+	if InventoryManager.has(item_id, amount, true):
+		return InventoryManager.take(item_id, amount, true) == amount
+	if InventoryManager.has(item_id, amount, false):
+		return InventoryManager.take(item_id, amount, false) == amount
 	return false
 
 # ── 畜牧 ───────────────────────────────────────────────
@@ -162,6 +201,14 @@ func collect(id: String) -> int:
 	if not livestock_ready(id):
 		return 0
 	var d: Dictionary = LIVESTOCK[id]
+	if _cloud_ready():
+		var result: Dictionary = await CloudManager.perform_farm_action_confirmed(
+			"collect_livestock", {"source_id": id}, _new_operation_id("farm:livestock")
+		)
+		if not bool(result.get("ok", false)):
+			return 0
+		_apply_cloud_result(result)
+		return int(result.get("amount", 0))
 	var qty: int = int(d.get("output_quantity", 1))
 	InventoryManager.give(str(d.get("output_item_id", "")), qty, true)
 	MemoryManager.farm_livestock[id] = _now()
@@ -173,6 +220,66 @@ func collect(id: String) -> int:
 func _save() -> void:
 	MemoryManager.save_game()
 	changed.emit()
+
+func sync_from_cloud(plot_rows: Array, livestock_rows: Array) -> void:
+	var normalized_plots: Array = []
+	for raw in plot_rows:
+		if raw is Dictionary:
+			normalized_plots.append(_normalize_cloud_plot(raw))
+	var normalized_livestock: Dictionary = {}
+	for raw in livestock_rows:
+		if not raw is Dictionary:
+			continue
+		var source_id := str((raw as Dictionary).get("source_id", ""))
+		if LIVESTOCK.has(source_id):
+			normalized_livestock[source_id] = float((raw as Dictionary).get("last_collected_at_unix", 0))
+	MemoryManager.farm_plots = normalized_plots
+	MemoryManager.farm_livestock = normalized_livestock
+	_save()
+
+func _apply_cloud_result(result: Dictionary) -> void:
+	var storehouse_row: Dictionary = result.get("storehouse", {}) if result.get("storehouse", {}) is Dictionary else {}
+	var backpack_row: Dictionary = result.get("backpack", {}) if result.get("backpack", {}) is Dictionary else {}
+	InventoryManager.apply_authoritative_inventory(storehouse_row, backpack_row)
+	var plot_value: Variant = result.get("plot", null)
+	if plot_value is Dictionary and not (plot_value as Dictionary).is_empty():
+		var plot := _normalize_cloud_plot(plot_value)
+		var plot_index := int(plot.get("plot", -1))
+		MemoryManager.farm_plots = MemoryManager.farm_plots.filter(
+			func(existing): return int(existing.get("plot", -1)) != plot_index
+		)
+		MemoryManager.farm_plots.append(plot)
+	var deleted_plot_id := str(result.get("deleted_plot_id", ""))
+	if deleted_plot_id != "":
+		var parts := deleted_plot_id.split(":")
+		var deleted_index := int(parts[-1]) if not parts.is_empty() else -1
+		MemoryManager.farm_plots = MemoryManager.farm_plots.filter(
+			func(existing): return int(existing.get("plot", -1)) != deleted_index
+		)
+	var livestock_value: Variant = result.get("livestock", null)
+	if livestock_value is Dictionary:
+		var source_id := str((livestock_value as Dictionary).get("source_id", ""))
+		if source_id != "":
+			MemoryManager.farm_livestock[source_id] = float((livestock_value as Dictionary).get("last_collected_at_unix", 0))
+	_save()
+
+func _normalize_cloud_plot(raw: Dictionary) -> Dictionary:
+	return {
+		"id": str(raw.get("id", raw.get("_id", ""))),
+		"plot": int(raw.get("plot_index", raw.get("plot", -1))),
+		"crop_id": str(raw.get("crop_id", "")),
+		"planted_at": float(raw.get("planted_at_unix", raw.get("planted_at", 0))),
+		"watered": bool(raw.get("watered", false)),
+		"watered_at": float(raw.get("watered_at_unix", raw.get("watered_at", 0))),
+		"fertilized": bool(raw.get("fertilized", false)),
+		"fertilized_at": float(raw.get("fertilized_at_unix", raw.get("fertilized_at", 0))),
+	}
+
+func _cloud_ready() -> bool:
+	return CloudManager != null and CloudManager.has_method("has_cloud_records") and CloudManager.has_cloud_records()
+
+func _new_operation_id(prefix: String) -> String:
+	return "%s:%d:%d" % [prefix, Time.get_ticks_usec(), randi() % 1000000]
 
 # ── Debug(仅开发/验收用) ──────────────────────────────
 

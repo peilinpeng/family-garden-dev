@@ -400,7 +400,7 @@ func _craft_recipe(recipe_id: String) -> void:
 	var recipe: RecipeDef = RecipeDB.get_def(recipe_id)
 	if recipe == null:
 		return
-	if KitchenManager.craft(recipe_id):
+	if await KitchenManager.craft(recipe_id):
 		SceneManager._show_toast("做好了：%s ✨" % recipe.display_name)
 	else:
 		SceneManager._show_toast("材料还不够，暂时无法制作。")

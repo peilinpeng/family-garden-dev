@@ -213,6 +213,7 @@ printf '%s\n' \
 while IFS= read -r scene_path; do
   scene_resource="res://${scene_path#"$ROOT_DIR/game/"}"
   run_test "Godot ${scene_resource#res://tests/}" \
+    env FAMILY_GARDEN_TEST=1 \
     "$GODOT_EXECUTABLE" --headless --path "$ROOT_DIR/game" "$scene_resource"
 done < <(find "$ROOT_DIR/game/tests" -maxdepth 1 -type f -name '*.tscn' | sort)
 

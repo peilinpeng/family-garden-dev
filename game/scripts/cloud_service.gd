@@ -28,6 +28,7 @@ const WORLD_EVENT_TABLES := {
 	"mailbox_events": true,
 	"inventories": true,
 	"farm_plots": true,
+	"farm_livestock": true,
 	"farm_activity_log": true,
 }
 
@@ -180,6 +181,29 @@ func delete_farm_plot_confirmed(row_id: String) -> Dictionary:
 		return res
 	delete_farm_plot(row_id)
 	return {"ok": true}
+
+func mutate_storehouse_confirmed(consumes: Array, grants: Array, operation_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("mutate_storehouse"):
+		var res: Dictionary = await _persist_backend.mutate_storehouse(consumes, grants, operation_id)
+		if bool(res.get("ok", false)):
+			_announce_world_changed("inventories", str(res.get("id", "storehouse")), "upsert", {"kind": "storehouse"})
+		return res
+	return {"ok": false, "local_only": true, "error": "cloud backend unavailable"}
+
+func perform_farm_action_confirmed(action: String, payload: Dictionary, operation_id: String) -> Dictionary:
+	if _persist_backend != null and _persist_backend.has_method("perform_farm_action"):
+		var res: Dictionary = await _persist_backend.perform_farm_action(action, payload, operation_id)
+		if bool(res.get("ok", false)):
+			_announce_world_changed("inventories", "storehouse", "upsert", {"kind": "storehouse"})
+			var table := "farm_livestock" if action == "collect_livestock" else "farm_plots"
+			var row_id := str(res.get("deleted_plot_id", ""))
+			if row_id == "" and res.get("plot", null) is Dictionary:
+				row_id = str((res["plot"] as Dictionary).get("id", ""))
+			if row_id == "" and res.get("livestock", null) is Dictionary:
+				row_id = str((res["livestock"] as Dictionary).get("id", ""))
+			_announce_world_changed(table, row_id, "delete" if res.has("deleted_plot_id") else "upsert", {})
+		return res
+	return {"ok": false, "local_only": true, "error": "cloud backend unavailable"}
 
 func has_cloud_records() -> bool:
 	return _use_cloudbase_records()

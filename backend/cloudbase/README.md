@@ -11,7 +11,7 @@ Godot 原生用 HTTP,所以走「云函数 HTTP 网关」模式:游戏 → HTTPS
    `ResourceNotFound: Db or Table not exist`):
    ```
    members, families, memories, nodes, answers, rooms, room_objects, inventories, uploads,
-   travel_places, postcards, messages, mailbox_events, farm_plots, farm_activity_log
+   travel_places, postcards, messages, mailbox_events, farm_plots, farm_livestock, farm_activity_log
    ```
    权限都选 **「无权限[ADMINONLY]」**——所有访问只经过 `data_gateway` 这个云函数,
    不允许客户端 SDK 绕过网关直连数据库。
@@ -127,6 +127,8 @@ db.collection('members').add({
 
 - ✅ **身份服务端解析**:由 member_token 查 members 得到 `{family_id, member_id, role}`,**不信客户端**。
 - ✅ **个人数据强隔离**:库存表按 `kind` 分流——`backpack` 强制 `id="backpack:"+member_id` 且 `owner_member_id` 由服务端写死,**别的成员连查询都看不到你的背包**;`storehouse` 按 `family_id` 家庭共享。
+- ✅ **共享仓事务化**:客户端整份 `storehouse` 快照写入会被 409 拒绝；`mutate_storehouse` 在服务端事务内完成校验、扣发、幂等和版本递增，避免并发最后写覆盖。
+- ✅ **农场事务化**:`farm_action` 原子处理种子/肥料/产物库存与 `farm_plots`、`farm_livestock`，同地块或同畜牧来源并发时只有一个请求成功；权威农场表的通用 `upsert/delete` 会被拒绝。
 - ✅ **伪造 id 无效**:客户端传什么 id 都会被服务端按自己的 member_id 重新计算,验证过"伪造别人 id 去写"会被纠正、不污染对方数据。
 - ✅ **跨家庭隔离**:通用表(families/memories/...)按 `family_id` 过滤;试图覆盖别家已存在的行 → 403。
 - ✅ **未鉴权拒绝**:无有效令牌 → 401(`join_family` 除外,那是发令牌本身)。

@@ -162,6 +162,34 @@ test('presence relay broadcasts world changes only inside the same family', asyn
   }
 });
 
+test('presence relay accepts farm livestock refresh events', async () => {
+  const { relay, url } = await makeRelay();
+  try {
+    const a = await openClient(url);
+    await hello(a, 'token_a');
+    const b = await openClient(url);
+    const joinedForA = onceMessage(a);
+    await hello(b, 'token_b');
+    await joinedForA;
+
+    const changeForB = onceMessage(b);
+    a.send(JSON.stringify({
+      type: 'world_changed',
+      table: 'farm_livestock',
+      id: 'farm_livestock:family_a:chicken_coop',
+      action: 'upsert',
+      event_id: 'farm_livestock_1',
+    }));
+    const ack = await onceMessage(a);
+    assert.equal(ack.type, 'world_changed_ack');
+    const changed = await changeForB;
+    assert.equal(changed.event.table, 'farm_livestock');
+    assert.equal(changed.event.id, 'farm_livestock:family_a:chicken_coop');
+  } finally {
+    await relay.close();
+  }
+});
+
 test('presence relay replaces old sockets for the same member', async () => {
   const { relay, url } = await makeRelay();
   try {

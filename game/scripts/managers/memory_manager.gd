@@ -1022,6 +1022,8 @@ func pull_remote() -> void:
 	var t_postcards := CloudManager.load_table("postcards")
 	var t_messages := CloudManager.load_table("messages")
 	var t_mailbox := CloudManager.load_table("mailbox_events")
+	var t_farm_plots := CloudManager.load_table("farm_plots")
+	var t_farm_livestock := CloudManager.load_table("farm_livestock")
 	var t_farm_activity := CloudManager.load_table("farm_activity_log")
 	var t_kitchen_dishes := CloudManager.load_table("kitchen_dishes")
 	if cloud_ready or not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
@@ -1036,6 +1038,12 @@ func pull_remote() -> void:
 		farm_activity_log = t_farm_activity
 		_trim_farm_activity_log()
 		farm_activity_changed.emit()
+		pulled = true
+	if cloud_ready or not t_farm_plots.is_empty() or not t_farm_livestock.is_empty():
+		if FarmManager != null and FarmManager.has_method("sync_from_cloud"):
+			FarmManager.sync_from_cloud(t_farm_plots, t_farm_livestock)
+		else:
+			farm_plots = t_farm_plots
 		pulled = true
 	if cloud_ready or not t_kitchen_dishes.is_empty():
 		kitchen_ai_dishes = t_kitchen_dishes
