@@ -15,7 +15,7 @@
 - `git fsck --full --no-reflogs --unreachable` 未报告缺失或损坏对象；输出的 unreachable 对象是历史强制更新后仍留在本地对象库中的不可达历史，不影响当前分支；
 - `AGENTS.md` 按约定保留在本地，不纳入提交；
 - `docs/dev/47_system_ai_backend_iteration_plan.md` 是本轮正式计划文档，应纳入后续文档提交；
-- `game/assets/characters/garden_tile/garden.png.import` 格式有效，Godot 导入和 Web 导出均实际使用；仓库已有 394 个受版本控制的 `.import` 文件，因此该文件应随原图纳入后续提交；
+- 历史验收曾纳入 `game/assets/characters/garden_tile/garden.png` 及其 `.import`；P1 许可证复核确认它与禁止再分发的第三方素材副本字节级相同，且无运行时引用，已与 `tilemap_gardening/` 一并删除；实际被花园场景引用的同源副本则已用项目内确定性生成器生成的原创同尺寸 PNG 替换，保留 TileSet 与存档兼容性；
 - `export_web/` 已由 `.gitignore` 排除，不纳入版本控制。
 
 本轮没有执行提交、推送、force-push 或历史改写。

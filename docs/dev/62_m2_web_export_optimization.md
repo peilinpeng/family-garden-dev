@@ -40,10 +40,10 @@ M2 在不删除源码资源、不改主场景和不改变运行时功能的前�
 | `scenes/garden_builder/test/*` | 花园地形开发测试场景 |
 | `scenes/Fishpond.tscn`、`assets/fishpond/*` | 已被 `scenes/pond/pond_area.tscn` 与 `assets/pond/*` 取代 |
 | `scenes/GardenTiledSandbox.tscn` | 花园沙盒场景，不在当前场景路由中 |
-| `assets/tilemap/*`、`assets/tilemap_gardening/*` | 旧 TileMap 素材包，当前运行时代码、场景与 manifest 无引用 |
+| `assets/tilemap/*` | 旧 TileMap 素材包，当前运行时代码、场景与 manifest 无引用 |
 | `assets/kitchen_ai/*` | AI 设计参考图，不由客户端运行时加载 |
 
-排除前已在生产脚本、当前场景、配置和 manifest 中检查 `res://` 引用；被排除项仍完整保留在仓库。
+排除前已在生产脚本、当前场景、配置和 manifest 中检查 `res://` 引用；被排除项仍完整保留在仓库。原 `assets/tilemap_gardening/*` 因第三方许可禁止再分发，已在后续 P1 审查修复中从工作树删除，不再依赖导出排除规则；功能分支历史清理需在修复提交后单独执行。
 
 ## 3. 可重复验收
 
