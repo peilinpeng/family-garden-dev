@@ -159,7 +159,6 @@ EXCLUDED_PATHS=(
   "res://scenes/garden_builder/test/"
   "res://assets/fishpond/"
   "res://assets/tilemap/"
-  "res://assets/tilemap_gardening/"
   "res://assets/kitchen_ai/"
 )
 
