@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const WebSocket = require('ws');
-const { createPresenceRelay } = require('../server.js');
+const { createPresenceRelay, relayAuditRecord, writeRelayAudit } = require('../server.js');
 
 function onceMessage(ws) {
   return new Promise((resolve) => {
@@ -40,6 +40,27 @@ async function hello(ws, token, sceneId = 'farm', appearance = {}) {
   ws.send(JSON.stringify({ type: 'hello', token, scene_id: sceneId, appearance }));
   return await onceMessage(ws);
 }
+
+test('presence relay 审计日志只保留连接健康白名单字段', () => {
+  const record = relayAuditRecord('presence_auth_rejected', {
+    reason: 'invalid_token',
+    active_clients: 2,
+    token: 'token_a_must_not_be_logged',
+    family_id: 'family_a_must_not_be_logged',
+    position: { x: 1, y: 2 },
+  });
+  assert.deepEqual(record, {
+    event: 'presence_auth_rejected',
+    reason: 'invalid_token',
+    active_clients: 2,
+  });
+  const lines = [];
+  writeRelayAudit(record, { info: (line) => lines.push(line) });
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].includes('token_a'), false);
+  assert.equal(lines[0].includes('family_a'), false);
+  assert.equal(lines[0].includes('position'), false);
+});
 
 test('presence relay authenticates hello and returns current peers', async () => {
   const { relay, url } = await makeRelay();

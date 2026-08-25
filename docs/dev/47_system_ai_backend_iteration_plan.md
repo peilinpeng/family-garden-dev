@@ -897,6 +897,10 @@ Scene Schema
 
 ## 12. Gate 8｜测试、可观测性、发布与运维
 
+> 2026-08-25：M4 已补齐 data_gateway 请求 ID、Presence 匿名连接健康日志、公开只读发布核验
+> 与发布/回滚规程；实现和验收记录见 `docs/dev/65_m4_observability_release_operations.md`。
+> 本 Gate 的双设备 UI 验收、分环境与数据恢复演练仍未完成，不能因 M4 通过而标记 Gate 8 完成。
+
 ### 12.1 单元测试
 
 - [ ] AI JSON 提取；

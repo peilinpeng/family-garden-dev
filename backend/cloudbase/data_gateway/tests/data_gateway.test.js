@@ -241,7 +241,11 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
 
   await scenario('whoami 只返回当前成员身份', async () => {
     const result = await invoke({ action: 'whoami' }, 'token_a');
-    assert.deepEqual(result, { ok: true, member_id: 'member_a', family_id: 'family_a', role: 'father', display_name: 'A' });
+    assert.deepEqual(
+      { ...result, request_id: undefined },
+      { ok: true, member_id: 'member_a', family_id: 'family_a', role: 'father', display_name: 'A', request_id: undefined }
+    );
+    assert.match(result.request_id, /^gw_[a-f0-9]{24}$/);
   });
 
   await scenario('list_family_members 只返回同家庭公开成员信息', async () => {
@@ -940,4 +944,24 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
   await scenario('未知 action 稳定拒绝', async () => {
     assert.match((await invoke({ action: 'unknown' }, 'token_a')).error, /unknown action/);
   });
+});
+
+test('data_gateway 可观测性记录使用白名单字段并返回可关联请求 ID', () => {
+  const { requestIdFromEvent, requestAuditRecord, writeRequestAudit } = gateway._observability;
+  assert.match(requestIdFromEvent({ headers: { 'X-Request-ID': 'token_a_should_not_be_used' } }), /^gw_[a-f0-9]{24}$/);
+
+  const record = requestAuditRecord({
+    requestId: 'release-20260825.1',
+    action: 'token_a_should_not_be_used',
+    startedAt: Date.now() - 7,
+    result: { ok: false, code: 401, error: 'Bearer token_a must never appear in logs' },
+  });
+  assert.deepEqual(Object.keys(record).sort(), ['action', 'code', 'duration_ms', 'error_class', 'event', 'ok', 'request_id']);
+  assert.equal(record.action, 'unknown');
+  assert.equal(record.error_class, 'unauthorized');
+  const calls = [];
+  writeRequestAudit(record, { info: (line) => calls.push(line) });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].includes('token_a'), false);
+  assert.equal(calls[0].includes('Bearer'), false);
 });
