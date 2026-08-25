@@ -110,14 +110,21 @@ Godot 新增 `shared_farm_inventory_transaction_test.tscn`，验证：
 素材历史清理必须覆盖仍包含提交 `af46dc6` 的远端引用。执行时需同时清除禁止目录路径和该目录中所有旧 blob ID，以便删除它们在其他路径下的副本，但保留当前原创替代文件。执行前应保留仅本地备份；备份引用不得推送，且会有意保留旧对象，因此验收必须在仅含重写后公开分支的隔离副本中执行：
 
 ```bash
-git rev-list --objects \
-  feature/garden-tilemap \
-  feature/quality-optimization \
-  feature/release-ui-final-polish \
+git for-each-ref --format='%(refname)' refs/remotes/origin \
+  | while read -r remote_ref; do git rev-list --objects "$remote_ref"; done \
   | grep 'tilemap_gardening'
 ```
 
-输出为空，且用旧 blob ID 与重写后上述全部公开引用做交集也为空，才算完成公开分支历史清理。本地恢复备份应保留到协作成员确认迁移完成后再单独处置。
+输出为空，且用旧 blob ID 与重写后全部公开分支做交集也为空，才算完成公开分支历史清理。本地恢复备份应保留到协作成员确认迁移完成后再单独处置。
+
+### 6.1 公开分支历史清理执行记录（2026-08-25）
+
+- 全量审计 20 条公开分支与标签 `v0.1-clean-mvp-baseline`；`main` 和标签无需改写；
+- 先完成 `feature/garden-tilemap`、`feature/quality-optimization`、`feature/release-ui-final-polish` 清理，再扩展改写 `dev` 及 15 条仍可达旧素材 blob 的历史功能分支；
+- 所有改写目标均以清理前远端 SHA 建立 `backup/public-history-cleanup/*` 本地恢复引用，备份未推送；正式更新使用逐分支精确 `force-with-lease` 与原子推送；
+- `feature/garden-mvp-loop` 用 33 张项目原创同尺寸 PNG 恢复运行时路径，并删除 5 张无引用 Atlas/动画副本；Godot 4.7 无界面资源导入与工程加载通过；
+- 清洁后的 `dev` 为 `f0c484a`，通过一次性 PR #33 的“全量回归与 Web 导出”检查后完成受保护分支更新；PR #33 随即关闭，临时验证分支已删除；
+- 最终 20 条公开分支的禁止路径命中为 0，291 个旧 blob ID 的可达交集为 0；`dev` 已成为 PR #32 头部的真实祖先，GitHub 状态恢复为 `MERGEABLE / CLEAN`。
 
 ## 7. 已知边界
 
