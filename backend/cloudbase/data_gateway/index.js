@@ -62,6 +62,11 @@ const INVENTORY_OPERATION_ID_RE = /^[a-zA-Z0-9_:-]{8,120}$/;
 const STOREHOUSE_SLOT_COUNT = 120;
 const RECENT_OPERATION_LIMIT = 32;
 const FARM_STAGE_COUNT = 7;
+const AUDITABLE_ACTIONS = new Set([
+  'join_family', 'whoami', 'list_family_members', 'upload_image', 'resolve_image',
+  'delete_image', 'cleanup_orphan_images', 'delete_place_bundle', 'mutate_storehouse',
+  'farm_action', 'snapshot', 'query', 'upsert', 'delete',
+]);
 const FARM_CROPS = new Map([
   ['corrato', { stageDuration: 90, baseYield: 2 }],
   ['tomelone', { stageDuration: 120, baseYield: 2 }],
@@ -107,6 +112,50 @@ function parseBody(event) {
     try { return JSON.parse(event.body); } catch (e) { return {}; }
   }
   return (event && event.body) || event || {};
+}
+
+// 生产日志只保存可枚举的动作、请求 ID、耗时和稳定错误分类。不得把 token、家庭 ID、
+// 成员 ID、图片内容或服务端异常原文写入日志，避免把家庭隐私扩散到云函数日志系统。
+function requestIdFromEvent() {
+  // 不接受客户端传入的 request ID，避免恶意客户端把 token 或私人内容伪装成可记录字段。
+  return 'gw_' + crypto.randomBytes(12).toString('hex');
+}
+
+function auditAction(value) {
+  return AUDITABLE_ACTIONS.has(value) ? value : 'unknown';
+}
+
+function auditErrorClass(result, code) {
+  if (!result || result.ok) return undefined;
+  if (code === 400) return 'invalid_request';
+  if (code === 401) return 'unauthorized';
+  if (code === 403) return 'forbidden';
+  if (code === 404) return 'not_found';
+  if (code === 409) return 'conflict';
+  return 'internal_error';
+}
+
+function requestAuditRecord({ requestId, action, startedAt, result }) {
+  const suppliedCode = Number(result && result.code);
+  const code = Number.isInteger(suppliedCode) && suppliedCode >= 100 && suppliedCode <= 599
+    ? suppliedCode
+    : (result && result.ok ? 200 : 400);
+  const record = {
+    event: 'data_gateway_request_completed',
+    request_id: requestId,
+    action: auditAction(action),
+    ok: Boolean(result && result.ok),
+    code,
+    duration_ms: Math.max(0, Date.now() - startedAt),
+  };
+  const errorClass = auditErrorClass(result, code);
+  if (errorClass) record.error_class = errorClass;
+  return record;
+}
+
+function writeRequestAudit(record, sink = console) {
+  const write = typeof sink.info === 'function' ? sink.info : sink.log;
+  write.call(sink, JSON.stringify(record));
 }
 
 function bearerToken(event) {
@@ -817,7 +866,7 @@ async function performFarmAction(body, identity) {
   return transactionValue(wrapped);
 }
 
-exports.main = async (event) => {
+async function handleRequest(event) {
   const body = parseBody(event);
   if (hasUnsafeObjectShape(body)) {
     return { ok: false, code: 400, error: 'invalid object structure' };
@@ -842,7 +891,7 @@ exports.main = async (event) => {
       });
       return { ok: true, member_token: memberToken, member_id: added.id };
     } catch (err) {
-      return { ok: false, error: String((err && err.message) || err) };
+      return { ok: false, code: 500, error: String((err && err.message) || err) };
     }
   }
 
@@ -1056,6 +1105,28 @@ exports.main = async (event) => {
 
     return { ok: false, error: 'unknown action: ' + action };
   } catch (err) {
-    return { ok: false, error: String((err && err.message) || err) };
+    return { ok: false, code: 500, error: String((err && err.message) || err) };
   }
+}
+
+exports.main = async (event) => {
+  const startedAt = Date.now();
+  const requestId = requestIdFromEvent(event);
+  const body = parseBody(event);
+  const action = typeof body.action === 'string' ? body.action : '';
+  let result;
+  try {
+    result = await handleRequest(event);
+  } catch (_) {
+    // 未捕获异常不能把 SDK 或数据库细节回传给客户端；详细定位依赖 request_id 对应的结构化日志。
+    result = { ok: false, code: 500, error: 'internal server error' };
+  }
+  writeRequestAudit(requestAuditRecord({ requestId, action, startedAt, result }));
+  return { ...result, request_id: requestId };
+};
+
+exports._observability = {
+  requestIdFromEvent,
+  requestAuditRecord,
+  writeRequestAudit,
 };

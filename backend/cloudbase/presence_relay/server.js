@@ -24,9 +24,34 @@ const WORLD_EVENT_TABLES = new Set([
   'farm_activity_log',
 ]);
 const WORLD_EVENT_ACTIONS = new Set(['upsert', 'delete', 'refresh']);
+const RELAY_AUDIT_EVENTS = new Set([
+  'presence_authenticated', 'presence_auth_rejected', 'presence_message_rejected',
+  'presence_connection_closed', 'presence_connection_replaced',
+]);
+const RELAY_AUDIT_REASONS = new Set([
+  'missing_token', 'invalid_token', 'bad_json', 'bad_message', 'left', 'leave', 'close', 'error', 'stale', 'replaced',
+]);
 
 function json(data) {
   return JSON.stringify(data);
+}
+
+// Presence 日志是连接健康信号，不是行为回放。严禁记录 token、成员/家庭标识、昵称、坐标
+// 或业务事件 ID；只保留固定事件、固定失败类别和当前连接数。
+function relayAuditRecord(event, fields = {}) {
+  const record = {
+    event: RELAY_AUDIT_EVENTS.has(event) ? event : 'presence_unknown_event',
+  };
+  if (RELAY_AUDIT_REASONS.has(fields.reason)) record.reason = fields.reason;
+  if (Number.isInteger(fields.active_clients) && fields.active_clients >= 0) {
+    record.active_clients = fields.active_clients;
+  }
+  return record;
+}
+
+function writeRelayAudit(record, sink = console) {
+  const write = typeof sink.info === 'function' ? sink.info : sink.log;
+  write.call(sink, JSON.stringify(record));
 }
 
 function safeString(value, max = 80) {
@@ -126,6 +151,8 @@ function createPresenceRelay(options = {}) {
   const verifyToken = options.verifyToken || verifyWithDataGateway;
   const heartbeatMs = Number(options.heartbeatMs || HEARTBEAT_MS);
   const staleMs = Number(options.staleMs || STALE_MS);
+  const logger = options.logger || console;
+  const audit = (event, fields) => writeRelayAudit(relayAuditRecord(event, fields), logger);
   const server = options.server || http.createServer((req, res) => {
     if (req.url === '/healthz') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -180,6 +207,7 @@ function createPresenceRelay(options = {}) {
     if (!client) return;
     clients.delete(ws);
     broadcast(client, { type: 'peer_left', member_id: client.member_id, reason });
+    audit('presence_connection_closed', { reason, active_clients: clients.size });
   }
 
   function replaceExistingMember(identity) {
@@ -188,6 +216,7 @@ function createPresenceRelay(options = {}) {
         clients.delete(client.ws);
         send(client.ws, { type: 'error', code: 'REPLACED', message: 'same member connected from another device' });
         client.ws.close(1000, 'replaced');
+        audit('presence_connection_replaced', { reason: 'replaced', active_clients: clients.size });
       }
     }
   }
@@ -196,6 +225,7 @@ function createPresenceRelay(options = {}) {
     if (!msg.token) {
       send(ws, { type: 'error', code: 'UNAUTHORIZED', message: 'missing token' });
       ws.close(1008, 'unauthorized');
+      audit('presence_auth_rejected', { reason: 'missing_token', active_clients: clients.size });
       return;
     }
     let identity;
@@ -204,6 +234,7 @@ function createPresenceRelay(options = {}) {
     } catch (err) {
       send(ws, { type: 'error', code: 'UNAUTHORIZED', message: 'invalid token' });
       ws.close(1008, 'unauthorized');
+      audit('presence_auth_rejected', { reason: 'invalid_token', active_clients: clients.size });
       return;
     }
     replaceExistingMember(identity);
@@ -225,6 +256,7 @@ function createPresenceRelay(options = {}) {
     clients.set(ws, client);
     send(ws, { type: 'hello_ok', self: publicPeer(client), peers: peersFor(client), server_time: Date.now() });
     broadcast(client, { type: 'peer_joined', peer: publicPeer(client) });
+    audit('presence_authenticated', { active_clients: clients.size });
   }
 
   function handleMove(ws, msg) {
@@ -272,11 +304,13 @@ function createPresenceRelay(options = {}) {
         raw = JSON.parse(buffer.toString('utf8'));
       } catch (err) {
         send(ws, { type: 'error', code: 'BAD_JSON', message: 'invalid json' });
+        audit('presence_message_rejected', { reason: 'bad_json', active_clients: clients.size });
         return;
       }
       const msg = sanitizePresenceMessage(raw);
       if (!msg) {
         send(ws, { type: 'error', code: 'BAD_MESSAGE', message: 'unsupported message' });
+        audit('presence_message_rejected', { reason: 'bad_message', active_clients: clients.size });
         return;
       }
       if (msg.type === 'hello') {
@@ -338,6 +372,8 @@ if (require.main === module) {
 
 module.exports = {
   createPresenceRelay,
+  relayAuditRecord,
+  writeRelayAudit,
   sanitizePresenceMessage,
   verifyWithDataGateway,
 };
