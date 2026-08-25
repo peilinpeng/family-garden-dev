@@ -7,6 +7,7 @@ const CATALOG_PATH := "res://assets/manifest/items.json"
 var _defs: Dictionary = {}          ## id -> ItemDef
 var _by_category: Dictionary = {}   ## category -> Array[String](id)
 var _icon_cache: Dictionary = {}    ## icon_spec -> Texture2D
+var _load_order: Array[String] = [] ## items.json 中的稳定顺序,供背包整理使用
 
 func _ready() -> void:
 	_load()
@@ -25,6 +26,7 @@ func _load() -> void:
 			var def := ItemDef.new(raw)
 			_defs[def.id] = def
 			_by_category.get_or_add(def.category, []).append(def.id)
+			_load_order.append(def.id)
 
 func has(id: String) -> bool:
 	return _defs.has(id)
@@ -41,18 +43,29 @@ func max_stack(id: String) -> int:
 	return d.max_stack if d != null else 99
 
 func all_ids() -> Array:
-	return _defs.keys()
+	return _load_order.duplicate()
+
+func catalog_index(id: String) -> int:
+	var idx := _load_order.find(id)
+	return idx if idx >= 0 else 999999
 
 func by_category(cat: String) -> Array:
 	return _by_category.get(cat, [])
 
-## 把 "sheet:col:row" 解析成 32×32 的 AtlasTexture(复用现有图集,无需新图标资源)。
+## 支持 res:// 独立贴图路径，或把 "sheet:col:row" 解析成 32×32 的 AtlasTexture。
 func icon_texture(id: String) -> Texture2D:
 	var d: ItemDef = _defs.get(id, null)
 	if d == null or d.icon_spec == "":
 		return null
 	if _icon_cache.has(d.icon_spec):
 		return _icon_cache[d.icon_spec]
+	if d.icon_spec.begins_with("res://"):
+		if not ResourceLoader.exists(d.icon_spec):
+			return null
+		var standalone := load(d.icon_spec) as Texture2D
+		if standalone != null:
+			_icon_cache[d.icon_spec] = standalone
+		return standalone
 	var parts := d.icon_spec.split(":")
 	if parts.size() != 3:
 		return null

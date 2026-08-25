@@ -4,10 +4,12 @@ extends RefCounted
 ## Gate 4 图片预处理。所有支持格式先解码，再统一重编码为 JPEG：
 ## - 消除路径/文件名信任；
 ## - 去除 EXIF 等元数据；
-## - 把长边限制到 1600，控制上传与 AI 延迟。
+## - 自适应压缩到 CloudBase HTTP 入口可稳定承载的体积，控制上传与 AI 延迟。
 
 const MAX_SOURCE_BYTES := 12 * 1024 * 1024
-const MAX_UPLOAD_BYTES := 6 * 1024 * 1024
+## HTTP 访问服务会对 Base64 后的整个 JSON 请求体限流；40 KiB 原始 JPEG
+## 编码后约 54 KiB，给 header/JSON 留出安全余量。
+const MAX_UPLOAD_BYTES := 40 * 1024
 const MAX_EDGE := 1600
 const MIN_EDGE := 32
 const ALLOWED_TYPES := ["image/jpeg", "image/png", "image/webp"]
@@ -31,14 +33,24 @@ static func prepare(bytes: PackedByteArray, content_type: String) -> Dictionary:
 	if mini(image.get_width(), image.get_height()) < MIN_EDGE:
 		return _error("IMAGE_TOO_SMALL", "图片尺寸至少需要 32×32。")
 	var source_size := Vector2i(image.get_width(), image.get_height())
-	_resize_to_edge(image, MAX_EDGE)
 	image.convert(Image.FORMAT_RGB8)
-	var encoded := image.save_jpg_to_buffer(0.84)
-	if encoded.size() > MAX_UPLOAD_BYTES:
-		_resize_to_edge(image, 1280)
-		encoded = image.save_jpg_to_buffer(0.72)
+	var attempts := [
+		{"edge": MAX_EDGE, "quality": 0.82},
+		{"edge": 1200, "quality": 0.70},
+		{"edge": 900, "quality": 0.60},
+		{"edge": 720, "quality": 0.52},
+		{"edge": 560, "quality": 0.45},
+		{"edge": 420, "quality": 0.38},
+		{"edge": 360, "quality": 0.32},
+	]
+	var encoded := PackedByteArray()
+	for attempt in attempts:
+		_resize_to_edge(image, int(attempt.edge))
+		encoded = image.save_jpg_to_buffer(float(attempt.quality))
+		if not encoded.is_empty() and encoded.size() <= MAX_UPLOAD_BYTES:
+			break
 	if encoded.is_empty() or encoded.size() > MAX_UPLOAD_BYTES:
-		return _error("ENCODE_TOO_LARGE", "图片压缩后仍然过大，请换一张图片。")
+		return _error("ENCODE_TOO_LARGE", "图片压缩后仍超过云端传输限制，请换一张构图更简单的图片。")
 	return {
 		"ok": true,
 		"bytes": encoded,

@@ -3,5 +3,5 @@
   "endpoint": "https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/ai_gateway",
   "timeout_seconds": 45,
   "cache_ttl_seconds": 300,
-  "cache_namespace": "ai-contract-1.1.0"
+  "cache_namespace": "ai-contract-1.2.1"
 }

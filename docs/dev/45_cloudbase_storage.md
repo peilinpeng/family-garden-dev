@@ -40,15 +40,17 @@ Godot
 | `members` | 后台预分发(不进网关白名单,只服务端可查) | family_id, member_token, role, display_name |
 | `families` | MemoryManager `_family_row` | id=family_id, cross_member_interaction_count, family_portrait |
 | `memories` `nodes` `answers` `rooms` `room_objects` | MemoryManager `_sync` | 各自 id + 业务字段 |
-| `inventories` | InventoryManager | id(`backpack:`+member_id 或 `storehouse:`+family_id), kind, owner_member_id(仅backpack), stacks[] |
+| `inventories` | InventoryManager | id(`backpack:`+member_id 或 `storehouse:`+family_id), kind, owner_member_id(仅backpack), stacks[], version, recent_operations |
 | `travel_places` `postcards` `messages` `mailbox_events` | 现有 Supabase 直连(待迁) | 见 supabase_schema.sql |
+| `farm_plots` `farm_livestock` | FarmManager + data_gateway 事务 | 家庭作物地块、家庭畜牧冷却 |
 
 > `SNAPSHOT_TABLES`(cloudbase_backend.gd)= bootstrap 时预拉的表,供同步 `load_table` 读。
 
 ## 4. 现在会上云的
 
 - ✅ MemoryManager 的 `_sync` 表(memories/nodes/answers/rooms/room_objects/families)。
-- ✅ 库存(背包/共享仓)`inventories`,本地优先 + 推云 + 启动从云覆盖。
+- ✅ 库存 `inventories`：背包保留本人快照；共享仓使用服务端增量事务、幂等键与权威版本，启动从云覆盖。
+- ✅ 农场 `farm_plots/farm_livestock`：服务端事务 + 启动快照 + Presence 刷新。
 
 ## 5. 安全:每用户身份认证(已做)
 
@@ -65,7 +67,7 @@ Godot
 
 - **迁旧读路径**:`CloudService.load_family_data`(Supabase 直连)→ 走本网关。
 - **实时同步**(共享仓即时刷新、看到家人走动)= CloudBase 实时,建在存储之上(`docs/43`);`RemotePlayer.set_target()` 已是现成的接入口。
-- 共享仓并发"抢最后一个"→ 网关事务校验。
+- ✅ 共享仓并发“抢最后一个”已改为网关事务校验；厨房与农场多项扣发均在单事务完成（见 `docs/dev/64`）。
 - 正式登录(微信/手机号)替代预分发的静态令牌。
 
 ## 7. 端到端验证结果(诚实汇报)
@@ -117,8 +119,8 @@ father/mother/player/partner),用真实 HTTPS 请求(非本地模拟)验证通�
 
 - `whoami` 正确解析真实成员身份(含中文昵称)。
 - 错误令牌 → 正确返回 `{ok:false, code:401}`。
-- 写入共享仓(`upsert` storehouse)→ 另一个成员的 `query` 能读到同一份数据
-  ——**跨成员共享在真实环境成立**。
+- 历史验收曾使用 `upsert storehouse` 验证跨成员共享；P1 修复后该旧写法已被 409 禁止，
+  新客户端统一使用 `mutate_storehouse`，重新上线需按 `docs/dev/64` 做真实并发烟测。
 - 成员各自写入背包(`upsert` backpack)→ 对方 `query` 看不到彼此的背包行
   ——**个人隔离在真实环境成立**。
 - `snapshot` 横跨全部 7 个业务集合一次性返回成功(真实 `bootstrap()` 会调这个)。

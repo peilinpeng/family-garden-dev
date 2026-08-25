@@ -4,10 +4,15 @@
   "title": "analyze-room-photo 请求",
   "type": "object",
   "additionalProperties": false,
-  "required": ["memory_id", "image_url", "language"],
+  "required": ["memory_id", "language"],
   "properties": {
     "memory_id": { "$ref": "common.schema.json#/$defs/id" },
     "image_url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 },
+    "upload_id": { "type": "string", "pattern": "^upload_[a-f0-9]{32}$", "maxLength": 64 },
     "language": { "$ref": "common.schema.json#/$defs/language" }
-  }
+  },
+  "anyOf": [
+    { "required": ["upload_id"] },
+    { "required": ["image_url"] }
+  ]
 }

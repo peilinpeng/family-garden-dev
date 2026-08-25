@@ -1,0 +1,157 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/kitchen_new/kitchen_new.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bt3pc8un8ywq3" path="res://assets/kitchen_new/background.png" id="2_background"]
+[ext_resource type="Texture2D" uid="uid://crjygnilikxvm" path="res://assets/kitchen_new/island.png" id="3_island"]
+[ext_resource type="Texture2D" uid="uid://c3xtjiwq5ci6x" path="res://assets/kitchen_new/waterfall_1.png" id="4_waterfall1"]
+[ext_resource type="Texture2D" uid="uid://dwbw3sofy8r4h" path="res://assets/kitchen_new/waterfall_2.png" id="5_waterfall2"]
+[ext_resource type="Texture2D" uid="uid://btim2in3qr26v" path="res://assets/kitchen_new/waterfall_3.png" id="6_waterfall3"]
+[ext_resource type="Texture2D" uid="uid://cmdvvtf0x6vhk" path="res://assets/kitchen_new/waterfall_4.png" id="7_waterfall4"]
+[ext_resource type="Texture2D" uid="uid://w4vyha7vn1hd" path="res://assets/kitchen_new/pond_1.png" id="8_pond1"]
+[ext_resource type="Texture2D" uid="uid://bygx1g1o1moi7" path="res://assets/kitchen_new/pond_2.png" id="9_pond2"]
+[ext_resource type="Texture2D" uid="uid://0tsgd15wjk2j" path="res://assets/kitchen_new/pond_3.png" id="10_pond3"]
+[ext_resource type="Texture2D" uid="uid://cj32v3qvxiq3c" path="res://assets/kitchen_new/pond_4.png" id="11_pond4"]
+[ext_resource type="Texture2D" uid="uid://cj6wuaj3j6pve" path="res://assets/kitchen_new/pot_1.png" id="12_pot1"]
+[ext_resource type="Texture2D" uid="uid://ba28qvdw3jpho" path="res://assets/kitchen_new/pot_2.png" id="13_pot2"]
+[ext_resource type="Texture2D" uid="uid://b0ce3f61aotvl" path="res://assets/kitchen_new/pot_3.png" id="14_pot3"]
+[ext_resource type="Texture2D" uid="uid://8p2k6bailumc" path="res://assets/kitchen_new/pot_4.png" id="15_pot4"]
+[ext_resource type="Texture2D" uid="uid://qf6ojqawqpja" path="res://assets/kitchen_new/pot_5.png" id="16_pot5"]
+[ext_resource type="Texture2D" uid="uid://ccgr7nvisdg48" path="res://assets/kitchen_new/willow_1.png" id="17_willow1"]
+[ext_resource type="Texture2D" uid="uid://culhg52aqg5jh" path="res://assets/kitchen_new/willow_2.png" id="18_willow2"]
+[ext_resource type="Texture2D" uid="uid://lkq2mwg4mcuw" path="res://assets/kitchen_new/willow_3.png" id="19_willow3"]
+[ext_resource type="Texture2D" uid="uid://cwbiyoymbhllt" path="res://assets/kitchen_new/willow_4.png" id="20_willow4"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_waterfall"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("4_waterfall1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_waterfall2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_waterfall3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_waterfall4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 4.0
+}]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_pond"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("8_pond1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_pond2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_pond3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_pond4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 1.0
+}]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_pot"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("12_pot1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_pot2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_pot3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_pot4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_pot5")
+}],
+"loop": true,
+"name": &"default",
+"speed": 4.0
+}]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_willow"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("17_willow1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_willow2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_willow3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_willow4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 1.0
+}]
+
+[node name="KitchenNew" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Background" type="Sprite2D" parent="."]
+z_index = -100
+texture = ExtResource("2_background")
+centered = false
+
+[node name="GroundProps" type="Node2D" parent="."]
+z_index = -60
+
+[node name="Pond" type="AnimatedSprite2D" parent="GroundProps"]
+centered = false
+sprite_frames = SubResource("SpriteFrames_pond")
+animation = &"default"
+autoplay = "default"
+
+[node name="Waterfall" type="AnimatedSprite2D" parent="GroundProps"]
+centered = false
+sprite_frames = SubResource("SpriteFrames_waterfall")
+animation = &"default"
+autoplay = "default"
+
+[node name="FixedBackVisuals" type="Node2D" parent="."]
+z_index = -50
+
+[node name="Pot" type="AnimatedSprite2D" parent="FixedBackVisuals"]
+centered = false
+sprite_frames = SubResource("SpriteFrames_pot")
+animation = &"default"
+autoplay = "default"
+
+[node name="Objects" type="Node2D" parent="."]
+
+[node name="Island" type="Node2D" parent="Objects"]
+
+[node name="Sprite2D" type="Sprite2D" parent="Objects/Island"]
+texture = ExtResource("3_island")
+centered = false
+
+[node name="SortAnchor" type="Marker2D" parent="Objects/Island"]
+position = Vector2(264, 500)
+
+[node name="Foreground" type="Node2D" parent="."]
+z_index = 1000
+
+[node name="Willow" type="AnimatedSprite2D" parent="Foreground"]
+centered = false
+sprite_frames = SubResource("SpriteFrames_willow")
+animation = &"default"
+autoplay = "default"

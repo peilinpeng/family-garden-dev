@@ -5,9 +5,9 @@
       "tile_set": "res://assets/kitchen/kitchen_tileset.tres",
       "source_id": 0,
       "tile_size": [16, 16],
-      "display_scale": 2,
-      "grid_size": [34, 22],
-      "origin": [96, 8],
+      "display_scale": 4,
+      "grid_size": [20, 11],
+      "origin": [0, 8],
       "floor": [4, 3],
       "wall": [0, 0]
     }
@@ -16,16 +16,17 @@
     "desk": {
       "label": "书桌",
       "kind": "tile_stamp",
-      "size": [4, 2],
-      "tiles": [[0, 15], [1, 15], [2, 15], [3, 15], [0, 16], [1, 16], [2, 16], [3, 16]],
+      "size": [3, 2],
+      "tiles": [[3, 15], [4, 15], [5, 15], [3, 16], [4, 16], [5, 16]],
       "collision": true,
       "anchor": "bottom"
     },
     "lamp": {
       "label": "灯",
-      "kind": "tile_stamp",
-      "size": [1, 2],
-      "tiles": [[7, 18], [7, 19]],
+      "kind": "procedural_stamp",
+      "render": "floor_lamp",
+      "size": [2, 3],
+      "tiles": [],
       "collision": false,
       "anchor": "bottom"
     },
@@ -33,15 +34,15 @@
       "label": "绿植",
       "kind": "tile_stamp",
       "size": [1, 2],
-      "tiles": [[0, 18], [0, 19]],
+      "tiles": [[0, 15], [0, 16]],
       "collision": true,
       "anchor": "bottom"
     },
     "photo_wall": {
       "label": "照片墙",
       "kind": "tile_stamp",
-      "size": [4, 1],
-      "tiles": [[4, 18], [5, 18], [6, 18], [7, 18]],
+      "size": [3, 1],
+      "tiles": [[6, 16], [7, 16], [8, 16]],
       "collision": false,
       "anchor": "wall"
     },
@@ -63,15 +64,15 @@
     }
   },
   "zone_cells": {
-    "back_wall": [[4, 2], [14, 2], [24, 2]],
-    "back_left": [[4, 7], [9, 7]],
-    "back_center": [[14, 7], [19, 7]],
-    "back_right": [[24, 7], [29, 7]],
-    "left_side": [[4, 12], [8, 12]],
-    "right_side": [[25, 12], [29, 12]],
-    "front_left": [[6, 17]],
-    "front_center": [[15, 17]],
-    "front_right": [[24, 17]],
-    "floor_center": [[15, 13]]
+    "back_wall": [[6, 1], [2, 1], [13, 1]],
+    "back_left": [[2, 4], [5, 4]],
+    "back_center": [[7, 4], [10, 4]],
+    "back_right": [[14, 4], [16, 4]],
+    "left_side": [[2, 6], [5, 6]],
+    "right_side": [[16, 5], [13, 6]],
+    "front_left": [[3, 8]],
+    "front_center": [[8, 8]],
+    "front_right": [[15, 8]],
+    "floor_center": [[7, 6], [10, 6]]
   }
 }

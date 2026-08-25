@@ -152,6 +152,15 @@ fallback 自身仍需通过相同 Schema 和输出安全检查，并记录 `fall
 缺字段和非法枚举均被服务端拦截，没有半成品进入游戏，也没有用 fallback 掩盖内容安全失败。
 最终云端只更新了 `ai_gateway`；`data_gateway`、HTTP 路由和环境变量保持不变。
 
+2026-07-11 再次完成真实生产复测并更新 `ai_gateway`、`data_gateway` 代码，HTTP 路由与环境变量保持不变：
+
+- `moderate-user-content` 通过腾讯内容安全，审核路由可用；
+- `memory-card-v3` 将追问从复述原文改为补充感官、对话和后续细节；
+- `bottle-question-v3` 不再根据 `fishpond` 游戏场景虚构现实中的鱼池经历；
+- `memory-link-v4` 只保留有文本证据的最强关系；
+- `room-analysis-v4` 通过受控 `upload_id` 解析图片，忽略界面叠层并在物件不确定时优先省略；
+- 真实 HTTP 入口验证约 78 KiB JPEG 经 Base64 后会被平台 413 拒绝，因此客户端改为自适应压缩到 40 KiB；20 KiB、480×317 测试图上传、视觉推理和删除均通过。
+
 图片来源验收还确认：Wikimedia 与 GitHub Raw 链接在 IMS 侧返回 `IMS_IMAGE_FETCH_FAILED`，
 CloudBase 云存储临时 HTTPS 链接可稳定通过。生产图片应使用 CloudBase/COS/CDN 等腾讯可达
 存储，并确保签名链接在整个审核与推理窗口内有效；临时链接过期时客户端应重新获取。
@@ -161,7 +170,7 @@ CloudBase 云存储临时 HTTPS 链接可稳定通过。生产图片应使用 Cl
 `CONTENT_SAFETY_SECRET_KEY` 与 `CONTENT_SAFETY_REGION`，并重新完成本地测试和部署构建。
 
 同日确认原线上 `data_gateway` 版本缺少 `join_family`。更新为仓库当前版本后，带非法参数的
-无副作用探针正确返回 `family_id required, role must be one of father/mother/partner/player`；
+无副作用探针正确返回 `family_id required, role must be one of father/mother/grandfather/grandmother/partner/player`；
 Godot 随后生成本地 `cloud_identity.json`，`whoami` 返回测试家庭 `family1`、角色 `partner`。
 
 ## 9. 影响范围

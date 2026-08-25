@@ -23,10 +23,12 @@ extends Node
 
 const CONFIG_PATH := "res://config/cloudbase.json"      ## 项目级,可提交:endpoint / family_id
 const IDENTITY_PATH := "user://cloud_identity.json"      ## 设备级,不提交:member_token
+const REQUEST_TIMEOUT_SECONDS := 30.0
 ## bootstrap 时要从云端预拉进缓存的表(供 MemoryManager.pull_remote 同步读)。
 const SNAPSHOT_TABLES := [
 	"memories", "nodes", "answers", "rooms", "room_objects", "families", "inventories",
-	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots",
+	"travel_places", "postcards", "messages", "mailbox_events", "farm_plots", "farm_activity_log",
+	"farm_livestock", "kitchen_dishes",
 ]
 
 var _cfg: Dictionary = {}
@@ -117,19 +119,56 @@ func delete_record(table: String, row_id: String) -> void:
 
 func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
 	var res: Dictionary = await _request({"action": "delete", "table": table, "id": row_id})
+	if String(res.get("error", "")) == "not found":
+		res = {"ok": true, "already_deleted": true}
 	if bool(res.get("ok", false)) and _cache.has(table):
 		_cache[table] = (_cache[table] as Array).filter(func(r): return str(r.get("id", "")) != row_id)
 	return res
 
-## Gate 4 图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
-## 临时 image_url 只用于本次 AI 调用，不应当作永久地址写入业务数据。
-func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
+func mutate_storehouse(consumes: Array, grants: Array, operation_id: String) -> Dictionary:
+	var res: Dictionary = await _request({
+		"action": "mutate_storehouse",
+		"operation_id": operation_id,
+		"consumes": consumes,
+		"grants": grants,
+	})
+	if res.has("stacks"):
+		_cache_inventory_result("storehouse", res)
+	return res
+
+func perform_farm_action(action: String, payload: Dictionary, operation_id: String) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["action"] = "farm_action"
+	body["farm_action"] = action
+	body["operation_id"] = operation_id
+	var res: Dictionary = await _request(body)
+	if not bool(res.get("ok", false)):
+		return res
+	if res.get("storehouse", null) is Dictionary:
+		_cache_upsert("inventories", res["storehouse"])
+	if res.get("backpack", null) is Dictionary:
+		_cache_upsert("inventories", res["backpack"])
+	if res.get("plot", null) is Dictionary and not (res["plot"] as Dictionary).is_empty():
+		_cache_upsert("farm_plots", res["plot"])
+	var deleted_plot_id := str(res.get("deleted_plot_id", ""))
+	if deleted_plot_id != "" and _cache.has("farm_plots"):
+		_cache["farm_plots"] = (_cache["farm_plots"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) != deleted_plot_id
+		)
+	if res.get("livestock", null) is Dictionary:
+		_cache_upsert("farm_livestock", res["livestock"])
+	return res
+
+## 私有图片通道：原始字节只发给 data_gateway；返回的 upload_id 可持久化，
+## 临时 image_url 只用于本次展示或 AI 调用，不应当作永久地址写入业务数据。
+func upload_image(bytes: PackedByteArray, content_type: String, purpose: String = "ai") -> Dictionary:
 	if bytes.is_empty():
 		return {"ok": false, "error": "empty image"}
 	return await _request({
 		"action": "upload_image",
 		"content_type": content_type,
 		"base64_data": Marshalls.raw_to_base64(bytes),
+		"purpose": purpose,
 	})
 
 func resolve_image(upload_id: String) -> Dictionary:
@@ -137,7 +176,30 @@ func resolve_image(upload_id: String) -> Dictionary:
 
 func delete_image(upload_id: String) -> bool:
 	var result: Dictionary = await _request({"action": "delete_image", "upload_id": upload_id})
-	return bool(result.get("ok", false))
+	return bool(result.get("ok", false)) or int(result.get("code", 0)) == 404
+
+func delete_place_bundle(place_id: String) -> Dictionary:
+	var result: Dictionary = await _request({
+		"action": "delete_place_bundle",
+		"place_id": place_id,
+	})
+	if not bool(result.get("ok", false)):
+		return result
+	if _cache.has("travel_places"):
+		_cache["travel_places"] = (_cache["travel_places"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) != place_id
+		)
+	var postcard_ids: Array = result.get("postcard_ids", [])
+	if _cache.has("postcards"):
+		_cache["postcards"] = (_cache["postcards"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) not in postcard_ids
+		)
+	var event_ids: Array = result.get("event_ids", [])
+	if _cache.has("mailbox_events"):
+		_cache["mailbox_events"] = (_cache["mailbox_events"] as Array).filter(
+			func(row): return str(row.get("id", row.get("_id", ""))) not in event_ids
+		)
+	return result
 
 func load_table(table: String, _query: String = "") -> Array:
 	return (_cache.get(table, []) as Array).duplicate(true)
@@ -176,7 +238,11 @@ func refresh() -> void:
 	if tables is Dictionary:
 		for t in tables:
 			if tables[t] is Array:
-				_cache[t] = tables[t]
+					_cache[t] = tables[t]
+
+func cleanup_orphan_images() -> int:
+	var result: Dictionary = await _request({"action": "cleanup_orphan_images"})
+	return int(result.get("deleted", 0)) if bool(result.get("ok", false)) else 0
 
 # ── HTTP ─────────────────────────────────────────────
 func _post(body: Dictionary) -> void:
@@ -188,6 +254,7 @@ func _request(body: Dictionary) -> Dictionary:
 	if endpoint == "":
 		return {}
 	var req := HTTPRequest.new()
+	req.timeout = REQUEST_TIMEOUT_SECONDS
 	add_child(req)
 	var headers := ["Content-Type: application/json"]
 	# 本人的成员令牌:服务端据此解析身份(family_id/member_id/role),不信 body。
@@ -201,12 +268,17 @@ func _request(body: Dictionary) -> Dictionary:
 		return {}
 	var result: Array = await req.request_completed
 	req.queue_free()
+	var result_code: int = int(result[0])
 	var code: int = result[1]
 	var bytes: PackedByteArray = result[3]
+	if result_code == HTTPRequest.RESULT_TIMEOUT:
+		return {"ok": false, "error": "request timeout", "code": 504}
+	if result_code != HTTPRequest.RESULT_SUCCESS:
+		return {"ok": false, "error": "network request failed", "code": 503}
+	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
 	if code < 200 or code >= 300:
 		push_warning("[CloudBase] %s 失败 code=%d" % [body.get("action", "?"), code])
-		return {}
-	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+		return parsed if parsed is Dictionary else {"ok": false, "error": "http error", "code": code}
 	return parsed if parsed is Dictionary else {}
 
 func _cache_upsert(table: String, row: Dictionary) -> void:
@@ -220,3 +292,12 @@ func _cache_upsert(table: String, row: Dictionary) -> void:
 				return
 	arr.append(row)
 	_cache[table] = arr
+
+func _cache_inventory_result(kind: String, result: Dictionary) -> void:
+	var row := {
+		"id": str(result.get("id", kind)),
+		"kind": kind,
+		"stacks": (result.get("stacks", []) as Array).duplicate(true),
+		"version": int(result.get("version", 0)),
+	}
+	_cache_upsert("inventories", row)

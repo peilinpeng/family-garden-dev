@@ -2,36 +2,60 @@
   "scene": "garden",
   "doc": "docs/09_godot_coordinate_art_spec.md section 14",
   "spawn_points": {
-    "default": [640, 480],
-    "from_fishpond": [136, 288],
-    "GardenFromPondSpawnPoint": [136, 288],
-    "from_room": [224, 448],
-    "from_farm": [640, 224]
+    "default": [640, 520],
+    "from_fishpond": [176, 304],
+    "GardenFromPondSpawnPoint": [176, 304],
+    "from_room": [640, 335],
+    "from_farm": [512, 336],
+    "from_kitchen": [1135, 235]
   },
   "portals": [
     {
       "portal_id": "PondEntranceArea",
       "target_scene": "res://scenes/pond/pond_area.tscn",
-      "spawn_point": "PondSpawnPoint",
-      "trigger_rect": [24, 240, 96, 96],
-      "prompt_text": "Enter pond",
-      "tap_enabled": true
+      "spawn_point": "from_garden",
+      "trigger_rect": [72, 248, 56, 40],
+      "prompt_text": "前往鱼塘",
+      "marker_text": "← 鱼塘  E / 点击",
+      "marker_position": [40, 218],
+      "show_marker": true,
+      "tap_enabled": true,
+      "key_interact": true,
+      "fade": true,
+      "delay": 0.35
     },
     {
       "portal_id": "garden_portal_room",
       "target_scene": "room",
       "spawn_point": "from_garden",
-      "trigger_rect": [128, 384, 96, 128],
-      "prompt_text": "Return to room",
+      "trigger_rect": [590, 280, 120, 95],
+      "prompt_text": "回房间",
       "tap_enabled": true
     },
     {
       "portal_id": "garden_portal_farm",
       "target_scene": "farm",
       "spawn_point": "from_garden",
-      "trigger_rect": [576, 128, 128, 80],
-      "prompt_text": "Go to farm",
-      "tap_enabled": true
+      "trigger_rect": [480, 248, 56, 40],
+      "prompt_text": "前往农场",
+      "marker_text": "↑ 农场  E / 点击",
+      "marker_position": [420, 218],
+      "show_marker": true,
+      "tap_enabled": true,
+      "key_interact": true,
+      "fade": true,
+      "delay": 0.35,
+      "cooldown_after_teleport": 0.8,
+      "one_way": true
+    },
+    {
+      "portal_id": "garden_portal_kitchen",
+      "target_scene": "kitchen",
+      "spawn_point": "from_garden",
+      "trigger_rect": [1080, 110, 110, 130],
+      "prompt_text": "Enter the kitchen (E)",
+      "tap_enabled": true,
+      "key_interact": true
     }
   ]
 }

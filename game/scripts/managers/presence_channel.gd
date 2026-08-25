@@ -139,6 +139,7 @@ func _send_hello() -> void:
 		"type": "hello",
 		"token": token,
 		"scene_id": _scene_id,
+		"appearance": MemoryManager.character_appearance.duplicate(true) if MemoryManager != null else {},
 	})
 	_hello_sent = true
 

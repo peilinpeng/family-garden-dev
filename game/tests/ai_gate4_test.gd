@@ -8,9 +8,16 @@ class FakePersistence:
 	var persisted: Array = []
 	var deleted: Array = []
 	var upload_count := 0
+	var fail_confirm := false
 
 	func persist_record(table: String, row: Dictionary) -> void:
 		persisted.append({"table": table, "row": row.duplicate(true)})
+
+	func persist_record_confirmed(table: String, row: Dictionary) -> Dictionary:
+		if fail_confirm:
+			return {"ok": false, "error": "offline"}
+		persist_record(table, row)
+		return {"ok": true, "id": String(row.get("id", ""))}
 
 	func load_table(_table: String, _query: String = "") -> Array:
 		return []
@@ -18,9 +25,15 @@ class FakePersistence:
 	func delete_record(table: String, row_id: String) -> void:
 		deleted.append({"table": table, "id": row_id})
 
+	func delete_record_confirmed(table: String, row_id: String) -> Dictionary:
+		if fail_confirm:
+			return {"ok": false, "error": "offline"}
+		delete_record(table, row_id)
+		return {"ok": true}
+
 	func upload_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
 		upload_count += 1
-		var upload_id := "upload_test_%d" % upload_count
+		var upload_id := "upload_" + ("%032x" % upload_count)
 		uploads[upload_id] = {"bytes": bytes, "content_type": content_type}
 		return {"ok": true, "upload_id": upload_id, "image_url": "https://example.test/%s.jpg" % upload_id}
 
@@ -33,17 +46,24 @@ class FakePersistence:
 class FakeAIBackend:
 	extends Node
 	var calls: Dictionary = {}
+	var reject_moderation := false
 
 	func request(path: String, payload: Dictionary) -> Dictionary:
 		var route := path.get_file()
 		calls[route] = int(calls.get(route, 0)) + 1
 		var data: Dictionary = {}
 		match route:
+			"moderate-user-content":
+				if reject_moderation:
+					return {"ok": false, "error": {"code": "CONTENT_UNSAFE", "message": "test unsafe", "retryable": false}, "meta": {"request_id": "gate4_unsafe"}}
+				data = {"approved": true, "safety_note": "test pass"}
 			"generate-memory-card":
 				data = AIClient.mock_memory_card()
 			"generate-bottle-question":
 				data = AIClient.MOCK_BOTTLE_QUESTION.duplicate(true)
 				data["question"] = "第 %d 次生成：你最想和家人重温哪段温暖时光？" % int(calls[route])
+			"generate-kitchen-dish":
+				data = AIClient.MOCK_KITCHEN_DISH.duplicate(true)
 			"analyze-room-photo":
 				data = AIClient.mock_room_analysis()
 			"cross-memory-link":
@@ -96,18 +116,47 @@ func _run() -> void:
 	MemoryManager.selected_role_key = "player"
 
 	_test_image_preparation()
+	_test_memory_visual_assets()
+	_test_family_portrait_miniature()
+	_test_null_ai_outcome_guard()
+	await _test_kitchen_dish_visual_texture()
 	await _test_memory_draft_and_idempotency()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
-	_test_delete_memory_cascades_links()
+	await _test_delete_memory_cascades_links()
 
 	if failures.is_empty():
-		print("Gate 4 Godot tests passed: image, draft, commit, bottle, room, links, delete")
+		print("Gate 4 Godot tests passed: image, visuals, draft, commit, bottle, room, links, delete")
 		get_tree().quit(0)
 	else:
 		for failure in failures:
 			push_error(failure)
 		get_tree().quit(1)
+
+func _test_kitchen_dish_visual_texture() -> void:
+	InventoryManager.give("produce_corrato", 2, true)
+	InventoryManager.give("egg", 1, true)
+	var before_tomato := InventoryManager.storehouse.count("produce_corrato")
+	var before_egg := InventoryManager.storehouse.count("egg")
+	var selected := [
+		{"id": "produce_corrato", "name": "红番茄", "qty": 2},
+		{"id": "egg", "name": "鸡蛋", "qty": 1},
+	]
+	var validation := KitchenManager.validate_ai_ingredients(selected)
+	_assert(validation.ok, "互动烹饪选中的真实食材应通过校验")
+	_assert(InventoryManager.storehouse.count("produce_corrato") == before_tomato, "选材校验阶段不能提前扣料")
+	var invalid := KitchenManager.validate_ai_ingredients([{"id": "coin", "qty": 1}])
+	_assert(not invalid.ok and String(invalid.error.code) == "INVALID_INGREDIENT", "互动烹饪必须拒绝非食材物品")
+	var result: Dictionary = await KitchenManager.craft_ai_dish_with_ingredients(selected, "stove")
+	_assert(result.ok, "AI 随机料理应可生成并提交")
+	var dish: Dictionary = result.get("dish", {}) if result.get("dish", {}) is Dictionary else {}
+	var dish_id := String(dish.get("id", ""))
+	var texture := KitchenManager.dish_icon(dish_id)
+	_assert(texture != null and texture.get_width() == 96 and texture.get_height() == 96, "AI 料理必须渲染 96x96 菜品图")
+	_assert(dish.get("visual", {}) is Dictionary, "AI 料理必须保存 visual 菜品图规格")
+	_assert((dish.get("ingredients", []) as Array).size() == 2, "成品必须记录玩家实际放入的食材")
+	_assert(InventoryManager.storehouse.count("produce_corrato") == before_tomato - 2, "成功提交后应且只应扣除选中的番茄")
+	_assert(InventoryManager.storehouse.count("egg") == before_egg - 1, "成功提交后应且只应扣除选中的鸡蛋")
 
 func _test_image_preparation() -> void:
 	var image := Image.create(2200, 1100, false, Image.FORMAT_RGB8)
@@ -116,7 +165,91 @@ func _test_image_preparation() -> void:
 	_assert(prepared.ok, "合法 PNG 应可预处理")
 	_assert(prepared.content_type == "image/jpeg", "上传应统一重编码并去元数据")
 	_assert(maxi(prepared.output_size.x, prepared.output_size.y) <= 1600, "图片长边必须限制到 1600")
+	_assert(int(prepared.output_bytes) <= AIImageUploadService.MAX_UPLOAD_BYTES, "上传图片必须满足生产 HTTP 请求体限制")
 	_assert(not AIImageUploadService.prepare(PackedByteArray([1, 2, 3]), "image/gif").ok, "GIF 必须拒绝")
+	var noise_bytes := PackedByteArray()
+	noise_bytes.resize(800 * 600 * 3)
+	var noise_value := 17
+	for index in noise_bytes.size():
+		noise_value = (noise_value * 1103515245 + 12345) & 0x7fffffff
+		noise_bytes[index] = noise_value & 0xff
+	var noisy_image := Image.create_from_data(800, 600, false, Image.FORMAT_RGB8, noise_bytes)
+	var noisy_prepared := AIImageUploadService.prepare(noisy_image.save_png_to_buffer(), "image/png")
+	_assert(noisy_prepared.ok and int(noisy_prepared.output_bytes) <= AIImageUploadService.MAX_UPLOAD_BYTES, "复杂照片也必须自适应压缩到生产传输安全线")
+
+func _test_null_ai_outcome_guard() -> void:
+	_assert(AIWorkflowManager._dictionary_or_empty(null).is_empty(), "AI data=null 必须安全转换为空字典")
+	_assert(AIWorkflowManager._dictionary_or_empty([]).is_empty(), "AI data 类型错误必须安全转换为空字典")
+	var failure := AIWorkflowManager._failure_from_outcome({"data": null, "error": null})
+	_assert(not failure.ok and String(failure.error.code) == "AI_FAILED", "空 AI 错误体必须返回稳定失败结果")
+
+func _test_memory_visual_assets() -> void:
+	var slot := {"slot_id": "visual_test", "pos": [320, 320]}
+	var bud := NodeFactory.make_memory_node(AIClient.mock_memory_card(), slot, Callable(), "new")
+	var bloom := NodeFactory.make_memory_node(AIClient.mock_memory_card(), slot, Callable(), "grown")
+	var bud_texture := (bud.get_node("Sprite") as Sprite2D).texture
+	var bloom_texture := (bloom.get_node("Sprite") as Sprite2D).texture
+	_assert(bud_texture != null and bloom_texture != null, "记忆花苞与开放状态必须有可渲染资产")
+	_assert(bud_texture != bloom_texture, "花苞与开放状态应使用不同视觉资产")
+	for node_type in ["photo_board", "postcard"]:
+		var board_card := {"node_type": node_type, "suggested_scene": "garden"}
+		var board := NodeFactory.make_memory_node(board_card, slot, Callable(), "new")
+		_assert((board.get_node("Sprite") as Sprite2D).texture != null, "%s 必须有受控木牌资产" % node_type)
+		_assert(board.has_node("BoardSemanticIcon"), "%s 必须带可识别语义图标" % node_type)
+		board.queue_free()
+	var archive_keys := ["flowers", "photos", "postcards"]
+	for archive_key in archive_keys:
+		var archive := NodeFactory.make_memory_archive(String(archive_key), slot, Callable(), "grown")
+		_assert((archive.get_node("Sprite") as Sprite2D).texture != null, "%s 归档景观必须可渲染" % archive_key)
+		if archive_key == "flowers":
+			var archive_sprite := archive.get_node("Sprite") as Sprite2D
+			_assert(archive_sprite.visible, "记忆花圃必须显示独立的固定花圃景观")
+			_assert(archive.is_in_group("fixed_garden_landmark") and String(archive.get_meta("fixed_landmark_kind", "")) == "memory_flowerbed", "记忆花圃必须注册为固定花园景观")
+			_assert(archive.has_node("ArchiveAmbientGlow") and archive.has_node("ArchiveHoverGlow"), "固定花圃必须有轻量可发现反馈")
+			var archive_shape := archive.get_node("ClickArea/Shape") as CollisionShape2D
+			var archive_rect := archive_shape.shape as RectangleShape2D
+			var rendered_size := archive_sprite.texture.get_size() * archive_sprite.scale
+			_assert(archive_rect != null and archive_rect.size.is_equal_approx(rendered_size), "固定花圃点击区必须与实际渲染尺寸一致")
+			_assert(archive_rect != null and archive_rect.size.x >= 80.0 and archive_rect.size.y >= 80.0, "固定花圃点击区必须满足最小可点击尺寸")
+			var fixed_body := archive.get_node_or_null("FixedFlowerbedCollision") as StaticBody2D
+			var fixed_shape := fixed_body.get_child(0) as CollisionShape2D if fixed_body != null and fixed_body.get_child_count() > 0 else null
+			_assert(fixed_shape != null and fixed_shape.shape is RectangleShape2D, "固定花圃必须提供玩家碰撞体")
+		else:
+			_assert(not (archive.get_node("Sprite") as Sprite2D).visible, "%s 归档不应继续显示通用木牌" % archive_key)
+			_assert(archive.has_node("ArchiveVisual") and archive.has_node("ArchiveObjectGlow"), "%s 必须使用回忆角专属景观物件" % archive_key)
+		archive.queue_free()
+	_assert(NodeFactory.garden_archive_key("memory_flower") == "flowers", "记忆花必须归入花圃")
+	_assert(NodeFactory.garden_archive_key("photo_board") == "photos", "照片牌必须归入家庭影像")
+	_assert(NodeFactory.garden_archive_key("postcard") == "postcards", "明信片必须归入远方来信")
+	var slots_text := FileAccess.get_file_as_string("res://assets/manifest/slots_garden.json")
+	var slots_data: Variant = JSON.parse_string(slots_text)
+	var archive_slot_count := 0
+	if slots_data is Dictionary:
+		for raw_slot in slots_data.get("slots", []):
+			if raw_slot is Dictionary and String(raw_slot.get("visual_role", "")) == "archive":
+				archive_slot_count += 1
+	_assert(archive_slot_count == 3, "花园长期可见记忆景观必须固定为三个")
+	bud.queue_free()
+	bloom.queue_free()
+
+func _test_family_portrait_miniature() -> void:
+	var previous := MemoryManager.family_portrait.duplicate(true)
+	MemoryManager.family_portrait = {
+		"version": 1,
+		"member_count": 2,
+		"memory_count": 12,
+		"members": ["papa", "mama"],
+	}
+	var host := Panel.new()
+	SceneManager._add_family_portrait_miniature(host)
+	_assert(host.has_node("FamilyPortraitMiniature"), "家庭画像必须进入左上状态卡")
+	var portrait := host.get_node_or_null("FamilyPortraitMiniature")
+	_assert(portrait != null and portrait.has_node("FamilyAvatar_0") and portrait.has_node("FamilyAvatar_1"), "两位家人必须显示为两张独立角色立绘")
+	_assert(portrait != null and not portrait.has_node("FamilyAvatar_2"), "两人合影不应生成多余角色")
+	_assert(SceneManager._family_portrait_frame_texture("papa") != null, "爸爸画像必须能裁出正面静止帧")
+	_assert(SceneManager._family_portrait_frame_texture("girl") != null, "主角画像必须能使用精确裁剪框")
+	host.queue_free()
+	MemoryManager.family_portrait = previous
 
 func _test_memory_draft_and_idempotency() -> void:
 	var seed := MemoryManager.create_memory(AIClient.mock_memory_card(), "text", "旧记忆", "", {}, "seed-memory")
@@ -135,11 +268,11 @@ func _test_memory_draft_and_idempotency() -> void:
 	await AIWorkflowManager.discard_draft(photo_draft)
 	await AIWorkflowManager.discard_draft(combo_draft)
 
-	var committed: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card)
+	var committed: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card, true)
 	_assert(committed.ok, "合法草稿应可确认")
 	var memory_count := MemoryManager.memories.size()
 	var node_count := MemoryManager.nodes.size()
-	var duplicate: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card)
+	var duplicate: Dictionary = await AIWorkflowManager.commit_memory_draft(text_draft, text_draft.card, true)
 	_assert(duplicate.ok, "重复确认应返回既有结果")
 	_assert(MemoryManager.memories.size() == memory_count and MemoryManager.nodes.size() == node_count, "重复确认不得生成重复 memory/node/link")
 	_assert(MemoryManager.get_memory_links("garden").size() == 1, "新记忆应创建一条合格跨记忆关联")
@@ -158,6 +291,23 @@ func _test_memory_draft_and_idempotency() -> void:
 	_assert(String(updated.link.get("followup_answer", "")) == "更新后的补充：它们都在讲一家人的陪伴。", "关联回答应保存最新文本")
 	_assert(not MemoryManager.answer_memory_link(link_id, "").ok, "空关联回答必须拒绝")
 	_assert(String(seed.get("id", "")) != String(committed.memory.get("id", "")), "新旧记忆 ID 应不同")
+
+	var rejected_draft: Dictionary = await AIWorkflowManager.prepare_memory_draft("需要二次审核的编辑内容。")
+	ai_backend.reject_moderation = true
+	var before_rejected := MemoryManager.memories.size()
+	var rejected := await AIWorkflowManager.commit_memory_draft(rejected_draft, rejected_draft.card, false)
+	_assert(not rejected.ok and String(rejected.error.code) == "CONTENT_UNSAFE", "用户编辑内容未通过审核时不得写入")
+	_assert(MemoryManager.memories.size() == before_rejected, "审核拒绝不得产生 memory")
+	ai_backend.reject_moderation = false
+
+	persistence.fail_confirm = true
+	var pending_draft: Dictionary = await AIWorkflowManager.prepare_memory_draft("用于验证云端补偿队列的记忆。")
+	var pending_commit := await AIWorkflowManager.commit_memory_draft(pending_draft, pending_draft.card, false)
+	_assert(pending_commit.ok and pending_commit.sync_pending, "云端确认写失败时应保留本地结果并标记待同步")
+	_assert(not MemoryManager.ai_sync_outbox.is_empty(), "确认写失败必须进入 outbox")
+	persistence.fail_confirm = false
+	_assert(await AIWorkflowManager.flush_ai_sync_outbox(), "网络恢复后 outbox 应可补偿")
+	_assert(MemoryManager.ai_sync_outbox.is_empty(), "补偿成功后 outbox 应清空")
 
 func _test_bottle_recovery_and_answer_idempotency() -> void:
 	var bottles: Array = await AIWorkflowManager.ensure_bottles(2)
@@ -180,6 +330,28 @@ func _test_room_preview_commit_and_editing() -> void:
 	_assert(draft.ok, "房间图片应完成上传、分析和安全布局预览")
 	var before := MemoryManager.rooms.size()
 	_assert(before == 0, "房间预览阶段不得落库")
+	var previous_ui_layer: CanvasLayer = SceneManager.ui_layer
+	var preview_ui_layer := CanvasLayer.new()
+	add_child(preview_ui_layer)
+	SceneManager.ui_layer = preview_ui_layer
+	SceneManager._open_room_draft_preview(draft)
+	var preview_overlay := SceneManager.active_modal
+	var description := preview_overlay.find_child("RoomDraftDescription", true, false) as Label
+	var attribution := preview_overlay.find_child("RoomDraftAIAttribution", true, false) as Label
+	var object_scroll := preview_overlay.find_child("RoomDraftObjectScroll", true, false) as ScrollContainer
+	_assert(description != null and description.autowrap_mode == TextServer.AUTOWRAP_ARBITRARY and description.max_lines_visible == 3, "房间说明必须支持中文强制换行并限制行数")
+	_assert(attribution != null and attribution.text.begins_with("由 ") and not attribution.text.contains("来源") and not attribution.text.contains("room-analysis"), "玩家界面只应显示 AI 名称，不得暴露内部来源或 prompt 版本")
+	_assert(object_scroll != null, "家具清单必须使用可滚动容器避免内容越界")
+	_assert(SceneManager._room_ai_display_label({"model": "hy-vision-2.0-instruct"}) == "腾讯混元 HY Vision 2.0", "混元模型应显示玩家可理解的名称")
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		await get_tree().process_frame
+		var preview_image := get_viewport().get_texture().get_image()
+		if preview_image != null:
+			preview_image.save_png("/tmp/family_garden_room_preview.png")
+	SceneManager._close_active_panel()
+	await get_tree().process_frame
+	SceneManager.ui_layer = previous_ui_layer
+	preview_ui_layer.queue_free()
 	var committed: Dictionary = await AIWorkflowManager.commit_room_draft(draft)
 	_assert(committed.ok and MemoryManager.rooms.size() == 1, "确认后应创建一个房间")
 	_assert(ROOM_SCENE_GENERATOR.has_scene_schema(MemoryManager.rooms[0]), "确认后应保存可重建的语义房间 schema")
@@ -197,8 +369,13 @@ func _test_delete_memory_cascades_links() -> void:
 		_assert(false, "删除级联测试需要已有连线")
 		return
 	var memory_id := String(links[0].get("memory_id", ""))
+	persistence.fail_confirm = true
 	_assert(MemoryManager.delete_memory(memory_id), "记忆应可删除")
 	_assert(not MemoryManager.nodes.any(func(node): return String(node.get("memory_id", "")) == memory_id or String(node.get("linked_memory_id", "")) == memory_id), "删除记忆必须级联清理节点与连线")
+	_assert(MemoryManager.ai_sync_outbox.any(func(item): return String(item.get("operation", "")) == "delete"), "离线删除必须进入补偿队列")
+	persistence.fail_confirm = false
+	_assert(await AIWorkflowManager.flush_ai_sync_outbox(), "恢复联网后删除补偿应成功")
+	_assert(MemoryManager.ai_sync_outbox.is_empty(), "删除补偿成功后队列应清空")
 
 func _assert(condition: bool, message: String) -> void:
 	if not condition:

@@ -1,0 +1,1999 @@
+{
+  "version": 2,
+  "body_types": {
+    "feminine": {
+      "label": "女性",
+      "default_hair_style": "braid_hat",
+      "hair_styles": {
+        "braid_hat": {
+          "label": "草帽辫发",
+          "character_id": "player",
+          "mask": "masks/girl_braid_hat",
+          "outfit_variants": {
+            "forest": {
+              "sheet": "outfits/girl_braid_hat_forest",
+              "mask": "masks/outfits/girl_braid_hat_forest",
+              "scale": 0.3357,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  131,
+                  55,
+                  164,
+                  286
+                ],
+                [
+                  382,
+                  55,
+                  164,
+                  286
+                ],
+                [
+                  635,
+                  55,
+                  164,
+                  286
+                ],
+                [
+                  107,
+                  376,
+                  164,
+                  286
+                ],
+                [
+                  372,
+                  376,
+                  164,
+                  286
+                ],
+                [
+                  637,
+                  379,
+                  164,
+                  286
+                ],
+                [
+                  120,
+                  716,
+                  164,
+                  286
+                ],
+                [
+                  368,
+                  716,
+                  164,
+                  286
+                ],
+                [
+                  632,
+                  719,
+                  164,
+                  286
+                ],
+                [
+                  123,
+                  1065,
+                  164,
+                  286
+                ],
+                [
+                  380,
+                  1065,
+                  164,
+                  286
+                ],
+                [
+                  635,
+                  1065,
+                  164,
+                  286
+                ],
+                [
+                  124,
+                  1375,
+                  164,
+                  286
+                ],
+                [
+                  372,
+                  1375,
+                  164,
+                  286
+                ],
+                [
+                  629,
+                  1375,
+                  164,
+                  286
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_braid_hat_forest",
+                "dark": "hair_colors/girl_braid_hat_forest__dark",
+                "chestnut": "hair_colors/girl_braid_hat_forest__chestnut",
+                "blonde": "hair_colors/girl_braid_hat_forest__blonde",
+                "midnight": "hair_colors/girl_braid_hat_forest__midnight"
+              }
+            },
+            "berry": {
+              "sheet": "outfits/girl_braid_hat_berry",
+              "mask": "masks/outfits/girl_braid_hat_berry",
+              "scale": 0.3322,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  126,
+                  54,
+                  165,
+                  289
+                ],
+                [
+                  376,
+                  54,
+                  165,
+                  289
+                ],
+                [
+                  629,
+                  54,
+                  165,
+                  289
+                ],
+                [
+                  106,
+                  367,
+                  165,
+                  289
+                ],
+                [
+                  366,
+                  368,
+                  165,
+                  289
+                ],
+                [
+                  637,
+                  367,
+                  165,
+                  289
+                ],
+                [
+                  114,
+                  705,
+                  165,
+                  289
+                ],
+                [
+                  363,
+                  706,
+                  165,
+                  289
+                ],
+                [
+                  630,
+                  705,
+                  165,
+                  289
+                ],
+                [
+                  116,
+                  1067,
+                  165,
+                  289
+                ],
+                [
+                  376,
+                  1067,
+                  165,
+                  289
+                ],
+                [
+                  636,
+                  1067,
+                  165,
+                  289
+                ],
+                [
+                  122,
+                  1382,
+                  165,
+                  289
+                ],
+                [
+                  372,
+                  1382,
+                  165,
+                  289
+                ],
+                [
+                  628,
+                  1382,
+                  165,
+                  289
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_braid_hat_berry",
+                "dark": "hair_colors/girl_braid_hat_berry__dark",
+                "chestnut": "hair_colors/girl_braid_hat_berry__chestnut",
+                "blonde": "hair_colors/girl_braid_hat_berry__blonde",
+                "midnight": "hair_colors/girl_braid_hat_berry__midnight"
+              }
+            },
+            "ocean": {
+              "sheet": "outfits/girl_braid_hat_ocean",
+              "mask": "masks/outfits/girl_braid_hat_ocean",
+              "scale": 0.3466,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  164,
+                  56,
+                  160,
+                  277
+                ],
+                [
+                  433,
+                  56,
+                  160,
+                  277
+                ],
+                [
+                  692,
+                  56,
+                  160,
+                  277
+                ],
+                [
+                  144,
+                  356,
+                  160,
+                  277
+                ],
+                [
+                  421,
+                  359,
+                  160,
+                  277
+                ],
+                [
+                  695,
+                  356,
+                  160,
+                  277
+                ],
+                [
+                  149,
+                  661,
+                  160,
+                  277
+                ],
+                [
+                  420,
+                  664,
+                  160,
+                  277
+                ],
+                [
+                  692,
+                  661,
+                  160,
+                  277
+                ],
+                [
+                  150,
+                  972,
+                  160,
+                  277
+                ],
+                [
+                  424,
+                  972,
+                  160,
+                  277
+                ],
+                [
+                  696,
+                  973,
+                  160,
+                  277
+                ],
+                [
+                  154,
+                  1245,
+                  160,
+                  277
+                ],
+                [
+                  422,
+                  1245,
+                  160,
+                  277
+                ],
+                [
+                  688,
+                  1245,
+                  160,
+                  277
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_braid_hat_ocean",
+                "dark": "hair_colors/girl_braid_hat_ocean__dark",
+                "chestnut": "hair_colors/girl_braid_hat_ocean__chestnut",
+                "blonde": "hair_colors/girl_braid_hat_ocean__blonde",
+                "midnight": "hair_colors/girl_braid_hat_ocean__midnight"
+              }
+            },
+            "sand": {
+              "sheet": "outfits/girl_braid_hat_sand",
+              "mask": "masks/outfits/girl_braid_hat_sand",
+              "scale": 0.3441,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  136,
+                  43,
+                  159,
+                  279
+                ],
+                [
+                  380,
+                  43,
+                  159,
+                  279
+                ],
+                [
+                  656,
+                  43,
+                  159,
+                  279
+                ],
+                [
+                  118,
+                  353,
+                  159,
+                  279
+                ],
+                [
+                  372,
+                  354,
+                  159,
+                  279
+                ],
+                [
+                  658,
+                  353,
+                  159,
+                  279
+                ],
+                [
+                  124,
+                  673,
+                  159,
+                  279
+                ],
+                [
+                  368,
+                  677,
+                  159,
+                  279
+                ],
+                [
+                  652,
+                  674,
+                  159,
+                  279
+                ],
+                [
+                  130,
+                  1003,
+                  159,
+                  279
+                ],
+                [
+                  377,
+                  1005,
+                  159,
+                  279
+                ],
+                [
+                  648,
+                  1006,
+                  159,
+                  279
+                ],
+                [
+                  128,
+                  1300,
+                  159,
+                  279
+                ],
+                [
+                  374,
+                  1300,
+                  159,
+                  279
+                ],
+                [
+                  650,
+                  1300,
+                  159,
+                  279
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_braid_hat_sand",
+                "dark": "hair_colors/girl_braid_hat_sand__dark",
+                "chestnut": "hair_colors/girl_braid_hat_sand__chestnut",
+                "blonde": "hair_colors/girl_braid_hat_sand__blonde",
+                "midnight": "hair_colors/girl_braid_hat_sand__midnight"
+              }
+            }
+          },
+          "hair_sheets": {
+            "brown": "girl_2",
+            "dark": "hair_colors/girl_2__dark",
+            "chestnut": "hair_colors/girl_2__chestnut",
+            "blonde": "hair_colors/girl_2__blonde",
+            "midnight": "hair_colors/girl_2__midnight"
+          }
+        },
+        "soft_bob": {
+          "label": "柔软短发",
+          "sheet": "custom/girl_bob",
+          "mask": "masks/girl_soft_bob",
+          "scale": 0.325,
+          "frame_rects": [
+            [
+              125,
+              35,
+              170,
+              300
+            ],
+            [
+              370,
+              35,
+              170,
+              300
+            ],
+            [
+              618,
+              35,
+              170,
+              300
+            ],
+            [
+              102,
+              355,
+              170,
+              300
+            ],
+            [
+              362,
+              355,
+              170,
+              300
+            ],
+            [
+              628,
+              356,
+              170,
+              300
+            ],
+            [
+              110,
+              702,
+              170,
+              300
+            ],
+            [
+              354,
+              703,
+              170,
+              300
+            ],
+            [
+              619,
+              703,
+              170,
+              300
+            ],
+            [
+              111,
+              1060,
+              170,
+              300
+            ],
+            [
+              368,
+              1058,
+              170,
+              300
+            ],
+            [
+              628,
+              1061,
+              170,
+              300
+            ],
+            [
+              119,
+              1372,
+              170,
+              300
+            ],
+            [
+              365,
+              1372,
+              170,
+              300
+            ],
+            [
+              616,
+              1372,
+              170,
+              300
+            ]
+          ],
+          "outfit_variants": {
+            "forest": {
+              "sheet": "outfits/girl_soft_bob_forest",
+              "mask": "masks/outfits/girl_soft_bob_forest",
+              "scale": 0.3288,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  138,
+                  53,
+                  161,
+                  292
+                ],
+                [
+                  386,
+                  56,
+                  161,
+                  292
+                ],
+                [
+                  639,
+                  53,
+                  161,
+                  292
+                ],
+                [
+                  117,
+                  373,
+                  161,
+                  292
+                ],
+                [
+                  378,
+                  373,
+                  161,
+                  292
+                ],
+                [
+                  650,
+                  373,
+                  161,
+                  292
+                ],
+                [
+                  122,
+                  710,
+                  161,
+                  292
+                ],
+                [
+                  370,
+                  711,
+                  161,
+                  292
+                ],
+                [
+                  640,
+                  710,
+                  161,
+                  292
+                ],
+                [
+                  122,
+                  1058,
+                  161,
+                  292
+                ],
+                [
+                  384,
+                  1056,
+                  161,
+                  292
+                ],
+                [
+                  646,
+                  1058,
+                  161,
+                  292
+                ],
+                [
+                  130,
+                  1349,
+                  161,
+                  292
+                ],
+                [
+                  382,
+                  1349,
+                  161,
+                  292
+                ],
+                [
+                  636,
+                  1349,
+                  161,
+                  292
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_soft_bob_forest",
+                "dark": "hair_colors/girl_soft_bob_forest__dark",
+                "chestnut": "hair_colors/girl_soft_bob_forest__chestnut",
+                "blonde": "hair_colors/girl_soft_bob_forest__blonde",
+                "midnight": "hair_colors/girl_soft_bob_forest__midnight"
+              }
+            },
+            "berry": {
+              "sheet": "outfits/girl_soft_bob_berry",
+              "mask": "masks/outfits/girl_soft_bob_berry",
+              "scale": 0.3441,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  130,
+                  65,
+                  160,
+                  279
+                ],
+                [
+                  374,
+                  61,
+                  160,
+                  279
+                ],
+                [
+                  626,
+                  65,
+                  160,
+                  279
+                ],
+                [
+                  108,
+                  383,
+                  160,
+                  279
+                ],
+                [
+                  368,
+                  384,
+                  160,
+                  279
+                ],
+                [
+                  633,
+                  384,
+                  160,
+                  279
+                ],
+                [
+                  116,
+                  728,
+                  160,
+                  279
+                ],
+                [
+                  360,
+                  730,
+                  160,
+                  279
+                ],
+                [
+                  626,
+                  729,
+                  160,
+                  279
+                ],
+                [
+                  121,
+                  1075,
+                  160,
+                  279
+                ],
+                [
+                  373,
+                  1073,
+                  160,
+                  279
+                ],
+                [
+                  632,
+                  1075,
+                  160,
+                  279
+                ],
+                [
+                  125,
+                  1386,
+                  160,
+                  279
+                ],
+                [
+                  370,
+                  1386,
+                  160,
+                  279
+                ],
+                [
+                  622,
+                  1386,
+                  160,
+                  279
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_soft_bob_berry",
+                "dark": "hair_colors/girl_soft_bob_berry__dark",
+                "chestnut": "hair_colors/girl_soft_bob_berry__chestnut",
+                "blonde": "hair_colors/girl_soft_bob_berry__blonde",
+                "midnight": "hair_colors/girl_soft_bob_berry__midnight"
+              }
+            },
+            "ocean": {
+              "sheet": "outfits/girl_soft_bob_ocean",
+              "mask": "masks/outfits/girl_soft_bob_ocean",
+              "scale": 0.3276,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  131,
+                  61,
+                  155,
+                  293
+                ],
+                [
+                  377,
+                  61,
+                  155,
+                  293
+                ],
+                [
+                  632,
+                  61,
+                  155,
+                  293
+                ],
+                [
+                  112,
+                  378,
+                  155,
+                  293
+                ],
+                [
+                  370,
+                  381,
+                  155,
+                  293
+                ],
+                [
+                  636,
+                  378,
+                  155,
+                  293
+                ],
+                [
+                  118,
+                  702,
+                  155,
+                  293
+                ],
+                [
+                  364,
+                  709,
+                  155,
+                  293
+                ],
+                [
+                  630,
+                  705,
+                  155,
+                  293
+                ],
+                [
+                  118,
+                  1042,
+                  155,
+                  293
+                ],
+                [
+                  370,
+                  1042,
+                  155,
+                  293
+                ],
+                [
+                  632,
+                  1050,
+                  155,
+                  293
+                ],
+                [
+                  122,
+                  1375,
+                  155,
+                  293
+                ],
+                [
+                  368,
+                  1375,
+                  155,
+                  293
+                ],
+                [
+                  627,
+                  1375,
+                  155,
+                  293
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_soft_bob_ocean",
+                "dark": "hair_colors/girl_soft_bob_ocean__dark",
+                "chestnut": "hair_colors/girl_soft_bob_ocean__chestnut",
+                "blonde": "hair_colors/girl_soft_bob_ocean__blonde",
+                "midnight": "hair_colors/girl_soft_bob_ocean__midnight"
+              }
+            },
+            "sand": {
+              "sheet": "outfits/girl_soft_bob_sand",
+              "mask": "masks/outfits/girl_soft_bob_sand",
+              "scale": 0.3265,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  128,
+                  58,
+                  160,
+                  294
+                ],
+                [
+                  376,
+                  60,
+                  160,
+                  294
+                ],
+                [
+                  628,
+                  60,
+                  160,
+                  294
+                ],
+                [
+                  106,
+                  368,
+                  160,
+                  294
+                ],
+                [
+                  369,
+                  368,
+                  160,
+                  294
+                ],
+                [
+                  633,
+                  368,
+                  160,
+                  294
+                ],
+                [
+                  114,
+                  706,
+                  160,
+                  294
+                ],
+                [
+                  362,
+                  706,
+                  160,
+                  294
+                ],
+                [
+                  626,
+                  707,
+                  160,
+                  294
+                ],
+                [
+                  118,
+                  1053,
+                  160,
+                  294
+                ],
+                [
+                  375,
+                  1053,
+                  160,
+                  294
+                ],
+                [
+                  632,
+                  1051,
+                  160,
+                  294
+                ],
+                [
+                  124,
+                  1373,
+                  160,
+                  294
+                ],
+                [
+                  372,
+                  1373,
+                  160,
+                  294
+                ],
+                [
+                  622,
+                  1373,
+                  160,
+                  294
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/girl_soft_bob_sand",
+                "dark": "hair_colors/girl_soft_bob_sand__dark",
+                "chestnut": "hair_colors/girl_soft_bob_sand__chestnut",
+                "blonde": "hair_colors/girl_soft_bob_sand__blonde",
+                "midnight": "hair_colors/girl_soft_bob_sand__midnight"
+              }
+            }
+          },
+          "hair_sheets": {
+            "brown": "custom/girl_bob",
+            "dark": "hair_colors/girl_bob__dark",
+            "chestnut": "hair_colors/girl_bob__chestnut",
+            "blonde": "hair_colors/girl_bob__blonde",
+            "midnight": "hair_colors/girl_bob__midnight"
+          }
+        }
+      }
+    },
+    "masculine": {
+      "label": "男性",
+      "default_hair_style": "tousled",
+      "hair_styles": {
+        "tousled": {
+          "label": "蓬松短发",
+          "character_id": "partner",
+          "mask": "masks/boy_tousled",
+          "outfit_variants": {
+            "forest": {
+              "sheet": "outfits/boy_tousled_forest",
+              "mask": "masks/outfits/boy_tousled_forest",
+              "scale": 0.3333,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  140,
+                  55,
+                  166,
+                  288
+                ],
+                [
+                  386,
+                  55,
+                  166,
+                  288
+                ],
+                [
+                  644,
+                  55,
+                  166,
+                  288
+                ],
+                [
+                  116,
+                  362,
+                  166,
+                  288
+                ],
+                [
+                  377,
+                  361,
+                  166,
+                  288
+                ],
+                [
+                  646,
+                  362,
+                  166,
+                  288
+                ],
+                [
+                  122,
+                  692,
+                  166,
+                  288
+                ],
+                [
+                  375,
+                  692,
+                  166,
+                  288
+                ],
+                [
+                  642,
+                  692,
+                  166,
+                  288
+                ],
+                [
+                  124,
+                  1031,
+                  166,
+                  288
+                ],
+                [
+                  381,
+                  1027,
+                  166,
+                  288
+                ],
+                [
+                  646,
+                  1031,
+                  166,
+                  288
+                ],
+                [
+                  134,
+                  1343,
+                  166,
+                  288
+                ],
+                [
+                  381,
+                  1343,
+                  166,
+                  288
+                ],
+                [
+                  644,
+                  1343,
+                  166,
+                  288
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_tousled_forest",
+                "dark": "hair_colors/boy_tousled_forest__dark",
+                "chestnut": "hair_colors/boy_tousled_forest__chestnut",
+                "blonde": "hair_colors/boy_tousled_forest__blonde",
+                "midnight": "hair_colors/boy_tousled_forest__midnight"
+              }
+            },
+            "berry": {
+              "sheet": "outfits/boy_tousled_berry",
+              "mask": "masks/outfits/boy_tousled_berry",
+              "scale": 0.3168,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  130,
+                  42,
+                  166,
+                  303
+                ],
+                [
+                  376,
+                  44,
+                  166,
+                  303
+                ],
+                [
+                  628,
+                  42,
+                  166,
+                  303
+                ],
+                [
+                  108,
+                  365,
+                  166,
+                  303
+                ],
+                [
+                  370,
+                  364,
+                  166,
+                  303
+                ],
+                [
+                  636,
+                  365,
+                  166,
+                  303
+                ],
+                [
+                  114,
+                  713,
+                  166,
+                  303
+                ],
+                [
+                  366,
+                  713,
+                  166,
+                  303
+                ],
+                [
+                  630,
+                  709,
+                  166,
+                  303
+                ],
+                [
+                  116,
+                  1071,
+                  166,
+                  303
+                ],
+                [
+                  376,
+                  1067,
+                  166,
+                  303
+                ],
+                [
+                  636,
+                  1071,
+                  166,
+                  303
+                ],
+                [
+                  124,
+                  1381,
+                  166,
+                  303
+                ],
+                [
+                  372,
+                  1384,
+                  166,
+                  303
+                ],
+                [
+                  626,
+                  1381,
+                  166,
+                  303
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_tousled_berry",
+                "dark": "hair_colors/boy_tousled_berry__dark",
+                "chestnut": "hair_colors/boy_tousled_berry__chestnut",
+                "blonde": "hair_colors/boy_tousled_berry__blonde",
+                "midnight": "hair_colors/boy_tousled_berry__midnight"
+              }
+            },
+            "ocean": {
+              "sheet": "outfits/boy_tousled_ocean",
+              "mask": "masks/outfits/boy_tousled_ocean",
+              "scale": 0.3254,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  132,
+                  54,
+                  166,
+                  295
+                ],
+                [
+                  376,
+                  54,
+                  166,
+                  295
+                ],
+                [
+                  626,
+                  54,
+                  166,
+                  295
+                ],
+                [
+                  108,
+                  363,
+                  166,
+                  295
+                ],
+                [
+                  366,
+                  364,
+                  166,
+                  295
+                ],
+                [
+                  630,
+                  364,
+                  166,
+                  295
+                ],
+                [
+                  116,
+                  715,
+                  166,
+                  295
+                ],
+                [
+                  364,
+                  716,
+                  166,
+                  295
+                ],
+                [
+                  627,
+                  714,
+                  166,
+                  295
+                ],
+                [
+                  120,
+                  1072,
+                  166,
+                  295
+                ],
+                [
+                  374,
+                  1072,
+                  166,
+                  295
+                ],
+                [
+                  630,
+                  1072,
+                  166,
+                  295
+                ],
+                [
+                  123,
+                  1377,
+                  166,
+                  295
+                ],
+                [
+                  370,
+                  1377,
+                  166,
+                  295
+                ],
+                [
+                  623,
+                  1377,
+                  166,
+                  295
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_tousled_ocean",
+                "dark": "hair_colors/boy_tousled_ocean__dark",
+                "chestnut": "hair_colors/boy_tousled_ocean__chestnut",
+                "blonde": "hair_colors/boy_tousled_ocean__blonde",
+                "midnight": "hair_colors/boy_tousled_ocean__midnight"
+              }
+            },
+            "sand": {
+              "sheet": "outfits/boy_tousled_sand",
+              "mask": "masks/outfits/boy_tousled_sand",
+              "scale": 0.3416,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  151,
+                  61,
+                  165,
+                  281
+                ],
+                [
+                  398,
+                  62,
+                  165,
+                  281
+                ],
+                [
+                  659,
+                  62,
+                  165,
+                  281
+                ],
+                [
+                  130,
+                  371,
+                  165,
+                  281
+                ],
+                [
+                  388,
+                  370,
+                  165,
+                  281
+                ],
+                [
+                  663,
+                  371,
+                  165,
+                  281
+                ],
+                [
+                  138,
+                  706,
+                  165,
+                  281
+                ],
+                [
+                  388,
+                  704,
+                  165,
+                  281
+                ],
+                [
+                  658,
+                  704,
+                  165,
+                  281
+                ],
+                [
+                  140,
+                  1041,
+                  165,
+                  281
+                ],
+                [
+                  397,
+                  1041,
+                  165,
+                  281
+                ],
+                [
+                  663,
+                  1045,
+                  165,
+                  281
+                ],
+                [
+                  146,
+                  1351,
+                  165,
+                  281
+                ],
+                [
+                  394,
+                  1351,
+                  165,
+                  281
+                ],
+                [
+                  656,
+                  1351,
+                  165,
+                  281
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_tousled_sand",
+                "dark": "hair_colors/boy_tousled_sand__dark",
+                "chestnut": "hair_colors/boy_tousled_sand__chestnut",
+                "blonde": "hair_colors/boy_tousled_sand__blonde",
+                "midnight": "hair_colors/boy_tousled_sand__midnight"
+              }
+            }
+          },
+          "hair_sheets": {
+            "brown": "boy",
+            "dark": "hair_colors/boy__dark",
+            "chestnut": "hair_colors/boy__chestnut",
+            "blonde": "hair_colors/boy__blonde",
+            "midnight": "hair_colors/boy__midnight"
+          }
+        },
+        "side_part": {
+          "label": "温柔侧分",
+          "sheet": "custom/boy_sidepart",
+          "mask": "masks/boy_side_part",
+          "scale": 0.31,
+          "frame_rects": [
+            [
+              126,
+              29,
+              180,
+              310
+            ],
+            [
+              372,
+              28,
+              180,
+              310
+            ],
+            [
+              624,
+              29,
+              180,
+              310
+            ],
+            [
+              103,
+              344,
+              180,
+              310
+            ],
+            [
+              360,
+              341,
+              180,
+              310
+            ],
+            [
+              632,
+              343,
+              180,
+              310
+            ],
+            [
+              110,
+              686,
+              180,
+              310
+            ],
+            [
+              362,
+              686,
+              180,
+              310
+            ],
+            [
+              625,
+              686,
+              180,
+              310
+            ],
+            [
+              111,
+              1045,
+              180,
+              310
+            ],
+            [
+              368,
+              1042,
+              180,
+              310
+            ],
+            [
+              630,
+              1049,
+              180,
+              310
+            ],
+            [
+              118,
+              1348,
+              180,
+              310
+            ],
+            [
+              369,
+              1349,
+              180,
+              310
+            ],
+            [
+              622,
+              1347,
+              180,
+              310
+            ]
+          ],
+          "outfit_variants": {
+            "forest": {
+              "sheet": "outfits/boy_sidepart_forest",
+              "mask": "masks/outfits/boy_sidepart_forest",
+              "scale": 0.3333,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  133,
+                  60,
+                  166,
+                  288
+                ],
+                [
+                  380,
+                  59,
+                  166,
+                  288
+                ],
+                [
+                  636,
+                  60,
+                  166,
+                  288
+                ],
+                [
+                  111,
+                  372,
+                  166,
+                  288
+                ],
+                [
+                  370,
+                  370,
+                  166,
+                  288
+                ],
+                [
+                  641,
+                  372,
+                  166,
+                  288
+                ],
+                [
+                  119,
+                  713,
+                  166,
+                  288
+                ],
+                [
+                  372,
+                  713,
+                  166,
+                  288
+                ],
+                [
+                  634,
+                  713,
+                  166,
+                  288
+                ],
+                [
+                  117,
+                  1059,
+                  166,
+                  288
+                ],
+                [
+                  376,
+                  1059,
+                  166,
+                  288
+                ],
+                [
+                  640,
+                  1062,
+                  166,
+                  288
+                ],
+                [
+                  127,
+                  1370,
+                  166,
+                  288
+                ],
+                [
+                  376,
+                  1370,
+                  166,
+                  288
+                ],
+                [
+                  631,
+                  1370,
+                  166,
+                  288
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_sidepart_forest",
+                "dark": "hair_colors/boy_sidepart_forest__dark",
+                "chestnut": "hair_colors/boy_sidepart_forest__chestnut",
+                "blonde": "hair_colors/boy_sidepart_forest__blonde",
+                "midnight": "hair_colors/boy_sidepart_forest__midnight"
+              }
+            },
+            "berry": {
+              "sheet": "outfits/boy_sidepart_berry",
+              "mask": "masks/outfits/boy_sidepart_berry",
+              "scale": 0.3254,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  134,
+                  49,
+                  164,
+                  295
+                ],
+                [
+                  380,
+                  49,
+                  164,
+                  295
+                ],
+                [
+                  632,
+                  49,
+                  164,
+                  295
+                ],
+                [
+                  112,
+                  363,
+                  164,
+                  295
+                ],
+                [
+                  369,
+                  363,
+                  164,
+                  295
+                ],
+                [
+                  639,
+                  363,
+                  164,
+                  295
+                ],
+                [
+                  118,
+                  703,
+                  164,
+                  295
+                ],
+                [
+                  370,
+                  704,
+                  164,
+                  295
+                ],
+                [
+                  634,
+                  703,
+                  164,
+                  295
+                ],
+                [
+                  120,
+                  1061,
+                  164,
+                  295
+                ],
+                [
+                  376,
+                  1057,
+                  164,
+                  295
+                ],
+                [
+                  636,
+                  1062,
+                  164,
+                  295
+                ],
+                [
+                  128,
+                  1364,
+                  164,
+                  295
+                ],
+                [
+                  377,
+                  1364,
+                  164,
+                  295
+                ],
+                [
+                  628,
+                  1364,
+                  164,
+                  295
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_sidepart_berry",
+                "dark": "hair_colors/boy_sidepart_berry__dark",
+                "chestnut": "hair_colors/boy_sidepart_berry__chestnut",
+                "blonde": "hair_colors/boy_sidepart_berry__blonde",
+                "midnight": "hair_colors/boy_sidepart_berry__midnight"
+              }
+            },
+            "ocean": {
+              "sheet": "outfits/boy_sidepart_ocean",
+              "mask": "masks/outfits/boy_sidepart_ocean",
+              "scale": 0.3288,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  136,
+                  55,
+                  162,
+                  292
+                ],
+                [
+                  379,
+                  55,
+                  162,
+                  292
+                ],
+                [
+                  630,
+                  55,
+                  162,
+                  292
+                ],
+                [
+                  112,
+                  368,
+                  162,
+                  292
+                ],
+                [
+                  368,
+                  369,
+                  162,
+                  292
+                ],
+                [
+                  636,
+                  368,
+                  162,
+                  292
+                ],
+                [
+                  120,
+                  710,
+                  162,
+                  292
+                ],
+                [
+                  370,
+                  711,
+                  162,
+                  292
+                ],
+                [
+                  631,
+                  710,
+                  162,
+                  292
+                ],
+                [
+                  120,
+                  1068,
+                  162,
+                  292
+                ],
+                [
+                  376,
+                  1068,
+                  162,
+                  292
+                ],
+                [
+                  636,
+                  1068,
+                  162,
+                  292
+                ],
+                [
+                  126,
+                  1385,
+                  162,
+                  292
+                ],
+                [
+                  376,
+                  1385,
+                  162,
+                  292
+                ],
+                [
+                  628,
+                  1385,
+                  162,
+                  292
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_sidepart_ocean",
+                "dark": "hair_colors/boy_sidepart_ocean__dark",
+                "chestnut": "hair_colors/boy_sidepart_ocean__chestnut",
+                "blonde": "hair_colors/boy_sidepart_ocean__blonde",
+                "midnight": "hair_colors/boy_sidepart_ocean__midnight"
+              }
+            },
+            "sand": {
+              "sheet": "outfits/boy_sidepart_sand",
+              "mask": "masks/outfits/boy_sidepart_sand",
+              "scale": 0.3254,
+              "hframes": 3,
+              "vframes": 5,
+              "frame_rects": [
+                [
+                  133,
+                  49,
+                  166,
+                  295
+                ],
+                [
+                  378,
+                  47,
+                  166,
+                  295
+                ],
+                [
+                  628,
+                  49,
+                  166,
+                  295
+                ],
+                [
+                  110,
+                  363,
+                  166,
+                  295
+                ],
+                [
+                  366,
+                  363,
+                  166,
+                  295
+                ],
+                [
+                  636,
+                  362,
+                  166,
+                  295
+                ],
+                [
+                  116,
+                  703,
+                  166,
+                  295
+                ],
+                [
+                  368,
+                  705,
+                  166,
+                  295
+                ],
+                [
+                  629,
+                  703,
+                  166,
+                  295
+                ],
+                [
+                  118,
+                  1064,
+                  166,
+                  295
+                ],
+                [
+                  374,
+                  1059,
+                  166,
+                  295
+                ],
+                [
+                  634,
+                  1064,
+                  166,
+                  295
+                ],
+                [
+                  126,
+                  1384,
+                  166,
+                  295
+                ],
+                [
+                  374,
+                  1384,
+                  166,
+                  295
+                ],
+                [
+                  626,
+                  1384,
+                  166,
+                  295
+                ]
+              ],
+              "hair_sheets": {
+                "brown": "outfits/boy_sidepart_sand",
+                "dark": "hair_colors/boy_sidepart_sand__dark",
+                "chestnut": "hair_colors/boy_sidepart_sand__chestnut",
+                "blonde": "hair_colors/boy_sidepart_sand__blonde",
+                "midnight": "hair_colors/boy_sidepart_sand__midnight"
+              }
+            }
+          },
+          "hair_sheets": {
+            "brown": "custom/boy_sidepart",
+            "dark": "hair_colors/boy_sidepart__dark",
+            "chestnut": "hair_colors/boy_sidepart__chestnut",
+            "blonde": "hair_colors/boy_sidepart__blonde",
+            "midnight": "hair_colors/boy_sidepart__midnight"
+          }
+        }
+      }
+    }
+  },
+  "hair_colors": {
+    "brown": {
+      "label": "自然棕",
+      "color": "#71432f",
+      "strength": 0.0
+    },
+    "dark": {
+      "label": "乌木黑",
+      "color": "#29282c",
+      "strength": 0.9
+    },
+    "chestnut": {
+      "label": "栗子红",
+      "color": "#8f493c",
+      "strength": 0.82
+    },
+    "blonde": {
+      "label": "麦穗金",
+      "color": "#c79a52",
+      "strength": 0.82
+    },
+    "midnight": {
+      "label": "雾夜蓝",
+      "color": "#39475f",
+      "strength": 0.86
+    }
+  },
+  "outfits": {
+    "original": {
+      "label": "经典原装"
+    },
+    "forest": {
+      "label": "森林园艺"
+    },
+    "berry": {
+      "label": "莓果暖装"
+    },
+    "ocean": {
+      "label": "湖蓝便装"
+    },
+    "sand": {
+      "label": "暖沙工装"
+    }
+  }
+}

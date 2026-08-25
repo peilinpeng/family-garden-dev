@@ -9,6 +9,12 @@ const GAME_SIZE := Vector2(1280, 720)
 const ANNA_ROOM_SCENE := "res://scenes/rooms/AnnaRoom.tscn"  # 房间 .tscn 迁移样板（仅玩家房间）
 const POND_AREA_SCENE := "res://scenes/pond/pond_area.tscn"
 const FARM_SCENE := "res://scenes/Farm.tscn"
+const KITCHEN_SCENE := "res://scenes/KitchenNew.tscn"
+const GARDEN_TILED_SCENE := "res://scenes/GardenTiled.tscn"  # Phase B: 花园背景+TileMap 拼装(替代旧的整图背景)
+const USE_GARDEN_TILED_AS_MAIN := false  # 正式主花园继续使用 shared_garden；TileMap 场景保留供独立搭建验收。
+const CHARACTER_CREATOR_PANEL_SCRIPT := preload("res://scripts/ui/character_creator_panel.gd")
+const LOOP_TWEEN_GUARD_INTERVAL := 0.05
+const FISHPOND_PLAYER_VISUAL_SCALE := 1.35
 const DAY_NIGHT_CLOCK_UI_SCRIPT := preload("res://scripts/ui/day_night_clock_ui.gd")
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
 
@@ -21,6 +27,7 @@ const ASSETS := {
 	"globalmap_garden": "res://assets/globalmap/garden.png",
 	"globalmap_house": "res://assets/globalmap/house.png",
 	"globalmap_pond": "res://assets/globalmap/pond.png",
+	"globalmap_familygarden_sign": "res://assets/globalmap/familygarden.png",
 	"tree": "res://assets/garden/family_tree.png",
 	"mailbox": "res://assets/garden/mailbox.png",
 	"bench": "res://assets/garden/bench.png",
@@ -29,17 +36,38 @@ const ASSETS := {
 	"house_mother": "res://assets/houses/house_mother.png",
 	"house_player": "res://assets/houses/house_player.png",
 	"house_partner": "res://assets/houses/house_partner.png",
-	"player": "res://assets/characters/girl.png",
+	"player": "res://assets/characters/girl_2.png",
 	"father": "res://assets/characters/papa.png",
 	"mother": "res://assets/characters/mama.png",
 	"partner": "res://assets/characters/boy.png",
-	"girl": "res://assets/characters/girl.png",
+	"girl": "res://assets/characters/girl_2.png",
 	"boy": "res://assets/characters/boy.png",
 	"papa": "res://assets/characters/papa.png",
 	"mama": "res://assets/characters/mama.png",
 	"button_normal": "res://assets/ui/buttons/button_normal.png",
 	"button_hover": "res://assets/ui/buttons/button_hover.png",
 	"button_selected": "res://assets/ui/buttons/button_selected.png",
+	"dialog_toast_panel": "res://assets/ui/dialog_toast_panel.png",
+	"inventory_bg": "res://assets/ui/Inventory_Light_example_with_slots_2.png",
+	"cursor_arrow": "res://assets/ui/cursors/cursor_arrow.png",
+	"cursor_pointer": "res://assets/ui/cursors/cursor_pointer.png",
+	# 下面这批已经导入项目、但还没有具体使用场景对接,先注册好 key 方便以后接:
+	"speech_bubble": "res://assets/ui/speech_bubble_grey.png",
+	"dialog_box_medium": "res://assets/ui/Dialouge UI/Premade dialog box medium.png",
+	"dialog_box_big": "res://assets/ui/Dialouge UI/Premade dialog box  big.png",
+	"emote_sheet": "res://assets/ui/Dialouge UI/Emotes/Teemo Basic emote animations sprite sheet.png",
+	"play_button": "res://assets/ui/UI Big Play Button.png",
+	"settings_buttons": "res://assets/ui/UI Settings Buttons.png",
+	"square_buttons_small": "res://assets/ui/buttons/Small Square Buttons.png",
+	"square_buttons_19x26": "res://assets/ui/buttons/Square Buttons 19x26.png",
+	"square_buttons_26x19": "res://assets/ui/buttons/Square Buttons 26x19.png",
+	"square_buttons_26x26": "res://assets/ui/buttons/Square Buttons 26x26.png",
+	"icons_all": "res://assets/ui/icons/All Icons.png",
+	"icons_weather": "res://assets/ui/icons/Weather_Icons_smal_freel.png",
+	"icons_white": "res://assets/ui/icons/white icons.png",
+	"icons_special": "res://assets/ui/icons/special icons/Special Icons.png",
+	"icons_happy_sad": "res://assets/ui/icons/special icons/Small Happines-Sadness icons.png",
+	"basic_pack_sheet": "res://assets/ui/Sprite sheet for Basic Pack.png",
 	"icon_map": "res://assets/ui/icons/icon_map.png",
 	"icon_postcard": "res://assets/ui/icons/icon_postcard.png",
 	"icon_mailbox": "res://assets/ui/icons/icon_mailbox.png",
@@ -55,6 +83,8 @@ const ASSETS := {
 	"icon_letter": "res://assets/ui/icons/icon_letter.png",
 	"icon_travel": "res://assets/ui/icons/icon_travel.png",
 	"icon_pin": "res://assets/ui/icons/icon_pin.png",
+	"icon_build": "res://assets/ui/icons/icon_build.png",
+	"icon_settings": "res://assets/ui/icons/icon_settings.png",
 	"mailbox_badge_dot": "res://assets/ui/badges/mailbox_badge_dot.png",
 	"mailbox_badge_letter": "res://assets/ui/badges/mailbox_badge_letter.png",
 	"pin_default": "res://assets/ui/pins/pin_default.png",
@@ -62,6 +92,11 @@ const ASSETS := {
 	"pin_selected": "res://assets/ui/pins/pin_selected.png",
 	"pin_new": "res://assets/ui/pins/pin_new.png",
 	"pin_postcard": "res://assets/ui/pins/pin_postcard.png",
+	"fishing_goldfish": "res://assets/pond/fish/koi_fish/koi_fish_01/koi_fish_swim_right_01.png",
+	"fishing_bottle": "res://assets/pond/bottle/bottle_float_01.png",
+	"fishing_branch": "res://assets/pond/props/tree_branch.png",
+	"fishing_rod": "res://assets/pond/props/fishing_rod.png",
+	"fishing_bobber": "res://assets/pond/props/fishing_bobber.png",
 	"cat_sheet": "res://assets/animals/cat/cat_walk_sleep_sheet.png",
 	"bird_sheet": "res://assets/animals/bird/bird_states_sheet.png",
 	"dog_sheet": "res://assets/animals/dog/dog_states_sheet.png",
@@ -74,35 +109,38 @@ const ASSETS := {
 	"room_louis_fg": "res://assets/rooms/louis_room_fg.png",
 	"room_anna_fg": "res://assets/rooms/anna_room_fg.png",
 }
+const FAMILY_TREE_TEXTURE_PATTERN := "res://assets/garden/family_tree/stage_%d.png"
+## 幼苗应低于成年角色，之后逐级长高；最终形态保持原定尺寸。
+const FAMILY_TREE_DISPLAY_SCALES := [0.11, 0.115, 0.135, 0.16, 0.19]
 
 const HOUSE_DATA := [
-	{"id": "father", "label": "Papa's Cottage", "asset": "house_father", "pos": Vector2(155, 124), "height": 180.0},
-	{"id": "mother", "label": "Mama's Cottage", "asset": "house_mother", "pos": Vector2(1153, 145), "height": 230.0},
-	{"id": "player", "label": "Peilin's Cottage", "asset": "house_player", "pos": Vector2(125, 600), "height": 180.0},
-	{"id": "partner", "label": "Louis's Cottage", "asset": "house_partner", "pos": Vector2(126, 438), "height": 180.0},
+	{"id": "father", "label": "爸爸的小屋", "room_label": "爸爸的房间", "asset": "house_father", "pos": Vector2(205, 160), "height": 180.0, "hotspot_size": Vector2(86, 96)},
+	{"id": "mother", "label": "妈妈的小屋", "room_label": "妈妈的房间", "asset": "house_mother", "pos": Vector2(1090, 160), "height": 230.0, "hotspot_size": Vector2(92, 100)},
+	{"id": "player", "label": "佩林的小屋", "room_label": "佩林的房间", "asset": "house_player", "pos": Vector2(682, 160), "height": 180.0, "hotspot_size": Vector2(92, 100)},
+	{"id": "partner", "label": "路易的小屋", "room_label": "路易的房间", "asset": "house_partner", "pos": Vector2(370, 155), "height": 180.0, "hotspot_size": Vector2(92, 100)},
 ]
 
 const ROOM_DATA := {
 	"father": {
-		"label": "Papa's Room",
+		"label": "爸爸的房间",
 		"asset": "room_papa",
 		"foreground": "room_papa_fg",
 		"spawn": Vector2(640, 575),
 	},
 	"mother": {
-		"label": "Mama's Room",
+		"label": "妈妈的房间",
 		"asset": "room_mama",
 		"foreground": "room_mama_fg",
 		"spawn": Vector2(640, 565),
 	},
 	"partner": {
-		"label": "Louis's Room",
+		"label": "路易的房间",
 		"asset": "room_louis",
 		"foreground": "room_louis_fg",
 		"spawn": Vector2(640, 560),
 	},
 	"player": {
-		"label": "Anna's Room",
+		"label": "我的房间",
 		"asset": "room_anna",
 		"foreground": "room_anna_fg",
 		"spawn": Vector2(640, 560),
@@ -110,11 +148,20 @@ const ROOM_DATA := {
 }
 
 const CHARACTER_DATA := [
-	{"role": "girl", "label": "Girl", "default_name": "Peilin", "asset": "girl", "house_id": "player", "house_label": "Peilin's Cottage", "npc_pos": Vector2(700, 405), "wander_radius": 90.0},
-	{"role": "boy", "label": "Boy", "default_name": "Louis", "asset": "boy", "house_id": "partner", "house_label": "Louis's Cottage", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
-	{"role": "papa", "label": "Papa", "default_name": "Papa", "asset": "papa", "house_id": "father", "house_label": "Papa's Cottage", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
-	{"role": "mama", "label": "Mama", "default_name": "Mama", "asset": "mama", "house_id": "mother", "house_label": "Mama's Cottage", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
+	{"role": "girl", "label": "女儿", "default_name": "佩林", "asset": "girl", "house_id": "player", "house_label": "佩林的小屋", "npc_pos": Vector2(700, 405), "wander_radius": 90.0},
+	{"role": "boy", "label": "儿子", "default_name": "路易", "asset": "boy", "house_id": "partner", "house_label": "路易的小屋", "npc_pos": Vector2(805, 535), "wander_radius": 85.0},
+	{"role": "papa", "label": "爸爸", "default_name": "爸爸", "asset": "papa", "house_id": "father", "house_label": "爸爸的小屋", "npc_pos": Vector2(765, 335), "wander_radius": 80.0},
+	{"role": "mama", "label": "妈妈", "default_name": "妈妈", "asset": "mama", "house_id": "mother", "house_label": "妈妈的小屋", "npc_pos": Vector2(525, 365), "wander_radius": 80.0},
+	{"role": "grandfather", "label": "爷爷（外公）", "default_name": "爷爷", "asset": "grandfather", "house_id": "father", "house_label": "爷爷的小屋", "npc_pos": Vector2(865, 385), "wander_radius": 76.0},
+	{"role": "grandmother", "label": "奶奶（外婆）", "default_name": "奶奶", "asset": "grandmother", "house_id": "mother", "house_label": "奶奶的小屋", "npc_pos": Vector2(435, 430), "wander_radius": 76.0},
 ]
+
+const GARDEN_ARCHIVES := {
+	"flowers": {"title": "记忆花圃", "subtitle": "家人共同照料的日常片段", "slot_id": "garden_archive_flowers"},
+	"photos": {"title": "家庭影像", "subtitle": "照片里留下的光和笑声", "slot_id": "garden_archive_photos"},
+	"postcards": {"title": "远方来信", "subtitle": "旅途中寄回家的明信片", "slot_id": "garden_archive_postcards"},
+}
+const GARDEN_ARCHIVE_ORDER := ["flowers", "photos", "postcards"]
 
 const ANIMAL_DATA := [
 	{
@@ -170,12 +217,16 @@ const ANIMAL_DATA := [
 
 var world: Node2D
 var ui_layer: CanvasLayer
+var ui_root: Control
 var info_label: Label
 var plant_button: Button
 var world_chat_input: LineEdit = null
 var world_chat_feed_panel: Panel = null
 var world_chat_feed: Label = null
+var day_night_clock_ui: Control = null
 var world_chat_fade_tween: Tween = null
+var _chat_panel_list: VBoxContainer = null   ## 打开的完整聊天面板的消息容器(发送后实时刷新)
+var _chat_panel_scroll: ScrollContainer = null
 var plant_mode := false
 var selected_plant_type := "tree"
 var mode := "garden"
@@ -183,11 +234,16 @@ var player: CharacterBody2D
 var plant_nodes: Dictionary = {}
 var room_card: Panel = null
 var gate4_guide_card: Panel = null
+var garden_guide_expanded := true
 var mailbox_badge: Sprite2D = null
 var active_modal: Control = null
+var game_hud: GameHUD = null   ## 常驻 HUD(角色卡/图标导航/设置/背包),setup 时创建
 var map_ui: Control = null
 var global_map_ui: Control = null
+var pond_fishing_available := false
+var pond_fishing_prompt: Label = null
 var adding_place := false
+var _garden_controls_hint_shown := false
 var pending_place_position := Vector2.ZERO
 var animal_nodes: Dictionary = {}
 var cloud_load_finished: bool = false
@@ -203,6 +259,21 @@ var photo_texture_cache: Dictionary = {}
 var active_ai_workflow: String = ""
 var active_ai_status_label: Label = null
 var _last_world_sync_toast_msec := -100000
+var orientation_overlay: Control = null
+var orientation_content: Control = null
+var _autosave_timer: Timer = null
+var _current_spawn_key := "default"
+var _current_room_id := ""
+var _pending_resume_position := Vector2.ZERO
+var _has_pending_resume_position := false
+
+func _unhandled_input(event: InputEvent) -> void:
+	if mode != "fishpond" or (active_modal != null and is_instance_valid(active_modal)):
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		if pond_fishing_available:
+			get_viewport().set_input_as_handled()
+			_start_fishing_sequence()
 
 func _load_cloud_data() -> void:
 	if OS.has_environment("FAMILY_GARDEN_TEST"):
@@ -210,8 +281,11 @@ func _load_cloud_data() -> void:
 		return
 	if CloudManager == null:
 		return
+	if MemoryManager.selected_role_key == "":
+		cloud_load_finished = true
+		return
 
-	_show_toast("Loading family garden...")
+	_show_toast("正在同步家庭花园...")
 	var data: Dictionary = await CloudManager.load_family_data()
 	MemoryManager.apply_cloud_data(data)
 	cloud_load_finished = true
@@ -245,8 +319,10 @@ func _cloud_world_toast(table: String) -> String:
 			return "家人的明信片已同步。"
 		"inventories":
 			return "共享仓已同步。"
-		"farm_plots":
+		"farm_plots", "farm_livestock":
 			return "家庭农场已同步。"
+		"farm_activity_log":
+			return "农场告示牌已同步。"
 		"memories", "nodes", "answers", "families":
 			return "家人的记忆已同步。"
 		"rooms", "room_objects":
@@ -264,52 +340,231 @@ func setup(p_world: Node2D, p_ui_layer: CanvasLayer) -> void:
 		CloudManager.cloud_world_changed.connect(_on_cloud_world_changed)
 	if not AIWorkflowManager.workflow_state_changed.is_connected(_on_ai_workflow_state_changed):
 		AIWorkflowManager.workflow_state_changed.connect(_on_ai_workflow_state_changed)
+	if _autosave_timer == null:
+		_autosave_timer = Timer.new()
+		_autosave_timer.name = "AutosaveTimer"
+		_autosave_timer.wait_time = 5.0
+		_autosave_timer.autostart = true
+		_autosave_timer.timeout.connect(_on_autosave_timeout)
+		add_child(_autosave_timer)
+	_setup_custom_cursor()
 	_build_ui()
+	# 常驻 HUD 作为独立 CanvasLayer 挂到 main 根，切换场景时不重建。
+	game_hud = GameHUD.new()
+	ui_layer.get_parent().add_child(game_hud)
+	var viewport := get_viewport()
+	if viewport != null and not viewport.size_changed.is_connected(_update_viewport_layout):
+		viewport.size_changed.connect(_update_viewport_layout)
+	_update_viewport_layout()
+
+func _on_autosave_timeout() -> void:
+	save_current_progress()
+
+func save_current_progress() -> void:
+	if MemoryManager.selected_role_key == "":
+		return
+	if not _is_autosavable_scene(mode):
+		return
+	if player == null or not is_instance_valid(player):
+		return
+	var scene_id := _current_autosave_scene_id()
+	MemoryManager.update_autosave(scene_id, player.global_position, _current_spawn_key)
+
+func restore_last_saved_scene() -> void:
+	if not MemoryManager.has_resume_position():
+		_show_garden()
+		return
+	var scene_id := MemoryManager.last_scene_id
+	_pending_resume_position = MemoryManager.resume_position()
+	_has_pending_resume_position = true
+	if scene_id.begins_with("room:"):
+		var room_id := scene_id.get_slice(":", 1)
+		var room_data := _get_room_data(room_id)
+		_enter_house(room_id, str(room_data.get("label", "房间")))
+	else:
+		match scene_id:
+			"garden":
+				_show_garden(MemoryManager.last_spawn_key)
+			"farm":
+				goto_scene("farm")
+			"kitchen":
+				goto_scene("kitchen")
+			"fishpond", "pond":
+				_build_fishpond(MemoryManager.last_spawn_key)
+			"room":
+				var room_data := _get_room_data("player")
+				_enter_house("player", str(room_data.get("label", "我的房间")))
+			_:
+				_show_garden()
+	call_deferred("_apply_pending_resume_position")
+
+func reset_to_new_game() -> void:
+	_has_pending_resume_position = false
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	player = null
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_open_panel():
+		game_hud.close_current()
+	_close_active_panel()
+	_clear_map_ui()
+	if room_card != null and is_instance_valid(room_card):
+		room_card.queue_free()
+		room_card = null
+	_clear_world()
+	MemoryManager.reset_to_new_game()
+	if InventoryManager != null and InventoryManager.has_method("reset_to_new_game"):
+		InventoryManager.reset_to_new_game()
+	_show_role_select()
+	_show_toast("存档已清除，已恢复初始状态。")
+
+func _apply_pending_resume_position() -> void:
+	if not _has_pending_resume_position:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _has_pending_resume_position and player != null and is_instance_valid(player):
+		player.global_position = _pending_resume_position
+	_has_pending_resume_position = false
+
+func _is_autosavable_scene(scene_id: String) -> bool:
+	return scene_id in ["garden", "farm", "kitchen", "fishpond", "room"]
+
+func _current_autosave_scene_id() -> String:
+	if mode == "room":
+		return "room:%s" % (_current_room_id if _current_room_id != "" else "player")
+	return mode
+
+## 自定义猫爪鼠标指针(默认箭头 + 悬浮可点击时的指示手型),整局只需设一次。
+func _setup_custom_cursor() -> void:
+	var arrow := _safe_texture(str(ASSETS.get("cursor_arrow", "")))
+	if arrow:
+		Input.set_custom_mouse_cursor(arrow, Input.CURSOR_ARROW, Vector2(6, 4))
+	var pointer := _safe_texture(str(ASSETS.get("cursor_pointer", "")))
+	if pointer:
+		Input.set_custom_mouse_cursor(pointer, Input.CURSOR_POINTING_HAND, Vector2(6, 4))
 
 func _build_ui() -> void:
 	var root := Control.new()
+	ui_root = root
 	root.name = "UIRoot"
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	root.size = GAME_SIZE
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(root)
 
 	var day_night_clock := TextureRect.new()
 	day_night_clock.name = "DayNightClock"
 	day_night_clock.set_script(DAY_NIGHT_CLOCK_UI_SCRIPT)
-	day_night_clock.position = Vector2(GAME_SIZE.x - 136, 16)
+	day_night_clock.position = Vector2(GAME_SIZE.x - 82, 10)
 	day_night_clock.size = Vector2(112, 124)
+	day_night_clock.scale = Vector2(0.58, 0.58)
+	day_night_clock.modulate = Color(1.0, 1.0, 1.0, 0.92)
 	day_night_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(day_night_clock)
+	day_night_clock_ui = day_night_clock
 
 	info_label = Label.new()
+	info_label.visible = false
 	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info_label.text = "家庭花园"
-	info_label.position = Vector2(18, 14)
-	info_label.size = Vector2(760, 32)
-	info_label.add_theme_font_size_override("font_size", 20)
-	info_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
 	root.add_child(info_label)
 
-	var help := Label.new()
-	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	help.text = "WASD / 方向键移动   |   点击发光物件互动"
-	help.position = Vector2(18, 45)
-	help.size = Vector2(920, 24)
-	help.add_theme_font_size_override("font_size", 13)
-	help.modulate = Color(0.25, 0.22, 0.18, 0.85)
-	root.add_child(help)
-
-	# Bottom navigation. Kept compact and centered under the garden.
-	_add_button(root, "记忆", Vector2(148, 672), Vector2(90, 32), "create_memory")
-	_add_button(root, "世界", Vector2(248, 672), Vector2(86, 32), "global_map")
-	_add_button(root, "家谱", Vector2(338, 672), Vector2(82, 32), "family_tree")
-	_add_button(root, "旅行", Vector2(430, 672), Vector2(76, 32), "travel_map")
-	_add_button(root, "明信片", Vector2(516, 672), Vector2(120, 32), "MemoryManager.postcards")
-	_add_world_chat_feed(root, Vector2(650, 604), Vector2(382, 60))
-	world_chat_input = _add_world_chat_box(root, Vector2(650, 672), Vector2(300, 32))
-	_add_button(root, "聊天", Vector2(958, 672), Vector2(74, 32), "world_chat_history")
-	_add_button(root, "家人", Vector2(1042, 672), Vector2(76, 32), "family_members")
+	# 操作说明改为首次进入时的短提示；聊天输入只在聊天面板内出现。
+	# 这里只保留收到消息后的临时预览，不再永久占据底部花园画面。
+	_add_world_chat_feed(root, Vector2(826, 580), Vector2(382, 60))
+	world_chat_input = null
 	_refresh_world_chat_feed()
+	_build_orientation_overlay(root)
+
+func _navigation_dock_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.99, 0.95, 0.82, 0.92)
+	style.border_color = Color(0.43, 0.34, 0.23, 0.78)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	style.shadow_color = Color(0.16, 0.11, 0.07, 0.20)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+func _build_orientation_overlay(root: Control) -> void:
+	orientation_overlay = Control.new()
+	orientation_overlay.name = "PortraitOrientationOverlay"
+	orientation_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	orientation_overlay.size = GAME_SIZE
+	orientation_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	orientation_overlay.z_index = 4090
+	root.add_child(orientation_overlay)
+
+	var background := ColorRect.new()
+	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	background.color = Color(0.10, 0.17, 0.14, 0.98)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	orientation_overlay.add_child(background)
+
+	var content := VBoxContainer.new()
+	orientation_content = content
+	content.set_anchors_preset(Control.PRESET_CENTER)
+	content.position = Vector2(-260, -155)
+	content.size = Vector2(520, 310)
+	content.pivot_offset = content.size * 0.5
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 14)
+	orientation_overlay.add_child(content)
+
+	var brand := Label.new()
+	brand.text = "FAMILY GARDEN · 家庭花园"
+	brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	brand.add_theme_font_size_override("font_size", 22)
+	brand.add_theme_color_override("font_color", Color(0.78, 0.88, 0.72, 0.92))
+	content.add_child(brand)
+
+	var rotate_icon := Label.new()
+	rotate_icon.text = "↻"
+	rotate_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rotate_icon.add_theme_font_size_override("font_size", 72)
+	rotate_icon.add_theme_color_override("font_color", Color(0.96, 0.87, 0.62, 1.0))
+	content.add_child(rotate_icon)
+
+	var title := Label.new()
+	title.text = "请旋转手机"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(1.0, 0.97, 0.88, 1.0))
+	content.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "横屏进入 Family Garden"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 18)
+	hint.add_theme_color_override("font_color", Color(0.78, 0.84, 0.78, 0.90))
+	content.add_child(hint)
+
+func _update_orientation_overlay() -> void:
+	if orientation_overlay == null or not is_instance_valid(orientation_overlay):
+		return
+	var portrait := _is_portrait_size(get_viewport().get_visible_rect().size)
+	orientation_overlay.visible = portrait
+	if portrait and orientation_content != null and is_instance_valid(orientation_content):
+		orientation_content.scale = Vector2(2.0, 2.0)
+
+func _update_viewport_layout() -> void:
+	var viewport_size := get_viewport().get_visible_rect().size
+	var frame_margin := Vector2(
+		maxf(0.0, (viewport_size.x - GAME_SIZE.x) * 0.5),
+		maxf(0.0, (viewport_size.y - GAME_SIZE.y) * 0.5)
+	)
+	if world != null and is_instance_valid(world):
+		world.position = frame_margin
+	if ui_root != null and is_instance_valid(ui_root):
+		ui_root.position = frame_margin
+	if orientation_overlay != null and is_instance_valid(orientation_overlay):
+		orientation_overlay.position = -frame_margin
+		orientation_overlay.size = viewport_size
+	_update_orientation_overlay()
+
+func _is_portrait_size(viewport_size: Vector2) -> bool:
+	return viewport_size.y > viewport_size.x
 
 func _add_button(root: Control, button_text: String, pos: Vector2, button_size: Vector2, action: String) -> Button:
 	var button := Button.new()
@@ -353,53 +608,231 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	var panel := Panel.new()
 	panel.name = "Gate4SceneGuide"
 	gate4_guide_card = panel
-	panel.position = Vector2(944, 88) if scene_id == "room" else Vector2(22, 86)
-	panel.size = Vector2(306, 132)
+	panel.position = Vector2(1022, 116) if scene_id == "room" else (Vector2(16, 132) if scene_id == "garden" else Vector2(20, 20))
+	panel.size = Vector2(226, 76) if scene_id == "room" else (Vector2(244, 184) if scene_id == "garden" and garden_guide_expanded else (Vector2(244, 44) if scene_id == "garden" else Vector2(248, 92)))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_apply_guide_card_style(panel)
-	ui_layer.add_child(panel)
+	_apply_guide_card_style(panel, scene_id)
+	if ui_root != null and is_instance_valid(ui_root):
+		ui_root.add_child(panel)
+	else:
+		ui_layer.add_child(panel)
 
 	var accent := ColorRect.new()
-	accent.position = Vector2(12, 12)
-	accent.size = Vector2(5, 108)
+	accent.position = Vector2(14, 14) if scene_id == "garden" and garden_guide_expanded else (Vector2(12, 10) if scene_id == "garden" else Vector2(12, 11))
+	accent.size = Vector2(4, 156) if scene_id == "garden" and garden_guide_expanded else (Vector2(4, 24) if scene_id == "garden" else (Vector2(4, 54) if scene_id == "room" else Vector2(4, 68)))
 	accent.color = _gate4_guide_accent(scene_id)
 	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(accent)
+	if scene_id == "garden":
+		if garden_guide_expanded:
+			_add_garden_guide_inset(panel)
+			_add_garden_guide_title(panel)
+			_add_garden_beginner_steps(panel)
+			_add_garden_guide_toggle(panel, Vector2(206, 8), true)
+		else:
+			_add_garden_guide_compact(panel)
+			_add_garden_guide_toggle(panel, Vector2(206, 8), false)
+		return
 
 	var title := Label.new()
 	title.text = _gate4_guide_title(scene_id)
-	title.position = Vector2(28, 12)
-	title.size = Vector2(250, 24)
-	title.add_theme_font_size_override("font_size", 17)
+	title.position = Vector2(28, 8) if scene_id == "room" else Vector2(28, 10)
+	title.size = Vector2(184, 21) if scene_id == "room" else Vector2(202, 22)
+	title.add_theme_font_size_override("font_size", 14 if scene_id == "room" else 15)
 	title.add_theme_color_override("font_color", Color(0.21, 0.18, 0.13, 0.96))
 	panel.add_child(title)
 
 	var body := Label.new()
 	body.text = _gate4_guide_body(scene_id)
-	body.position = Vector2(28, 42)
-	body.size = Vector2(250, 52)
+	body.position = Vector2(28, 31) if scene_id == "room" else Vector2(28, 36)
+	body.size = Vector2(184, 36) if scene_id == "room" else Vector2(202, 40)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_size_override("font_size", 13)
+	body.add_theme_font_size_override("font_size", 12)
 	body.add_theme_color_override("font_color", Color(0.33, 0.28, 0.21, 0.90))
 	panel.add_child(body)
 
-	var footer := Label.new()
-	footer.text = _gate4_guide_footer(scene_id)
-	footer.position = Vector2(28, 98)
-	footer.size = Vector2(250, 20)
-	footer.add_theme_font_size_override("font_size", 12)
-	footer.add_theme_color_override("font_color", Color(0.44, 0.35, 0.25, 0.78))
-	panel.add_child(footer)
 
-func _apply_guide_card_style(panel: Panel) -> void:
+func _add_garden_guide_title(parent: Control) -> void:
+	var title := Label.new()
+	title.text = _gate4_guide_title("garden")
+	title.position = Vector2(32, 10)
+	title.size = Vector2(96, 24)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color(0.21, 0.18, 0.13, 0.96))
+	parent.add_child(title)
+
+
+func _add_garden_guide_compact(parent: Control) -> void:
+	var title := Label.new()
+	title.text = "新手指引"
+	title.position = Vector2(28, 8)
+	title.size = Vector2(76, 24)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", Color(0.21, 0.18, 0.13, 0.96))
+	parent.add_child(title)
+
+	var summary := Label.new()
+	summary.text = "移动 · 建造 · 撤销"
+	summary.position = Vector2(106, 10)
+	summary.size = Vector2(92, 21)
+	summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary.add_theme_font_size_override("font_size", 11)
+	summary.add_theme_color_override("font_color", Color(0.36, 0.30, 0.20, 0.86))
+	parent.add_child(summary)
+
+func _add_garden_beginner_steps(parent: Control) -> void:
+	var guide := Label.new()
+	guide.name = "GardenBeginnerSteps"
+	guide.text = "WASD / 方向键    移动角色\nB / 底部锤子      开关建造\n左键拖动          绘制或摆放\nShift + 拖动      矩形铺地\nDelete            删除模式\nCtrl+Z / Ctrl+Y   撤销 / 重做"
+	guide.position = Vector2(28, 44)
+	guide.size = Vector2(198, 126)
+	guide.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	guide.add_theme_font_size_override("font_size", 12)
+	guide.add_theme_color_override("font_color", Color(0.31, 0.27, 0.19, 0.92))
+	guide.add_theme_constant_override("line_spacing", 3)
+	parent.add_child(guide)
+
+
+func _add_family_portrait_compact(parent: Control) -> void:
+	var fp: Dictionary = MemoryManager.family_portrait
+	var members: Array = fp.get("members", [])
+	if members.is_empty() and MemoryManager.selected_role_key != "":
+		members = [MemoryManager.selected_role_key]
+	var family_button := Panel.new()
+	family_button.name = "FamilyPortraitMiniature"
+	family_button.position = Vector2(252, 8)
+	family_button.size = Vector2(32, 28)
+	family_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	family_button.tooltip_text = "查看家庭成员"
+	var family_style := StyleBoxFlat.new()
+	family_style.bg_color = Color(0.80, 0.87, 0.63, 0.88)
+	family_style.border_color = Color(0.43, 0.31, 0.19, 0.64)
+	family_style.set_border_width_all(1)
+	family_style.set_corner_radius_all(4)
+	family_button.add_theme_stylebox_override("panel", family_style)
+	parent.add_child(family_button)
+
+	var count := Label.new()
+	count.text = "%d人" % members.size()
+	count.position = Vector2(2, 5)
+	count.size = Vector2(28, 17)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	count.add_theme_font_size_override("font_size", 9)
+	count.add_theme_color_override("font_color", Color(0.31, 0.26, 0.16, 0.88))
+	family_button.add_child(count)
+	family_button.mouse_entered.connect(func() -> void: family_button.modulate = Color(1.05, 1.03, 0.96, 1.0))
+	family_button.mouse_exited.connect(func() -> void: family_button.modulate = Color.WHITE)
+	family_button.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_open_family_members_panel()
+	)
+
+
+func _add_garden_guide_toggle(parent: Control, pos: Vector2, expanded: bool) -> void:
+	var toggle := Button.new()
+	toggle.text = "-" if expanded else "+"
+	toggle.position = pos
+	toggle.size = Vector2(26, 28)
+	toggle.focus_mode = Control.FOCUS_NONE
+	toggle.mouse_filter = Control.MOUSE_FILTER_STOP
+	toggle.tooltip_text = "收起新手指引" if expanded else "展开新手指引"
+	toggle.add_theme_font_size_override("font_size", 14)
+	toggle.add_theme_color_override("font_color", Color(0.35, 0.29, 0.19, 0.90))
+	var normal_style := StyleBoxFlat.new()
+	normal_style.bg_color = Color(0.91, 0.87, 0.69, 0.52)
+	normal_style.border_color = Color(0.48, 0.37, 0.23, 0.24)
+	normal_style.set_border_width_all(1)
+	normal_style.set_corner_radius_all(4)
+	var hover_style := normal_style.duplicate()
+	hover_style.bg_color = Color(0.83, 0.88, 0.65, 0.82)
+	hover_style.border_color = Color(0.42, 0.52, 0.28, 0.55)
+	toggle.add_theme_stylebox_override("normal", normal_style)
+	toggle.add_theme_stylebox_override("hover", hover_style)
+	toggle.add_theme_stylebox_override("pressed", hover_style)
+	toggle.pressed.connect(_toggle_garden_guide)
+	parent.add_child(toggle)
+
+
+func _toggle_garden_guide() -> void:
+	garden_guide_expanded = not garden_guide_expanded
+	_show_gate4_scene_guide("garden")
+
+
+func _add_garden_guide_inset(parent: Control) -> void:
+	var inset := Panel.new()
+	inset.position = Vector2(5, 5)
+	inset.size = parent.size - Vector2(10, 10)
+	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var inset_style := StyleBoxFlat.new()
+	inset_style.bg_color = Color(0, 0, 0, 0)
+	inset_style.border_color = Color(1.0, 0.98, 0.88, 0.54)
+	inset_style.set_border_width_all(1)
+	inset_style.set_corner_radius_all(6)
+	inset.add_theme_stylebox_override("panel", inset_style)
+	parent.add_child(inset)
+
+	var title_rule := ColorRect.new()
+	title_rule.position = Vector2(32, 36)
+	title_rule.size = Vector2(190, 1)
+	title_rule.color = Color(0.45, 0.58, 0.32, 0.42)
+	title_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(title_rule)
+
+
+func _add_garden_guide_stats(parent: Control) -> void:
+	var stats := [
+		{"value": _demo_memories.size(), "label": "段记忆"},
+		{"value": MemoryManager.get_memory_links("garden").size(), "label": "条藤蔓"},
+	]
+	for index in range(stats.size()):
+		var stat: Dictionary = stats[index]
+		var card := Panel.new()
+		card.position = Vector2(28 + index * 66, 46)
+		card.size = Vector2(60, 46)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var card_style := StyleBoxFlat.new()
+		card_style.bg_color = Color(0.94, 0.90, 0.73, 0.58)
+		card_style.border_color = Color(0.53, 0.43, 0.27, 0.18)
+		card_style.set_border_width_all(1)
+		card_style.set_corner_radius_all(4)
+		card.add_theme_stylebox_override("panel", card_style)
+		parent.add_child(card)
+
+		var value := Label.new()
+		value.text = str(stat.get("value", 0))
+		value.position = Vector2(4, 2)
+		value.size = Vector2(52, 24)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		value.add_theme_font_size_override("font_size", 17)
+		value.add_theme_color_override("font_color", Color(0.25, 0.22, 0.15, 0.98))
+		card.add_child(value)
+
+		var caption := Label.new()
+		caption.text = String(stat.get("label", ""))
+		caption.position = Vector2(4, 25)
+		caption.size = Vector2(52, 16)
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		caption.add_theme_font_size_override("font_size", 10)
+		caption.add_theme_color_override("font_color", Color(0.38, 0.32, 0.21, 0.82))
+		card.add_child(caption)
+
+
+func _apply_guide_card_style(panel: Panel, scene_id: String = "") -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.96, 0.84, 0.88)
-	style.border_color = Color(0.60, 0.46, 0.30, 0.62)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.shadow_color = Color(0.15, 0.10, 0.06, 0.16)
-	style.shadow_size = 6
-	style.shadow_offset = Vector2(0, 3)
+	style.bg_color = Color(0.97, 0.92, 0.78, 0.96) if scene_id == "garden" else (Color(0.97, 0.92, 0.82, 0.88) if scene_id == "room" else Color(1.0, 0.96, 0.84, 0.82))
+	style.border_color = Color(0.42, 0.31, 0.20, 0.72) if scene_id == "garden" else (Color(0.45, 0.33, 0.25, 0.42) if scene_id == "room" else Color(0.54, 0.42, 0.28, 0.48))
+	style.set_border_width_all(2 if scene_id == "garden" else 1)
+	style.set_corner_radius_all(7)
+	style.shadow_color = Color(0.15, 0.10, 0.06, 0.20 if scene_id == "garden" else 0.14)
+	style.shadow_size = 5 if scene_id == "garden" else (3 if scene_id == "room" else 4)
+	style.shadow_offset = Vector2(0, 3 if scene_id == "garden" else 2)
 	panel.add_theme_stylebox_override("panel", style)
 
 func _gate4_guide_accent(scene_id: String) -> Color:
@@ -418,28 +851,23 @@ func _gate4_guide_title(scene_id: String) -> String:
 		"room":
 			return "我的 AI 房间"
 		_:
-			return "花园今日"
+			return "新手指引"
 
 func _gate4_guide_body(scene_id: String) -> String:
 	match scene_id:
 		"fishpond":
-			return "%d 只漂流瓶 · %d 段岸边记忆\n%d 根记忆藤蔓可回看" % [
-				_demo_bottles.size(),
-				_fishpond_memories.size(),
-				MemoryManager.get_memory_links("fishpond").size(),
-			]
+			return "%d 只漂流瓶 · 靠近钓鱼台按 E\n回答会收进主花园的记忆花园" % _demo_bottles.size()
 		"room":
 			var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
 			var object_count := 0 if room.is_empty() else MemoryManager.get_room_objects(String(room.get("id", ""))).size()
-			return "%s\n%d 件 AI 摆放的物件" % [
-				String(room.get("room_name", "还没有生成房间")) if not room.is_empty() else "等待一张房间照片",
+			return "%s · %d 件物件\n点击家具可调整位置" % [
+				_room_theme_display_label(String(room.get("room_name", "还没有生成房间"))) if not room.is_empty() else "等待一张房间照片",
 				object_count,
 			]
 		_:
-			return "%d 朵记忆花 · %d 根记忆藤蔓\n家庭画像 v%d" % [
+			return "%d 段记忆\n%d 条藤蔓" % [
 				_demo_memories.size(),
 				MemoryManager.get_memory_links("garden").size(),
-				int(MemoryManager.family_portrait.get("version", 0)),
 			]
 
 func _gate4_guide_footer(scene_id: String) -> String:
@@ -509,16 +937,18 @@ func _on_world_chat_preview_input(event: InputEvent) -> void:
 		_open_world_chat_history_panel()
 
 func _on_world_chat_submitted(submitted_text: String) -> void:
-	var text := submitted_text.strip_edges()
+	_send_world_chat_message(submitted_text, world_chat_input)
+
+## 发送世界聊天消息。source_input:发起发送的输入框(底部栏或聊天面板内嵌),发送期间禁用、
+## 完成后清空并重新聚焦。回车键与 Send 按钮、聊天面板发送都走这里。
+func _send_world_chat_message(raw_text: String, source_input: LineEdit = null) -> void:
+	var text := raw_text.strip_edges()
 	if text == "":
 		return
-	_send_world_chat_message(text)
-
-func _send_world_chat_message(text: String) -> void:
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = false
-		world_chat_input.text = ""
-		world_chat_input.placeholder_text = "Sending..."
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = false
+		source_input.text = ""
+		source_input.placeholder_text = "正在发送..."
 
 	var author := _get_world_chat_author()
 	var message_id := "message_" + str(Time.get_ticks_msec())
@@ -538,12 +968,12 @@ func _send_world_chat_message(text: String) -> void:
 	MemoryManager.notify_family_activity()
 	MemoryManager.save_game()
 	_refresh_world_chat_feed(true)
-
-	if world_chat_input != null and is_instance_valid(world_chat_input):
-		world_chat_input.editable = true
-		world_chat_input.placeholder_text = "Send a family message..."
-		world_chat_input.grab_focus()
-	_show_toast("Message sent.")
+	_refresh_chat_panel_messages()
+	if source_input != null and is_instance_valid(source_input):
+		source_input.editable = true
+		source_input.placeholder_text = "给家人留一句话..."
+		source_input.grab_focus()
+	_show_toast("留言已发送。")
 
 func _get_world_chat_author() -> String:
 	if GameIdentity != null and GameIdentity.is_ready() and str(GameIdentity.display_name).strip_edges() != "":
@@ -554,8 +984,8 @@ func _get_world_chat_author() -> String:
 	if role != "":
 		for character in CHARACTER_DATA:
 			if str(character.get("role", "")) == role:
-				return str(character.get("default_name", "Family"))
-	return "Family"
+				return str(character.get("default_name", "家人"))
+	return "家人"
 
 func _refresh_world_chat_feed(show_preview: bool = false) -> void:
 	if world_chat_feed == null or not is_instance_valid(world_chat_feed):
@@ -569,7 +999,7 @@ func _refresh_world_chat_feed(show_preview: bool = false) -> void:
 		if not (raw_message is Dictionary):
 			continue
 		var message: Dictionary = raw_message
-		var author := str(message.get("author", "Family"))
+		var author := str(message.get("author", "家人"))
 		var text := str(message.get("text", "")).strip_edges()
 		if text == "":
 			continue
@@ -595,14 +1025,16 @@ func _show_world_chat_preview() -> void:
 			world_chat_feed_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	)
 
+## 完整家庭聊天面板:滚动消息流(旧→新,气泡按自己/家人左右对齐)+ 内嵌输入框/发送。
+## 底部栏"Chat"按钮或点消息预览都打开这里。发送后实时刷新并自动滚到底。
 func _open_world_chat_history_panel() -> void:
 	_close_active_panel()
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 
 	var panel := Panel.new()
-	panel.position = Vector2(360, 96)
-	panel.size = Vector2(560, 520)
+	panel.position = Vector2(340, 70)
+	panel.size = Vector2(600, 580)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
@@ -610,69 +1042,122 @@ func _open_world_chat_history_panel() -> void:
 
 	var title := Label.new()
 	title.text = "家庭聊天"
-	title.position = Vector2(34, 24)
-	title.size = Vector2(470, 30)
+	title.position = Vector2(34, 22)
+	title.size = Vector2(500, 32)
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
 
+	# 消息流
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(34, 70)
-	scroll.size = Vector2(492, 360)
+	scroll.position = Vector2(28, 66)
+	scroll.size = Vector2(544, 436)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(scroll)
+	_chat_panel_scroll = scroll
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 10)
+	list.custom_minimum_size = Vector2(544, 0)
+	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
+	_chat_panel_list = list
 
+	# 内嵌输入 + 发送
+	var input := LineEdit.new()
+	input.name = "ChatPanelInput"
+	input.placeholder_text = "给家人留一句话..."
+	input.position = Vector2(28, 514)
+	input.size = Vector2(456, 40)
+	input.mouse_filter = Control.MOUSE_FILTER_STOP
+	input.add_theme_font_size_override("font_size", 14)
+	input.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
+	panel.add_child(input)
+
+	var send_btn := Button.new()
+	send_btn.text = "发送"
+	send_btn.position = Vector2(492, 514)
+	send_btn.size = Vector2(80, 40)
+	send_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(send_btn, false)
+	send_btn.pressed.connect(func() -> void: _send_world_chat_message(input.text, input))
+	panel.add_child(send_btn)
+	input.text_submitted.connect(func(t: String) -> void: _send_world_chat_message(t, input))
+
+	_refresh_chat_panel_messages()
+	input.grab_focus()
+
+## 重建聊天面板的消息气泡(打开时 + 每次发送后)。面板已关则安全跳过。
+func _refresh_chat_panel_messages() -> void:
+	if _chat_panel_list == null or not is_instance_valid(_chat_panel_list):
+		return
+	for c in _chat_panel_list.get_children():
+		c.queue_free()
 	if MemoryManager.garden_messages.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "还没有留言。"
-		empty_label.custom_minimum_size = Vector2(460, 48)
-		empty_label.add_theme_font_size_override("font_size", 15)
-		empty_label.add_theme_color_override("font_color", Color(0.34, 0.28, 0.22, 0.88))
-		list.add_child(empty_label)
+		var empty := Label.new()
+		empty.text = "还没有消息，发一条和家人打个招呼吧～"
+		empty.add_theme_font_size_override("font_size", 14)
+		empty.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+		_chat_panel_list.add_child(empty)
 	else:
-		for i in range(MemoryManager.garden_messages.size() - 1, -1, -1):
-			var raw_message: Variant = MemoryManager.garden_messages[i]
-			if raw_message is Dictionary:
-				list.add_child(_make_world_chat_history_card(raw_message))
+		for raw in MemoryManager.garden_messages:
+			if raw is Dictionary:
+				_chat_panel_list.add_child(_make_chat_bubble(raw))
+	# 布局完成后滚到底(超大值自动夹到 max)
+	if _chat_panel_scroll != null and is_instance_valid(_chat_panel_scroll):
+		_chat_panel_scroll.set_deferred("scroll_vertical", 1000000)
+## 单条聊天气泡:自己发的靠右(暖绿),家人的靠左(米色);含作者 + 时间。
+func _make_chat_bubble(message: Dictionary) -> Control:
+	var is_self := str(message.get("role", "")) == str(MemoryManager.selected_role_key)
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	_add_panel_button(panel, "关闭", Vector2(218, 456), Vector2(124, 38), "close")
-
-func _make_world_chat_history_card(message: Dictionary) -> Control:
-	var card := Panel.new()
-	card.custom_minimum_size = Vector2(470, 78)
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bubble := PanelContainer.new()
+	bubble.size_flags_horizontal = Control.SIZE_SHRINK_END if is_self else Control.SIZE_SHRINK_BEGIN
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.95, 0.82, 0.82)
-	style.border_color = Color(0.62, 0.48, 0.32, 0.70)
+	style.bg_color = Color(0.86, 0.93, 0.72, 0.96) if is_self else Color(1.0, 0.95, 0.82, 0.94)
+	style.border_color = Color(0.58, 0.62, 0.36, 0.7) if is_self else Color(0.62, 0.48, 0.32, 0.65)
 	style.set_border_width_all(1)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	card.add_theme_stylebox_override("panel", style)
+	style.set_corner_radius_all(12)
+	bubble.add_theme_stylebox_override("panel", style)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	bubble.add_child(margin)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	margin.add_child(vb)
 
 	var meta := Label.new()
-	meta.text = str(message.get("author", "家人")) + "  |  " + _format_world_chat_time(str(message.get("created_at", "")))
-	meta.position = Vector2(14, 10)
-	meta.size = Vector2(442, 20)
-	meta.add_theme_font_size_override("font_size", 12)
-	meta.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.86))
-	card.add_child(meta)
+	meta.text = str(message.get("author", "家人")) + "  ·  " + _format_world_chat_time(str(message.get("created_at", "")))
+	meta.add_theme_font_size_override("font_size", 11)
+	meta.add_theme_color_override("font_color", Color(0.40, 0.33, 0.25, 0.85))
+	vb.add_child(meta)
 
 	var body := Label.new()
 	body.text = str(message.get("text", ""))
-	body.position = Vector2(14, 32)
-	body.size = Vector2(442, 38)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(320, 0)
 	body.add_theme_font_size_override("font_size", 14)
-	body.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
-	card.add_child(body)
-	return card
+	body.add_theme_color_override("font_color", Color(0.20, 0.16, 0.12, 1.0))
+	vb.add_child(body)
+
+	if is_self:
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+		row.add_child(bubble)
+	else:
+		row.add_child(bubble)
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(sp)
+	return row
 
 func _format_world_chat_time(raw_time: String) -> String:
 	if raw_time == "":
@@ -692,12 +1177,17 @@ func _on_ui_button(action: String) -> void:
 		"toggle_plant":
 			plant_mode = not plant_mode
 			_update_plant_button()
+		"plant_family_tree":
+			_begin_family_tree_placement()
 		"global_map":
 			_show_global_map()
 		"travel_map":
 			_show_travel_map()
 		"MemoryManager.postcards":
 			_open_postcards_panel()
+		"world_chat_send":
+			if world_chat_input != null and is_instance_valid(world_chat_input):
+				_send_world_chat_message(world_chat_input.text, world_chat_input)
 		"world_chat_history":
 			_open_world_chat_history_panel()
 		"create_memory":
@@ -715,6 +1205,45 @@ func _show_role_select() -> void:
 	_clear_map_ui()
 	_clear_world()
 	mode = "role_select"
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
+	info_label.text = "创建角色"
+	_add_background()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var creator: Control = CHARACTER_CREATOR_PANEL_SCRIPT.new()
+	overlay.add_child(creator)
+	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
+	creator.call("setup", MemoryManager.selected_role_key, MemoryManager.player_display_name, family_code, MemoryManager.character_appearance)
+	creator.connect("confirmed", _confirm_character_creation)
+	creator.connect("canceled", func() -> void:
+		_close_active_panel()
+		if MemoryManager.selected_role_key != "":
+			_show_garden())
+
+func _confirm_character_creation(role_key: String, display_name: String, family_code: String, appearance: Dictionary) -> void:
+	MemoryManager.selected_role_key = role_key
+	MemoryManager.player_display_name = display_name.strip_edges()
+	AppearanceManager.set_current(appearance, role_key)
+	_close_active_panel()
+	if game_hud != null:
+		game_hud.refresh_profile()
+	_show_garden()
+	if StoryManager.consume_quest_intro() and game_hud != null:
+		game_hud.start_onboarding_guide()
+	var canonical_role: String = CharacterDB.resolve(role_key)
+	CloudManager.ensure_cloud_identity(canonical_role, MemoryManager.player_display_name, family_code)
+
+## 旧四卡片选择器保留为兼容参考；新游戏入口使用上面的捏脸面板。
+func _show_legacy_role_select() -> void:
+	_close_active_panel()
+	_clear_map_ui()
+	_clear_world()
+	mode = "role_select"
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
 	info_label.text = "选择角色"
 	_add_background()
 
@@ -730,7 +1259,7 @@ func _show_role_select() -> void:
 	_add_panel_close_button(panel)
 
 	var title := Label.new()
-	title.text = "你想以谁的身份进入花园？"
+	title.text = "Family Garden · 家庭花园"
 	title.position = Vector2(40, 28)
 	title.size = Vector2(900, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -739,7 +1268,7 @@ func _show_role_select() -> void:
 	panel.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "选择一位家人成为自己，其他家人会作为访客留在花园里。"
+	subtitle.text = "选择你的身份，和家人一起进入同一座花园。"
 	subtitle.position = Vector2(70, 72)
 	subtitle.size = Vector2(840, 28)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -757,8 +1286,8 @@ func _show_role_select() -> void:
 	panel.add_child(name_label)
 
 	var name_input := LineEdit.new()
-	name_input.placeholder_text = "Your name"
-	name_input.text = MemoryManager.player_display_name if MemoryManager.player_display_name != "" else "Peilin"
+	name_input.placeholder_text = "输入你的名字"
+	name_input.text = MemoryManager.player_display_name if MemoryManager.player_display_name != "" else "佩林"
 	name_input.position = Vector2(350, 140)
 	name_input.size = Vector2(280, 38)
 	panel.add_child(name_input)
@@ -773,7 +1302,7 @@ func _show_role_select() -> void:
 	panel.add_child(family_label)
 
 	var family_input := LineEdit.new()
-	family_input.placeholder_text = "Family code"
+	family_input.placeholder_text = "输入家庭邀请码"
 	family_input.text = CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
 	family_input.position = Vector2(630, 140)
 	family_input.size = Vector2(270, 38)
@@ -826,7 +1355,6 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_theme_constant_override("separation", 7)
 	margin.add_child(vbox)
 
-	var texture := _safe_texture(str(ASSETS.get(str(role_data.get("asset", "girl")), "")))
 	var preview := TextureRect.new()
 	preview.custom_minimum_size = Vector2(112, 118)
 	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -834,12 +1362,13 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if texture:
-		preview.texture = _make_character_preview_texture(texture)
+	# 头像统一走 CharacterDB.avatar_texture:兼容等分网格与 girl_2 的非等分 frame_rects,
+	# 不再用本地 3×4 均分裁切(对 girl_2 会切错)。
+	preview.texture = CharacterDB.avatar_texture(str(role_data.get("role", "girl")))
 	vbox.add_child(preview)
 
 	var label := Label.new()
-	label.text = str(role_data.get("label", "Family"))
+	label.text = str(role_data.get("label", "家人"))
 	label.custom_minimum_size = Vector2(card_size.x - 34, 24)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 18)
@@ -847,7 +1376,7 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_child(label)
 
 	var default_name := Label.new()
-	default_name.text = str(role_data.get("default_name", "Family"))
+	default_name.text = str(role_data.get("default_name", "家人"))
 	default_name.custom_minimum_size = Vector2(card_size.x - 34, 20)
 	default_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	default_name.add_theme_font_size_override("font_size", 13)
@@ -860,22 +1389,13 @@ func _add_role_card(parent: Control, role_data: Dictionary, pos: Vector2, card_s
 	vbox.add_child(spacer)
 
 	var choose_btn := Button.new()
-	choose_btn.text = "Choose"
+	choose_btn.text = "选择"
 	choose_btn.custom_minimum_size = Vector2(112, 32)
 	choose_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	choose_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_button_style(choose_btn, false)
 	choose_btn.pressed.connect(_confirm_role_selection.bind(str(role_data.get("role", "girl")), name_input, family_input))
 	vbox.add_child(choose_btn)
-
-func _make_character_preview_texture(source: Texture2D) -> Texture2D:
-	var atlas := AtlasTexture.new()
-	var frame_w: float = float(source.get_width()) / 3.0
-	var frame_h: float = float(source.get_height()) / 4.0
-	atlas.atlas = source
-	atlas.region = Rect2(Vector2(frame_w, 0.0), Vector2(frame_w, frame_h))
-	return atlas
-
 
 func _confirm_role_selection(role_key: String, name_input: LineEdit, family_input: LineEdit = null) -> void:
 	MemoryManager.selected_role_key = role_key
@@ -884,7 +1404,12 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit, family_inpu
 		MemoryManager.player_display_name = _default_name_for_role(role_key)
 	MemoryManager.save_game()
 	_close_active_panel()
+	if game_hud != null:
+		game_hud.refresh_profile()   # 昵称/头像定了,刷新左上角色卡
 	_show_garden()
+	# 首次流程(开场→选角色→进花园)刚走完开场时,自动弹一次 Chapter 1 任务面板
+	if StoryManager.consume_quest_intro() and game_hud != null:
+		game_hud.start_onboarding_guide()
 	# 首次选角色时,若配置了 CloudBase 且本设备还没自助加入过,后台自动注册云身份
 	# (不阻塞进花园;角色别名如 girl/papa 转成 CharacterDB 的规范值 player/father 再传)。
 	var canonical_role: String = CharacterDB.resolve(role_key)
@@ -895,8 +1420,8 @@ func _confirm_role_selection(role_key: String, name_input: LineEdit, family_inpu
 func _default_name_for_role(role_key: String) -> String:
 	var role_data := _get_role_data(role_key)
 	if role_data.is_empty():
-		return "Family"
-	return str(role_data.get("default_name", "Family"))
+		return "家人"
+	return str(role_data.get("default_name", "家人"))
 
 
 func _get_role_data(role_key: String) -> Dictionary:
@@ -907,18 +1432,40 @@ func _get_role_data(role_key: String) -> Dictionary:
 
 
 func _current_player_asset_key() -> String:
+	var selected_id := CharacterDB.resolve(MemoryManager.selected_role_key) if CharacterDB != null else MemoryManager.selected_role_key
 	var role_data := _get_role_data(MemoryManager.selected_role_key)
+	if role_data.is_empty():
+		for candidate in CHARACTER_DATA:
+			var candidate_role := str(candidate.get("role", ""))
+			var candidate_id := CharacterDB.resolve(candidate_role) if CharacterDB != null else candidate_role
+			if candidate_id == selected_id:
+				role_data = candidate
+				break
 	if role_data.is_empty():
 		return "girl"
 	return str(role_data.get("asset", "girl"))
 
 
+## 角色贴图路径必须与 CharacterDB 中的帧配置来自同一个定义。
+## 旧 ASSETS 别名仍保留给历史 UI 使用，但人物实例不再混用旧图与新版 frame_rects。
+func _character_texture_path(role_key: String, fallback_path: String) -> String:
+	if CharacterDB == null:
+		return fallback_path
+	var character_def: Dictionary = CharacterDB.get_def(role_key)
+	var sheet := str(character_def.get("sheet", "")).strip_edges()
+	if sheet == "":
+		return fallback_path
+	var configured_path := "res://assets/characters/%s.png" % sheet
+	return configured_path if ResourceLoader.exists(configured_path) else fallback_path
+
+
 func _update_plant_button() -> void:
 	if plant_button:
-		plant_button.text = "Plant: ON" if plant_mode else "Plant: OFF"
+		plant_button.text = "种植：开启" if plant_mode else "种植：关闭"
 		_apply_button_style(plant_button, plant_mode)
 
 func _show_garden(spawn_key: String = "default") -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -926,6 +1473,10 @@ func _show_garden(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "garden"
+	_current_spawn_key = spawn_key
+	_current_room_id = ""
+	_set_hud_context(mode)
+	_focused_memory_id = ""
 	adding_place = false
 	_clear_world()
 	info_label.text = "家庭花园"
@@ -935,24 +1486,32 @@ func _show_garden(spawn_key: String = "default") -> void:
 	_add_garden_spawn_markers()
 	_add_houses()
 	_add_core_objects()
-	_add_npcs()
 	_add_animals()
 	var spawn: Vector2 = ScenePortal.get_spawn("garden", spawn_key)
 	_add_player(spawn)
 	_rebuild_plants()
 	_spawn_demo_memory_nodes()
-	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数算一版画像
-	_render_family_portrait()                         # 挂到入口木牌
+	MemoryManager.maybe_recompute_family_portrait()  # 进花园按当前成员/记忆数更新左上迷你合影
+	_render_family_portrait()
 	ScenePortal.build_portals("garden", world, _on_portal_travel)
-	_show_gate4_scene_guide("garden")
+	_setup_garden_builder()
+	call_deferred("_offer_family_tree_welcome_gift")
+	# 花园统计已合并到左上家庭状态卡，不再叠加第二张“花园今日”。
+	if game_hud != null:
+		game_hud.refresh_profile()
+	if not _garden_controls_hint_shown:
+		_garden_controls_hint_shown = true
+		_show_toast("方向键 / WASD 移动 · 点击花园物件互动")
 
 # 场景层只负责渲染和交互；AI 生成、草稿确认和持久化由 AIClient / AIWorkflowManager / MemoryManager 处理。
 # 这里缓存当前场景已渲染的节点 view model，离场后可由数据层重建。
 var _demo_memories: Array = []
+var _focused_memory_id := ""
+var _pending_memory_arrival_id := ""
 
 # 鱼塘漂流瓶当前场景 view model；已保存问题来自 MemoryManager，缺口由 AIWorkflowManager 后台补齐。
 var _demo_bottles: Array = []
-# 鱼塘岸边记忆缓存（回答漂流瓶后生成、已落库持久化）。结构同 _demo_memories。
+# 兼容旧代码的空缓存；鱼塘不再渲染记忆花，旧数据进入主花园档案。
 var _fishpond_memories: Array = []
 # 玩家房间已渲染的家具节点缓存（每项 { id(obj_id), object_type, node }）。
 var _room_objects: Array = []
@@ -988,8 +1547,11 @@ func _spawn_demo_memory_nodes() -> void:
 	# 统一从数据层渲染（首次/再次进入一致）。
 	_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
 	_spawn_demo_memory_link()       # 空存档演示种子没有真实关联时补一条藤蔓
-	_render_memory_links("garden")  # 画连线
-	print("[SceneManager] garden 记忆花 rendered=", _demo_memories.size(), " 连线=", MemoryManager.get_memory_links("garden").size())
+	_render_memory_links("garden")  # 默认保持安静，选中记忆后只画与它相关的藤蔓
+	if _pending_memory_arrival_id != "":
+		_play_memory_archive_arrival(_pending_memory_arrival_id)
+		_pending_memory_arrival_id = ""
+	print("[SceneManager] garden 记忆归档=", _demo_memories.size(), " 可见景观=", _garden_archive_count(), " 连线=", MemoryManager.get_memory_links("garden").size())
 
 # 兼容演示种子：没有任何关联时补一条演示藤蔓；真实新记忆的关联由 AIWorkflowManager 增量创建。
 func _spawn_demo_memory_link() -> void:
@@ -1005,60 +1567,153 @@ func _spawn_demo_memory_link() -> void:
 	MemoryManager.create_memory_link(a, b, "garden",
 		String(link.get("relation_type", "same_place")), String(link.get("question", "")))
 
-# 画花园里所有记忆连线：两端取各自记忆花的落点，连一条藤蔓线 + 可点的关联问题。
+# 花园默认不铺开关系网；选中一段记忆后，只显示与它直接相关的藤蔓。
 func _render_memory_links(scene: String) -> void:
+	if scene == "garden" and _focused_memory_id == "":
+		return
 	for link in MemoryManager.get_memory_links(scene):
+		if scene == "garden" and _focused_memory_id not in [
+			String(link.get("memory_id", "")),
+			String(link.get("linked_memory_id", "")),
+		]:
+			continue
 		var a := _memory_flower_pos(scene, String(link.get("memory_id", "")))
 		var b := _memory_flower_pos(scene, String(link.get("linked_memory_id", "")))
 		if a == Vector2.INF or b == Vector2.INF:
 			continue
+		if scene == "garden" and a.distance_to(b) < 8.0:
+			a += Vector2(-34, 0)
+			b += Vector2(34, 0)
 		_draw_link_line(a, b, link)
 
-# 渲染家庭画像木牌（入口处）：占位画板 + 版本/成员/记忆数；版本变化时重画。
-# 挂载点(645,200)为临时位置，待搭档定稿花园木牌位后校准。
+# 家庭画像进入左上状态卡，以实际角色组成迷你合影；右下木牌只保留留言板用途。
 func _render_family_portrait() -> void:
-	if world == null or not is_instance_valid(world):
-		return
-	var existing := world.get_node_or_null("FamilyPortraitBoard")
-	if existing != null:
-		existing.queue_free()
-	var fp: Dictionary = MemoryManager.family_portrait
-	if int(fp.get("version", 0)) <= 0:
-		return  # 还没有画像（无人参与）
-	var board := Node2D.new()
-	board.name = "FamilyPortraitBoard"
-	board.position = Vector2(645, 200)
-	board.z_index = 4000  # 盖在家庭树之上，保证可见（临时）
-	var sprite := Sprite2D.new()
-	sprite.texture = _solid_texture(132, 92, Color(0.60, 0.44, 0.29, 1.0))
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	board.add_child(sprite)
-	var lbl := Label.new()
-	lbl.text = "🖼️ 家庭画像 v%d\n%d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]
-	lbl.position = Vector2(-58, -26)
-	lbl.size = Vector2(116, 52)
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
-	board.add_child(lbl)
-	var area := Area2D.new()
-	var shape := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(132, 92)
-	shape.shape = rect
-	area.add_child(shape)
-	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-			get_viewport().set_input_as_handled()
-			_show_toast("🖼️ 家庭画像 v%d · %d 位家人 · %d 条记忆" % [int(fp.get("version", 0)), int(fp.get("member_count", 0)), int(fp.get("memory_count", 0))]))
-	board.add_child(area)
-	world.add_child(board)
+	if world != null and is_instance_valid(world):
+		var legacy_board := world.get_node_or_null("FamilyPortraitBoard")
+		if legacy_board != null:
+			legacy_board.queue_free()
+	# 家庭成员入口已统一到 GameHUD 左上状态卡，指引面板不再重复渲染。
 
-# 取某条记忆在该场景的记忆花落点（slot.pos）；找不到返回 Vector2.INF。
+func _add_family_portrait_miniature(parent: Control) -> void:
+	var fp: Dictionary = MemoryManager.family_portrait
+	var members: Array = fp.get("members", []).duplicate()
+	if members.is_empty() and MemoryManager.selected_role_key != "":
+		members.append(MemoryManager.selected_role_key)
+	var frame := Panel.new()
+	frame.name = "FamilyPortraitMiniature"
+	frame.position = Vector2(178, 14)
+	frame.size = Vector2(132, 80)
+	frame.clip_contents = true
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	frame.tooltip_text = "查看家庭成员 · %d 位家人共同留下 %d 段记忆" % [
+		members.size(),
+		int(fp.get("memory_count", MemoryManager.memories.size())),
+	]
+	var frame_style := StyleBoxFlat.new()
+	frame_style.bg_color = Color(0.89, 0.91, 0.71, 0.98)
+	frame_style.border_color = Color(0.43, 0.31, 0.19, 0.92)
+	frame_style.set_border_width_all(2)
+	frame_style.set_corner_radius_all(4)
+	frame_style.shadow_color = Color(0.18, 0.12, 0.07, 0.24)
+	frame_style.shadow_size = 2
+	frame_style.shadow_offset = Vector2(0, 2)
+	frame.add_theme_stylebox_override("panel", frame_style)
+	parent.add_child(frame)
+
+	var sky := ColorRect.new()
+	sky.position = Vector2(4, 4)
+	sky.size = Vector2(124, 50)
+	sky.color = Color(0.80, 0.89, 0.72, 0.92)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(sky)
+	var ground := ColorRect.new()
+	ground.position = Vector2(4, 54)
+	ground.size = Vector2(124, 22)
+	ground.color = Color(0.59, 0.72, 0.40, 0.90)
+	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(ground)
+
+	var caption_back := ColorRect.new()
+	caption_back.position = Vector2(4, 4)
+	caption_back.size = Vector2(124, 16)
+	caption_back.color = Color(0.96, 0.92, 0.77, 0.88)
+	caption_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(caption_back)
+	var caption := Label.new()
+	caption.text = "家人合影 · %d" % members.size()
+	caption.position = Vector2(10, 3)
+	caption.size = Vector2(112, 17)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caption.add_theme_font_size_override("font_size", 9)
+	caption.add_theme_color_override("font_color", Color(0.32, 0.26, 0.16, 0.86))
+	frame.add_child(caption)
+	for pin_x in [9.0, 119.0]:
+		var pin := ColorRect.new()
+		pin.position = Vector2(pin_x, 8)
+		pin.size = Vector2(4, 4)
+		pin.color = Color(0.84, 0.50, 0.22, 0.96)
+		pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(pin)
+
+	var shown_count := mini(members.size(), 4)
+	for index in range(shown_count):
+		var texture := _family_portrait_frame_texture(String(members[index]))
+		if texture == null:
+			continue
+		var avatar := Sprite2D.new()
+		avatar.name = "FamilyAvatar_%d" % index
+		avatar.texture = texture
+		avatar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var x := 66.0 if shown_count == 1 else lerpf(24.0, 108.0, float(index) / float(shown_count - 1))
+		avatar.position = Vector2(x, 54)
+		avatar.scale = Vector2.ONE * (40.0 / float(texture.get_height()))
+		frame.add_child(avatar)
+	if shown_count == 0:
+		var empty := Label.new()
+		empty.text = "等待家人加入"
+		empty.position = Vector2(8, 35)
+		empty.size = Vector2(116, 20)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		empty.add_theme_font_size_override("font_size", 10)
+		empty.add_theme_color_override("font_color", Color(0.34, 0.28, 0.21, 0.78))
+		frame.add_child(empty)
+	frame.mouse_entered.connect(func() -> void: frame.modulate = Color(1.05, 1.03, 0.96, 1.0))
+	frame.mouse_exited.connect(func() -> void: frame.modulate = Color.WHITE)
+	frame.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+			_open_family_members_panel()
+	)
+
+func _family_portrait_frame_texture(role_key: String) -> Texture2D:
+	var source := CharacterDB.texture(role_key)
+	var definition: Dictionary = CharacterDB.get_def(role_key)
+	if source == null or definition.is_empty():
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	var rects: Array = definition.get("frame_rects", [])
+	if rects.size() > 1 and rects[1] is Array and (rects[1] as Array).size() >= 4:
+		var frame: Array = rects[1]
+		atlas.region = Rect2(float(frame[0]), float(frame[1]), float(frame[2]), float(frame[3]))
+		return atlas
+	var hframes := maxi(1, int(definition.get("hframes", 3)))
+	var vframes := maxi(1, int(definition.get("vframes", 4)))
+	var cell_size := Vector2(float(source.get_width()) / float(hframes), float(source.get_height()) / float(vframes))
+	atlas.region = Rect2(cell_size.x, 0, cell_size.x, cell_size.y)
+	return atlas
+
+# 花园记忆指向所属归档景观；其他场景仍沿用持久化 slot 落点。
 func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
 	for nd in MemoryManager.get_nodes_for_scene(scene):
-		if String(nd.get("memory_id", "")) == memory_id and String(nd.get("node_type", "")) == "memory_flower":
+		if String(nd.get("memory_id", "")) != memory_id or String(nd.get("node_type", "")) == "memory_link":
+			continue
+		if scene == "garden":
+			var archive_key := NodeFactory.garden_archive_key(String(nd.get("node_type", "memory_flower")))
+			return _garden_archive_position(archive_key)
+		if String(nd.get("node_type", "")) == "memory_flower":
 			var slot := SlotManager.get_slot(scene, String(nd.get("slot_id", "")))
 			if not slot.is_empty():
 				var p: Variant = slot.get("pos", null)
@@ -1068,21 +1723,21 @@ func _memory_flower_pos(scene: String, memory_id: String) -> Vector2:
 
 # 一条连线：两花之间拱起的藤蔓线（盖在记忆花之上，避免被花遮住）+ 中点可点的关联详情。
 func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
-	var head := Vector2(0, -100)  # 连到花头上方，越过花顶
-	var arc := ((a + b) * 0.5 + head) + Vector2(0, -40)  # 中点再抬高 → 轻微拱形
+	var head := Vector2(0, -72)
+	var arc := ((a + b) * 0.5 + head) + Vector2(0, -18)
 	var relation_type := String(link.get("relation_type", "same_theme"))
 	var link_color := _memory_link_color(relation_type)
 	var link_label := _memory_link_label(relation_type)
 	var confidence := float(link.get("confidence", 1.0))
 	var answered := MemoryManager.is_memory_link_answered(link)
-	var alpha := clampf(0.54 + confidence * 0.30 + (0.12 if answered else 0.0), 0.54, 0.96)
+	var alpha := clampf(0.34 + confidence * 0.20 + (0.12 if answered else 0.0), 0.34, 0.72)
 
 	var shadow := Line2D.new()
 	shadow.name = "MemoryLinkShadow"
 	shadow.points = PackedVector2Array([a + head + Vector2(0, 4), arc + Vector2(0, 4), b + head + Vector2(0, 4)])
-	shadow.width = 7.0
-	shadow.default_color = Color(0.12, 0.10, 0.08, 0.18)
-	shadow.z_index = 3989
+	shadow.width = 5.0
+	shadow.default_color = Color(0.12, 0.10, 0.08, 0.12)
+	shadow.z_index = 340
 	shadow.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	shadow.end_cap_mode = Line2D.LINE_CAP_ROUND
 	shadow.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -1091,9 +1746,9 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var line := Line2D.new()
 	line.name = "MemoryLink"
 	line.points = PackedVector2Array([a + head, arc, b + head])
-	line.width = 6.0 if answered else 5.0
+	line.width = 3.5 if answered else 3.0
 	line.default_color = Color(link_color.r, link_color.g, link_color.b, alpha)
-	line.z_index = 3990  # 盖在记忆花(z=pos.y)之上，保证可见
+	line.z_index = 341
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -1102,17 +1757,19 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var pulse := Line2D.new()
 	pulse.name = "MemoryLinkPulse"
 	pulse.points = PackedVector2Array([a + head, arc, b + head])
-	pulse.width = 3.0 if answered else 2.0
-	pulse.default_color = Color(1.0, 0.96, 0.78, 0.86 if answered else 0.58)
-	pulse.z_index = 3991
+	pulse.width = 1.5 if answered else 1.0
+	pulse.default_color = Color(1.0, 0.96, 0.78, 0.62 if answered else 0.36)
+	pulse.z_index = 342
 	pulse.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.end_cap_mode = Line2D.LINE_CAP_ROUND
 	pulse.joint_mode = Line2D.LINE_JOINT_ROUND
 	world.add_child(pulse)
-	var pulse_tween := create_tween()
-	pulse_tween.set_loops()
-	pulse_tween.tween_property(pulse, "modulate:a", 0.28 if answered else 0.18, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	pulse_tween.tween_property(pulse, "modulate:a", 0.90 if answered else 0.58, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") != "1":
+		var pulse_tween := create_tween()
+		pulse_tween.set_loops()
+		pulse_tween.tween_property(pulse, "modulate:a", 0.28 if answered else 0.18, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_property(pulse, "modulate:a", 0.90 if answered else 0.58, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_interval(LOOP_TWEEN_GUARD_INTERVAL)
 
 	_add_memory_link_leaf((a + head).lerp(arc, 0.56), link_color, -0.42, answered)
 	_add_memory_link_leaf(arc.lerp(b + head, 0.44), link_color, 0.42, answered)
@@ -1121,38 +1778,40 @@ func _draw_link_line(a: Vector2, b: Vector2, link: Dictionary) -> void:
 	var area := Area2D.new()
 	area.name = "MemoryLinkHotspot"
 	area.position = mid
-	area.z_index = 3992
+	area.z_index = 343
 	area.input_pickable = true
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(162, 54)
+	rect.size = Vector2(104, 52)
 	shape.shape = rect
 	area.add_child(shape)
 
 	var tag_panel := Panel.new()
-	tag_panel.position = Vector2(-76, -20)
-	tag_panel.size = Vector2(152, 40)
+	tag_panel.position = Vector2(-64, -54)
+	tag_panel.size = Vector2(128, 34)
+	tag_panel.visible = false
 	tag_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tag_style := StyleBoxFlat.new()
 	tag_style.bg_color = Color(0.92, 1.0, 0.84, 0.96) if answered else Color(1.0, 0.96, 0.82, 0.94)
 	tag_style.border_color = Color(link_color.r, link_color.g, link_color.b, 0.95)
 	tag_style.set_border_width_all(2)
-	tag_style.set_corner_radius_all(8)
+	tag_style.set_corner_radius_all(5)
 	tag_panel.add_theme_stylebox_override("panel", tag_style)
 	area.add_child(tag_panel)
 
 	var tag := Label.new()
 	tag.text = link_label + (" · 已补写" if answered else " · 待补写")
-	tag.position = Vector2(10, 9)
-	tag.size = Vector2(132, 20)
+	tag.position = Vector2(8, 7)
+	tag.size = Vector2(112, 20)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.add_theme_font_size_override("font_size", 12)
+	tag.add_theme_font_size_override("font_size", 11)
 	tag.add_theme_color_override("font_color", Color(0.20, 0.17, 0.12, 0.96))
 	tag_panel.add_child(tag)
 
-	if answered:
-		_add_memory_link_bloom(area, Vector2(68, -25), link_color)
+	_add_memory_link_bloom(area, Vector2.ZERO, link_color)
+	area.mouse_entered.connect(func() -> void: tag_panel.visible = true)
+	area.mouse_exited.connect(func() -> void: tag_panel.visible = false)
 
 	area.input_event.connect(func(_v: Node, e: InputEvent, _s: int) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
@@ -1165,7 +1824,7 @@ func _add_memory_link_leaf(pos: Vector2, color: Color, rotation: float, answered
 	leaf.name = "MemoryLinkLeaf"
 	leaf.position = pos
 	leaf.rotation = rotation
-	leaf.z_index = 3991
+	leaf.z_index = 342
 	leaf.polygon = PackedVector2Array([
 		Vector2(0, -8),
 		Vector2(12, -2),
@@ -1436,6 +2095,9 @@ func _open_memory_from_link(memory_id: String) -> void:
 	if mem.is_empty():
 		_show_toast("这段记忆不在当前场景里。")
 		return
+	if mode == "garden":
+		_focused_memory_id = memory_id
+		_refresh_memory_link_visuals("garden")
 	_open_memory_card(mem)
 
 func _find_rendered_memory_by_memory_id(memory_id: String) -> Dictionary:
@@ -1454,14 +2116,17 @@ func _save_memory_link_followup(link_id: String, input: TextEdit, button: Button
 		return
 	_set_button_busy(button, "正在保存...")
 	_set_status(status, "正在把这段补写长到藤蔓上...")
-	var result := MemoryManager.answer_memory_link(link_id, text)
+	var result := await AIWorkflowManager.save_memory_link_followup(link_id, text)
 	if not bool(result.get("ok", false)):
 		_set_button_ready(button)
 		_set_status(status, _result_error_message(result, "保存失败，请重试。"), true)
 		return
 	_refresh_memory_link_visuals(mode)
 	var updated := bool(result.get("updated", false))
-	_show_toast("记忆藤蔓已更新。" if updated else "记忆藤蔓已点亮。")
+	var link_message := "记忆藤蔓已更新。" if updated else "记忆藤蔓已点亮。"
+	if bool(result.get("sync_pending", false)):
+		link_message += " 已保存在本机，联网后会自动同步。"
+	_show_toast(link_message)
 	_open_memory_link_panel(result.get("link", {}))
 
 func _refresh_memory_link_visuals(scene: String) -> void:
@@ -1469,6 +2134,11 @@ func _refresh_memory_link_visuals(scene: String) -> void:
 		return
 	_clear_memory_link_nodes()
 	_render_memory_links(scene)
+
+func _clear_memory_focus() -> void:
+	_focused_memory_id = ""
+	if world != null and is_instance_valid(world):
+		_clear_memory_link_nodes()
 
 func _clear_memory_link_nodes() -> void:
 	for child in world.get_children():
@@ -1493,54 +2163,578 @@ func _refresh_current_memory_scene(scene: String) -> void:
 	SlotManager.reset(scene)
 	if scene == "garden":
 		_render_scene_nodes("garden", _demo_memories, _on_memory_clicked)
-	else:
-		_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
-	_render_memory_links(scene)
+		_render_memory_links(scene)
 	if scene == "garden":
 		MemoryManager.maybe_recompute_family_portrait()
 		_render_family_portrait()
+	_show_gate4_scene_guide(scene)
 
 # 从数据层渲染某场景已落库的节点：回填 slot 占用、按状态决定形态、装入交互缓存。
 # cache 项：{ id(node_id), memory_id, card, state, answer, node }；click_cb 绑 node_id。
 func _render_scene_nodes(scene: String, cache: Array, click_cb: Callable) -> void:
-	for nd in MemoryManager.get_nodes_for_scene(scene):
+	if scene == "garden":
+		_render_garden_archives(cache)
+		return
+	var groups: Dictionary = {}
+	var scene_nodes: Array = MemoryManager.get_nodes_for_scene(scene)
+	for raw_node in scene_nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var nd: Dictionary = raw_node
 		if String(nd.get("node_type", "")) == "memory_link":
 			continue  # 连线节点不是落点物，由 _render_memory_links 单独画
-		var node_id := String(nd.get("id", ""))
-		var memory_id := String(nd.get("memory_id", ""))
 		var slot_id := String(nd.get("slot_id", ""))
-		var mem := MemoryManager.get_memory(memory_id)
-		var card: Dictionary = mem.get("ai_card", {})
-		SlotManager.occupy(scene, slot_id, node_id)  # 重入时回填占用，避免新分配撞位
+		if slot_id == "":
+			continue
+		if not groups.has(slot_id):
+			groups[slot_id] = []
+		(groups[slot_id] as Array).append(nd)
+	for slot_id in groups:
+		var stack: Array = groups[slot_id]
+		if stack.is_empty():
+			continue
 		var slot := SlotManager.get_slot(scene, slot_id)
 		if slot.is_empty():
 			continue
-		var live := NodeFactory.make_memory_node(card, slot, click_cb.bind(node_id))
+		var items: Array = []
+		var visual_state := "new"
+		for raw_node in stack:
+			if not (raw_node is Dictionary):
+				continue
+			var stored_node: Dictionary = raw_node
+			var memory_id := String(stored_node.get("memory_id", ""))
+			var mem := MemoryManager.get_memory(memory_id)
+			var state := String(stored_node.get("state", "new"))
+			if state == "grown":
+				visual_state = "grown"
+			items.append({
+				"id": String(stored_node.get("id", "")),
+				"memory_id": memory_id,
+				"card": mem.get("ai_card", {}),
+				"state": state,
+				"answer": MemoryManager.get_answer_for_memory(memory_id),
+				"node": null,
+			})
+		if items.is_empty():
+			continue
+		var representative: Dictionary = items[-1]
+		var node_id := String(representative.get("id", ""))
+		SlotManager.occupy(scene, String(slot_id), node_id)
+		var on_click := click_cb.bind(node_id) if items.size() == 1 else _open_memory_cluster.bind(items)
+		var live := NodeFactory.make_memory_node(representative.get("card", {}), slot, on_click, visual_state)
 		live.add_to_group("world_memory_node")
-		var state := String(nd.get("state", "new"))
-		if String(nd.get("node_type", "")) == "memory_flower":
-			_add_memory_tag(live, state)
-		var target_scale := Vector2.ONE if state == "grown" else Vector2(0.55, 0.55)  # grown=已开花 / new=花苞
+		_add_memory_tag(live, visual_state)
+		if items.size() > 1:
+			_add_memory_cluster_badge(live, items.size())
+		var target_scale := Vector2.ONE if visual_state == "grown" else Vector2(0.78, 0.78)
 		live.scale = target_scale
 		world.add_child(live)
 		_animate_scene_node_arrival(live, target_scale)
-		cache.append({
-			"id": node_id, "memory_id": memory_id, "card": card,
-			"state": state, "answer": MemoryManager.get_answer_for_memory(memory_id), "node": live
-		})
+		for item in items:
+			(item as Dictionary)["node"] = live
+			cache.append(item)
+
+func _render_garden_archives(cache: Array) -> void:
+	MemoryManager.migrate_fishpond_memories_to_garden()
+	var archives := {
+		"flowers": [],
+		"photos": [],
+		"postcards": [],
+	}
+	for raw_node in MemoryManager.get_nodes_for_scene("garden"):
+		if not (raw_node is Dictionary):
+			continue
+		var stored_node: Dictionary = raw_node
+		if String(stored_node.get("node_type", "")) == "memory_link":
+			continue
+		var memory_id := String(stored_node.get("memory_id", ""))
+		var memory := MemoryManager.get_memory(memory_id)
+		if memory.is_empty():
+			continue
+		var archive_key := NodeFactory.garden_archive_key(String(stored_node.get("node_type", "memory_flower")))
+		var item := {
+			"id": String(stored_node.get("id", "")),
+			"memory_id": memory_id,
+			"card": memory.get("ai_card", {}),
+			"state": String(stored_node.get("state", "new")),
+			"answer": MemoryManager.get_answer_for_memory(memory_id),
+			"owner_id": String(memory.get("user_id", "")),
+			"created_at": String(memory.get("created_at", stored_node.get("created_at", ""))),
+			"input_type": String(memory.get("input_type", "text")),
+			"archive_key": archive_key,
+			"node": null,
+		}
+		(archives[archive_key] as Array).append(item)
+
+	for raw_key in GARDEN_ARCHIVE_ORDER:
+		var archive_key := String(raw_key)
+		var items: Array = archives.get(archive_key, [])
+		# 记忆花圃是默认固定景观，即使尚无记忆也必须存在；另外两类档案仍按内容出现。
+		if items.is_empty() and archive_key != "flowers":
+			continue
+		items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return String(a.get("created_at", "")) > String(b.get("created_at", "")))
+		var visual_state := "grown" if archive_key == "flowers" else "new"
+		for item in items:
+			if String((item as Dictionary).get("state", "new")) == "grown":
+				visual_state = "grown"
+				break
+		var slot := SlotManager.get_slot("garden", String(GARDEN_ARCHIVES[archive_key].get("slot_id", "")))
+		if slot.is_empty():
+			continue
+		var live := NodeFactory.make_memory_archive(
+			archive_key,
+			slot,
+			_open_memory_archive.bind(archive_key, items),
+			visual_state
+		)
+		live.add_to_group("world_memory_node")
+		live.scale = Vector2.ONE
+		_add_garden_archive_caption(live, archive_key, items.size())
+		world.add_child(live)
+		for item in items:
+			(item as Dictionary)["node"] = live
+			cache.append(item)
+
+func _garden_archive_position(archive_key: String) -> Vector2:
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, GARDEN_ARCHIVES["flowers"])
+	var slot := SlotManager.get_slot("garden", String(archive.get("slot_id", "")))
+	var pos: Variant = slot.get("pos", [930, 548])
+	if pos is Array and (pos as Array).size() >= 2:
+		return Vector2(float(pos[0]), float(pos[1]))
+	return Vector2(930, 548)
+
+func _garden_archive_count() -> int:
+	var keys := {}
+	for item in _demo_memories:
+		if item is Dictionary:
+			keys[String(item.get("archive_key", "flowers"))] = true
+	return keys.size()
+
+func _add_garden_archive_caption(node: Node2D, archive_key: String, count: int) -> void:
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, {})
+	var caption := Panel.new()
+	caption.name = "ArchiveCaption"
+	caption.position = Vector2(-68, -174 if archive_key == "flowers" else -108)
+	caption.size = Vector2(136, 42)
+	caption.visible = false
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.82, 0.96)
+	style.border_color = Color(0.42, 0.52, 0.30, 0.90)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(5)
+	caption.add_theme_stylebox_override("panel", style)
+	node.add_child(caption)
+	var title := Label.new()
+	title.text = String(archive.get("title", "记忆"))
+	title.position = Vector2(8, 4)
+	title.size = Vector2(120, 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_color_override("font_color", Color(0.24, 0.19, 0.13, 0.96))
+	caption.add_child(title)
+	var summary := Label.new()
+	summary.text = "%d 段记忆" % count
+	summary.position = Vector2(8, 21)
+	summary.size = Vector2(120, 16)
+	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary.add_theme_font_size_override("font_size", 10)
+	summary.add_theme_color_override("font_color", Color(0.34, 0.30, 0.22, 0.84))
+	caption.add_child(summary)
+	var click_area := node.get_node_or_null("ClickArea") as Area2D
+	if click_area != null:
+		var hover_glow := node.get_node_or_null("ArchiveHoverGlow") as CanvasItem
+		click_area.mouse_entered.connect(func() -> void:
+			caption.visible = true
+			if hover_glow != null:
+				hover_glow.visible = true
+		)
+		click_area.mouse_exited.connect(func() -> void:
+			caption.visible = false
+			if hover_glow != null:
+				hover_glow.visible = false
+		)
+
+func _add_memory_cluster_badge(node: Node2D, count: int) -> void:
+	var badge := Panel.new()
+	badge.name = "MemoryClusterBadge"
+	badge.position = Vector2(20, -108)
+	badge.size = Vector2(34, 24)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.30, 0.43, 0.28, 0.94)
+	style.border_color = Color(1.0, 0.93, 0.70, 0.92)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	badge.add_theme_stylebox_override("panel", style)
+	node.add_child(badge)
+	var label := Label.new()
+	label.text = "×%d" % count
+	label.position = Vector2(4, 2)
+	label.size = Vector2(26, 18)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(1.0, 0.97, 0.84, 1.0))
+	badge.add_child(label)
+
+func _open_memory_archive(archive_key: String, items: Array) -> void:
+	_clear_memory_focus()
+	_close_active_panel()
+	var archive: Dictionary = GARDEN_ARCHIVES.get(archive_key, GARDEN_ARCHIVES["flowers"])
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(260, 60)
+	panel.size = Vector2(760, 600)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = String(archive.get("title", "家庭记忆"))
+	title.position = Vector2(36, 24)
+	title.size = Vector2(650, 36)
+	title.add_theme_font_size_override("font_size", 27)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "%s · 共 %d 段" % [String(archive.get("subtitle", "")), items.size()]
+	subtitle.position = Vector2(36, 64)
+	subtitle.size = Vector2(650, 24)
+	subtitle.add_theme_font_size_override("font_size", 13)
+	subtitle.add_theme_color_override("font_color", Color(0.38, 0.31, 0.23, 0.82))
+	panel.add_child(subtitle)
+
+	var filter_bar := Panel.new()
+	filter_bar.position = Vector2(34, 102)
+	filter_bar.size = Vector2(692, 68)
+	filter_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	filter_bar.add_theme_stylebox_override("panel", _archive_filter_bar_style())
+	panel.add_child(filter_bar)
+
+	var member_label := Label.new()
+	member_label.text = "家人"
+	member_label.position = Vector2(14, 7)
+	member_label.size = Vector2(196, 18)
+	member_label.add_theme_font_size_override("font_size", 11)
+	member_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
+	filter_bar.add_child(member_label)
+	var member_select := OptionButton.new()
+	member_select.position = Vector2(12, 27)
+	member_select.size = Vector2(210, 34)
+	member_select.add_item("全部家人")
+	member_select.set_item_metadata(0, "")
+	_apply_button_style(member_select, false)
+	var owners := {}
+	for raw_item in items:
+		if raw_item is Dictionary:
+			var owner_id := String(raw_item.get("owner_id", ""))
+			if owner_id != "":
+				owners[owner_id] = _role_display_name(owner_id)
+	var owner_ids: Array = owners.keys()
+	owner_ids.sort()
+	for owner_id in owner_ids:
+		member_select.add_item(String(owners[owner_id]))
+		member_select.set_item_metadata(member_select.item_count - 1, String(owner_id))
+	filter_bar.add_child(member_select)
+
+	var state_label := Label.new()
+	state_label.text = "状态"
+	state_label.position = Vector2(244, 7)
+	state_label.size = Vector2(196, 18)
+	state_label.add_theme_font_size_override("font_size", 11)
+	state_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
+	filter_bar.add_child(state_label)
+	var state_select := OptionButton.new()
+	state_select.position = Vector2(242, 27)
+	state_select.size = Vector2(190, 34)
+	for state_item in [["全部状态", ""], ["等待回应", "new"], ["已经开花", "grown"]]:
+		state_select.add_item(String(state_item[0]))
+		state_select.set_item_metadata(state_select.item_count - 1, String(state_item[1]))
+	_apply_button_style(state_select, false)
+	filter_bar.add_child(state_select)
+
+	var order_note := Label.new()
+	order_note.text = "最新记忆优先"
+	order_note.position = Vector2(458, 27)
+	order_note.size = Vector2(216, 34)
+	order_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	order_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	order_note.add_theme_font_size_override("font_size", 11)
+	order_note.add_theme_color_override("font_color", Color(0.43, 0.37, 0.29, 0.68))
+	filter_bar.add_child(order_note)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(34, 184)
+	scroll.size = Vector2(692, 352)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
+	var empty_label := Label.new()
+	empty_label.text = "这个筛选下还没有内容。换个条件看看吧。"
+	empty_label.position = Vector2(44, 316)
+	empty_label.size = Vector2(672, 40)
+	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	empty_label.visible = false
+	empty_label.add_theme_font_size_override("font_size", 13)
+	empty_label.add_theme_color_override("font_color", Color(0.43, 0.36, 0.27, 0.74))
+	panel.add_child(empty_label)
+
+	var refresh := func(_index: int = 0) -> void:
+		_populate_memory_archive_list(list, empty_label, items, member_select, state_select, archive_key)
+	member_select.item_selected.connect(refresh)
+	state_select.item_selected.connect(refresh)
+	refresh.call()
+
+	var footer := Label.new()
+	footer.text = "点击任意卡片查看完整内容与记忆关联"
+	footer.position = Vector2(34, 552)
+	footer.size = Vector2(692, 24)
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.add_theme_font_size_override("font_size", 11)
+	footer.add_theme_color_override("font_color", Color(0.43, 0.36, 0.27, 0.64))
+	panel.add_child(footer)
+
+func _populate_memory_archive_list(list: VBoxContainer, empty_label: Label, items: Array, member_select: OptionButton, state_select: OptionButton, archive_key: String = "flowers") -> void:
+	for child in list.get_children():
+		list.remove_child(child)
+		child.queue_free()
+	var owner_filter := String(member_select.get_selected_metadata())
+	var state_filter := String(state_select.get_selected_metadata())
+	var visible_count := 0
+	for raw_item in items:
+		if not (raw_item is Dictionary):
+			continue
+		var item: Dictionary = raw_item
+		if owner_filter != "" and String(item.get("owner_id", "")) != owner_filter:
+			continue
+		if state_filter != "" and String(item.get("state", "new")) != state_filter:
+			continue
+		var card: Dictionary = item.get("card", {})
+		var owner_id := String(item.get("owner_id", ""))
+		var owner_name := _role_display_name(owner_id) if owner_id != "" else "家人"
+		var created_at := String(item.get("created_at", ""))
+		var date_text := created_at.left(10) if created_at.length() >= 10 else "未记录日期"
+		var is_grown := String(item.get("state", "new")) == "grown"
+		var state_text := "已开花" if is_grown else "待回应"
+		var link_count := MemoryManager.count_memory_links_for_memory(String(item.get("memory_id", "")), "garden")
+		var row := Panel.new()
+		row.custom_minimum_size = Vector2(664, 78)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_stylebox_override("panel", _archive_row_style(is_grown))
+		list.add_child(row)
+
+		var icon_panel := Panel.new()
+		icon_panel.position = Vector2(12, 13)
+		icon_panel.size = Vector2(52, 52)
+		icon_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_panel.add_theme_stylebox_override("panel", _archive_icon_style(archive_key))
+		row.add_child(icon_panel)
+		var icon := TextureRect.new()
+		icon.position = Vector2(9, 9)
+		icon.size = Vector2(34, 34)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var icon_key := "icon_camera" if archive_key == "photos" else ("icon_postcard" if archive_key == "postcards" else "icon_tree")
+		icon.texture = _safe_texture(str(ASSETS.get(icon_key, "")))
+		icon_panel.add_child(icon)
+
+		var item_title := Label.new()
+		item_title.text = String(card.get("title", "一段家庭记忆")).strip_edges()
+		if item_title.text == "":
+			item_title.text = "一段家庭记忆"
+		item_title.position = Vector2(78, 11)
+		item_title.size = Vector2(448, 25)
+		item_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		item_title.add_theme_font_size_override("font_size", 15)
+		item_title.add_theme_color_override("font_color", Color(0.24, 0.19, 0.14, 0.98))
+		item_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(item_title)
+
+		var relation_text := " · %d 条关联" % link_count if link_count > 0 else ""
+		var metadata := Label.new()
+		metadata.text = "%s · %s%s" % [owner_name, date_text, relation_text]
+		metadata.position = Vector2(78, 42)
+		metadata.size = Vector2(448, 20)
+		metadata.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		metadata.add_theme_font_size_override("font_size", 12)
+		metadata.add_theme_color_override("font_color", Color(0.43, 0.35, 0.27, 0.82))
+		metadata.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(metadata)
+
+		var status_panel := Panel.new()
+		status_panel.position = Vector2(548, 23)
+		status_panel.size = Vector2(92, 32)
+		status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_panel.add_theme_stylebox_override("panel", _archive_status_style(is_grown))
+		row.add_child(status_panel)
+		var status_label := Label.new()
+		status_label.text = state_text
+		status_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_label.add_theme_font_size_override("font_size", 11)
+		status_label.add_theme_color_override("font_color", Color(0.27, 0.28, 0.17, 0.94) if is_grown else Color(0.48, 0.33, 0.17, 0.94))
+		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_panel.add_child(status_label)
+
+		var hit := Button.new()
+		hit.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hit.text = ""
+		hit.flat = true
+		hit.focus_mode = Control.FOCUS_ALL
+		hit.mouse_filter = Control.MOUSE_FILTER_STOP
+		hit.tooltip_text = item_title.text
+		hit.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		hit.add_theme_stylebox_override("hover", _archive_row_hover_style())
+		hit.add_theme_stylebox_override("pressed", _archive_row_pressed_style())
+		hit.add_theme_stylebox_override("focus", _archive_row_hover_style())
+		hit.pressed.connect(_open_memory_archive_item.bind(item))
+		row.add_child(hit)
+		visible_count += 1
+	empty_label.visible = visible_count == 0
+
+
+func _archive_filter_bar_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.94, 0.88, 0.72, 0.42)
+	style.border_color = Color(0.56, 0.43, 0.28, 0.22)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	return style
+
+
+func _archive_row_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.975, 0.90, 0.92)
+	style.border_color = Color(0.48, 0.58, 0.31, 0.48) if active else Color(0.62, 0.48, 0.31, 0.42)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(11)
+	style.shadow_color = Color(0.18, 0.12, 0.07, 0.11)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+
+func _archive_icon_style(archive_key: String) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.92, 0.84, 0.66, 0.72) if archive_key == "photos" else Color(0.86, 0.89, 0.72, 0.72)
+	style.border_color = Color(0.57, 0.43, 0.28, 0.48)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	return style
+
+
+func _archive_status_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.80, 0.87, 0.63, 0.78) if active else Color(0.94, 0.82, 0.60, 0.72)
+	style.border_color = Color(0.43, 0.54, 0.29, 0.40) if active else Color(0.62, 0.44, 0.24, 0.38)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	return style
+
+
+func _archive_row_hover_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.94, 0.72, 0.16)
+	style.border_color = Color(0.80, 0.58, 0.30, 0.76)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(11)
+	return style
+
+
+func _archive_row_pressed_style() -> StyleBoxFlat:
+	var style := _archive_row_hover_style()
+	style.bg_color = Color(0.82, 0.88, 0.66, 0.24)
+	return style
+
+func _open_memory_archive_item(item: Dictionary) -> void:
+	_focused_memory_id = String(item.get("memory_id", ""))
+	_refresh_memory_link_visuals("garden")
+	_open_memory_card(item)
+
+func _open_memory_cluster(items: Array) -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(360, 104)
+	panel.size = Vector2(560, 512)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "这一簇记忆"
+	title.position = Vector2(34, 26)
+	title.size = Vector2(470, 32)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = "%d 段家庭记忆在这里一起开花" % items.size()
+	subtitle.position = Vector2(34, 62)
+	subtitle.size = Vector2(470, 24)
+	subtitle.add_theme_font_size_override("font_size", 13)
+	subtitle.add_theme_color_override("font_color", Color(0.38, 0.31, 0.23, 0.82))
+	panel.add_child(subtitle)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(34, 104)
+	scroll.size = Vector2(492, 322)
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
+	for raw_item in items:
+		if not (raw_item is Dictionary):
+			continue
+		var item: Dictionary = raw_item
+		var card: Dictionary = item.get("card", {})
+		var row := Button.new()
+		row.text = "%s\n%s" % [String(card.get("title", "一段家庭记忆")), "已回应" if String(item.get("state", "new")) == "grown" else "等待家人回应"]
+		row.custom_minimum_size = Vector2(470, 68)
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_button_style(row, String(item.get("state", "new")) == "grown")
+		row.pressed.connect(_open_memory_card.bind(item))
+		list.add_child(row)
+	_add_panel_button(panel, "关闭", Vector2(218, 448), Vector2(124, 38), "close")
 
 # 占位和正式美术都保留一个轻量状态标记，帮助玩家识别可互动的 AI 记忆。
 func _add_memory_tag(node: Node2D, state: String) -> void:
 	var tag := Label.new()
 	tag.name = "DemoTag"
 	tag.text = "已确认" if state == "grown" else "待回应"
-	tag.position = Vector2(-34, -126)
+	tag.visible = false
+	tag.position = Vector2(-34, -112)
 	tag.size = Vector2(68, 20)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.add_theme_font_size_override("font_size", 12)
-	tag.add_theme_color_override("font_color", Color(0.24, 0.18, 0.13, 0.90))
+	tag.add_theme_font_size_override("font_size", 11)
+	tag.add_theme_constant_override("outline_size", 3)
+	tag.add_theme_color_override("font_outline_color", Color(1.0, 0.96, 0.82, 0.92))
+	tag.add_theme_color_override("font_color", Color(0.24, 0.18, 0.13, 0.92))
 	node.add_child(tag)
+	var click_area := node.get_node_or_null("ClickArea") as Area2D
+	if click_area != null:
+		click_area.mouse_entered.connect(func() -> void: tag.visible = true)
+		click_area.mouse_exited.connect(func() -> void: tag.visible = false)
 
 func _animate_scene_node_arrival(node: Node2D, target_scale: Vector2) -> void:
 	if node == null or not is_instance_valid(node):
@@ -1550,6 +2744,39 @@ func _animate_scene_node_arrival(node: Node2D, target_scale: Vector2) -> void:
 	var tween := create_tween()
 	tween.tween_property(node, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "scale", target_scale, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _play_memory_archive_arrival(memory_id: String) -> void:
+	var item := _find_rendered_memory_by_memory_id(memory_id)
+	if item.is_empty() or world == null or not is_instance_valid(world):
+		return
+	var target := _garden_archive_position(String(item.get("archive_key", "flowers")))
+	var bloom := NodeFactory.make_memory_node(
+		{"node_type": "memory_flower", "suggested_scene": "garden"},
+		{"slot_id": "arrival", "pos": [640, 490]},
+		Callable(),
+		"new"
+	)
+	bloom.name = "MemoryArrivalBloom"
+	bloom.z_index = 620
+	bloom.scale = Vector2(0.34, 0.34)
+	bloom.modulate.a = 0.0
+	world.add_child(bloom)
+	var tween := create_tween()
+	tween.tween_property(bloom, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(bloom, "scale", Vector2(0.78, 0.78), 0.52).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.42)
+	tween.tween_property(bloom, "position", target, 0.86).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(bloom, "scale", Vector2(0.30, 0.30), 0.86).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(bloom, "modulate:a", 0.0, 0.72).set_delay(0.14)
+	tween.finished.connect(bloom.queue_free)
+
+func _pulse_memory_archive(node: Variant) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var archive: Node2D = node
+	var tween := create_tween()
+	tween.tween_property(archive, "scale", Vector2(1.08, 1.08), 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(archive, "scale", Vector2.ONE, 0.52).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _find_demo_memory(mem_id: String) -> Dictionary:
 	for m in _demo_memories:
@@ -1594,9 +2821,9 @@ func _open_memory_card(mem: Dictionary) -> void:
 	desc.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
 	panel.add_child(desc)
 
-	# AI 推测：浅灰 + ✎ + 问号，明确区别于家人确认的事实（可见的诚实）。
+	# AI 推测保持浅灰与问号，明确区别于家人确认的事实（可见的诚实）。
 	var guess := Label.new()
-	guess.text = "✎ AI 推测：" + String(card.get("guess", "")) + "  ？（待家人确认）"
+	guess.text = "AI 推测：" + String(card.get("guess", "")) + "  ？（待家人确认）"
 	guess.position = Vector2(34, 144)
 	guess.size = Vector2(492, 24)
 	guess.add_theme_font_size_override("font_size", 13)
@@ -1653,18 +2880,28 @@ func _submit_memory_answer(mem_id: String, input: TextEdit) -> void:
 	if text == "":
 		_show_toast("写点什么再回答吧～")
 		return
+	var result := await AIWorkflowManager.save_memory_answer(String(mem.get("memory_id", "")), text)
+	if not bool(result.get("ok", false)):
+		_show_toast(_result_error_message(result, "回答保存失败。"))
+		return
 	mem["answer"] = text
 	mem["state"] = "grown"
-	MemoryManager.answer_memory(String(mem.get("memory_id", "")), text)  # 持久化：存 answer + 标节点 grown + 存档
 	# 跨成员互动计数（回答别人上传的记忆）→ 升温则刷新分季背景。
 	var bumped := MemoryManager.register_cross_member_answer(String(mem.get("memory_id", "")), MemoryManager.selected_role_key)
 	_close_active_panel()
-	_grow_memory_node(mem.get("node"))
+	if mode == "garden":
+		_pulse_memory_archive(mem.get("node"))
+	else:
+		_grow_memory_node(mem.get("node"))
 	if bumped:
 		_update_season_overlay()
-		_show_toast("记忆长大了 🌱 → 🌸 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season()))
+		_refresh_family_tree_visual()
+		var season_message := "记忆开花了 · 花园更繁茂了（%s）" % _season_cn(MemoryManager.garden_season())
+		if bool(result.get("sync_pending", false)):
+			season_message += " · 联网后自动同步"
+		_show_toast(season_message)
 	else:
-		_show_toast("记忆长大了 🌱 → 🌸")
+		_show_toast("记忆开花了。已保存在本机，联网后会自动同步。" if bool(result.get("sync_pending", false)) else "记忆开花了。")
 	if MemoryManager.maybe_recompute_family_portrait():  # 参与成员变化 → 重画家庭画像木牌
 		_render_family_portrait()
 
@@ -1675,17 +2912,18 @@ func _season_cn(season: String) -> String:
 		_: return "春"
 
 # 生长动画：花苞 → 开放（≤3 秒）。占位单贴图用缩放近似 seed→bud→bloom。
-func _grow_memory_node(node: Variant) -> void:
+func _grow_memory_node(node: Variant, target_scale: Vector2 = Vector2.ONE) -> void:
 	if node == null or not is_instance_valid(node):
 		return
 	var n: Node2D = node
 	if n.has_node("DemoTag"):
 		var tag := n.get_node("DemoTag") as Label
 		tag.text = "已确认"
-	n.scale = Vector2(0.25, 0.25)
+	NodeFactory.apply_memory_state(n, "grown")
+	n.scale = target_scale * 0.25
 	var t := create_tween()
-	t.tween_property(n, "scale", Vector2(0.7, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(n, "scale", Vector2(1.0, 1.0), 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", target_scale * 0.7, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(n, "scale", target_scale, 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 # ── 全局导航地图（导航页 / World Map）──────────────────────────────
 # 一张拍平的世界插画，四个抠图图层正好压在底图对应区域上。鼠标悬浮时该图层
@@ -1696,8 +2934,12 @@ const GLOBAL_MAP_REGIONS := [
 	{"id": "house", "asset": "globalmap_house", "label": "小屋", "target": "house"},
 	{"id": "pond", "asset": "globalmap_pond", "label": "鱼塘", "target": "fishpond"},
 ]
+const GLOBAL_MAP_DECORATIONS := [
+	{"id": "familygarden_sign", "asset": "globalmap_familygarden_sign"},
+]
 
 func _show_global_map() -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	_clear_gate4_guide()
@@ -1705,6 +2947,9 @@ func _show_global_map() -> void:
 		room_card.queue_free()
 		room_card = null
 	mode = "global_map"
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -1713,13 +2958,16 @@ func _show_global_map() -> void:
 	AudioManager.play_music("globalmap")
 	AudioManager.play_sfx("打开地图")
 
-	# 整张导航页放在 ui_layer（在 world 之上），但移到底部导航栏之后，保证那些按钮仍可点。
+	# 整张导航页放在固定设计尺寸的 ui_root（在 world 之上），底部导航栏仍由更高层 GameHUD 保持可点。
 	var view := Control.new()
 	view.name = "GlobalMapView"
-	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = GAME_SIZE
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(view)
-	ui_layer.move_child(view, 0)
+	# 地图严格使用 1280×720 设计画布，并复用 ui_root 的居中定位；不能直接铺满可变宽高的 Viewport。
+	ui_root.add_child(view)
+	ui_root.move_child(view, 0)
 	global_map_ui = view
 
 	# 美术没导入时的柔色兜底。
@@ -1747,11 +2995,28 @@ func _show_global_map() -> void:
 	for region in GLOBAL_MAP_REGIONS:
 		if _add_global_map_region(view, region):
 			loaded += 1
+	for decoration in GLOBAL_MAP_DECORATIONS:
+		_add_global_map_decoration(view, decoration)
 
 	if loaded == 0:
 		_show_toast("世界地图美术还没导入 — 用 Godot 打开一次项目即可。")
 	else:
 		_show_toast("把鼠标移到某个地点，点击即可进入。")
+
+func _add_global_map_decoration(view: Control, decoration: Dictionary) -> bool:
+	var tex := _safe_texture(ASSETS[str(decoration["asset"])])
+	if tex == null:
+		return false
+	var layer := TextureRect.new()
+	layer.name = "Decoration_" + str(decoration["id"])
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	layer.stretch_mode = TextureRect.STRETCH_SCALE
+	layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.texture = tex
+	view.add_child(layer)
+	return true
 
 func _add_global_map_region(view: Control, region: Dictionary) -> bool:
 	var tex := _safe_texture(ASSETS[str(region["asset"])])
@@ -1848,6 +3113,11 @@ func _on_global_map_region_hover(button: TextureButton, shadow: TextureRect, hov
 			t.tween_property(shadow, "position", Vector2.ZERO, 0.12)
 
 func _on_global_map_region_pressed(target: String, label_text: String) -> void:
+	# TextureButton 不走 _apply_button_style，点击音效单独补在这里。
+	AudioManager.play_sfx("按钮")
+	if target == "house":
+		_show_house_destination_panel()
+		return
 	_show_toast("进入%s…" % label_text)
 	goto_scene(target)
 
@@ -1860,6 +3130,9 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 		room_card.queue_free()
 		room_card = null
 	mode = scene_key
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -1883,6 +3156,7 @@ func _build_embedded_scene(scene_key: String, scene_path: String, title: String,
 # ── 通用场景切换（ScenePortal 框架）────────────────────────────────
 # 所有场景切换的唯一入口。target = garden/fishpond/...；spawn_key = 目标场景出生点。
 func goto_scene(target: String, spawn_key: String = "default") -> void:
+	save_current_progress()
 	AIClient.cancel_all()
 	if target == POND_AREA_SCENE:
 		_build_fishpond(spawn_key)
@@ -1902,9 +3176,12 @@ func goto_scene(target: String, spawn_key: String = "default") -> void:
 			_build_embedded_scene("farm", FARM_SCENE, "农场", Color(0.74, 0.62, 0.44, 1.0), false)
 			ScenePortal.build_portals("farm", world, _on_portal_travel)
 		"house":
-			# AnnaRoom.tscn 是静态房间模板，需要补主控角色。
-			AudioManager.play_music("house")
-			_build_embedded_scene("house", ANNA_ROOM_SCENE, "小屋", Color(0.66, 0.56, 0.44, 1.0), true)
+			_show_house_destination_panel()
+		"kitchen":
+			# KitchenNew.tscn 自带玩家（kitchen_new.gd 的 _spawn_player），不要再补一个。
+			AudioManager.play_music("kitchen")
+			_build_embedded_scene("kitchen", KITCHEN_SCENE, "厨房", Color(0.58, 0.66, 0.50, 1.0), false)
+			ScenePortal.build_portals("kitchen", world, _on_portal_travel)
 		_:
 			push_warning("[SceneManager] 未知场景 '%s'，忽略切换" % target)
 
@@ -1938,6 +3215,7 @@ func _add_scene_background(scene: String, fallback_color: Color) -> void:
 
 # ── 爸爸鱼塘 fishpond ──────────────────────────────────────────────
 func _build_fishpond(spawn_key: String = "default") -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -1945,6 +3223,9 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 		room_card = null
 	_clear_gate4_guide()
 	mode = "fishpond"
+	_current_spawn_key = spawn_key
+	_current_room_id = ""
+	_set_hud_context(mode)
 	adding_place = false
 	plant_mode = false
 	_update_plant_button()
@@ -1968,17 +3249,36 @@ func _build_fishpond(spawn_key: String = "default") -> void:
 			player_parent = ysort_objects
 			player_spawn = ysort_objects.to_local(spawn)
 	_add_player(player_spawn, player_parent)
+	_scale_fishpond_player_visual()
 	_spawn_demo_bottles()
 	_register_scene_message_bottle(pond_area)
-	# 重入时渲染已落库的岸边记忆（回答过的漂流瓶持久化的记忆，关游戏重开仍在）。
+	_register_pond_fishing_spot(pond_area)
+	# 旧版鱼塘记忆花迁移到主花园；鱼塘只保留漂流瓶与钓鱼交互。
+	var migrated_memories := MemoryManager.migrate_fishpond_memories_to_garden()
 	_fishpond_memories.clear()
-	_render_scene_nodes("fishpond", _fishpond_memories, func(_nid: String) -> void: _show_toast("一段鱼塘记忆 🌊"))
-	_render_memory_links("fishpond")
 	ScenePortal.build_portals("fishpond", world, _on_portal_travel)
 	_show_gate4_scene_guide("fishpond")
-	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 岸边记忆=", _fishpond_memories.size(), " slot 用量=", SlotManager.usage("fishpond"))
+	print("[SceneManager] fishpond bottles=", _demo_bottles.size(), " 已迁移主花园记忆=", migrated_memories)
+
+func _scale_fishpond_player_visual() -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	var sprite := player.get_node_or_null("Sprite2D") as Sprite2D
+	if sprite != null:
+		sprite.scale *= FISHPOND_PLAYER_VISUAL_SCALE
+	var shadow := player.get_node_or_null("Shadow") as Sprite2D
+	if shadow != null:
+		shadow.scale *= 1.15
+	var name_label := player.get_node_or_null("NameLabel") as Label
+	if name_label != null:
+		name_label.position.y = -84.0
 
 const SCENE_BOTTLE_QUESTION := "如果这个漂流瓶能带来爸爸的一句话，你希望里面写着什么？"
+const FISHING_RESULTS := [
+	{"id": "goldfish", "item_id": "fish_goldfish", "title": "金鱼", "body": "一尾闪闪发亮的金鱼，已经放进背包。", "asset": "fishing_goldfish", "color": Color(0.96, 0.58, 0.18, 1.0)},
+	{"id": "bottle", "title": "漂流瓶", "body": "瓶中的纸条写着：今天的风很好，希望你那里也是。", "asset": "fishing_bottle", "color": Color(0.28, 0.54, 0.72, 1.0)},
+	{"id": "branch", "title": "树枝", "body": "只是一根被水冲来的树枝，再试一次吧。", "asset": "fishing_branch", "color": Color(0.45, 0.30, 0.16, 1.0)},
+]
 
 # Gate 4：先同步渲染已落库漂流瓶，再后台补齐真实 AI 问题；进入场景不等待网络。
 func _spawn_demo_bottles() -> void:
@@ -2030,6 +3330,445 @@ func _on_scene_message_bottle_input(_viewport: Node, event: InputEvent, _shape_i
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
 		_on_bottle_clicked("scene_bottle")
+
+func _register_pond_fishing_spot(pond_area: Node2D) -> void:
+	if pond_area == null:
+		return
+	var fishing_spot := pond_area.get_node_or_null("FishingSpot") as Area2D
+	if fishing_spot == null:
+		return
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
+	fishing_spot.monitoring = true
+	fishing_spot.collision_mask = 1
+	fishing_spot.input_pickable = true
+	if not fishing_spot.body_entered.is_connected(_on_pond_fishing_spot_body_entered):
+		fishing_spot.body_entered.connect(_on_pond_fishing_spot_body_entered)
+	if not fishing_spot.body_exited.is_connected(_on_pond_fishing_spot_body_exited):
+		fishing_spot.body_exited.connect(_on_pond_fishing_spot_body_exited)
+	if not fishing_spot.input_event.is_connected(_on_pond_fishing_spot_input):
+		fishing_spot.input_event.connect(_on_pond_fishing_spot_input)
+
+func _on_pond_fishing_spot_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if active_modal != null and is_instance_valid(active_modal):
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		_start_fishing_sequence()
+
+func _on_pond_fishing_spot_body_entered(body: Node) -> void:
+	if body == null or not body.is_in_group("player"):
+		return
+	pond_fishing_available = true
+	_show_pond_fishing_prompt()
+
+func _on_pond_fishing_spot_body_exited(body: Node) -> void:
+	if body == null or not body.is_in_group("player"):
+		return
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
+
+func _show_pond_fishing_prompt() -> void:
+	if ui_layer == null:
+		return
+	if pond_fishing_prompt != null and is_instance_valid(pond_fishing_prompt):
+		pond_fishing_prompt.visible = true
+		return
+	pond_fishing_prompt = Label.new()
+	pond_fishing_prompt.name = "PondFishingPrompt"
+	pond_fishing_prompt.text = "靠近钓鱼台，按 E 开始钓鱼"
+	pond_fishing_prompt.position = Vector2(460, 616)
+	pond_fishing_prompt.size = Vector2(360, 32)
+	pond_fishing_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pond_fishing_prompt.add_theme_font_size_override("font_size", 18)
+	pond_fishing_prompt.add_theme_color_override("font_color", Color(0.96, 0.90, 0.76, 1.0))
+	pond_fishing_prompt.add_theme_color_override("font_outline_color", Color(0.10, 0.08, 0.05, 0.92))
+	pond_fishing_prompt.add_theme_constant_override("outline_size", 3)
+	ui_layer.add_child(pond_fishing_prompt)
+
+func _hide_pond_fishing_prompt() -> void:
+	if pond_fishing_prompt != null and is_instance_valid(pond_fishing_prompt):
+		pond_fishing_prompt.queue_free()
+	pond_fishing_prompt = null
+
+
+func _start_fishing_sequence() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(382, 136)
+	panel.size = Vector2(516, 392)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+
+	var title := Label.new()
+	title.text = "正在钓鱼"
+	title.position = Vector2(42, 28)
+	title.size = Vector2(432, 34)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.20, 0.24, 0.20, 1.0))
+	panel.add_child(title)
+
+	var water := ColorRect.new()
+	water.position = Vector2(78, 168)
+	water.size = Vector2(360, 34)
+	water.color = Color(0.34, 0.64, 0.72, 0.42)
+	water.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(water)
+
+	var line := Line2D.new()
+	line.width = 3.0
+	line.default_color = Color(0.45, 0.36, 0.24, 0.78)
+	line.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	line.z_index = 1
+	panel.add_child(line)
+
+	var rod := TextureRect.new()
+	rod.position = Vector2(118, 58)
+	rod.size = Vector2(88, 172)
+	rod.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rod.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rod.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rod.texture = _safe_texture(str(ASSETS.get("fishing_rod", "")))
+	rod.pivot_offset = Vector2(rod.size.x * 0.46, rod.size.y * 0.86)
+	rod.rotation = -0.08
+	rod.z_index = 2
+	rod.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(rod)
+
+	var bobber := TextureRect.new()
+	bobber.position = Vector2(292, 139)
+	bobber.size = Vector2(28, 54)
+	bobber.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bobber.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bobber.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bobber.texture = _safe_texture(str(ASSETS.get("fishing_bobber", "")))
+	bobber.z_index = 3
+	bobber.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(bobber)
+
+	var hook_item := TextureRect.new()
+	hook_item.position = bobber.position + Vector2(-12, 38)
+	hook_item.size = Vector2(52, 52)
+	hook_item.visible = false
+	hook_item.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hook_item.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hook_item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	hook_item.z_index = 4
+	hook_item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(hook_item)
+
+	var update_fishing_line := func() -> void:
+		if not is_instance_valid(line) or not is_instance_valid(rod) or not is_instance_valid(bobber):
+			return
+		var rod_tip_local := Vector2(rod.size.x * 0.76, rod.size.y * 0.05)
+		var rod_tip := rod.position + rod.pivot_offset + (rod_tip_local - rod.pivot_offset).rotated(rod.rotation)
+		var bobber_top := bobber.position + Vector2(bobber.size.x * 0.5, bobber.size.y * 0.12)
+		line.points = PackedVector2Array([rod_tip, bobber_top])
+		if is_instance_valid(hook_item):
+			hook_item.position = bobber.position + Vector2(-12, 38)
+	update_fishing_line.call()
+
+	var ripple := ColorRect.new()
+	ripple.position = Vector2(222, 166)
+	ripple.size = Vector2(42, 8)
+	ripple.color = Color(0.90, 1.0, 0.95, 0.38)
+	ripple.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(ripple)
+
+	var status := Label.new()
+	status.text = "等浮漂下沉，在绿色区域拉竿，越靠中间越容易钓到鱼"
+	status.position = Vector2(58, 216)
+	status.size = Vector2(400, 28)
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_font_size_override("font_size", 17)
+	status.add_theme_color_override("font_color", Color(0.34, 0.29, 0.22, 1.0))
+	panel.add_child(status)
+
+	var track_back := Panel.new()
+	track_back.position = Vector2(76, 258)
+	track_back.size = Vector2(364, 26)
+	track_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var track_style := StyleBoxFlat.new()
+	track_style.bg_color = Color(0.50, 0.36, 0.24, 0.22)
+	track_style.border_color = Color(0.42, 0.30, 0.18, 0.55)
+	track_style.set_border_width_all(1)
+	track_style.set_corner_radius_all(6)
+	track_back.add_theme_stylebox_override("panel", track_style)
+	panel.add_child(track_back)
+
+	var sweet_zone := ColorRect.new()
+	sweet_zone.position = Vector2(202, 258)
+	sweet_zone.size = Vector2(108, 26)
+	sweet_zone.color = Color(0.54, 0.76, 0.44, 0.78)
+	sweet_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(sweet_zone)
+
+	var marker := ColorRect.new()
+	marker.position = Vector2(78, 252)
+	marker.size = Vector2(8, 38)
+	marker.color = Color(0.90, 0.28, 0.18, 1.0)
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(marker)
+
+	var pull_btn := Button.new()
+	pull_btn.text = "拉竿"
+	pull_btn.position = Vector2(198, 318)
+	pull_btn.size = Vector2(120, 42)
+	pull_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(pull_btn, false)
+	panel.add_child(pull_btn)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(rod, "rotation", 0.03, 0.36).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(bobber, "position", Vector2(326, 142), 0.36).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(ripple, "scale", Vector2(1.35, 1.0), 0.32)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.36)
+	tween.set_parallel(false)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(status):
+			status.text = "浮漂动了，准备拉竿"
+	)
+	tween.tween_interval(0.45)
+	tween.set_parallel(true)
+	tween.tween_property(bobber, "position:y", 130.0, 0.16).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(ripple, "modulate:a", 0.12, 0.14)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.16)
+	tween.set_parallel(false)
+	tween.set_parallel(true)
+	tween.tween_property(bobber, "position:y", 154.0, 0.16).set_trans(Tween.TRANS_SINE)
+	tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.16)
+	tween.set_parallel(false)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(status):
+			status.text = "有东西上钩了，点拉竿！"
+	)
+
+	var marker_tween := create_tween()
+	marker_tween.set_loops()
+	marker_tween.tween_property(marker, "position:x", 432.0, 1.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	marker_tween.tween_property(marker, "position:x", 78.0, 1.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	pull_btn.pressed.connect(func() -> void:
+		if not is_instance_valid(marker):
+			return
+		pull_btn.disabled = true
+		if is_instance_valid(marker_tween):
+			marker_tween.kill()
+		if is_instance_valid(tween):
+			tween.kill()
+		var marker_center := marker.position.x + marker.size.x * 0.5
+		var target_center := sweet_zone.position.x + sweet_zone.size.x * 0.5
+		var distance := absf(marker_center - target_center)
+		var hit_zone := marker_center >= sweet_zone.position.x and marker_center <= sweet_zone.position.x + sweet_zone.size.x
+		var score := clampf(1.0 - distance / 72.0, 0.0, 1.0) if hit_zone else 0.0
+		var caught_result: Dictionary = {}
+		var reel_success: bool = false
+		if hit_zone:
+			caught_result = _pick_fishing_result(score)
+			reel_success = not caught_result.is_empty()
+		if not hit_zone:
+			status.text = "脱钩了，什么也没钓到"
+		elif not reel_success:
+			status.text = "鱼线一松，东西脱钩了"
+		elif score >= 0.72:
+			status.text = "时机很好，正在收线"
+		else:
+			status.text = "拉住了，慢慢收线"
+		if is_instance_valid(hook_item):
+			hook_item.visible = reel_success
+			if reel_success:
+				var asset_key: String = String(caught_result.get("asset", ""))
+				hook_item.texture = _safe_texture(str(ASSETS.get(asset_key, "")))
+				hook_item.size = Vector2(62, 42) if String(caught_result.get("id", "")) == "branch" else Vector2(52, 52)
+				update_fishing_line.call()
+		var finish_tween := create_tween()
+		finish_tween.set_parallel(true)
+		if reel_success:
+			finish_tween.tween_property(bobber, "position", Vector2(204, 96), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
+			finish_tween.tween_property(rod, "rotation", -0.22, 0.28).set_trans(Tween.TRANS_BACK)
+			finish_tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.28)
+		else:
+			finish_tween.tween_property(bobber, "position", Vector2(332, 154), 0.18).set_trans(Tween.TRANS_SINE)
+			finish_tween.tween_property(rod, "rotation", -0.04, 0.18).set_trans(Tween.TRANS_SINE)
+			finish_tween.tween_method(func(_value: float) -> void: update_fishing_line.call(), 0.0, 1.0, 0.18)
+		finish_tween.set_parallel(false)
+		finish_tween.tween_interval(0.12)
+		finish_tween.tween_callback(func() -> void:
+			if reel_success:
+				_open_fishing_result_panel(caught_result)
+			else:
+				_open_fishing_failed_panel()
+		)
+	)
+
+
+func _pick_fishing_result(score: float) -> Dictionary:
+	# 第二章第一次有效拉竿必定带回漂流瓶，避免主线被随机结果卡住。
+	if StoryManager != null and not StoryManager.is_task_done("first_bottle"):
+		return FISHING_RESULTS[1]
+	var escape_chance: float = 0.24
+	if score < 0.45:
+		escape_chance = 0.42
+	elif score >= 0.82:
+		escape_chance = 0.10
+	if randf() < escape_chance:
+		return {}
+	var goldfish_chance: float = 0.28
+	if score >= 0.82:
+		goldfish_chance = 0.42
+	elif score < 0.58:
+		goldfish_chance = 0.18
+	if randf() < goldfish_chance:
+		return FISHING_RESULTS[0]
+	if randf() < 0.45:
+		return FISHING_RESULTS[1]
+	return FISHING_RESULTS[2]
+
+
+func _open_fishing_failed_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(402, 184)
+	panel.size = Vector2(476, 274)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "鱼脱钩了"
+	title.position = Vector2(44, 48)
+	title.size = Vector2(388, 44)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.20, 0.24, 0.22, 1.0))
+	panel.add_child(title)
+
+	var body := Label.new()
+	body.text = "拉竿时机偏了，鱼线松了一下，水面只剩一圈涟漪。"
+	body.position = Vector2(62, 112)
+	body.size = Vector2(352, 64)
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	body.add_theme_font_size_override("font_size", 18)
+	body.add_theme_color_override("font_color", Color(0.32, 0.27, 0.20, 1.0))
+	panel.add_child(body)
+
+	_add_panel_button(panel, "再试一次", Vector2(104, 204), Vector2(130, 40), "fish_again")
+	_add_panel_button(panel, "收起鱼竿", Vector2(258, 204), Vector2(132, 40), "close")
+
+
+func _open_fishing_result_panel(result: Dictionary = {}) -> void:
+	_close_active_panel()
+	if result.is_empty():
+		_open_fishing_failed_panel()
+		return
+	_award_fishing_result(result)
+	var result_color: Color = result.get("color", Color(0.5, 0.5, 0.5, 1.0))
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(292, 150)
+	panel.size = Vector2(696, 420)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var icon_back := Panel.new()
+	icon_back.position = Vector2(42, 82)
+	icon_back.size = Vector2(150, 150)
+	icon_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon_style := StyleBoxFlat.new()
+	icon_style.bg_color = result_color.lightened(0.35)
+	icon_style.border_color = Color(0.52, 0.42, 0.28, 0.72)
+	icon_style.set_border_width_all(2)
+	icon_style.corner_radius_top_left = 8
+	icon_style.corner_radius_top_right = 8
+	icon_style.corner_radius_bottom_left = 8
+	icon_style.corner_radius_bottom_right = 8
+	icon_back.add_theme_stylebox_override("panel", icon_style)
+	panel.add_child(icon_back)
+
+	var result_icon := TextureRect.new()
+	result_icon.position = Vector2(58, 98)
+	result_icon.size = Vector2(118, 118)
+	result_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	result_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	result_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	result_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	result_icon.texture = _safe_texture(str(ASSETS.get(String(result.get("asset", "")), "")))
+	panel.add_child(result_icon)
+
+	var title := Label.new()
+	title.text = "钓到了：" + String(result.get("title", "什么东西"))
+	title.position = Vector2(228, 78)
+	title.size = Vector2(382, 44)
+	title.clip_text = true
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.18, 0.24, 0.22, 1.0))
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "池塘收获"
+	subtitle.position = Vector2(230, 126)
+	subtitle.size = Vector2(280, 24)
+	subtitle.add_theme_font_size_override("font_size", 15)
+	subtitle.add_theme_color_override("font_color", Color(0.48, 0.42, 0.32, 0.92))
+	panel.add_child(subtitle)
+
+	var body := Label.new()
+	body.text = String(result.get("body", "鱼线从池塘里收了回来。"))
+	body.position = Vector2(230, 166)
+	body.size = Vector2(398, 118)
+	body.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	body.clip_text = true
+	body.add_theme_font_size_override("font_size", 18)
+	body.add_theme_color_override("font_color", Color(0.25, 0.24, 0.20, 1.0))
+	panel.add_child(body)
+
+	if String(result.get("id", "")) == "bottle":
+		_add_panel_button(panel, "打开", Vector2(282, 334), Vector2(132, 42), "open_caught_bottle")
+	else:
+		_add_panel_button(panel, "再钓一次", Vector2(190, 334), Vector2(150, 42), "fish_again")
+		_add_panel_button(panel, "收下", Vector2(372, 334), Vector2(126, 42), "close")
+
+
+func _award_fishing_result(result: Dictionary) -> void:
+	var result_id := String(result.get("id", ""))
+	if StoryManager != null and StoryManager.has_method("record_fishing_result"):
+		StoryManager.record_fishing_result(result_id)
+	if result_id != "goldfish":
+		return
+	var item_id := String(result.get("item_id", "fish_goldfish"))
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv == null or not inv.has_method("give"):
+		return
+	var leftover: int = inv.give(item_id, 1)
+	if leftover > 0:
+		_show_toast("背包已满，金鱼没有放进去。")
+	else:
+		_show_toast("金鱼已放入背包。")
+
+func _open_caught_bottle_content() -> void:
+	var bid := "caught_bottle_" + str(Time.get_ticks_msec())
+	_demo_bottles.append({"id": bid, "question": "河流送来一张远方的纸条。", "state": "opened", "answer": "今天的风很好，希望你那里也是。", "node": null})
+	if StoryManager != null and StoryManager.has_method("record_fishing_result"):
+		StoryManager.record_fishing_result("bottle_opened")
+	_open_bottle_panel(_find_demo_bottle(bid))
+
 
 func _find_demo_bottle(bid: String) -> Dictionary:
 	for b in _demo_bottles:
@@ -2086,7 +3825,7 @@ func _open_bottle_panel(b: Dictionary) -> void:
 		input.position = Vector2(34, 160)
 		input.size = Vector2(492, 130)
 		panel.add_child(input)
-		var status := _make_status_label(panel, Vector2(34, 294), Vector2(492, 22), "保存后，岸边会长出一朵新的记忆花。")
+		var status := _make_status_label(panel, Vector2(34, 294), Vector2(492, 22), "保存后，主花园会收下一朵新的记忆花。")
 		_add_panel_button(panel, "取消", Vector2(150, 312), Vector2(120, 40), "close")
 		var submit := Button.new()
 		submit.text = "回答"
@@ -2098,7 +3837,7 @@ func _open_bottle_panel(b: Dictionary) -> void:
 		panel.add_child(submit)
 	else:
 		var ans_title := Label.new()
-		ans_title.text = "你的回答已经成为岸边记忆"
+		ans_title.text = "你的回答已经收进主花园"
 		ans_title.position = Vector2(34, 160)
 		ans_title.size = Vector2(492, 22)
 		ans_title.add_theme_font_size_override("font_size", 13)
@@ -2123,8 +3862,11 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 		_set_status(status, "写点什么再回答吧。", true)
 		_show_toast("写点什么再回答吧～")
 		return
+	if text.length() > 2000:
+		_set_status(status, "回答不能超过 2000 个字符。", true)
+		return
 	_set_button_busy(button, "正在保存...")
-	_set_status(status, "正在把回答保存成岸边记忆...")
+	_set_status(status, "正在把回答保存到主花园...")
 	if bid != "scene_bottle":
 		var result: Dictionary = await AIWorkflowManager.answer_bottle(bid, text)
 		if not bool(result.get("ok", false)):
@@ -2135,30 +3877,36 @@ func _submit_bottle_answer(bid: String, input: TextEdit, button: Button, status:
 			return
 		_close_active_panel()
 		_build_fishpond()
-		_show_toast("这只漂流瓶已经保存过回答。" if bool(result.get("duplicate", false)) else "漂流瓶回答已保存。")
+		var bottle_message := "这只漂流瓶已经保存过回答。" if bool(result.get("duplicate", false)) else "漂流瓶回答已保存。"
+		if bool(result.get("sync_pending", false)):
+			bottle_message += " 已保存在本机，联网后会自动同步。"
+		_show_toast(bottle_message)
+		return
+	var moderation := await AIClient.moderate_user_content([text], "bottle_answer")
+	if String(moderation.get("state", "")) != AIClient.STATE_SUCCESS:
+		_set_button_ready(button, "重试回答")
+		var moderation_message := String(moderation.get("error", {}).get("message", "内容暂时无法通过安全检查。"))
+		_set_status(status, moderation_message, true)
+		_show_toast(moderation_message)
 		return
 	b["answer"] = text
 	b["state"] = "opened"
 	_close_active_panel()
-	# 回答后在岸边 slot 生成一个记忆节点（漂流瓶 → 记忆），并落库持久化（关游戏重开仍在）。
-	var slot: Variant = SlotManager.allocate("fishpond", "memory_flower", bid + "_mem")
-	if slot != null:
-		var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
-			"suggested_scene": "fishpond", "question": String(b.get("question", "")),
-			"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
-		var mem := MemoryManager.create_memory(card, "bottle")
-		MemoryManager.create_node(String(mem.get("id", "")), "fishpond", "memory_flower", String(slot.get("slot_id", "")))
-		MemoryManager.answer_memory(String(mem.get("id", "")), text)  # 岸边记忆即已回答状态（标 grown + 存档）
-		var mem_node := NodeFactory.make_memory_node(card, slot, func() -> void: _show_toast("一段鱼塘记忆 🌊"))
-		mem_node.scale = Vector2(0.25, 0.25)
-		world.add_child(mem_node)
-		_grow_memory_node(mem_node)
-		# 同步进岸边记忆缓存，离场重入由 _render_scene_nodes 重建。
-		_fishpond_memories.append({"id": String(mem.get("id", "")), "memory_id": String(mem.get("id", "")),
-			"card": card, "state": "grown", "answer": text, "node": mem_node})
-	_show_toast("漂流瓶被回答了 🍶 → 🌊")
+	# 漂流瓶只产生主花园记忆；池塘场景不再实例化记忆花。
+	var card := {"title": "鱼塘的回忆", "description": text, "memory_type": "father",
+		"suggested_scene": "garden", "question": String(b.get("question", "")),
+		"node_type": "memory_flower", "confidence": 1.0, "guess": "与爸爸有关的记忆"}
+	var mem := MemoryManager.create_memory(card, "bottle")
+	MemoryManager.create_node(String(mem.get("id", "")), "garden", "memory_flower", "garden_archive_flowers")
+	MemoryManager.answer_memory(String(mem.get("id", "")), text)
+	_show_toast("漂流瓶回答已收进主花园的记忆花园。")
 
 func _clear_world() -> void:
+	pond_fishing_available = false
+	_hide_pond_fishing_prompt()
+	var garden_builder := get_node_or_null("/root/GardenBuildManager")
+	if garden_builder != null and garden_builder.has_method("teardown"):
+		garden_builder.call("teardown")
 	for child in world.get_children():
 		child.queue_free()
 	plant_nodes.clear()
@@ -2176,6 +3924,15 @@ func _clear_global_map_ui() -> void:
 	global_map_ui = null
 
 func _add_background() -> void:
+	# 主花园不能再由“文件是否存在”隐式决定，否则搭档提交一个试验场景就会替换正式入口。
+	# TileMap 版本继续完整保留；未来完成坐标、碰撞与交互验收后，只需显式切换此开关。
+	if USE_GARDEN_TILED_AS_MAIN and ResourceLoader.exists(GARDEN_TILED_SCENE):
+		var tiled := (load(GARDEN_TILED_SCENE) as PackedScene).instantiate()
+		tiled.name = "GardenTiled"
+		world.add_child(tiled)
+		_add_season_overlay()
+		return
+
 	var texture := _safe_texture(ASSETS["background"])
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -2227,20 +3984,10 @@ func _add_garden_spawn_markers() -> void:
 	world.add_child(marker)
 
 func _add_core_objects() -> void:
-	_add_interactable_sprite(
-		"family_tree",
-		ASSETS["tree"],
-			Vector2(645, 280),
-			390.0,
-			"tree",
-			"家庭树",
-			Vector2(190, 170),
-			Vector2(0, 95)
-		)
-	# 邮箱画在花园背景里，这里用不可见热点补交互。
-	_add_mailbox_hotspot(Vector2(402, 104), Vector2(120, 120))
-	# 右下角木牌画在背景里，这里用不可见热点作为留言板按钮。
-	_add_message_board_hotspot(Vector2(1162, 584), Vector2(190, 120))
+	# 新主花园背景已经包含建筑与邮箱，场景层只补交互热点，避免重复叠图。
+	_add_invisible_hotspot("family_tree", Vector2(520, 320), Vector2(180, 130), "tree", "家庭树")
+	_add_mailbox_hotspot(Vector2(232, 172), Vector2(80, 80))
+	_add_message_board_hotspot(Vector2(1196, 456), Vector2(110, 120))
 
 func _add_mailbox_hotspot(pos: Vector2, hotspot_size: Vector2) -> void:
 	var area := Area2D.new()
@@ -2318,33 +4065,22 @@ func _on_message_board_hotspot_input(_viewport: Node, event: InputEvent, _shape_
 
 func _add_houses() -> void:
 	for house in HOUSE_DATA:
-		_add_interactable_sprite(
+		_add_invisible_hotspot(
 			"house_" + str(house["id"]),
-			ASSETS[str(house["asset"])],
 			house["pos"],
-			house["height"],
+			house.get("hotspot_size", Vector2(92, 92)),
 			"house:" + str(house["id"]),
 			str(house["label"])
 		)
 
-func _add_npcs() -> void:
-	for role_data in CHARACTER_DATA:
-		var role_key := str(role_data.get("role", ""))
-		if role_key == MemoryManager.selected_role_key:
-			continue
-		var npc_name := str(role_data.get("default_name", role_data.get("label", "Family")))
-		var npc_pos: Vector2 = role_data.get("npc_pos", Vector2(720, 420))
-		var npc_body := _create_character(npc_name, ASSETS[str(role_data.get("asset", "girl"))], npc_pos, false)
-		npc_body.name = "NPC_" + role_key
-		npc_body.set_script(preload("res://scripts/npc_wander.gd"))
-		npc_body.set("home_position", npc_pos)
-		npc_body.set("wander_radius", float(role_data.get("wander_radius", 80.0)))
-		npc_body.set("move_speed", 34.0)
-		npc_body.set("walk_bounds", Rect2(Vector2(35, 100), Vector2(1210, 560)))
-		npc_body.call_deferred("set_blocked_rects", _get_character_blocked_rects())
-		world.add_child(npc_body)
-		_add_online_status_badge(npc_body, false)
-		_add_click_area(npc_body, Vector2(56, 72), "npc:" + role_key, npc_name)
+func _add_invisible_hotspot(node_name: String, pos: Vector2, hotspot_size: Vector2, action: String, label_text: String) -> Node2D:
+	var root := Node2D.new()
+	root.name = node_name
+	root.position = pos
+	root.z_index = int(pos.y)
+	world.add_child(root)
+	_add_click_area(root, hotspot_size, action, label_text)
+	return root
 
 func _add_animals() -> void:
 	animal_nodes.clear()
@@ -2375,77 +4111,53 @@ func _add_animals() -> void:
 		)
 
 func _get_animal_bounds() -> Rect2:
-	# Animals may wander more naturally, but stay inside the garden play area.
-	return Rect2(Vector2(45, 105), Vector2(1185, 545))
+	return Rect2(Vector2(90, 305), Vector2(1100, 330))
 
 func _get_animal_blocked_rects() -> Array:
-	# Approximate no-walk zones for animals: water, buildings, fences, tree trunk, dense flowerbeds.
-	# These are deliberately a little larger than player collision, so animals avoid visually awkward areas.
 	return [
-		Rect2(Vector2(350, 420), Vector2(205, 115)), # left river curve
-		Rect2(Vector2(500, 500), Vector2(145, 80)), # river lower left
-		Rect2(Vector2(735, 500), Vector2(205, 85)), # river lower right
-		Rect2(Vector2(845, 460), Vector2(145, 105)), # right river curve
-		Rect2(Vector2(575, 305), Vector2(165, 165)), # family tree trunk/root
-		Rect2(Vector2(230, 280), Vector2(210, 220)), # gazebo
-		Rect2(Vector2(55, 35), Vector2(210, 190)), # upper-left house
-		Rect2(Vector2(1040, 50), Vector2(210, 190)), # upper-right house
-		Rect2(Vector2(35, 355), Vector2(205, 140)), # left middle house
-		Rect2(Vector2(35, 515), Vector2(210, 170)), # left lower house
-		Rect2(Vector2(900, 640), Vector2(350, 95)), # bottom fence / edge
-		Rect2(Vector2(1085, 360), Vector2(95, 205)), # right fence area
-		Rect2(Vector2(660, 80), Vector2(540, 70)), # upper fence
-		Rect2(Vector2(430, 250), Vector2(135, 120)), # central flowerbed left
-		Rect2(Vector2(765, 215), Vector2(290, 125)), # flowerbed / bench area
-		Rect2(Vector2(910, 390), Vector2(210, 165)), # right flower garden
-		Rect2(Vector2(375, 535), Vector2(155, 130)) # lower-left flower strip
+		Rect2(Vector2(0, 0), Vector2(1280, 275)),
+		Rect2(Vector2(0, 650), Vector2(1280, 70)),
+		Rect2(Vector2(0, 235), Vector2(88, 445)),
+		Rect2(Vector2(1192, 235), Vector2(88, 445)),
 	]
 
 func _get_character_blocked_rects() -> Array:
 	return [
-		Rect2(Vector2(350, 420), Vector2(205, 115)),
-		Rect2(Vector2(500, 500), Vector2(145, 80)),
-		Rect2(Vector2(735, 500), Vector2(205, 85)),
-		Rect2(Vector2(845, 460), Vector2(145, 105)),
-		Rect2(Vector2(575, 305), Vector2(165, 165)),
-		Rect2(Vector2(230, 280), Vector2(210, 220)),
-		Rect2(Vector2(55, 35), Vector2(210, 190)),
-		Rect2(Vector2(1040, 50), Vector2(210, 190)),
-		Rect2(Vector2(35, 355), Vector2(205, 140)),
-		Rect2(Vector2(35, 515), Vector2(210, 170)),
-		Rect2(Vector2(900, 640), Vector2(350, 95)),
-		Rect2(Vector2(1085, 360), Vector2(95, 205)),
-		Rect2(Vector2(660, 80), Vector2(540, 70)),
+		Rect2(Vector2(0, 0), Vector2(1280, 260)),
+		Rect2(Vector2(0, 670), Vector2(1280, 50)),
+		Rect2(Vector2(0, 245), Vector2(74, 425)),
+		Rect2(Vector2(1206, 245), Vector2(74, 425)),
 	]
 
 func _add_collision_zones() -> void:
-	# MVP collision zones. They are intentionally approximate rectangles.
-	# If a zone feels too restrictive, adjust its center/size here.
+	# 与新主花园背景对齐：上方住宅、四周树篱不可走，中部草坪留给 DIY。
 	_add_collision_rect("border_top", Vector2(640, -18), Vector2(1320, 36))
 	_add_collision_rect("border_bottom", Vector2(640, 738), Vector2(1320, 36))
 	_add_collision_rect("border_left", Vector2(-18, 360), Vector2(36, 760))
 	_add_collision_rect("border_right", Vector2(1298, 360), Vector2(36, 760))
 
-	# Water / bridge area: leave the bridge passable, block the main river curves.
-	_add_collision_rect("water_left", Vector2(428, 470), Vector2(150, 110))
-	_add_collision_rect("water_mid_left", Vector2(520, 530), Vector2(125, 58))
-	_add_collision_rect("water_mid_right", Vector2(770, 530), Vector2(150, 60))
-	_add_collision_rect("water_right", Vector2(895, 515), Vector2(120, 88))
+	_add_collision_rect("upper_houses_and_fence", Vector2(640, 130), Vector2(1280, 260))
+	_add_collision_rect("bottom_fence", Vector2(640, 695), Vector2(1280, 50))
+	_add_collision_rect("left_tree_edge", Vector2(36, 460), Vector2(72, 430))
+	_add_collision_rect("right_tree_edge", Vector2(1244, 460), Vector2(72, 430))
 
-	# Large objects. Character collision is only around feet, so these feel soft.
-	_add_collision_rect("family_tree_trunk", Vector2(645, 375), Vector2(135, 120))
-	_add_collision_rect("gazebo", Vector2(320, 395), Vector2(170, 175))
+func _setup_garden_builder() -> void:
+	var builder := get_node_or_null("/root/GardenBuildManager")
+	if builder == null or not builder.has_method("setup"):
+		return
+	# 向栅栏方向开放额外两行 32px 网格；首个完整可画格由 y=320 提前到 y=256。
+	var build_area := Rect2(Vector2(80, 236), Vector2(1120, 400))
+	builder.call("setup", world, ui_layer, player, build_area, _get_garden_build_blocked_rects())
 
-	# Houses. The visual sprites remain clickable; these bodies prevent walking through them.
-	for house in HOUSE_DATA:
-		var pos: Vector2 = house.get("pos", Vector2.ZERO)
-		var height: float = float(house.get("height", 160.0))
-		_add_collision_rect("house_collision_" + str(house.get("id", "house")), pos + Vector2(0, height * 0.10), Vector2(height * 0.86, height * 0.50))
-
-	# A few fence / edge blocks. These are approximate and can be tuned later.
-	_add_collision_rect("bottom_fence", Vector2(920, 655), Vector2(360, 70))
-	_add_collision_rect("right_fence", Vector2(1122, 438), Vector2(52, 170))
-	_add_collision_rect("upper_fence", Vector2(777, 97), Vector2(500, 50))
+func _get_garden_build_blocked_rects() -> Array:
+	return [
+		Rect2(Vector2(0, 0), Vector2(1280, 250)),
+		Rect2(Vector2(0, 652), Vector2(1280, 68)),
+		Rect2(Vector2(0, 250), Vector2(86, 430)),
+		Rect2(Vector2(1194, 250), Vector2(86, 430)),
+		# 记忆花圃是默认固定区域，禁止铺地和 DIY 物件覆盖。
+		Rect2(Vector2(840, 414), Vector2(180, 142)),
+	]
 
 func _add_collision_rect(body_name: String, center: Vector2, size: Vector2) -> StaticBody2D:
 	var body := StaticBody2D.new()
@@ -2469,7 +4181,8 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	var char_def: Dictionary = CharacterDB.get_def(asset_key)
 	var char_hframes: int = int(char_def.get("hframes", 3))
 	var char_vframes: int = int(char_def.get("vframes", 4))
-	player = _create_character(display_name, ASSETS[asset_key], pos, true, char_hframes, char_vframes)
+	var player_texture_path := _character_texture_path(asset_key, str(ASSETS.get(asset_key, "")))
+	player = _create_character(display_name, player_texture_path, pos, true, char_hframes, char_vframes)
 	player.name = "Player_" + MemoryManager.selected_role_key
 	player.add_to_group("player")  # ScenePortal body_entered 仅认 player 组
 	var parent := world if parent_override == null else parent_override
@@ -2478,7 +4191,6 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 	# 节点入树后再调用，避免从树外访问 /root/CharacterDB。
 	if player.has_method("apply_character"):
 		player.apply_character(asset_key)
-	_add_online_status_badge(player, true)
 	var parent_canvas := parent as CanvasItem
 	if parent_canvas != null and parent_canvas.y_sort_enabled:
 		var sort_origin_offset := 18.0
@@ -2489,7 +4201,7 @@ func _add_player(pos: Vector2, parent_override: Node = null) -> void:
 		player.z_index = 0
 
 
-func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4) -> CharacterBody2D:
+func _create_character(label_text: String, path: String, pos: Vector2, controllable: bool, hframes: int = 3, vframes: int = 4, frame_rects: Array = [], scale_override: float = -1.0) -> CharacterBody2D:
 	var body := CharacterBody2D.new()
 	body.position = pos
 	body.z_index = int(pos.y)
@@ -2511,12 +4223,27 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 	var texture := _safe_texture(path)
 	if texture:
 		sprite.texture = texture
-		sprite.hframes = hframes
-		sprite.vframes = vframes
-		sprite.frame = 0
-		var frame_height := float(texture.get_height()) / float(vframes)
-		if frame_height > 0.0:
-			sprite.scale = Vector2.ONE * (82.0 / frame_height)
+		if frame_rects.size() > 0:
+			# 非等分网格贴图(如 girl_2):按精确裁切矩形取帧,交给挂上去的行为脚本(npc_wander.gd
+			# 等)逐帧切 region_rect,这里只摆一个初始的"朝下站立"帧(中间列,与 player.gd 的
+			# IDLE_FRAME_INDEX=1 约定一致)。
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+			sprite.frame = 0
+			var r0 = frame_rects[1] if frame_rects.size() > 1 else frame_rects[0]   # 中间列=站立帧
+			if r0 is Array and r0.size() >= 4:
+				sprite.region_rect = Rect2(float(r0[0]), float(r0[1]), float(r0[2]), float(r0[3]))
+			sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else 0.46)
+			# 精确裁切帧以中心为原点；阴影应落在帧底部的脚底，而不是沿用旧角色的固定 30px。
+			shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
+		else:
+			sprite.hframes = hframes
+			sprite.vframes = vframes
+			sprite.frame = 1   # 第 0 行中间列=站立帧(两脚并拢)
+			var frame_height := float(texture.get_height()) / float(vframes)
+			if frame_height > 0.0:
+				sprite.scale = Vector2.ONE * (scale_override if scale_override > 0.0 else (82.0 / frame_height))
 	else:
 		sprite.texture = _solid_texture(32, 48, Color(0.92, 0.80, 0.62, 1.0))
 		sprite.scale = Vector2(1.6, 1.6)
@@ -2533,15 +4260,20 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 		body.set_script(preload("res://scripts/player.gd"))
 
 	var name_label := Label.new()
+	name_label.name = "NameLabel"
 	name_label.text = label_text
-	name_label.position = Vector2(-52, -78)
+	# NPC 名字由 npc_wander 按玩家距离淡入，避免花园中央长期堆叠文字。
+	name_label.visible = false
+	name_label.position = Vector2(-52, -66)
 	name_label.size = Vector2(104, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.z_as_relative = false
 	name_label.z_index = 3900
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_label.add_theme_font_size_override("font_size", 12)
-	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
+	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_constant_override("outline_size", 3)
+	name_label.add_theme_color_override("font_outline_color", Color(1.0, 0.96, 0.82, 0.92))
+	name_label.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 0.96))
 	body.add_child(name_label)
 
 	return body
@@ -2550,6 +4282,7 @@ func _create_character(label_text: String, path: String, pos: Vector2, controlla
 func _add_online_status_badge(parent: Node2D, online: bool) -> void:
 	var dot := Label.new()
 	dot.name = "OnlineStatus"
+	dot.visible = false
 	dot.text = "●"
 	dot.position = Vector2(34, -79)
 	dot.size = Vector2(20, 18)
@@ -2651,7 +4384,60 @@ func _handle_action(action: String, label_text: String) -> void:
 		var animal_id := action.split(":")[1]
 		_open_animal_dialog(animal_id, label_text)
 
+func _show_house_destination_panel() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+
+	var panel := Panel.new()
+	panel.position = Vector2(360, 132)
+	panel.size = Vector2(560, 456)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+
+	var title := Label.new()
+	title.text = "进入小屋"
+	title.position = Vector2(34, 28)
+	title.size = Vector2(470, 34)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
+	panel.add_child(title)
+
+	var body := Label.new()
+	body.text = "选择要去的室内区域。"
+	body.position = Vector2(36, 72)
+	body.size = Vector2(480, 26)
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.38, 0.31, 0.24, 0.9))
+	panel.add_child(body)
+
+	var kitchen := _add_panel_button(panel, "厨房", Vector2(40, 118), Vector2(480, 48), "enter_kitchen")
+	_apply_button_style(kitchen, true)
+
+	var room_buttons := [
+		{"text": "我的房间", "action": "enter_room:player"},
+		{"text": "爸爸的房间", "action": "enter_room:father"},
+		{"text": "妈妈的房间", "action": "enter_room:mother"},
+		{"text": "路易的房间", "action": "enter_room:partner"},
+	]
+	for i in range(room_buttons.size()):
+		var item: Dictionary = room_buttons[i]
+		var col := i % 2
+		var row := int(i / 2)
+		_add_panel_button(
+			panel,
+			str(item.get("text", "")),
+			Vector2(40 + col * 250, 188 + row * 66),
+			Vector2(230, 46),
+			str(item.get("action", "close"))
+		)
+
+	_add_panel_button(panel, "关闭", Vector2(214, 350), Vector2(132, 40), "close")
+
 func _enter_house(id: String, label_text: String) -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
@@ -2660,6 +4446,9 @@ func _enter_house(id: String, label_text: String) -> void:
 	_clear_gate4_guide()
 
 	mode = "room"
+	_current_spawn_key = "default"
+	_current_room_id = id
+	_set_hud_context(mode)
 	adding_place = false
 	_clear_world()
 	plant_mode = false
@@ -2773,17 +4562,24 @@ func _add_room_hint_panel(room_label: String, house_id: String) -> void:
 	var is_player := house_id == "player"
 	var panel := Panel.new()
 	room_card = panel
-	panel.position = Vector2(22, 86)
-	panel.size = Vector2(292, 214 if is_player else 156)  # 玩家房间多一行"上传房间照片"
+	panel.position = Vector2(24, 76)
+	panel.size = Vector2(278, 184 if is_player else 146)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_panel_style(panel)
+	_apply_room_card_style(panel)
 	ui_layer.add_child(panel)
+
+	var accent := ColorRect.new()
+	accent.position = Vector2(0, 14)
+	accent.size = Vector2(4, 42)
+	accent.color = Color(0.63, 0.43, 0.27, 0.92)
+	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(accent)
 
 	var title := Label.new()
 	title.text = room_label
-	title.position = Vector2(18, 14)
-	title.size = Vector2(250, 28)
-	title.add_theme_font_size_override("font_size", 20)
+	title.position = Vector2(18, 11)
+	title.size = Vector2(242, 27)
+	title.add_theme_font_size_override("font_size", 19)
 	title.add_theme_color_override("font_color", Color(0.22, 0.18, 0.14, 1.0))
 	panel.add_child(title)
 
@@ -2791,24 +4587,39 @@ func _add_room_hint_panel(room_label: String, house_id: String) -> void:
 	if is_player:
 		var room := MemoryManager.get_room_for_user(MemoryManager.selected_role_key)
 		var object_count := 0 if room.is_empty() else MemoryManager.get_room_objects(String(room.get("id", ""))).size()
-		var generated := "语义室内已生成" if not room.is_empty() and ROOM_SCENE_GENERATOR.has_scene_schema(room) else "%d 件物件已摆放" % object_count
-		body.text = "拍一张房间照片，AI 会先给出可确认的布局草稿。\n当前：%s" % ("尚未生成 AI 房间" if room.is_empty() else generated)
+		var generated := "AI 布局已生成 · %d 件物件" % object_count if not room.is_empty() and ROOM_SCENE_GENERATOR.has_scene_schema(room) else "%d 件物件已摆放" % object_count
+		body.text = "照片生成可确认的布局草稿\n%s" % ("还没有生成 AI 房间" if room.is_empty() else generated)
 	else:
 		body.text = "在房间里走走看看，返回花园时会保留当前位置。"
-	body.position = Vector2(18, 48)
-	body.size = Vector2(250, 60 if is_player else 42)
+	body.position = Vector2(18, 41)
+	body.size = Vector2(242, 43 if is_player else 40)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_size_override("font_size", 13)
+	body.add_theme_font_size_override("font_size", 12)
 	body.add_theme_color_override("font_color", Color(0.36, 0.30, 0.23, 0.90))
 	panel.add_child(body)
 
-	var btn_y := 168 if is_player else 104
+	var btn_y := 144 if is_player else 94
 	if is_player:
 		var room_action := "管理 AI 房间" if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty() else "照片生成房间"
-		_add_panel_button(panel, room_action, Vector2(18, 122), Vector2(256, 34), "generate_room:" + house_id)
-	_add_panel_button(panel, "便签", Vector2(18, btn_y), Vector2(78, 34), "house_note:" + house_id)
-	_add_panel_button(panel, "明信片", Vector2(106, btn_y), Vector2(82, 34), "MemoryManager.postcards")
-	_add_panel_button(panel, "返回", Vector2(198, btn_y), Vector2(76, 34), "back_garden")
+		var primary := _add_panel_button(panel, room_action, Vector2(18, 92), Vector2(242, 34), "generate_room:" + house_id)
+		_apply_button_style(primary, true)
+	_add_panel_button(panel, "便签", Vector2(18, btn_y), Vector2(72, 30), "house_note:" + house_id)
+	_add_panel_button(panel, "明信片", Vector2(98, btn_y), Vector2(78, 30), "MemoryManager.postcards")
+	_add_panel_button(panel, "返回", Vector2(184, btn_y), Vector2(76, 30), "back_garden")
+
+func _apply_room_card_style(panel: Panel) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.98, 0.94, 0.84, 0.94)
+	style.border_color = Color(0.48, 0.33, 0.23, 0.72)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 9
+	style.corner_radius_bottom_right = 9
+	style.shadow_color = Color(0.16, 0.10, 0.07, 0.18)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3)
+	panel.add_theme_stylebox_override("panel", style)
 
 # 上传房间照片 → 本地压缩 → 受控上传 → AI 草稿 → 用户确认后布局。
 func _on_generate_room(house_id: String) -> void:
@@ -2817,7 +4628,85 @@ func _on_generate_room(house_id: String) -> void:
 	if not MemoryManager.get_room_for_user(MemoryManager.selected_role_key).is_empty():
 		_open_room_management()
 		return
+	if StoryManager != null and StoryManager.current_chapter() == 3:
+		_open_first_room_brief_form()
+		return
 	_open_room_photo_form()
+
+func _open_first_room_brief_form() -> void:
+	_close_active_panel()
+	var overlay := _create_modal_overlay()
+	active_modal = overlay
+	var panel := Panel.new()
+	panel.position = Vector2(330, 125)
+	panel.size = Vector2(620, 470)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_panel_style(panel)
+	overlay.add_child(panel)
+	_add_panel_close_button(panel)
+	var title := Label.new()
+	title.text = "生成第一间记忆房间"
+	title.position = Vector2(34, 28)
+	title.size = Vector2(550, 36)
+	title.add_theme_font_size_override("font_size", 24)
+	panel.add_child(title)
+	var sources := Label.new()
+	sources.text = "可用记忆：花园照片、第一顿料理、河边木桥、第一张明信片、第一朵记忆花"
+	sources.position = Vector2(34, 78)
+	sources.size = Vector2(550, 54)
+	sources.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sources.add_theme_font_size_override("font_size", 14)
+	sources.add_theme_color_override("font_color", Color(0.48, 0.39, 0.27, 1.0))
+	panel.add_child(sources)
+	var prompt := TextEdit.new()
+	prompt.placeholder_text = "例如：一个有河边晚风感觉的小厨房，温暖、安静，窗边放着一朵花。"
+	prompt.text = "一个有河边晚风感觉的小厨房，温暖、安静，窗边放着一朵花。"
+	prompt.position = Vector2(34, 145)
+	prompt.size = Vector2(552, 150)
+	panel.add_child(prompt)
+	var status := _make_status_label(panel, Vector2(34, 310), Vector2(552, 46), "首次生成会使用少量主线记忆，之后仍可继续布置。")
+	var generate := Button.new()
+	generate.text = "生成房间"
+	generate.position = Vector2(215, 382)
+	generate.size = Vector2(190, 44)
+	_apply_button_style(generate, true)
+	generate.pressed.connect(_generate_first_room_from_brief.bind(prompt, generate, status))
+	panel.add_child(generate)
+
+func _generate_first_room_from_brief(prompt: TextEdit, button: Button, status: Label) -> void:
+	var description := prompt.text.strip_edges()
+	if description == "":
+		_set_status(status, "先写一句你想要的房间感觉。", true)
+		return
+	_set_button_busy(button, "正在生成...")
+	_set_status(status, "正在把第一段花园生活整理成房间...")
+	await get_tree().create_timer(0.45).timeout
+	var analysis := AIClient.mock_room_analysis()
+	analysis["room_type"] = "kitchen_corner"
+	analysis["style"] = "warm_cozy"
+	analysis["suggested_room_theme"] = "memory_corner"
+	analysis["description"] = description.left(240)
+	analysis["objects"] = [
+		{"object_type": "desk", "zone": "back_left"},
+		{"object_type": "lamp", "zone": "back_right"},
+		{"object_type": "photo_wall", "zone": "back_wall"},
+		{"object_type": "plant", "zone": "right_side"},
+		{"object_type": "chair", "zone": "front_left"},
+	]
+	var room := RoomLayoutManager.generate(analysis, "first_memory_flower", "story:first_room", {
+		"source": "mock",
+		"provider": "story_memory",
+		"model": "first-room-layout",
+		"prompt_version": "chapter3-v1",
+		"memory_sources": ["garden_photo", "first_dish", "bridge_place", "first_postcard", "first_memory_flower"],
+	})
+	if room.is_empty():
+		_set_button_ready(button, "重新生成")
+		_set_status(status, "房间布局没有生成成功，请再试一次。", true)
+		return
+	_close_active_panel()
+	_enter_house("player", "我的房间")
+	_show_toast("第一间记忆房间已经生成，可以继续移动和摆放物件。")
 
 func _open_room_management() -> void:
 	_close_active_panel()
@@ -2839,7 +4728,7 @@ func _open_room_management() -> void:
 	panel.add_child(title)
 	var summary := Label.new()
 	var scene_badge := " · 语义室内" if ROOM_SCENE_GENERATOR.has_scene_schema(room) else ""
-	summary.text = "%s · %s · %d 件家具%s" % [String(room.get("room_name", "我的房间")), String(room.get("style", "")), MemoryManager.get_room_objects(String(room.get("id", ""))).size(), scene_badge]
+	summary.text = "%s · %s · %d 件家具%s" % [_room_theme_display_label(String(room.get("room_name", "我的房间"))), _room_style_display_label(String(room.get("style", ""))), MemoryManager.get_room_objects(String(room.get("id", ""))).size(), scene_badge]
 	summary.position = Vector2(34, 82)
 	summary.size = Vector2(470, 50)
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2872,13 +4761,9 @@ func _delete_current_ai_room(button: Button, status: Label) -> void:
 	_set_button_busy(button, "正在删除...")
 	_set_status(status, "正在删除房间和临时照片...")
 	var source_id := String(room.get("source_memory_id", ""))
-	var source := MemoryManager.get_memory(source_id)
-	var upload_id := String(source.get("upload_id", ""))
 	MemoryManager.delete_room(String(room.get("id", "")))
 	if source_id != "":
 		MemoryManager.delete_memory(source_id)
-	if upload_id != "":
-		await CloudManager.delete_ai_image(upload_id)
 	_close_active_panel()
 	_enter_house("player", "我的房间")
 	_show_toast("AI 房间及照片已删除。")
@@ -2952,61 +4837,167 @@ func _open_room_draft_preview(draft: Dictionary) -> void:
 	var overlay := _create_modal_overlay()
 	active_modal = overlay
 	var panel := Panel.new()
-	panel.position = Vector2(300, 82)
-	panel.size = Vector2(680, 556)
+	panel.position = Vector2(250, 64)
+	panel.size = Vector2(780, 592)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel)
 	overlay.add_child(panel)
 	_add_panel_close_button(panel)
 	var analysis: Dictionary = draft.get("analysis", {})
+
 	var title := Label.new()
+	title.name = "RoomDraftTitle"
 	title.text = "语义房间预览" + (" · 示例回退布局" if bool(draft.get("used_fallback", false)) else "")
 	title.position = Vector2(34, 24)
-	title.size = Vector2(612, 34)
+	title.size = Vector2(666, 34)
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.25, 0.20, 0.14, 1.0))
 	panel.add_child(title)
+
+	var description_card := Panel.new()
+	description_card.name = "RoomDraftDescriptionCard"
+	description_card.position = Vector2(34, 72)
+	description_card.size = Vector2(712, 84)
+	description_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var description_style := StyleBoxFlat.new()
+	description_style.bg_color = Color(1.0, 0.92, 0.72, 0.42)
+	description_style.border_color = Color(0.72, 0.52, 0.30, 0.42)
+	description_style.set_border_width_all(1)
+	description_style.set_corner_radius_all(9)
+	description_card.add_theme_stylebox_override("panel", description_style)
+	panel.add_child(description_card)
+
 	var description := Label.new()
+	description.name = "RoomDraftDescription"
 	description.text = String(analysis.get("description", ""))
-	description.position = Vector2(34, 74)
-	description.size = Vector2(612, 64)
-	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(description)
+	if description.text.strip_edges() == "":
+		description.text = "AI 已完成房间结构识别，请检查下方的家具与摆放区域。"
+	description.position = Vector2(16, 12)
+	description.size = Vector2(680, 60)
+	description.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	description.max_lines_visible = 3
+	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	description.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	description.add_theme_font_size_override("font_size", 14)
+	description.add_theme_color_override("font_color", Color(0.33, 0.27, 0.20, 0.94))
+	description_card.add_child(description)
+
+	var layout: Dictionary = draft.get("layout", {})
+	var layout_objects: Array = layout.get("objects", [])
 	var object_lines: Array[String] = []
-	for object in draft.get("layout", {}).get("objects", []):
+	for object in layout_objects:
 		object_lines.append("• %s → %s" % [_room_object_display_label(String(object.get("object_type", ""))), _zone_display_label(String(object.get("zone", "")))])
 	if object_lines.is_empty():
 		object_lines.append("没有可安全摆放的家具。")
-	_add_room_preview_map(panel, Vector2(34, 154), Vector2(334, 210), draft.get("layout", {}).get("objects", []), draft.get("layout", {}).get("scene_schema", {}))
-	var objects := Label.new()
-	objects.text = "将摆放的家具\n" + "\n".join(object_lines)
-	objects.position = Vector2(392, 154)
-	objects.size = Vector2(254, 210)
-	objects.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objects.add_theme_font_size_override("font_size", 14)
-	objects.add_theme_color_override("font_color", Color(0.28, 0.23, 0.17, 0.94))
-	panel.add_child(objects)
+
+	_add_room_preview_map(panel, Vector2(34, 176), Vector2(414, 246), layout_objects, layout.get("scene_schema", {}))
+
+	var objects_card := Panel.new()
+	objects_card.name = "RoomDraftObjectCard"
+	objects_card.position = Vector2(466, 176)
+	objects_card.size = Vector2(280, 246)
+	objects_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	var objects_style := StyleBoxFlat.new()
+	objects_style.bg_color = Color(1.0, 0.96, 0.84, 0.76)
+	objects_style.border_color = Color(0.61, 0.45, 0.28, 0.48)
+	objects_style.set_border_width_all(1)
+	objects_style.set_corner_radius_all(9)
+	objects_card.add_theme_stylebox_override("panel", objects_style)
+	panel.add_child(objects_card)
+
+	var objects_title := Label.new()
+	objects_title.text = "家具清单 · %d 件" % layout_objects.size()
+	objects_title.position = Vector2(16, 13)
+	objects_title.size = Vector2(248, 26)
+	objects_title.add_theme_font_size_override("font_size", 15)
+	objects_title.add_theme_color_override("font_color", Color(0.31, 0.24, 0.17, 1.0))
+	objects_card.add_child(objects_title)
+
+	var objects_scroll := ScrollContainer.new()
+	objects_scroll.name = "RoomDraftObjectScroll"
+	objects_scroll.position = Vector2(12, 48)
+	objects_scroll.size = Vector2(256, 184)
+	objects_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	objects_card.add_child(objects_scroll)
+
+	var objects_list := VBoxContainer.new()
+	objects_list.name = "RoomDraftObjectList"
+	objects_list.custom_minimum_size = Vector2(236, 0)
+	objects_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	objects_list.add_theme_constant_override("separation", 8)
+	objects_scroll.add_child(objects_list)
+	for line in object_lines:
+		var object_label := Label.new()
+		object_label.text = line
+		object_label.custom_minimum_size = Vector2(232, 26)
+		object_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		object_label.add_theme_font_size_override("font_size", 14)
+		object_label.add_theme_color_override("font_color", Color(0.32, 0.26, 0.19, 0.94))
+		objects_list.add_child(object_label)
+
 	var meta: Dictionary = draft.get("generation_meta", {})
-	var trace := Label.new()
-	trace.text = "来源 %s · %s · %s" % [String(meta.get("source", "unknown")), String(meta.get("model", "unknown")), String(meta.get("prompt_version", "unknown"))]
-	trace.position = Vector2(34, 382)
-	trace.size = Vector2(612, 36)
-	trace.add_theme_font_size_override("font_size", 12)
-	panel.add_child(trace)
-	var status := _make_status_label(panel, Vector2(34, 426), Vector2(612, 24), "这是预览草稿；确认后才会创建或替换可探索的语义房间。")
+	var ai_badge := Panel.new()
+	ai_badge.name = "RoomDraftAIBadge"
+	ai_badge.position = Vector2(34, 440)
+	ai_badge.size = Vector2(712, 38)
+	ai_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var badge_style := StyleBoxFlat.new()
+	badge_style.bg_color = Color(0.82, 0.90, 0.68, 0.36)
+	badge_style.border_color = Color(0.45, 0.58, 0.34, 0.48)
+	badge_style.set_border_width_all(1)
+	badge_style.set_corner_radius_all(8)
+	ai_badge.add_theme_stylebox_override("panel", badge_style)
+	panel.add_child(ai_badge)
+
+	var attribution := Label.new()
+	attribution.name = "RoomDraftAIAttribution"
+	attribution.text = "由 %s 生成" % _room_ai_display_label(meta)
+	attribution.position = Vector2(14, 8)
+	attribution.size = Vector2(330, 22)
+	attribution.add_theme_font_size_override("font_size", 12)
+	attribution.add_theme_color_override("font_color", Color(0.27, 0.40, 0.23, 0.96))
+	ai_badge.add_child(attribution)
+
+	var safety_hint := Label.new()
+	safety_hint.text = "家具坐标由游戏安全布局生成"
+	safety_hint.position = Vector2(356, 8)
+	safety_hint.size = Vector2(340, 22)
+	safety_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	safety_hint.add_theme_font_size_override("font_size", 12)
+	safety_hint.add_theme_color_override("font_color", Color(0.38, 0.34, 0.27, 0.80))
+	ai_badge.add_child(safety_hint)
+
+	var status := _make_status_label(panel, Vector2(34, 492), Vector2(712, 28), "这是预览草稿；确认后才会创建或替换可探索的语义房间。")
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var cancel := Button.new()
-	cancel.text = "取消并清理照片"
-	cancel.position = Vector2(86, 458)
-	cancel.size = Vector2(180, 42)
+	cancel.text = "放弃草稿"
+	cancel.position = Vector2(166, 532)
+	cancel.size = Vector2(190, 42)
 	_apply_button_style(cancel, false)
 	cancel.pressed.connect(_discard_draft_and_close.bind(draft))
 	panel.add_child(cancel)
 	var confirm := Button.new()
 	confirm.text = "确认布局"
-	confirm.position = Vector2(414, 458)
-	confirm.size = Vector2(180, 42)
-	_apply_button_style(confirm, false)
+	confirm.position = Vector2(424, 532)
+	confirm.size = Vector2(190, 42)
+	_apply_button_style(confirm, true)
 	confirm.pressed.connect(_commit_room_preview.bind(draft, confirm, status))
 	panel.add_child(confirm)
+
+func _room_ai_display_label(meta: Dictionary) -> String:
+	var model := String(meta.get("model", "")).strip_edges()
+	var source := String(meta.get("source", "")).strip_edges().to_lower()
+	if source == "mock" or model.to_lower().contains("mock"):
+		return "本地模拟 AI"
+	match model.to_lower():
+		"hy-vision-2.0-instruct":
+			return "腾讯混元 HY Vision 2.0"
+		"hunyuan-vision":
+			return "腾讯混元视觉模型"
+		"":
+			return "AI"
+		_:
+			return model
 
 func _add_room_preview_map(parent: Control, pos: Vector2, map_size: Vector2, objects: Array, schema: Dictionary = {}) -> void:
 	var map := Panel.new()
@@ -3149,6 +5140,28 @@ func _room_object_display_label(object_type: String) -> String:
 		_:
 			return object_type
 
+func _room_theme_display_label(theme_key: String) -> String:
+	match theme_key:
+		"study_corner":
+			return "温暖学习角"
+		"memory_corner":
+			return "记忆角落"
+		"cozy_bedroom":
+			return "温暖卧室"
+		_:
+			return theme_key.replace("_", " ")
+
+func _room_style_display_label(style_key: String) -> String:
+	match style_key:
+		"warm_cozy":
+			return "温暖舒适"
+		"minimal":
+			return "简洁"
+		"vintage":
+			return "怀旧"
+		_:
+			return style_key.replace("_", " ")
+
 func _zone_display_label(zone: String) -> String:
 	match zone:
 		"back_wall":
@@ -3186,7 +5199,7 @@ func _commit_room_preview(draft: Dictionary, button: Button, status: Label) -> v
 		return
 	_close_active_panel()
 	_enter_house("player", "我的房间")
-	_show_toast("房间生成好了。")
+	_show_toast("房间生成好了，联网后会自动同步。" if bool(result.get("sync_pending", false)) else "房间生成好了。")
 
 # 渲染玩家房间已落库的家具（重入/重启后重建）。
 func _render_room(house_id: String) -> void:
@@ -3204,7 +5217,7 @@ func _on_room_object_clicked(obj_id: String) -> void:
 		if o is Dictionary and String(o.get("id", "")) == obj_id:
 			_open_room_object_editor(o)
 			return
-	_show_toast("房间里的物件 🪑")
+	_show_toast("房间里的物件")
 
 func _open_room_object_editor(object: Dictionary) -> void:
 	_close_active_panel()
@@ -3347,12 +5360,16 @@ func _remove_room_card_and_back(card: Panel) -> void:
 	_show_garden()
 
 func _show_travel_map() -> void:
+	save_current_progress()
 	_close_active_panel()
 	_clear_map_ui()
 	if room_card != null and is_instance_valid(room_card):
 		room_card.queue_free()
 		room_card = null
 	mode = "map"
+	_current_spawn_key = "default"
+	_current_room_id = ""
+	_set_hud_context(mode)
 	plant_mode = false
 	_update_plant_button()
 	_clear_world()
@@ -3382,6 +5399,16 @@ func _build_map_ui() -> void:
 	map_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	map_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(map_ui)
+
+	var back_btn := Button.new()
+	back_btn.text = "返回花园"
+	back_btn.position = Vector2(24, 24)
+	back_btn.size = Vector2(126, 38)
+	back_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_button_style(back_btn, false)
+	_set_button_icon(back_btn, "icon_back")
+	back_btn.pressed.connect(func() -> void: _show_garden())
+	map_ui.add_child(back_btn)
 
 	var add_btn := Button.new()
 	add_btn.text = "Add Place"
@@ -3504,32 +5531,24 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 
 	var place_id: String = "place_" + str(Time.get_ticks_msec())
 	var postcard_id: String = "postcard_" + str(Time.get_ticks_msec())
-	var uploaded_photo_path: String = ""
+	var photo_upload_id: String = ""
 	print("[FamilyGarden] Save place photo state: from_web=", selected_photo_from_web, " bytes=", selected_photo_bytes.size(), " path=", selected_photo_path, " name=", selected_photo_filename, " type=", selected_photo_content_type)
 
-	if selected_photo_from_web and selected_photo_bytes.size() > 0:
+	var source_photo_bytes: PackedByteArray = selected_photo_bytes
+	if source_photo_bytes.is_empty() and selected_photo_path != "":
+		source_photo_bytes = FileAccess.get_file_as_bytes(selected_photo_path)
+	if not source_photo_bytes.is_empty():
 		if CloudManager != null:
-			_show_toast("正在上传照片...")
-			uploaded_photo_path = await CloudManager.upload_photo_bytes_with_name(
-				selected_photo_bytes,
-				selected_photo_filename,
-				place_title,
+			_show_toast("正在压缩照片并安全上传...")
+			var upload_result: Dictionary = await CloudManager.upload_private_photo(
+				source_photo_bytes,
 				selected_photo_content_type
 			)
-			if uploaded_photo_path == "":
-				_show_toast("照片上传失败，将不带照片保存。")
+			if not bool(upload_result.get("ok", false)):
+				_show_toast(_result_error_message(upload_result, "照片上传失败，将不带照片保存。"))
 			else:
-				_show_toast("照片已上传。")
-		else:
-			_show_toast("云端尚未就绪，将不带照片保存。")
-	elif selected_photo_path != "":
-		if CloudManager != null:
-			_show_toast("正在上传照片...")
-			uploaded_photo_path = await CloudManager.upload_photo_from_path(selected_photo_path, place_title)
-			if uploaded_photo_path == "":
-				_show_toast("照片上传失败，将不带照片保存。")
-			else:
-				_show_toast("照片已上传。")
+				photo_upload_id = String(upload_result.get("upload_id", ""))
+				_show_toast("照片已安全上传。")
 		else:
 			_show_toast("云端尚未就绪，将不带照片保存。")
 
@@ -3541,14 +5560,14 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 			pending_place_position.x,
 			pending_place_position.y,
 			"",
-			uploaded_photo_path
+			photo_upload_id
 		)
 		if created.has("place") and created["place"] is Dictionary:
 			var cloud_place: Dictionary = created["place"]
 			if str(cloud_place.get("id", "")) != "":
 				place_id = str(cloud_place.get("id", ""))
-			if str(cloud_place.get("photo_path", "")) != "":
-				uploaded_photo_path = str(cloud_place.get("photo_path", ""))
+			if str(cloud_place.get("photo_upload_id", "")) != "":
+				photo_upload_id = str(cloud_place.get("photo_upload_id", ""))
 		if created.has("postcard") and created["postcard"] is Dictionary:
 			var cloud_postcard: Dictionary = created["postcard"]
 			if str(cloud_postcard.get("id", "")) != "":
@@ -3563,7 +5582,8 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 		"postcard_id": postcard_id,
 		"created_by": MemoryManager.player_display_name,
 		"role": MemoryManager.selected_role_key,
-		"photo_path": uploaded_photo_path
+		"photo_upload_id": photo_upload_id,
+		"photo_path": ""
 	}
 	MemoryManager.travel_places.append(place)
 
@@ -3575,9 +5595,12 @@ func _save_new_place(title_input: LineEdit, note_input: TextEdit) -> void:
 		"is_new": true,
 		"created_by": MemoryManager.player_display_name,
 		"role": MemoryManager.selected_role_key,
-		"photo_path": uploaded_photo_path
+		"photo_upload_id": photo_upload_id,
+		"photo_path": ""
 	}
 	MemoryManager.postcards.append(postcard)
+	if StoryManager != null and StoryManager.has_method("record_place_and_postcard"):
+		StoryManager.record_place_and_postcard(place, postcard)
 	MemoryManager.notify_new_postcard()
 	MemoryManager.save_game()
 	_reset_selected_photo_state()
@@ -3635,10 +5658,10 @@ func _open_postcard_for_place(place_id: String) -> void:
 	var postcard := MemoryManager.find_postcard_by_place(place_id)
 	var title_text := str(postcard.get("title", "来自%s的明信片" % str(place.get("title", "地点"))))
 	var message := str(postcard.get("message", place.get("note", "A small memory.")))
-	var photo_path := str(postcard.get("photo_path", ""))
-	if photo_path == "":
-		photo_path = str(place.get("photo_path", ""))
-	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+	var photo_reference := _photo_reference(postcard)
+	if photo_reference == "":
+		photo_reference = _photo_reference(place)
+	_open_postcard_detail_panel(title_text, message, photo_reference, place_id)
 
 func _choose_photo_for_place() -> void:
 	if OS.has_feature("web"):
@@ -3820,10 +5843,9 @@ func _open_memory_draft_preview(draft: Dictionary) -> void:
 	scene_select.size = Vector2(220, 38)
 	scene_select.add_item("家庭花园", 0)
 	scene_select.set_item_metadata(0, "garden")
-	scene_select.add_item("爸爸鱼塘", 1)
-	scene_select.set_item_metadata(1, "fishpond")
-	if String(card.get("suggested_scene", "garden")) == "fishpond":
-		scene_select.select(1)
+	scene_select.select(0)
+	scene_select.disabled = true
+	scene_select.tooltip_text = "记忆花统一陈列在主花园"
 	panel.add_child(scene_select)
 	var source := Label.new()
 	var meta: Dictionary = draft.get("generation_meta", {})
@@ -3878,8 +5900,12 @@ func _commit_memory_preview(draft: Dictionary, original_card: Dictionary, title_
 	var saved_memory: Dictionary = result.get("memory", {})
 	var link_count := MemoryManager.count_memory_links_for_memory(String(saved_memory.get("id", "")), scene)
 	var link_text := "，发现 %d 条记忆关联" % link_count if link_count > 0 else ""
-	_show_toast("记忆已保存到%s%s。" % [("爸爸鱼塘" if scene == "fishpond" else "家庭花园"), link_text])
+	var saved_message := "记忆已保存到%s%s。" % [("爸爸鱼塘" if scene == "fishpond" else "家庭花园"), link_text]
+	if bool(result.get("sync_pending", false)):
+		saved_message += " 已保存在本机，联网后会自动同步。"
+	_show_toast(saved_message)
 	if scene == "garden":
+		_pending_memory_arrival_id = String(saved_memory.get("id", ""))
 		_show_garden()
 
 
@@ -4155,9 +6181,9 @@ func _open_postcard_detail_panel(title_text: String, message: String, photo_path
 		photo_status.text = "正在加载照片..."
 		_load_photo_into_rect(clean_photo_path, photo_rect, photo_status)
 
-func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_status: Label) -> void:
-	var clean_photo_path: String = photo_path.strip_edges()
-	if clean_photo_path == "" or clean_photo_path.to_lower() in ["null", "<null>", "nil", "none"]:
+func _load_photo_into_rect(photo_reference: String, photo_rect: TextureRect, photo_status: Label) -> void:
+	var clean_reference: String = photo_reference.strip_edges()
+	if clean_reference == "" or clean_reference.to_lower() in ["null", "<null>", "nil", "none"]:
 		if is_instance_valid(photo_status):
 			photo_status.text = "未附加照片。"
 		return
@@ -4166,10 +6192,8 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 		photo_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		photo_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 
-	var photo_url: String = _photo_public_url(clean_photo_path)
-
-	if photo_texture_cache.has(photo_url):
-		var cached_texture: Texture2D = photo_texture_cache[photo_url]
+	if photo_texture_cache.has(clean_reference):
+		var cached_texture: Texture2D = photo_texture_cache[clean_reference]
 		if is_instance_valid(photo_rect):
 			photo_rect.texture = cached_texture
 		if is_instance_valid(photo_status):
@@ -4179,9 +6203,14 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 	if is_instance_valid(photo_status):
 		photo_status.text = "正在加载照片..."
 
+	var photo_url: String = await _resolve_photo_url(clean_reference)
+	if photo_url == "":
+		if is_instance_valid(photo_status):
+			photo_status.text = "照片不可访问或已被删除。"
+		return
 	var texture: Texture2D = await _download_photo_texture(photo_url)
 	if texture != null:
-		photo_texture_cache[photo_url] = texture
+		photo_texture_cache[clean_reference] = texture
 		if is_instance_valid(photo_rect):
 			photo_rect.texture = texture
 		if is_instance_valid(photo_status):
@@ -4191,14 +6220,28 @@ func _load_photo_into_rect(photo_path: String, photo_rect: TextureRect, photo_st
 			photo_status.text = "照片加载失败。"
 
 
-func _photo_public_url(photo_path: String) -> String:
-	if photo_path.begins_with("http://") or photo_path.begins_with("https://"):
-		return photo_path
+func _resolve_photo_url(photo_reference: String) -> String:
+	if photo_reference.begins_with("upload_"):
+		if CloudManager == null:
+			return ""
+		var resolved: Dictionary = await CloudManager.resolve_private_photo(photo_reference)
+		var temporary_url := String(resolved.get("image_url", ""))
+		return temporary_url if bool(resolved.get("ok", false)) and temporary_url.begins_with("https://") else ""
+
+	# 历史存档只读兼容：M1 后的新数据不会再写入永久 URL 或 Supabase 路径。
+	if photo_reference.begins_with("http://") or photo_reference.begins_with("https://"):
+		return photo_reference
 
 	if CloudManager != null:
-		return CloudManager.public_url_from_photo_path(photo_path)
+		return CloudManager.public_url_from_photo_path(photo_reference)
 
-	return photo_path
+	return photo_reference
+
+func _photo_reference(row: Dictionary) -> String:
+	var upload_id := String(row.get("photo_upload_id", "")).strip_edges()
+	if upload_id != "":
+		return upload_id
+	return String(row.get("photo_path", "")).strip_edges()
 
 
 func _download_photo_texture(url: String) -> Texture2D:
@@ -4249,8 +6292,11 @@ func _pin_asset_for_place(place: Dictionary) -> String:
 	return ASSETS["pin_saved"] if ResourceLoader.exists(ASSETS["pin_saved"]) else ASSETS["pin_default"]
 
 func _delete_place(place_id: String) -> void:
-	if CloudManager != null and not place_id.begins_with("place_"):
-		await CloudManager.delete_place_and_postcards(place_id)
+	if CloudManager != null:
+		var delete_result: Dictionary = await CloudManager.delete_place_and_postcards(place_id)
+		if CloudManager.has_cloud_records() and not bool(delete_result.get("ok", false)):
+			_show_toast(_result_error_message(delete_result, "云端删除失败，请稍后重试。"))
+			return
 
 	MemoryManager.travel_places = MemoryManager.travel_places.filter(func(place): return str(place.get("id", "")) != place_id)
 	MemoryManager.postcards = MemoryManager.postcards.filter(func(postcard): return str(postcard.get("place_id", "")) != place_id)
@@ -4433,7 +6479,7 @@ func _open_postcards_panel() -> void:
 
 			var card_title := Label.new()
 			var badge := "新 · " if bool(postcard.get("is_new", false)) else ""
-			var has_photo := str(postcard.get("photo_path", "")) != ""
+			var has_photo := _photo_reference(postcard) != ""
 			var photo_label := "有照片 · " if has_photo else "无照片 · "
 			card_title.text = badge + photo_label + str(postcard.get("title", "明信片"))
 			card_title.position = Vector2(18, 12)
@@ -4477,16 +6523,24 @@ func _open_postcard_detail_from_id(postcard_id: String) -> void:
 	var place := MemoryManager.find_place(place_id)
 	var title_text := str(postcard.get("title", "明信片"))
 	var message := str(postcard.get("message", "一段小小的记忆。"))
-	var photo_path := str(postcard.get("photo_path", ""))
+	var photo_reference := _photo_reference(postcard)
 
-	if photo_path == "" and not place.is_empty():
-		photo_path = str(place.get("photo_path", ""))
+	if photo_reference == "" and not place.is_empty():
+		photo_reference = _photo_reference(place)
 
-	_open_postcard_detail_panel(title_text, message, photo_path, place_id)
+	_open_postcard_detail_panel(title_text, message, photo_reference, place_id)
 
 
 func _open_family_tree_panel() -> void:
-	var body := "这棵树会随着家庭记忆一起长大。\n\n家庭成员：\n"
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("open_family_tree"):
+		game_hud.open_family_tree()
+		return
+	var stage := MemoryManager.family_tree_stage()
+	var interactions := MemoryManager.cross_member_interaction_count
+	var next_threshold := MemoryManager.family_tree_next_threshold()
+	var planted_text := "已种在花园中" if MemoryManager.has_planted_family_tree() else "幼苗正在等待种植"
+	var progress_text := "已长成最终形态" if next_threshold < 0 else "再完成 %d 次跨成员互动进入下一阶段" % max(0, next_threshold - interactions)
+	var body := "家庭树 · 第 %d / 5 阶段\n%s\n家庭互动量：%d\n%s\n\n家庭成员：\n" % [stage, planted_text, interactions, progress_text]
 	for role_data in CHARACTER_DATA:
 		var role_key := str(role_data.get("role", ""))
 		var member_name := MemoryManager.player_display_name if role_key == MemoryManager.selected_role_key else str(role_data.get("default_name", role_data.get("label", "家人")))
@@ -4498,15 +6552,61 @@ func _open_family_tree_panel() -> void:
 	else:
 		for postcard in MemoryManager.postcards:
 			body += "• " + str(postcard.get("title", "明信片")) + "\n"
+	var buttons: Array = []
+	if MemoryManager.family_tree_gift_received and not MemoryManager.has_planted_family_tree():
+		buttons.append({"text": "种下幼苗", "action": "plant_family_tree"})
+	buttons.append({"text": "明信片", "action": "MemoryManager.postcards"})
+	buttons.append({"text": "留言板", "action": "message_board"})
+	if buttons.size() < 3:
+		buttons.append({"text": "关闭", "action": "close"})
 	_show_cozy_panel(
 		"家庭树",
 		body,
+		buttons
+	)
+
+func _offer_family_tree_welcome_gift() -> void:
+	if mode != "garden" or MemoryManager.selected_role_key == "":
+		return
+	if MemoryManager.has_planted_family_tree():
+		return
+	MemoryManager.grant_family_tree_gift()
+	if MemoryManager.family_tree_planting_hint_seen:
+		return
+	MemoryManager.family_tree_planting_hint_seen = true
+	MemoryManager.save_game()
+	_show_toast("家庭树幼苗等待种植 · 点击底部“建造”→“家庭树”")
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("open_family_tree"):
+		game_hud.open_family_tree()
+		return
+	_show_cozy_panel(
+		"送给你的家庭树幼苗",
+		"欢迎来到家庭花园。\n\n这株幼苗会记录家人之间真实的互动，并逐渐长成一棵属于你们的家庭树。你可以先为它选择一个喜欢的位置。",
 		[
-			{"text": "明信片", "action": "MemoryManager.postcards"},
-			{"text": "留言板", "action": "message_board"},
-			{"text": "关闭", "action": "close"}
+			{"text": "现在种下", "action": "plant_family_tree"},
+			{"text": "稍后再种", "action": "close"}
 		]
 	)
+
+func _begin_family_tree_placement() -> void:
+	_close_active_panel()
+	# 先记录“已经从面板主动进入种植”，避免从厨房等场景切回花园后，
+	# 延迟执行的首次提示再次打开面板并打断正在进行的放置。
+	MemoryManager.family_tree_gift_received = true
+	MemoryManager.family_tree_planting_hint_seen = true
+	MemoryManager.save_game()
+	if mode != "garden":
+		_show_garden()
+	if MemoryManager.has_planted_family_tree():
+		_show_toast("家庭树已经种在花园里了。")
+		return
+	selected_plant_type = "family_tree"
+	plant_mode = true
+	_update_plant_button()
+	_show_toast("点击花园中的空地，种下家庭树幼苗。")
+
+func begin_family_tree_placement() -> void:
+	_begin_family_tree_placement()
 
 func _open_family_members_panel() -> void:
 	var family_code := CloudManager.family_code() if CloudManager != null and CloudManager.has_method("family_code") else ""
@@ -4761,6 +6861,12 @@ func _clear_ai_workflow_watch(status_label: Label = null) -> void:
 	active_ai_status_label = null
 
 func _on_ai_workflow_state_changed(workflow: String, state: String, detail: Dictionary) -> void:
+	if workflow == "links" and state == "complete":
+		var created := int(detail.get("created", 0))
+		if created > 0 and mode == "garden":
+			_refresh_current_memory_scene("garden")
+			_show_toast("%d 条记忆藤蔓已长出。" % created)
+		return
 	if workflow != active_ai_workflow:
 		return
 	if active_ai_status_label == null or not is_instance_valid(active_ai_status_label):
@@ -4859,8 +6965,16 @@ func _icon_key_for_action(action: String) -> String:
 	if action.begins_with("house_note"):
 		return "icon_letter"
 	match action:
-		"family_tree", "plant_tree":
+		"create_memory":
+			return "icon_add"
+		"global_map":
+			return "icon_map"
+		"family_tree", "plant_tree", "plant_family_tree":
 			return "icon_tree"
+		"family_members":
+			return "icon_home"
+		"world_chat_history":
+			return "icon_letter"
 		"message_board", "add_message", "plant_sign":
 			return "icon_sign"
 		"toggle_plant":
@@ -4873,6 +6987,10 @@ func _icon_key_for_action(action: String) -> String:
 			return "icon_home"
 		"save", "save_new_place", "save_new_message":
 			return "icon_save"
+		"fish_again":
+			return "icon_add"
+		"open_caught_bottle":
+			return "icon_letter"
 		"back_garden":
 			return "icon_back"
 		"close":
@@ -4890,6 +7008,13 @@ func _apply_button_style(button: Button, selected: bool = false) -> void:
 	button.add_theme_font_size_override("font_size", 13)
 	button.add_theme_color_override("font_color", Color(0.28, 0.22, 0.16, 1.0))
 	button.add_theme_color_override("font_hover_color", Color(0.22, 0.17, 0.12, 1.0))
+	# 所有走这个统一样式函数的 Button 都顺带接上点击音效；toggle 类按钮(如种植开关)会
+	# 反复调用 _apply_button_style 刷新选中态样式，用 is_connected 防止重复挂信号导致连响多次。
+	if not button.pressed.is_connected(_play_button_click_sfx):
+		button.pressed.connect(_play_button_click_sfx)
+
+func _play_button_click_sfx() -> void:
+	AudioManager.play_sfx("按钮")
 
 func _button_style(asset_key: String, fallback_color: Color, border_color: Color) -> StyleBox:
 	var texture := _safe_texture(str(ASSETS.get(asset_key, "")))
@@ -4916,10 +7041,26 @@ func _on_panel_button(action: String) -> void:
 		_open_postcards_panel()
 	elif action == "message_board":
 		_open_message_board_panel()
+	elif action == "family_tree":
+		_open_family_tree_panel()
+	elif action == "plant_family_tree":
+		_begin_family_tree_placement()
 	elif action == "add_message":
 		_open_add_message_form()
+	elif action == "fish_again":
+		_start_fishing_sequence()
+	elif action == "open_caught_bottle":
+		_open_caught_bottle_content()
 	elif action == "back_garden":
 		_show_garden()
+	elif action == "enter_kitchen":
+		_close_active_panel()
+		_show_toast("进入厨房…")
+		goto_scene("kitchen")
+	elif action.begins_with("enter_room:"):
+		var house_id := action.split(":")[1]
+		var room_info: Dictionary = _get_room_data(house_id)
+		_enter_house(house_id, str(room_info.get("label", "房间")))
 	elif action.begins_with("open_postcard:"):
 		_open_postcard_detail_from_id(action.split(":")[1])
 	elif action.begins_with("delete_place:"):
@@ -4936,15 +7077,76 @@ func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):
 		active_modal.queue_free()
 	active_modal = null
+	_chat_panel_list = null   ## 聊天面板随 overlay 一起释放,清引用避免悬空
+	_chat_panel_scroll = null
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
 
+# ---- 供 GameHUD 图标导航接回的 public 包装(转调现有打开逻辑,不重写业务)----
+func open_global_map() -> void:
+	_show_global_map()
+
+func open_travel_map() -> void:
+	_show_travel_map()
+
+func open_memory_creator() -> void:
+	_open_memory_creator()
+
+func open_world_chat() -> void:
+	_open_world_chat_history_panel()
+
+func open_family_tree() -> void:
+	_open_family_tree_panel()
+
+func open_family_members() -> void:
+	_open_family_members_panel()
+
+func open_postcards() -> void:
+	_open_postcards_panel()
+
+func _set_hud_context(scene_id: String) -> void:
+	if game_hud != null and is_instance_valid(game_hud):
+		game_hud.set_context(scene_id)
+	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
+		day_night_clock_ui.visible = scene_id != "" and scene_id != "role_select"
+
+## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
+## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。
+func set_player_input_locked(locked: bool) -> void:
+	if player != null and is_instance_valid(player) and player.has_method("set_movement_locked"):
+		player.set_movement_locked(locked)
+
 func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> void:
-	var item_id := existing_id if existing_id != "" else "plant_" + str(Time.get_ticks_msec())
-	var item_data := {"id": item_id, "type": plant_type, "position": pos}
-	var texture := _safe_texture("res://assets/garden/" + plant_type + ".png")
+	var is_family_tree := plant_type == "family_tree"
+	var family_tree_scale := _family_tree_display_scale()
+	if is_family_tree and existing_id == "" and MemoryManager.has_planted_family_tree():
+		plant_mode = false
+		_update_plant_button()
+		_show_toast("家庭树已经种在花园里了。")
+		return
+	var item_id := existing_id if existing_id != "" else (MemoryManager.FAMILY_TREE_ID if is_family_tree else "plant_" + str(Time.get_ticks_msec()))
+	var item_data := {
+		"id": item_id,
+		"type": plant_type,
+		"position": pos,
+		"display_scale": family_tree_scale if is_family_tree else 0.0,
+		"bottom_anchored": is_family_tree,
+	}
+	var texture_path := "res://assets/garden/" + plant_type + ".png"
+	if is_family_tree:
+		texture_path = FAMILY_TREE_TEXTURE_PATTERN % MemoryManager.family_tree_stage()
+	elif not ResourceLoader.exists(texture_path):
+		match plant_type:
+			"flower":
+				texture_path = "res://assets/pond/decorations/flower_bed.png"
+			"tree":
+				texture_path = "res://assets/garden/family_tree.png"
+			_:
+				texture_path = "res://assets/pond/decorations/flower_bed.png"
+	var texture := _safe_texture(texture_path)
 	var item := preload("res://scripts/placeable_item.gd").new()
 	item.setup(item_data, texture)
+	item.z_index = int(pos.y)
 	item.item_deleted.connect(_on_plant_deleted)
 	item.item_moved.connect(_on_plant_moved)
 	world.add_child(item)
@@ -4952,6 +7154,11 @@ func _add_plant(pos: Vector2, plant_type: String, existing_id: String = "") -> v
 
 	if existing_id == "":
 		MemoryManager.plants.append({"id": item_id, "type": plant_type, "x": pos.x, "y": pos.y})
+		if is_family_tree:
+			plant_mode = false
+			selected_plant_type = "tree"
+			_update_plant_button()
+			_show_toast("家庭树幼苗已经种下。家人互动会陪它一起成长。")
 
 func _rebuild_plants() -> void:
 	for plant in MemoryManager.plants:
@@ -4963,7 +7170,10 @@ func _on_plant_deleted(item_id: String) -> void:
 		plant_nodes.erase(item_id)
 	MemoryManager.plants = MemoryManager.plants.filter(func(p): return str(p.get("id", "")) != item_id)
 	MemoryManager.save_game()
-	_show_toast("Removed.")
+	if item_id == MemoryManager.FAMILY_TREE_ID:
+		_show_toast("家庭树已收回，可以从家庭树面板重新种植。")
+	else:
+		_show_toast("已移除。")
 
 func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
 	for p in MemoryManager.plants:
@@ -4972,6 +7182,20 @@ func _on_plant_moved(item_id: String, new_position: Vector2) -> void:
 			p["y"] = new_position.y
 			break
 	MemoryManager.save_game()
+
+func _refresh_family_tree_visual() -> void:
+	if not plant_nodes.has(MemoryManager.FAMILY_TREE_ID):
+		return
+	var item: Node = plant_nodes[MemoryManager.FAMILY_TREE_ID]
+	if item == null or not is_instance_valid(item) or not item.has_method("set_texture"):
+		return
+	var texture := _safe_texture(FAMILY_TREE_TEXTURE_PATTERN % MemoryManager.family_tree_stage())
+	if texture:
+		item.set_texture(texture, _family_tree_display_scale(), true)
+
+func _family_tree_display_scale() -> float:
+	var index := clampi(MemoryManager.family_tree_stage() - 1, 0, FAMILY_TREE_DISPLAY_SCALES.size() - 1)
+	return float(FAMILY_TREE_DISPLAY_SCALES[index])
 
 func _get_house_intro(id: String) -> String:
 	match id:
@@ -4986,6 +7210,8 @@ func _get_house_intro(id: String) -> String:
 	return "一间小小的家庭房间。"
 
 func _show_toast(toast_text: String) -> void:
+	if info_label == null or not is_instance_valid(info_label):
+		return   # UI 尚未构建(如启动早期的任务信号),静默跳过
 	info_label.text = "家庭花园   —   " + toast_text
 
 func _safe_texture(path: String) -> Texture2D:

@@ -17,13 +17,10 @@
 [ext_resource type="PackedScene" path="res://scenes/Sheep.tscn" id="15_sheep"]
 [ext_resource type="PackedScene" path="res://scenes/Chicken.tscn" id="16_chicken"]
 [ext_resource type="PackedScene" path="res://scenes/Chick.tscn" id="17_chick"]
-[ext_resource type="PackedScene" uid="uid://cjjt0n70udi1k" path="res://scenes/InventoryUI.tscn" id="18_invui"]
 [ext_resource type="PackedScene" path="res://scenes/NpcFarmer.tscn" id="19_npcfarmer"]
 
 [node name="Farm" type="Node2D" unique_id=1902479684]
 script = ExtResource("1_farm")
-
-[node name="InventoryUI" parent="." unique_id=735121490 instance=ExtResource("18_invui")]
 
 [node name="Background" type="Sprite2D" parent="." unique_id=1168986645]
 z_index = -100
@@ -222,7 +219,7 @@ position = Vector2(220, 270)
 position = Vector2(345, 300)
 
 [node name="NpcFarmer" parent="Objects" unique_id=-473961785 instance=ExtResource("19_npcfarmer")]
-position = Vector2(958, 189)
+position = Vector2(1040, 260)
 
 [node name="Chick" parent="Objects" unique_id=555661648 instance=ExtResource("17_chick")]
 position = Vector2(290, 285)

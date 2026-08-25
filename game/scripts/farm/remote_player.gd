@@ -18,6 +18,7 @@ var _step_timer := 0.0
 var _step := 1
 var _facing := 0
 var _wander_timer := 0.0
+var _frame_rects: Array[Rect2] = []   ## 非等分网格贴图(如 girl_2)按精确裁切矩形取帧,优先于 hframes/vframes
 
 func _ready() -> void:
 	target = global_position
@@ -41,9 +42,23 @@ func _build() -> void:
 		var tex: Texture2D = db.texture(role_key)
 		if tex != null:
 			sprite.texture = tex
-		sprite.hframes = int(def.get("hframes", 3))
-		sprite.vframes = int(def.get("vframes", 4))
 		sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+		_frame_rects.clear()
+		var raw_rects: Array = def.get("frame_rects", [])
+		for r in raw_rects:
+			if r is Array and r.size() >= 4:
+				_frame_rects.append(Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])))
+		if _frame_rects.size() > 0:
+			sprite.region_enabled = true
+			sprite.hframes = 1
+			sprite.vframes = 1
+			sprite.frame = 0
+			sprite.region_rect = _frame_rects[1] if _frame_rects.size() > 1 else _frame_rects[0]
+			shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
+		else:
+			sprite.region_enabled = false
+			sprite.hframes = int(def.get("hframes", 3))
+			sprite.vframes = int(def.get("vframes", 4))
 		if display_name == "":
 			display_name = str(def.get("name", role_key))
 	label = Label.new()
@@ -54,7 +69,7 @@ func _build() -> void:
 	label.position = Vector2(-45, -58)
 	add_child(label)
 
-func configure_presence(peer_member_id: String, peer_role: String, peer_name: String) -> void:
+func configure_presence(peer_member_id: String, peer_role: String, peer_name: String, appearance: Dictionary = {}) -> void:
 	member_id = peer_member_id
 	role_key = CharacterDB.resolve(peer_role) if CharacterDB != null else peer_role
 	display_name = peer_name if peer_name.strip_edges() != "" else CharacterDB.display_name(role_key)
@@ -65,13 +80,45 @@ func configure_presence(peer_member_id: String, peer_role: String, peer_name: St
 	if sprite != null:
 		var db := get_node_or_null("/root/CharacterDB")
 		if db != null:
-			var def: Dictionary = db.get_def(role_key)
-			var tex: Texture2D = db.texture(role_key)
+			var def: Dictionary
+			var tex: Texture2D
+			var appearance_manager := get_node_or_null("/root/AppearanceManager")
+			var clean_appearance: Dictionary = {}
+			if appearance_manager != null and bool(appearance.get("enabled", false)):
+				clean_appearance = appearance_manager.normalize(appearance, role_key)
+			if not clean_appearance.is_empty() and bool(clean_appearance.get("enabled", false)):
+				def = appearance_manager.variant_definition(clean_appearance, role_key)
+				tex = appearance_manager.texture(clean_appearance, role_key)
+			else:
+				clean_appearance.clear()
+				def = db.get_def(role_key)
+				tex = db.texture(role_key)
 			if tex != null:
 				sprite.texture = tex
-			sprite.hframes = int(def.get("hframes", 3))
-			sprite.vframes = int(def.get("vframes", 4))
 			sprite.scale = Vector2.ONE * float(def.get("scale", 0.46))
+			if clean_appearance.is_empty():
+				sprite.material = null
+			_frame_rects.clear()
+			var raw_rects: Array = def.get("frame_rects", [])
+			for rect_value in raw_rects:
+				if rect_value is Array and rect_value.size() >= 4:
+					_frame_rects.append(Rect2(float(rect_value[0]), float(rect_value[1]), float(rect_value[2]), float(rect_value[3])))
+			if _frame_rects.size() > 0:
+				sprite.region_enabled = true
+				sprite.hframes = 1
+				sprite.vframes = 1
+				sprite.frame = 0
+				sprite.region_rect = _frame_rects[1] if _frame_rects.size() > 1 else _frame_rects[0]
+				# 联机角色同样直接使用对方组合对应的完整图集。
+				sprite.material = null
+				var shadow := get_node_or_null("Shadow") as Node2D
+				if shadow != null:
+					shadow.position.y = sprite.region_rect.size.y * sprite.scale.y * 0.5
+			else:
+				sprite.region_enabled = false
+				sprite.hframes = int(def.get("hframes", 3))
+				sprite.vframes = int(def.get("vframes", 4))
+				sprite.frame = mini(1, sprite.hframes * sprite.vframes - 1)
 
 ## 联机:由 presence 喂入目标位置。旧序列会丢弃,避免网络乱序导致回滚。
 func set_target(pos: Vector2) -> void:
@@ -117,9 +164,14 @@ func _animate(delta: float, v: Vector2) -> void:
 		else:
 			_facing = 0 if v.y > 0.0 else 3
 		_step_timer += delta
-		if _step_timer > 0.16:
+		if _step_timer > 0.13:   # 与本地玩家(player.gd)步频一致,走路观感更自然
 			_step_timer = 0.0
 			_step = (_step + 1) % 3
 	else:
 		_step = 1
-	sprite.frame = _facing * sprite.hframes + _step
+	var index := _facing * 3 + _step
+	if _frame_rects.size() > index:
+		sprite.frame = 0
+		sprite.region_rect = _frame_rects[index]
+	else:
+		sprite.frame = index

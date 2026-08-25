@@ -37,11 +37,17 @@ func cancel_all() -> void:
 	_generation += 1
 
 func request(route_path: String, payload: Dictionary) -> Dictionary:
-	var request_id := _new_request_id()
-	if not is_configured():
-		return _failure("NETWORK_OFFLINE", "AI 后端未启用。", true, request_id)
+	return await _request_internal(route_path, payload, "")
+
+func request_with_key(route_path: String, payload: Dictionary, idempotency_key: String) -> Dictionary:
+	return await _request_internal(route_path, payload, idempotency_key)
+
+func _request_internal(route_path: String, payload: Dictionary, idempotency_key: String) -> Dictionary:
 	var identity := CloudBaseBackend.load_identity()
 	var token := String(identity.get("member_token", ""))
+	var request_id := _new_request_id(idempotency_key, token)
+	if not is_configured():
+		return _failure("NETWORK_OFFLINE", "AI 后端未启用。", true, request_id)
 	if token == "":
 		return _failure("UNAUTHORIZED", "尚未取得成员身份。", false, request_id)
 	var action := route_path.trim_suffix("/").get_file()
@@ -91,7 +97,10 @@ func request(route_path: String, payload: Dictionary) -> Dictionary:
 		return _failure("AI_UPSTREAM_ERROR", "AI 服务返回异常状态。", true, request_id)
 	return envelope
 
-func _new_request_id() -> String:
+func _new_request_id(idempotency_key: String = "", member_token: String = "") -> String:
+	if idempotency_key != "":
+		var member_scope := member_token.sha256_text().left(16) if member_token != "" else "anonymous"
+		return "godot_" + (idempotency_key + "|" + member_scope).sha256_text().left(48)
 	return "godot_%d_%08x" % [Time.get_ticks_msec(), randi()]
 
 func _failure(code: String, message: String, retryable: bool, request_id: String) -> Dictionary:

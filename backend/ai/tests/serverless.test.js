@@ -12,7 +12,7 @@ const { SafetyService } = require("../safety");
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const MOCKS = path.join(__dirname, "..", "..", "mocks");
-const ROUTES = ["generate-memory-card", "generate-bottle-question", "analyze-room-photo", "cross-memory-link"];
+const ROUTES = ["generate-memory-card", "generate-bottle-question", "generate-kitchen-dish", "analyze-room-photo", "cross-memory-link"];
 
 function json(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -41,7 +41,10 @@ function silentLogger() {
 }
 
 function fakeIdentity() {
-  return { authorize: async () => ({ member_id: "member_1", family_id: "family_1", role: "player" }) };
+  return {
+    authorize: async () => ({ member_id: "member_1", family_id: "family_1", role: "player" }),
+    resolveImage: async (_authorization, uploadId) => ({ upload_id: uploadId, image_url: "https://example.test/resolved.jpg" }),
+  };
 }
 
 function makeApp(provider, config = testConfig(), overrides = {}) {
@@ -54,10 +57,11 @@ function makeApp(provider, config = testConfig(), overrides = {}) {
   });
 }
 
-test("四个路由均返回通过 Gate 1 Schema 的响应", async () => {
+test("五个生成路由均返回通过 Gate 1 Schema 的响应", async () => {
   const byRoute = {
     "generate-memory-card": "memory_card_mock.json",
     "generate-bottle-question": "bottle_question_mock.json",
+    "generate-kitchen-dish": "kitchen_dish_mock.json",
     "analyze-room-photo": "room_analysis_mock.json",
     "cross-memory-link": "cross_memory_link_mock.json",
   };
@@ -202,6 +206,55 @@ test("输入和输出内容安全失败不会被 fallback 掩盖", async () => {
   const outputResponse = await makeApp(unsafeProvider)(request("generate-memory-card", json(path.join(FIXTURES, "generate-memory-card.request.json")), "req_unsafe_output"));
   assert.equal(outputResponse.ok, false);
   assert.equal(outputResponse.error.code, "CONTENT_UNSAFE");
+});
+
+test("用户确认内容必须经过审核且技术故障不允许 fallback", async () => {
+  let providerCalls = 0;
+  const provider = { complete: async () => { providerCalls += 1; throw new Error("moderation must not call model"); } };
+  const app = makeApp(provider);
+  const safe = await app(request("moderate-user-content", {
+    kind: "memory_card_edit",
+    texts: ["和家人在花园里种树。"],
+    language: "zh-CN",
+  }, "req_moderate_safe"));
+  assert.equal(safe.ok, true);
+  assert.equal(safe.data.approved, true);
+  assert.equal(providerCalls, 0);
+
+  const unsafe = await app(request("moderate-user-content", {
+    kind: "bottle_answer",
+    texts: ["我不想活了，想自杀"],
+    language: "zh-CN",
+  }, "req_moderate_unsafe"));
+  assert.equal(unsafe.ok, false);
+  assert.equal(unsafe.error.code, "CONTENT_UNSAFE");
+  assert.equal(providerCalls, 0);
+});
+
+test("跨记忆关联同时审核源记忆和候选记忆", async () => {
+  let providerCalls = 0;
+  const provider = { complete: async () => { providerCalls += 1; return { text: "{}", provider: "fake", model: "text" }; } };
+  const payload = json(path.join(FIXTURES, "cross-memory-link.request.json"));
+  payload.title = "自杀的方法";
+  const response = await makeApp(provider)(request("cross-memory-link", payload, "req_unsafe_source_memory"));
+  assert.equal(response.ok, false);
+  assert.equal(response.error.code, "CONTENT_UNSAFE");
+  assert.equal(providerCalls, 0);
+});
+
+test("upload_id 由身份网关解析后才发送给视觉模型", async () => {
+  let seenImageUrl = "";
+  const data = json(path.join(MOCKS, "room_analysis_mock.json"));
+  const provider = { complete: async (prompt) => {
+    seenImageUrl = prompt.imageUrl;
+    return { text: JSON.stringify(data), provider: "fake", model: "vision" };
+  } };
+  const payload = json(path.join(FIXTURES, "analyze-room-photo.request.json"));
+  delete payload.image_url;
+  payload.upload_id = "upload_0123456789abcdef0123456789abcdef";
+  const response = await makeApp(provider)(request("analyze-room-photo", payload, "req_controlled_upload"));
+  assert.equal(response.ok, true);
+  assert.equal(seenImageUrl, "https://example.test/resolved.jpg");
 });
 
 test("请求方法、Content-Type、大小和 Schema 均受限制", async () => {

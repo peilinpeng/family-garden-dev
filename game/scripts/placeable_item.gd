@@ -8,11 +8,15 @@ var item_type := "flower"
 var dragging := false
 var drag_offset := Vector2.ZERO
 var sprite: Sprite2D
+var display_scale := 0.0
+var bottom_anchored := false
 
 func setup(data: Dictionary, texture: Texture2D = null) -> void:
 	item_id = str(data.get("id", "item_" + str(Time.get_ticks_msec())))
 	item_type = str(data.get("type", "flower"))
 	position = data.get("position", Vector2.ZERO)
+	display_scale = float(data.get("display_scale", 0.0))
+	bottom_anchored = bool(data.get("bottom_anchored", false))
 	input_pickable = true
 
 	var shape := CollisionShape2D.new()
@@ -23,13 +27,21 @@ func setup(data: Dictionary, texture: Texture2D = null) -> void:
 
 	if texture != null:
 		sprite = Sprite2D.new()
-		sprite.texture = texture
-		sprite.centered = true
+		add_child(sprite)
+		set_texture(texture, display_scale, bottom_anchored)
+
+func set_texture(texture: Texture2D, requested_scale: float = 0.0, anchor_to_bottom: bool = false) -> void:
+	if sprite == null:
+		return
+	sprite.texture = texture
+	sprite.centered = true
+	var scale_factor := requested_scale
+	if scale_factor <= 0.0:
 		var max_side = max(float(texture.get_width()), float(texture.get_height()))
 		var target_size := 56.0
-		if max_side > 0.0:
-			sprite.scale = Vector2.ONE * (target_size / max_side)
-		add_child(sprite)
+		scale_factor = target_size / max_side if max_side > 0.0 else 1.0
+	sprite.scale = Vector2.ONE * scale_factor
+	sprite.position = Vector2(0.0, -float(texture.get_height()) * scale_factor * 0.5) if anchor_to_bottom else Vector2.ZERO
 
 func _ready() -> void:
 	input_event.connect(_on_input_event)

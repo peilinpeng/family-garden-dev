@@ -1,11 +1,13 @@
 # Family Garden AI Serverless
 
-四项 AI 能力的独立 CloudBase 云函数：
+五项生成能力与一项确认内容审核能力的独立 CloudBase 云函数：
 
 - `generate-memory-card`
 - `generate-bottle-question`
+- `generate-kitchen-dish`
 - `analyze-room-photo`
 - `cross-memory-link`
+- `moderate-user-content`（不调用生成模型，不允许 fallback）
 
 本目录不替代已经上线的 `backend/cloudbase/data_gateway/`。AI 函数通过 `data_gateway` 的 `whoami` 复用成员身份；业务数据 CRUD 仍由原网关负责。
 
@@ -15,6 +17,7 @@
 Godot（Gate 3 接入）
   → AI HTTP 云函数
       → data_gateway/whoami 校验 member_token
+      → upload_id 受控解析临时图片 URL
       → TMS/IMS 输入审核
       → TokenHub OpenAI Chat Completions
       → JSON 提取 + Gate 1 Schema 校验
@@ -27,9 +30,9 @@ Godot（Gate 3 接入）
 | 目录/文件 | 职责 |
 |---|---|
 | `index.js` | CloudBase `main` 入口、HTTP 基础校验、统一错误输出 |
-| `router.js` | 四路编排、修复重采样、fallback |
+| `router.js` | 生成编排、用户确认审核、修复重采样、fallback |
 | `providers/tokenhub.js` | TokenHub OpenAI 兼容接口适配 |
-| `prompts/` | 四套独立、带版本号的 prompt |
+| `prompts/` | 五套独立、带版本号的 prompt |
 | `schemas/` | Gate 1 JSON Schema 真源 |
 | `validators/` | AJV 校验、可靠 JSON 提取与跨记忆语义约束 |
 | `safety/` | 本地前置策略 + 腾讯 TMS/IMS 审核 |
@@ -78,6 +81,10 @@ Node 测试使用注入的 fake provider、身份服务和审核客户端，不�
 
 可选：`TMS_BIZ_TYPE`、`IMS_BIZ_TYPE`。使用自定义内容安全策略时填写控制台策略编号；否则调用账号默认策略。
 
+建议配置 `AI_IMAGE_ALLOWED_HOSTS` 为 CloudBase 临时文件 URL 的可信域名列表（逗号分隔）。新客户端只发送
+`upload_id`，由 AI 服务通过 data_gateway 解析图片；`image_url` 仅保留旧客户端兼容。视觉模型确认支持
+JSON Schema 后可设置 `AI_VISION_JSON_SCHEMA=true`，默认关闭以避免未验证的模型参数导致生产失败。
+
 推荐填写已创建的 `family_garden_text` 与 `family_garden_image`。模型名称仍由部署环境显式配置，
 便于验收不达标时替换；部署前须在 TokenHub 控制台确认 Key 授权范围、计费和模型可用性。
 
@@ -92,10 +99,10 @@ Node 测试使用注入的 fake provider、身份服务和审核客户端，不�
 5. 配置第 3 节环境变量，不把密钥放进代码包；
 6. 为函数绑定 HTTP 访问服务；
 7. 平台层设置请求体上限、并发上限、调用频率和超时；
-8. 用测试家庭 member_token 对四个路由做一次真实联调；
+8. 用测试家庭 member_token 对五个路由做一次真实联调；
 9. 确认日志中没有 Authorization、用户原文、签名 URL 查询参数或上游原始响应。
 
-`build:deploy` 会从 `backend/mocks/` 复制四个 Gate 1 mock 到 dist，仅用于部署打包；源文件仍是唯一真源。dist 被 `.gitignore` 排除，不提交构建产物。
+`build:deploy` 会从 `backend/mocks/` 复制五个 Gate 1 mock 到 dist，仅用于部署打包；源文件仍是唯一真源。dist 被 `.gitignore` 排除，不提交构建产物。
 
 入口同时支持两种路由方式：
 
@@ -124,7 +131,7 @@ POST /api/ai/generate-memory-card
 - `https://tokenhub.tencentmaas.com/v1/chat/completions`；
 - `Authorization: Bearer <TOKENHUB_API_KEY>`；
 - `hy3-preview`：三个文字接口，并携带由 Gate 1 response Schema 派生的数据 Schema；
-- `hy-vision-2.0-instruct`：单张房间图片理解，结果继续经过 Gate 1 Schema 二次校验；
+- `hy-vision-2.0-instruct`：单张房间图片理解，system 与多模态 user 分离，结果继续经过 Gate 1 Schema 二次校验；
 - 非流式请求，文字最大输出默认 16384 tokens，视觉默认 4096 tokens。
 
 内容安全继续使用官方腾讯云 SDK：
@@ -137,6 +144,7 @@ TokenHub Key 与腾讯云子用户 SecretId/SecretKey 不得混用。图片请�
 变量名不使用 CloudBase 保留的 `TENCENTCLOUD_`、`SCF_` 或 `QCLOUD_` 前缀。
 
 审核建议为 `Review` 或 `Block` 时统一返回 `CONTENT_UNSAFE`，不会把用户内容送给模型，也不会用 mock 掩盖。审核服务自身不可用时采用 fail-closed：返回上游错误，不绕过审核。
+AI 草稿经用户编辑后、漂流瓶回答写入前还会调用 `moderate-user-content` 二次审核。
 
 ## 6. fallback 与错误
 

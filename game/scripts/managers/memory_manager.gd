@@ -6,6 +6,8 @@ extends Node
 ## 从 main.gd 拆出，逻辑保持不变（增量 2 / feature/c-foundation）。
 
 signal mailbox_alert_changed(state: String)
+signal farm_activity_changed
+signal family_tree_changed(stage: int)
 
 const SAVE_PATH := "user://family_garden_save_v2.json"
 const TEST_SAVE_PATH := "user://family_garden_save_v2.test.json"
@@ -14,15 +16,37 @@ const FAMILY_ID := "Happy_birthday_David"
 const MAILBOX_ALERT_NONE := "none"
 const MAILBOX_ALERT_DOT := "dot"
 const MAILBOX_ALERT_LETTER := "letter"
+const FAMILY_TREE_ID := "family_tree_unique"
+const FAMILY_TREE_STAGE_THRESHOLDS := [0, 1, 3, 6, 10]
 
 var plants: Array = []
+## 家庭树是每个家庭唯一的开局礼物。是否已种植由 plants 中的固定 id 推导，
+## gift_received 单独保存，以便移除后仍可重新种植而不会重复发放。
+var family_tree_gift_received: bool = false
+var family_tree_planting_hint_seen: bool = false
 var travel_places: Array = []
 var postcards: Array = []
 var garden_messages: Array = []
+var kitchen_orders_done: Array = []   ## 已完成的厨房订单 id(家庭数据;v1 本地持久化,未来可接云)
+var kitchen_ai_dishes: Array = []     ## AI 随机料理 [{id,name,ingredients,description,quantity,generation_meta...}]
+var farm_activity_log: Array = []     ## 农场告示牌动态 [{id, actor_name, action, detail, created_at...}]
+# ── 启动剧情 / Chapter 1(个人 onboarding 态,与 selected_role_key 同为本设备个人字段;
+#    未来迁移点:per-member 云 profile) ──
+var opening_seen: bool = false        ## 开场叙事是否已看过(跳过也算)
+var onboarding_guide_seen: bool = false ## 开场后的屏幕高亮指引是否已完成或跳过
+var chapter1_tasks: Dictionary = {}   ## task_id -> true(Chapter 1 任务完成态)
+var memory_cards: Array = []          ## 已解锁记忆卡 [{id,title,desc,unlocked_at}](未来接家庭树/相册/云端)
+var farm_plots: Array = []            ## 农场地块状态 FarmPlotState(家庭共享;由 FarmManager 读写)
+var farm_livestock: Dictionary = {}   ## 畜牧状态 source_id -> last_collected_at(家庭共享)
 var mailbox_has_unread := true # legacy compatibility; true means mailbox_alert_state != none
 var mailbox_alert_state: String = MAILBOX_ALERT_DOT
 var selected_role_key: String = ""
 var player_display_name: String = ""
+var character_appearance: Dictionary = {}   ## 本机玩家捏脸配置；由 AppearanceManager 校验和渲染。
+var last_scene_id: String = ""
+var last_spawn_key: String = "default"
+var last_player_position: Dictionary = {}
+var last_saved_at: String = ""
 
 # 记忆/节点/回答数据（字段对齐 backend/supabase/memory_schema.sql）。
 # 本地存档和 CloudManager 同步并行存在；UI 层只通过本管理器读写。
@@ -32,6 +56,7 @@ var answers: Array = []
 # AI 房间 / 房间物件（字段对齐 memory_schema.sql 的 rooms / room_objects）。
 var rooms: Array = []
 var room_objects: Array = []
+var ai_sync_outbox: Array = []
 # 跨成员互动计数（= 家庭关系温度计，对齐 families.cross_member_interaction_count）。
 # 有效跨成员回答 +1：回答者≠上传者 且 同一 (memory, 回答者) 只计一次。进花园直接读它判季节。
 var cross_member_interaction_count: int = 0
@@ -59,6 +84,7 @@ func create_memory(ai_card: Dictionary, input_type: String = "photo", raw_text: 
 		"status": "ai_done" if not ai_card.is_empty() else "uploaded",
 		"ai_card": ai_card,
 		"generation_meta": generation_meta.duplicate(true),
+		"link_status": "pending" if not ai_card.is_empty() and input_type not in ["room_photo", "bottle_answer"] else "not_applicable",
 		"workflow_key": workflow_key,
 		"created_at": Time.get_datetime_string_from_system()
 	}
@@ -98,6 +124,77 @@ func get_memory(memory_id: String) -> Dictionary:
 			return m
 	return {}
 
+func set_memory_link_status(memory_id: String, status: String) -> void:
+	if status not in ["pending", "generating", "complete", "failed", "not_applicable"]:
+		return
+	var memory := get_memory(memory_id)
+	if memory.is_empty():
+		return
+	memory["link_status"] = status
+	memory["updated_at"] = Time.get_datetime_string_from_system()
+	save_game()
+	_sync("memories", memory)
+
+func create_kitchen_ai_dish(dish_data: Dictionary, generation_meta: Dictionary = {}, workflow_key: String = "") -> Dictionary:
+	var dish_id := String(dish_data.get("id", ""))
+	if dish_id == "":
+		dish_id = "dish_ai_" + (workflow_key.sha256_text().left(24) if workflow_key != "" else "%d_%03d" % [Time.get_ticks_msec(), randi() % 1000])
+	for existing in kitchen_ai_dishes:
+		if existing is Dictionary and String(existing.get("id", "")) == dish_id:
+			return existing
+	var raw_ingredients: Variant = dish_data.get("ingredients", [])
+	var raw_visual: Variant = dish_data.get("visual", {})
+	var dish := {
+		"id": dish_id,
+		"family_id": FAMILY_ID,
+		"name": String(dish_data.get("name", dish_id)),
+		"description": String(dish_data.get("description", "")),
+		"serving_note": String(dish_data.get("serving_note", "")),
+		"family_question": String(dish_data.get("family_question", "")),
+		"safety_note": String(dish_data.get("safety_note", "")),
+		"ingredients": raw_ingredients.duplicate(true) if raw_ingredients is Array else [],
+		"visual": raw_visual.duplicate(true) if raw_visual is Dictionary else {},
+		"station_type": String(dish_data.get("station_type", "stove")),
+		"quantity": int(dish_data.get("quantity", 1)),
+		"role": selected_role_key,
+		"generation_meta": generation_meta.duplicate(true),
+		"workflow_key": workflow_key,
+		"created_at": Time.get_datetime_string_from_system(),
+		"updated_at": Time.get_datetime_string_from_system(),
+	}
+	kitchen_ai_dishes.append(dish)
+	save_game()
+	_sync("kitchen_dishes", dish)
+	return dish
+
+func get_kitchen_ai_dish(dish_id: String) -> Dictionary:
+	for dish in kitchen_ai_dishes:
+		if dish is Dictionary and String(dish.get("id", "")) == dish_id:
+			return dish
+	return {}
+
+func consume_kitchen_ai_dish(dish_id: String, amount: int = 1) -> bool:
+	if amount <= 0:
+		return false
+	for index in range(kitchen_ai_dishes.size()):
+		var dish: Variant = kitchen_ai_dishes[index]
+		if not dish is Dictionary or String(dish.get("id", "")) != dish_id:
+			continue
+		var row := dish as Dictionary
+		var count := int(row.get("quantity", 0))
+		if count < amount:
+			return false
+		row["quantity"] = count - amount
+		row["updated_at"] = Time.get_datetime_string_from_system()
+		if int(row.get("quantity", 0)) <= 0:
+			kitchen_ai_dishes.remove_at(index)
+			queue_ai_delete("kitchen_dishes", dish_id)
+		else:
+			_sync("kitchen_dishes", row)
+		save_game()
+		return true
+	return false
+
 ## 注：不能叫 get_node，会覆盖 Node 原生方法（Godot 4.7 视为错误）。
 func get_node_by_id(node_id: String) -> Dictionary:
 	for n in nodes:
@@ -107,6 +204,62 @@ func get_node_by_id(node_id: String) -> Dictionary:
 
 func get_nodes_for_scene(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary and String(n.get("scene_id", "")) == scene_id)
+
+## 记忆花统一陈列在主花园。兼容旧存档及云端曾写入鱼塘的花与关联藤蔓。
+func migrate_fishpond_memories_to_garden() -> int:
+	var migrated := 0
+	var changed := false
+	var migrated_memory_ids := {}
+	for raw_node in nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var node: Dictionary = raw_node
+		if String(node.get("scene_id", "")) != "fishpond":
+			continue
+		var node_type := String(node.get("node_type", ""))
+		if node_type not in ["memory_flower", "memory_seed"]:
+			continue
+		node["scene_id"] = "garden"
+		node["slot_id"] = "garden_archive_flowers"
+		var memory_id := String(node.get("memory_id", ""))
+		if memory_id != "":
+			migrated_memory_ids[memory_id] = true
+		_sync("nodes", node)
+		migrated += 1
+		changed = true
+	# 同步修正所有已位于花园的花朵卡片，避免旧 AI 建议仍把界面指向鱼塘。
+	for raw_node in nodes:
+		if not (raw_node is Dictionary):
+			continue
+		var garden_node: Dictionary = raw_node
+		if String(garden_node.get("scene_id", "")) == "garden" \
+			and String(garden_node.get("node_type", "")) in ["memory_flower", "memory_seed"]:
+			migrated_memory_ids[String(garden_node.get("memory_id", ""))] = true
+	for raw_memory in memories:
+		if not (raw_memory is Dictionary):
+			continue
+		var memory: Dictionary = raw_memory
+		if not migrated_memory_ids.has(String(memory.get("id", ""))):
+			continue
+		var card: Dictionary = memory.get("ai_card", {})
+		if String(card.get("suggested_scene", "garden")) == "garden":
+			continue
+		card["suggested_scene"] = "garden"
+		memory["ai_card"] = card
+		_sync("memories", memory)
+		changed = true
+	# 旧鱼塘记忆之间的藤蔓也随记忆迁入花园，避免成为不可见的孤立数据。
+	for raw_link in nodes:
+		if not (raw_link is Dictionary):
+			continue
+		var link: Dictionary = raw_link
+		if String(link.get("scene_id", "")) == "fishpond" and String(link.get("node_type", "")) == "memory_link":
+			link["scene_id"] = "garden"
+			_sync("nodes", link)
+			changed = true
+	if changed:
+		save_game()
+	return migrated
 
 ## 创建一条记忆连线节点（连接两条记忆；relation_type/question 来自 cross-memory-link 或空存档演示种子）。
 func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: String, relation_type: String, question: String, confidence: float = 1.0, generation_meta: Dictionary = {}) -> Dictionary:
@@ -124,9 +277,16 @@ func create_memory_link(memory_id: String, linked_memory_id: String, scene_id: S
 		"family_id": FAMILY_ID,
 		"memory_id": memory_id,
 		"linked_memory_id": linked_memory_id,
+		"source_memory_id": memory_id,
+		"target_memory_id": linked_memory_id,
 		"scene_id": scene_id,
 		"node_type": "memory_link",
 		"relation_type": relation_type,
+		"relation_strength": _relation_strength_for_type(relation_type),
+		"active_time_mode": "both",
+		"visual_style": _visual_style_for_type(relation_type),
+		"visible_when": "always",
+		"curve_points": [],
 		"question": question,
 		"confidence": confidence,
 		"generation_meta": generation_meta.duplicate(true),
@@ -149,6 +309,17 @@ func get_memory_links(scene_id: String) -> Array:
 	return nodes.filter(func(n): return n is Dictionary \
 		and String(n.get("node_type", "")) == "memory_link" \
 		and String(n.get("scene_id", "")) == scene_id)
+
+func _relation_strength_for_type(relation_type: String) -> float:
+	var text := relation_type.to_lower()
+	if text.contains("strong") or text.contains("family"):
+		return 0.86
+	if text.contains("weak"):
+		return 0.30
+	return 0.58
+
+func _visual_style_for_type(relation_type: String) -> String:
+	return "bee" if relation_type.to_lower().contains("bee") else "butterfly"
 
 func get_memory_link_by_id(link_id: String) -> Dictionary:
 	for node in nodes:
@@ -233,6 +404,7 @@ func delete_memory(memory_id: String) -> bool:
 	var memory := get_memory(memory_id)
 	if memory.is_empty():
 		return false
+	var upload_id := String(memory.get("upload_id", ""))
 	var deleted_node_ids: Array = []
 	for node in nodes:
 		if node is Dictionary and (String(node.get("memory_id", "")) == memory_id \
@@ -246,11 +418,14 @@ func delete_memory(memory_id: String) -> bool:
 	answers = answers.filter(func(answer): return not (answer is Dictionary and String(answer.get("memory_id", "")) == memory_id))
 	memories = memories.filter(func(item): return not (item is Dictionary and String(item.get("id", "")) == memory_id))
 	for node_id in deleted_node_ids:
-		CloudManager.delete_record("nodes", node_id)
+		queue_ai_delete("nodes", node_id)
 	for answer_id in deleted_answer_ids:
-		CloudManager.delete_record("answers", answer_id)
-	CloudManager.delete_record("memories", memory_id)
+		queue_ai_delete("answers", answer_id)
+	queue_ai_delete("memories", memory_id)
+	if upload_id != "":
+		queue_ai_image_delete(upload_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func get_answer_for_memory(memory_id: String) -> String:
@@ -355,9 +530,10 @@ func delete_room(room_id: String) -> bool:
 	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("room_id", "")) == room_id))
 	rooms = rooms.filter(func(room): return not (room is Dictionary and String(room.get("id", "")) == room_id))
 	for object_id in object_ids:
-		CloudManager.delete_record("room_objects", object_id)
-	CloudManager.delete_record("rooms", room_id)
+		queue_ai_delete("room_objects", object_id)
+	queue_ai_delete("rooms", room_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func update_room_object(object_id: String, zone: String, slot_id: String) -> bool:
@@ -376,8 +552,9 @@ func delete_room_object(object_id: String) -> bool:
 	room_objects = room_objects.filter(func(object): return not (object is Dictionary and String(object.get("id", "")) == object_id))
 	if room_objects.size() == previous_size:
 		return false
-	CloudManager.delete_record("room_objects", object_id)
+	queue_ai_delete("room_objects", object_id)
 	save_game()
+	_schedule_ai_outbox_flush()
 	return true
 
 func create_bottle(question_card: Dictionary, slot_id: String, generation_meta: Dictionary = {}) -> Dictionary:
@@ -436,10 +613,41 @@ func register_cross_member_answer(memory_id: String, answerer: String) -> bool:
 	var pair := memory_id + "|" + answerer
 	if pair in cross_member_pairs:
 		return false
+	var previous_stage := family_tree_stage()
 	cross_member_pairs.append(pair)
 	cross_member_interaction_count += 1
 	save_game()
 	_sync("families", _family_row())
+	var current_stage := family_tree_stage()
+	if current_stage != previous_stage:
+		family_tree_changed.emit(current_stage)
+	return true
+
+## 五阶段家庭树：家庭成员间的有效互动达到 0 / 1 / 3 / 6 / 10 次时成长。
+func family_tree_stage() -> int:
+	var stage := 1
+	for i in FAMILY_TREE_STAGE_THRESHOLDS.size():
+		if cross_member_interaction_count >= int(FAMILY_TREE_STAGE_THRESHOLDS[i]):
+			stage = i + 1
+	return stage
+
+func family_tree_next_threshold() -> int:
+	var stage := family_tree_stage()
+	if stage >= FAMILY_TREE_STAGE_THRESHOLDS.size():
+		return -1
+	return int(FAMILY_TREE_STAGE_THRESHOLDS[stage])
+
+func has_planted_family_tree() -> bool:
+	for plant in plants:
+		if plant is Dictionary and String(plant.get("id", "")) == FAMILY_TREE_ID:
+			return true
+	return false
+
+func grant_family_tree_gift() -> bool:
+	if family_tree_gift_received:
+		return false
+	family_tree_gift_received = true
+	save_game()
 	return true
 
 ## 参与过的成员 key（上传记忆 或 回答过的人）。
@@ -520,6 +728,7 @@ func apply_cloud_data(data: Dictionary, force: bool = false) -> void:
 					"postcard_id": "",
 					"created_by": "",
 					"role": "",
+					"photo_upload_id": str(row.get("photo_upload_id", "")),
 					"photo_path": str(row.get("photo_path", ""))
 				})
 
@@ -537,6 +746,7 @@ func apply_cloud_data(data: Dictionary, force: bool = false) -> void:
 					"is_new": bool(row.get("is_new", false)),
 					"created_by": "",
 					"role": "",
+					"photo_upload_id": str(row.get("photo_upload_id", "")),
 					"photo_path": str(row.get("photo_path", ""))
 				})
 
@@ -595,19 +805,87 @@ func notify_family_activity() -> void:
 	if mailbox_alert_state != MAILBOX_ALERT_LETTER:
 		set_mailbox_alert(MAILBOX_ALERT_DOT)
 
+func record_farm_activity(action: String, label: String, detail: String, item_id: String = "", qty: int = 0) -> Dictionary:
+	var clean_detail := detail.strip_edges()
+	if clean_detail == "":
+		return {}
+	var role := selected_role_key
+	if GameIdentity != null and GameIdentity.is_ready() and GameIdentity.role != "":
+		role = GameIdentity.role
+	if role == "":
+		role = "father"
+	var actor_name := ""
+	if GameIdentity != null and GameIdentity.is_ready():
+		actor_name = GameIdentity.display_name.strip_edges()
+	if actor_name == "":
+		actor_name = player_display_name.strip_edges()
+	if actor_name == "" and CharacterDB != null:
+		actor_name = CharacterDB.display_name(role)
+	var family_id := FAMILY_ID
+	if CloudManager != null and CloudManager.has_method("family_code"):
+		var cloud_family := str(CloudManager.family_code()).strip_edges()
+		if cloud_family != "":
+			family_id = cloud_family
+	var now_unix := int(Time.get_unix_time_from_system())
+	var row := {
+		"id": "farm_log:%s:%d:%d" % [family_id, Time.get_ticks_msec(), randi() % 1000000],
+		"family_id": family_id,
+		"actor_member_id": GameIdentity.member_id if GameIdentity != null and GameIdentity.is_ready() else "",
+		"actor_role": role,
+		"actor_name": actor_name,
+		"action": action,
+		"label": label,
+		"detail": clean_detail,
+		"item_id": item_id,
+		"qty": qty,
+		"created_at_unix": now_unix,
+		"created_at": Time.get_datetime_string_from_system()
+	}
+	farm_activity_log.append(row)
+	_trim_farm_activity_log()
+	save_game()
+	_sync("farm_activity_log", row)
+	notify_family_activity()
+	farm_activity_changed.emit()
+	return row
+
+func recent_farm_activities(limit: int = 30) -> Array:
+	var rows := farm_activity_log.duplicate(true)
+	rows.sort_custom(func(a: Variant, b: Variant) -> bool:
+		return int((a as Dictionary).get("created_at_unix", 0)) > int((b as Dictionary).get("created_at_unix", 0)) \
+			if a is Dictionary and b is Dictionary else false)
+	if limit > 0 and rows.size() > limit:
+		rows = rows.slice(0, limit)
+	return rows
+
+func _trim_farm_activity_log() -> void:
+	farm_activity_log = recent_farm_activities(120)
+
 func clear_mailbox_alert() -> void:
 	set_mailbox_alert(MAILBOX_ALERT_NONE)
 
 func _reset_all() -> void:
 	plants = []
+	family_tree_gift_received = false
+	family_tree_planting_hint_seen = false
 	travel_places = []
 	postcards = []
 	garden_messages = []
+	kitchen_orders_done = []
+	kitchen_ai_dishes = []
+	farm_activity_log = []
+	farm_plots = []
+	farm_livestock = {}
+	opening_seen = false
+	onboarding_guide_seen = false
+	chapter1_tasks = {}
+	memory_cards = []
 	memories = []
 	nodes = []
 	answers = []
 	rooms = []
 	room_objects = []
+	ai_sync_outbox = []
 	cross_member_interaction_count = 0
 	cross_member_pairs = []
 	family_portrait = {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []}
@@ -615,12 +893,88 @@ func _reset_all() -> void:
 	mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 	selected_role_key = ""
 	player_display_name = ""
+	character_appearance = {}
+	last_scene_id = ""
+	last_spawn_key = "default"
+	last_player_position = {}
+	last_saved_at = ""
+
+func update_autosave(scene_id: String, position: Vector2, spawn_key: String = "default") -> void:
+	if selected_role_key == "" or scene_id == "":
+		return
+	last_scene_id = scene_id
+	last_spawn_key = spawn_key if spawn_key != "" else "default"
+	last_player_position = {"x": position.x, "y": position.y}
+	last_saved_at = Time.get_datetime_string_from_system()
+	save_game()
+
+func has_resume_position() -> bool:
+	return last_scene_id != "" \
+		and last_player_position is Dictionary \
+		and last_player_position.has("x") \
+		and last_player_position.has("y")
+
+func resume_position() -> Vector2:
+	if not has_resume_position():
+		return Vector2.ZERO
+	return Vector2(float(last_player_position.get("x", 0.0)), float(last_player_position.get("y", 0.0)))
+
+func reset_to_new_game() -> void:
+	_reset_all()
+	save_game()
+	mailbox_alert_changed.emit(mailbox_alert_state)
 
 # ── 远端同步接缝（迭代1a）────────────────────────────────────────────────
 # 写操作把单条记录推给 CloudManager 的持久化后端；无后端时 no-op，本地 save_game 兜底。
 # 迭代1b 注入 CloudBase 后端后即生效，本方法及调用点签名不变。
 func _sync(table: String, row: Dictionary) -> void:
 	CloudManager.persist_record(table, row)
+
+func queue_ai_sync(table: String, row: Dictionary) -> void:
+	var key := table + "|" + String(row.get("id", ""))
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = {"key": key, "operation": "upsert", "table": table, "row": row.duplicate(true)}
+			save_game()
+			return
+	ai_sync_outbox.append({"key": key, "operation": "upsert", "table": table, "row": row.duplicate(true)})
+	save_game()
+
+func queue_ai_delete(table: String, row_id: String) -> void:
+	if row_id == "":
+		return
+	var key := table + "|" + row_id
+	var item := {"key": key, "operation": "delete", "table": table, "row_id": row_id}
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = item
+			save_game()
+			return
+	ai_sync_outbox.append(item)
+	save_game()
+
+func queue_ai_image_delete(upload_id: String) -> void:
+	if upload_id == "":
+		return
+	var key := "uploads|" + upload_id
+	var item := {"key": key, "operation": "delete_image", "table": "uploads", "row_id": upload_id}
+	for index in ai_sync_outbox.size():
+		if String(ai_sync_outbox[index].get("key", "")) == key:
+			ai_sync_outbox[index] = item
+			save_game()
+			return
+	ai_sync_outbox.append(item)
+	save_game()
+
+func remove_ai_sync(table: String, row_id: String) -> void:
+	var key := table + "|" + row_id
+	ai_sync_outbox = ai_sync_outbox.filter(func(item): return String(item.get("key", "")) != key)
+	save_game()
+
+func _schedule_ai_outbox_flush() -> void:
+	var workflow := get_node_or_null("/root/AIWorkflowManager")
+	if workflow != null and workflow.has_method("flush_ai_sync_outbox"):
+		workflow.call_deferred("flush_ai_sync_outbox")
 
 # families 行（家庭级状态：跨成员计数 + 家庭画像）。
 func _family_row() -> Dictionary:
@@ -668,6 +1022,10 @@ func pull_remote() -> void:
 	var t_postcards := CloudManager.load_table("postcards")
 	var t_messages := CloudManager.load_table("messages")
 	var t_mailbox := CloudManager.load_table("mailbox_events")
+	var t_farm_plots := CloudManager.load_table("farm_plots")
+	var t_farm_livestock := CloudManager.load_table("farm_livestock")
+	var t_farm_activity := CloudManager.load_table("farm_activity_log")
+	var t_kitchen_dishes := CloudManager.load_table("kitchen_dishes")
 	if cloud_ready or not t_places.is_empty() or not t_postcards.is_empty() or not t_messages.is_empty() or not t_mailbox.is_empty():
 		apply_cloud_data({
 			"travel_places": t_places,
@@ -676,27 +1034,58 @@ func pull_remote() -> void:
 			"mailbox_events": t_mailbox,
 		}, cloud_ready)
 		pulled = true
+	if cloud_ready or not t_farm_activity.is_empty():
+		farm_activity_log = t_farm_activity
+		_trim_farm_activity_log()
+		farm_activity_changed.emit()
+		pulled = true
+	if cloud_ready or not t_farm_plots.is_empty() or not t_farm_livestock.is_empty():
+		if FarmManager != null and FarmManager.has_method("sync_from_cloud"):
+			FarmManager.sync_from_cloud(t_farm_plots, t_farm_livestock)
+		else:
+			farm_plots = t_farm_plots
+		pulled = true
+	if cloud_ready or not t_kitchen_dishes.is_empty():
+		kitchen_ai_dishes = t_kitchen_dishes
+		pulled = true
 	if pulled:
 		save_game()
 
 func save_game() -> void:
 	var data := {
 		"plants": plants,
+		"family_tree_gift_received": family_tree_gift_received,
+		"family_tree_planting_hint_seen": family_tree_planting_hint_seen,
 		"travel_places": travel_places,
 		"postcards": postcards,
 		"garden_messages": garden_messages,
+		"kitchen_orders_done": kitchen_orders_done,
+		"kitchen_ai_dishes": kitchen_ai_dishes,
+		"farm_activity_log": farm_activity_log,
+		"farm_plots": farm_plots,
+		"farm_livestock": farm_livestock,
+		"opening_seen": opening_seen,
+		"onboarding_guide_seen": onboarding_guide_seen,
+		"chapter1_tasks": chapter1_tasks,
+		"memory_cards": memory_cards,
 		"memories": memories,
 		"nodes": nodes,
 		"answers": answers,
 		"rooms": rooms,
 		"room_objects": room_objects,
+		"ai_sync_outbox": ai_sync_outbox,
 		"cross_member_interaction_count": cross_member_interaction_count,
 		"cross_member_pairs": cross_member_pairs,
 		"family_portrait": family_portrait,
 		"mailbox_has_unread": mailbox_has_unread,
 		"mailbox_alert_state": mailbox_alert_state,
 		"selected_role_key": selected_role_key,
-		"player_display_name": player_display_name
+		"player_display_name": player_display_name,
+		"character_appearance": character_appearance,
+		"last_scene_id": last_scene_id,
+		"last_spawn_key": last_spawn_key,
+		"last_player_position": last_player_position,
+		"last_saved_at": last_saved_at
 	}
 	var file := FileAccess.open(_save_path(), FileAccess.WRITE)
 	if file:
@@ -714,14 +1103,26 @@ func load_save() -> void:
 	var parsed = JSON.parse_string(text)
 	if parsed is Dictionary:
 		plants = parsed.get("plants", [])
+		family_tree_gift_received = bool(parsed.get("family_tree_gift_received", false))
+		family_tree_planting_hint_seen = bool(parsed.get("family_tree_planting_hint_seen", false))
 		travel_places = parsed.get("travel_places", [])
 		postcards = parsed.get("postcards", [])
 		garden_messages = parsed.get("garden_messages", [])
+		kitchen_orders_done = parsed.get("kitchen_orders_done", [])
+		kitchen_ai_dishes = parsed.get("kitchen_ai_dishes", [])
+		farm_activity_log = parsed.get("farm_activity_log", [])
+		farm_plots = parsed.get("farm_plots", [])
+		farm_livestock = parsed.get("farm_livestock", {})
+		opening_seen = bool(parsed.get("opening_seen", false))
+		onboarding_guide_seen = bool(parsed.get("onboarding_guide_seen", false))
+		chapter1_tasks = parsed.get("chapter1_tasks", {})
+		memory_cards = parsed.get("memory_cards", [])
 		memories = parsed.get("memories", [])
 		nodes = parsed.get("nodes", [])
 		answers = parsed.get("answers", [])
 		rooms = parsed.get("rooms", [])
 		room_objects = parsed.get("room_objects", [])
+		ai_sync_outbox = parsed.get("ai_sync_outbox", [])
 		cross_member_interaction_count = int(parsed.get("cross_member_interaction_count", 0))
 		cross_member_pairs = parsed.get("cross_member_pairs", [])
 		family_portrait = parsed.get("family_portrait", {"version": 0, "member_count": 0, "memory_count": 0, "last_threshold": 0, "members": []})
@@ -733,6 +1134,13 @@ func load_save() -> void:
 		mailbox_has_unread = mailbox_alert_state != MAILBOX_ALERT_NONE
 		selected_role_key = str(parsed.get("selected_role_key", ""))
 		player_display_name = str(parsed.get("player_display_name", ""))
+		var parsed_appearance: Variant = parsed.get("character_appearance", {})
+		character_appearance = parsed_appearance if parsed_appearance is Dictionary else {}
+		last_scene_id = str(parsed.get("last_scene_id", ""))
+		last_spawn_key = str(parsed.get("last_spawn_key", "default"))
+		var parsed_pos: Variant = parsed.get("last_player_position", {})
+		last_player_position = parsed_pos if parsed_pos is Dictionary else {}
+		last_saved_at = str(parsed.get("last_saved_at", ""))
 	else:
 		_reset_all()
 

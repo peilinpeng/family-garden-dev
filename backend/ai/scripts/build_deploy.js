@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const FILES = ["index.js", "router.js", "config.js", "errors.js", "logger.js", "package.json", "package-lock.json", "README.md"];
 const DIRECTORIES = ["providers", "prompts", "schemas", "validators", "safety", "services"];
-const MOCKS = ["memory_card_mock.json", "bottle_question_mock.json", "room_analysis_mock.json", "cross_memory_link_mock.json"];
+const MOCKS = ["memory_card_mock.json", "bottle_question_mock.json", "kitchen_dish_mock.json", "room_analysis_mock.json", "cross_memory_link_mock.json"];
 
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });

@@ -2,25 +2,43 @@
   "scene": "farm",
   "doc": "docs/09_godot_coordinate_art_spec.md section 14",
   "spawn_points": {
-    "default": [640, 650],
-    "from_garden": [640, 650]
+    "default": [
+      640,
+      590
+    ],
+    "from_garden": [
+      640,
+      590
+    ]
   },
   "portals": [
     {
       "portal_id": "FarmGardenReturnArea",
       "target_scene": "res://scenes/Main.tscn",
       "spawn_point": "from_farm",
-      "trigger_rect": [580, 585, 130, 30],
+      "trigger_rect": [
+        600,
+        688,
+        80,
+        24
+      ],
       "prompt_text": "Return to garden",
       "tap_enabled": true,
       "fade": true,
-      "delay": 1.0
+      "delay": 1.0,
+      "cooldown_after_teleport": 0.8,
+      "one_way": true
     },
     {
       "portal_id": "FarmPondPathArea",
       "target_scene": "res://scenes/pond/pond_area.tscn",
       "spawn_point": "from_farm",
-      "trigger_rect": [0, 388, 36, 40],
+      "trigger_rect": [
+        0,
+        388,
+        36,
+        40
+      ],
       "prompt_text": "Walk to the pond",
       "tap_enabled": true,
       "fade": true,

@@ -1,0 +1,15 @@
+{
+  "name": "花园晨光小炒",
+  "description": "把随机挑出的新鲜食材做成一盘明亮的小炒，味道清爽，适合摆在家庭餐桌中央。",
+  "serving_note": "趁热端上桌，香气会更明显。",
+  "family_question": "这道菜让你想到家里哪一次轻松的晚餐？",
+  "visual": {
+    "style": "soft_pixel_food_icon",
+    "shape": "plate",
+    "plate_color": "#F4E4C8",
+    "base_color": "#F2C14E",
+    "accent_colors": ["#D94B35", "#F07A3A", "#FFE08A"],
+    "garnish_color": "#4E9D55"
+  },
+  "safety_note": "仅基于提供的食材生成料理说明，没有编造家庭事实。"
+}

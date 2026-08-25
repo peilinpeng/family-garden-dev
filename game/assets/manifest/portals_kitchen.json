@@ -1,0 +1,20 @@
+{
+  "scene": "kitchen",
+  "doc": "docs/09_godot_coordinate_art_spec.md section 14",
+  "spawn_points": {
+    "default": [640, 500],
+    "from_garden": [640, 500]
+  },
+  "portals": [
+    {
+      "portal_id": "KitchenGardenReturnArea",
+      "target_scene": "res://scenes/Main.tscn",
+      "spawn_point": "from_kitchen",
+      "trigger_rect": [576, 660, 128, 40],
+      "prompt_text": "Return to garden",
+      "tap_enabled": true,
+      "fade": true,
+      "delay": 1.0
+    }
+  ]
+}

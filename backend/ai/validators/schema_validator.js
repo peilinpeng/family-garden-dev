@@ -9,8 +9,10 @@ const { AppError } = require("../errors");
 const ROUTES = Object.freeze([
   "generate-memory-card",
   "generate-bottle-question",
+  "generate-kitchen-dish",
   "analyze-room-photo",
   "cross-memory-link",
+  "moderate-user-content",
 ]);
 
 function loadSchemas(schemaDir = path.join(__dirname, "..", "schemas")) {

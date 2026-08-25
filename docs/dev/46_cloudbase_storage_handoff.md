@@ -3,6 +3,10 @@
 > 面向:接手后端/数据这条线的同学
 > 关联:[43 联机方案](43_cloudbase_multiplayer_handoff.md)、[45 存储落地全过程](45_cloudbase_storage.md)(含调试细节,本文档是干净摘要)
 > 状态:**已部署到真实 CloudBase 环境并跑通,玩家侧完全自助、无需人工干预**
+>
+> 2026-07-31 更新：本文保留最初交接背景；`travel_places/postcards/messages/mailbox_events`
+> 已接入 CloudBase，旅行照片的新写入也已迁移到私有对象 + `photo_upload_id` + 临时 URL。
+> 当前验收准则见 `61_m1_photo_privacy_acceptance.md`。
 
 ---
 
@@ -59,21 +63,23 @@ Godot(HTTP)
 | `members` | 服务端(`join_family` 内部) | `family_id, member_token, role, display_name`。**不进 API 白名单,客户端永远查不到、改不了**,只能被网关内部 `resolveMember()` 直接查。 |
 | `families` | `MemoryManager._sync` | `id=family_id, cross_member_interaction_count, family_portrait` |
 | `memories/nodes/answers/rooms/room_objects` | `MemoryManager._sync` | 各自 id + 业务字段,按 `family_id` 隔离 |
-| `inventories` | `InventoryManager` | `id`(`backpack:`+member_id 或 `storehouse:`+family_id)、`kind`、`owner_member_id`(仅 backpack)、`stacks[]` |
-| `travel_places/postcards/messages/mailbox_events` | 仍走旧 Supabase 直连(`cloud_service.gd` 的 `FAMILY_ID` 常量),**没接入 CloudBase**,见 §6 |
+| `inventories` | `InventoryManager` | `id`(`backpack:`+member_id 或 `storehouse:`+family_id)、`kind`、`owner_member_id`(仅 backpack)、`stacks[]`、共享仓 `version/recent_operations` |
+| `travel_places/postcards/messages/mailbox_events` | 已接入 CloudBase；旅行照片只保存 `photo_upload_id`，不再新写永久公开 URL |
+| `farm_plots/farm_livestock` | `FarmManager` + data_gateway 事务 | 家庭地块状态、家庭畜牧冷却；详见 `docs/dev/64_p1_review_blockers_resolution.md` |
 
 ## 5. 安全模型
 
 - 身份完全由服务端从 `member_token` 解析(`{family_id, member_id, role}`),**客户端传的任何 id 一律忽略**。
 - 个人库存(`backpack`)按 `owner_member_id` 强隔离,家庭成员之间互相看不到对方背包;共享仓(`storehouse`)按 `family_id` 家庭共享。
-- `join_family` 的角色参数有白名单(`father/mother/partner/player`),乱传会被拒绝。
+- `join_family` 的角色参数有白名单(`father/mother/grandfather/grandmother/partner/player`),乱传会被拒绝。
 - 跨家庭写入/删除会被 403 拒绝;未鉴权(无效令牌)一律 401。
 - 详细的验证记录(21 项逻辑测试 + 真实线上多成员交叉验证)见 `docs/dev/45` §7/§8/§9,或 `backend/cloudbase/README.md` §6。
 
 ## 6. 还没做 / 需要你接手的
 
 - **实时同步**(共享仓即时刷新给正在线的其他家人、看到家人在花园里走动)——现在只有"启动时拉一次快照"这种冷同步,没有推送。这块建在存储之上,方案见 `docs/dev/43`;`scripts/farm/remote_player.gd` 的 `set_target()` 已经是现成的接入口,联机来了直接接,不用改可视化代码。
-- **迁移旧读路径**:`travel_places/postcards/messages/mailbox_events` 现在还在走 `cloud_service.gd` 里硬编码 Supabase 直连(`FAMILY_ID = "Happy_birthday_David"` 那个常量),没接入 CloudBase 这套新的每用户身份体系。
+- **历史照片迁移**：已存在的 Supabase `photo_path` 仍保留只读兼容；正式下线旧环境前，
+  需要离线迁移历史对象并清理旧 bucket。新照片已经不再写入该路径。
 - **共享仓并发裁决**:现在"两人同时改共享仓"是后写覆盖前写(last-write-wins),没有事务/乐观锁。真要玩起来人多了可能需要在网关里加一层。
 - **正式登录**:现在是"自助加入即签发一个长期静态令牌",没有邀请码、没有找回机制(令牌丢了=这个人的身份丢了,只能重新 `join_family` 生成一个新的,变成"新的一个人")。要更完善可以接 CloudBase 自定义登录(微信/手机号）。
 - **members 管理后台**:现在没有任何管理界面能看"家里有哪些成员/删除某个成员",只能去 CloudBase 控制台的数据库页面直接看 `members` 集合、手动删行。

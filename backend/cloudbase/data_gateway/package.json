@@ -8,6 +8,7 @@
     "smoke:gate5:real": "node scripts/gate5_real_smoke.js",
     "smoke:gate6:farm:real": "node scripts/gate6_farm_real_smoke.js",
     "smoke:gate6:members:real": "node scripts/gate6_members_real_smoke.js",
+    "smoke:m1:photo:real": "node scripts/m1_photo_real_smoke.js",
     "audit:prod": "npm audit --omit=dev --audit-level=critical"
   },
   "dependencies": {

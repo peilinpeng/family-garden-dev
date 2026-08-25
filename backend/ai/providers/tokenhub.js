@@ -7,8 +7,10 @@ const { AppError } = require("../errors");
 const TEXT_ROUTES = new Set([
   "generate-memory-card",
   "generate-bottle-question",
+  "generate-kitchen-dish",
   "cross-memory-link",
 ]);
+const SCHEMA_ROUTES = new Set([...TEXT_ROUTES, "analyze-room-photo"]);
 const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 function withTimeout(promise, timeoutMs) {
@@ -41,7 +43,7 @@ function rewriteCommonRefs(value) {
 }
 
 function loadDataSchema(route, schemaDir = path.join(__dirname, "..", "schemas")) {
-  if (!TEXT_ROUTES.has(route)) return null;
+  if (!SCHEMA_ROUTES.has(route)) return null;
   const response = JSON.parse(fs.readFileSync(path.join(schemaDir, `${route}.response.schema.json`), "utf8"));
   const common = JSON.parse(fs.readFileSync(path.join(schemaDir, "common.schema.json"), "utf8"));
   const data = structuredClone(response.oneOf[0].properties.data);
@@ -89,8 +91,8 @@ class TokenHubProvider {
     this.schemas = new Map();
   }
 
-  _responseFormat(route) {
-    if (!TEXT_ROUTES.has(route)) return undefined;
+  _responseFormat(route, usesVision) {
+    if (!SCHEMA_ROUTES.has(route) || (usesVision && !this.config.visionJsonSchema)) return undefined;
     if (!this.schemas.has(route)) this.schemas.set(route, loadDataSchema(route));
     return {
       type: "json_schema",
@@ -115,13 +117,16 @@ class TokenHubProvider {
     }
 
     const messages = usesVision
-      ? [{
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: prompt.imageUrl } },
-            { type: "text", text: `${prompt.system}\n\n${prompt.user}` },
-          ],
-        }]
+      ? [
+          { role: "system", content: prompt.system },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: prompt.imageUrl } },
+              { type: "text", text: prompt.user },
+            ],
+          },
+        ]
       : [
           { role: "system", content: prompt.system },
           { role: "user", content: prompt.user },
@@ -133,7 +138,7 @@ class TokenHubProvider {
       temperature: 0.2,
       max_tokens: usesVision ? this.config.visionMaxTokens : this.config.textMaxTokens,
     };
-    const responseFormat = this._responseFormat(options.route);
+    const responseFormat = this._responseFormat(options.route, usesVision);
     if (responseFormat) body.response_format = responseFormat;
 
     try {
@@ -193,6 +198,7 @@ module.exports = {
   TokenHubProvider,
   MAX_UPSTREAM_RESPONSE_BYTES,
   TEXT_ROUTES,
+  SCHEMA_ROUTES,
   endpoint,
   errorFromStatus,
   loadDataSchema,

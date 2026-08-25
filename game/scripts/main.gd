@@ -13,12 +13,18 @@ func _ready() -> void:
 
 	var ui_layer := CanvasLayer.new()
 	ui_layer.name = "UI"
+	ui_layer.layer = 20
 	add_child(ui_layer)
 
 	SceneManager.setup(world, ui_layer)
 	SceneManager._setup_web_photo_bridge()
 	MemoryManager.load_save()
+	if MemoryManager.selected_role_key != "":
+		AppearanceManager.ensure_current(MemoryManager.selected_role_key)
 	await SceneManager._load_cloud_data()
+	# 首次进入(或 debug 重置后)播放启动剧情;播完/跳过都会落 opening_seen,之后不再自动播。
+	if not MemoryManager.opening_seen:
+		await StoryManager.play_opening(self)
 	if MemoryManager.selected_role_key == "":
 		SceneManager._show_role_select()
 	else:
@@ -30,25 +36,38 @@ func _ready() -> void:
 		if display_name == "":
 			display_name = CharacterDB.display_name(canonical_role)
 		await CloudManager.ensure_cloud_identity(canonical_role, display_name)
-		SceneManager._show_garden()
+		SceneManager.restore_last_saved_scene()
+		# 已有角色但通过开发入口重播开场时，也继续进入同一套高亮引导。
+		if StoryManager.consume_quest_intro() and SceneManager.game_hud != null:
+			SceneManager.game_hud.start_onboarding_guide()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:
+		SceneManager.save_current_progress()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		# 先关最上层的 HUD 主面板(资料/设置/背包),没有再关旧的 cozy/地图面板。
+		if SceneManager.game_hud != null and SceneManager.game_hud.has_open_panel():
+			SceneManager.game_hud.close_current()
+			return
 		SceneManager._close_active_panel()
 		if OS.has_feature("web"):
 			JavaScriptBridge.eval("window.__familyGardenRemovePhotoInput && window.__familyGardenRemovePhotoInput();", true)
 		if SceneManager.adding_place:
 			SceneManager.adding_place = false
-			SceneManager._show_toast("Add place cancelled.")
+			SceneManager._show_toast("已取消添加地点。")
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SHIFT):
 		print("Mouse position: ", get_global_mouse_position())
 		return
 	if SceneManager.mode == "map" and SceneManager.adding_place and SceneManager.active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var pos := get_global_mouse_position()
+		var pos := SceneManager.world.to_local(get_global_mouse_position())
 		if pos.y < 650:
 			SceneManager._open_add_place_form(pos)
 		return
+	if SceneManager.mode == "garden" and SceneManager.active_modal == null and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		SceneManager._clear_memory_focus()
 	if SceneManager.mode == "garden" and SceneManager.plant_mode and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		SceneManager._add_plant(get_global_mouse_position(), SceneManager.selected_plant_type)
+		SceneManager._add_plant(SceneManager.world.to_local(get_global_mouse_position()), SceneManager.selected_plant_type)
 		MemoryManager.save_game()
