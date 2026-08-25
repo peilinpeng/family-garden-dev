@@ -126,6 +126,17 @@ git for-each-ref --format='%(refname)' refs/remotes/origin \
 - 清洁后的 `dev` 为 `f0c484a`，通过一次性 PR #33 的“全量回归与 Web 导出”检查后完成受保护分支更新；PR #33 随即关闭，临时验证分支已删除；
 - 最终 20 条公开分支的禁止路径命中为 0，291 个旧 blob ID 的可达交集为 0；`dev` 已成为 PR #32 头部的真实祖先，GitHub 状态恢复为 `MERGEABLE / CLEAN`。
 
+### 6.2 生产部署与真实 smoke 记录（2026-08-25）
+
+- 发布源固定为合并后的 `dev@403893afa6db8e516050627f3bde058672fd6ad0`，在隔离目录完成 Godot 资源导入、`./tools/test_all.sh`（25/25 通过）、两项生产依赖 critical 审计和 Presence 本地 smoke；
+- `data_gateway` 已部署到 `familygarden-d7gy18huh87fd41d2`：保留既有 Node.js 18.15、256 MB、15 秒和云端依赖安装配置；从生产端下载 `index.js`、`package.json`、`package-lock.json` 后，与发布源 SHA-256 均一致；
+- 真实 data_gateway smoke 通过：共享仓原子发种、同地块并发拒绝、跨家庭隔离、铲除清理，以及成员列表隔离；部署后的 `farm_livestock` 查询/自愈路径可用；
+- `presence-relay` 已发布为 `presence-relay-006` 并承接 100% 流量，服务状态 `normal`，`/presence-relay/healthz` 返回 `{"ok":true}`；
+- 真实 WebSocket smoke 通过：无效 token 拒绝、同家庭移动和 `world_changed` 广播、跨家庭隔离、离开通知与同成员第二连接替换。首次握手在 `MinNum=0` 冷启动时收到一次 503；健康检查预热后重试通过，未观察到服务端崩溃；
+- Web Release 导出与启动审计通过，交付包由同一发布源生成；PCK 为 128,211,128 bytes，未超过 130,000,000 bytes 门禁。
+
+真实 smoke 使用隔离测试家庭；`join_family` 产生的 Gate6 前缀成员，以及测试家庭下可能残留的测试库存/活动记录，不属于正式 `family1` 数据。清理前须由具备控制台权限的人先核对精确测试家庭 ID，再单独授权删除。
+
 ## 7. 已知边界
 
 - 事务接口解决数据一致性，不承担公开竞技游戏的反作弊；家庭成员客户端仍属于受信业务端；
