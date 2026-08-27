@@ -1,10 +1,10 @@
 # 65｜M4 生产可观测性与发布运维闭环
 
-> 日期：2026-08-25
+> 日期：2026-08-25；2026-08-27 完成生产日志可检索性修复
 >
-> 分支：`feature/gate8-observability`
+> 初始分支：`feature/gate8-observability`；修复分支：`feature/m4-log-delivery`
 >
-> 状态：已完成本地实现与公开端点只读验收；尚未部署本轮后端日志代码
+> 状态：M4 已上线；本次补充 Data Gateway 标准输出日志通道的生产验收
 
 ## 1. 目标与边界
 
@@ -40,6 +40,10 @@ CloudBase 集合权限。
 失败时仅额外记录稳定的 `error_class`：`invalid_request`、`unauthorized`、`forbidden`、
 `not_found`、`conflict` 或 `internal_error`。`action` 只接受服务端白名单；未知输入一律记录
 为 `unknown`。请求 ID 不接受客户端 Header，防止把 token 或私人文本伪装为可记录字段。
+
+审计记录必须通过 `console.log` 写入标准输出。CloudBase 的函数日志检索稳定采集该通道；不要改用
+`console.info`、`console.warn` 或 `console.error`，否则结构化行可能无法在控制台按 `request_id`
+检索。
 
 禁止写入：Authorization、member token、家庭/成员 ID、昵称、图片原文或 URL、上传 Base64、
 业务记录正文、数据库/SDK 异常原文及任何密钥。
@@ -135,10 +139,27 @@ https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
 - data_gateway 可观测性与脱敏测试；
 - Presence Relay 可观测性与本地协议回归；
 - 公开 Web/PCK/Presence 健康检查和入口哈希核验；
-- 运维发布、回滚、备份边界文档化。
+- 运维发布、回滚、备份边界文档化；
+- `data_gateway` 与 Presence Relay 已部署到生产；Presence Relay `007` 已承接 100% 流量；
+- 生产控制台已确认 Presence 的无效令牌 smoke 只记录匿名字段。
 
 待后续独立验收：
 
-- 将本轮后端日志代码部署到生产，并在 CloudBase 控制台按 `request_id` 实际检索一次；
+- 修复发布后，在 CloudBase 控制台按 `request_id` 实际检索一次 Data Gateway 审计行；
 - 双设备、双账号的真实 UI 联机验收；
 - `dev / test / prod` 分环境与数据备份恢复演练。
+
+## 7. 2026-08-27 Data Gateway 日志可检索性修复
+
+### 7.1 触发原因
+
+M4 首次生产部署后，`data_gateway` 响应中的服务端 `request_id` 正常，但 CloudBase 函数日志页只显示
+平台 `Report` 行，未显示 `data_gateway_request_completed` 审计行。Presence Relay 的 `console.log`
+审计行可正常显示，说明问题限于 Data Gateway 使用的日志分级通道。
+
+### 7.2 最小修复与验收标准
+
+将审计写入固定为 `console.log(JSON.stringify(record))`，不改变请求处理、认证、数据读写、响应字段或
+日志白名单。部署后以无 token 的 `whoami` 调用验证：响应返回新的 `gw_` 请求 ID，且控制台在三天窗口
+内可按该 ID 找到唯一的 `data_gateway_request_completed` JSON 行；该行不得包含 token、家庭/成员 ID、
+图片或业务正文。

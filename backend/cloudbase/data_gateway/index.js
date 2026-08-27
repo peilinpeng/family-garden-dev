@@ -154,8 +154,9 @@ function requestAuditRecord({ requestId, action, startedAt, result }) {
 }
 
 function writeRequestAudit(record, sink = console) {
-  const write = typeof sink.info === 'function' ? sink.info : sink.log;
-  write.call(sink, JSON.stringify(record));
+  // CloudBase 函数日志仅稳定采集标准输出；不要使用 info/warn/error 等分级接口，
+  // 以便控制台可按 request_id 检索这条结构化审计记录。
+  sink.log(JSON.stringify(record));
 }
 
 function bearerToken(event) {

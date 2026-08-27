@@ -960,8 +960,13 @@ test('data_gateway 可观测性记录使用白名单字段并返回可关联请�
   assert.equal(record.action, 'unknown');
   assert.equal(record.error_class, 'unauthorized');
   const calls = [];
-  writeRequestAudit(record, { info: (line) => calls.push(line) });
+  let infoCalled = false;
+  writeRequestAudit(record, {
+    info: () => { infoCalled = true; },
+    log: (line) => calls.push(line),
+  });
   assert.equal(calls.length, 1);
+  assert.equal(infoCalled, false);
   assert.equal(calls[0].includes('token_a'), false);
   assert.equal(calls[0].includes('Bearer'), false);
 });
