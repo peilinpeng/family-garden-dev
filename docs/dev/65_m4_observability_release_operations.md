@@ -41,10 +41,10 @@ CloudBase 集合权限。
 `not_found`、`conflict` 或 `internal_error`。`action` 只接受服务端白名单；未知输入一律记录
 为 `unknown`。请求 ID 不接受客户端 Header，防止把 token 或私人文本伪装为可记录字段。
 
-审计记录通过 `process.stdout.write(JSON.stringify(record) + '\n')` 直接写入标准输出。SCF 官方将该方式
-列为函数日志采集的支持输出通道；不要改用 `console` 的分级接口，避免 CloudBase 网关运行时丢失结构化行。
-换行保证一条审计记录对应一条可检索日志。当前 CloudBase 内置日志视图仍只展示平台 `Report` 行；要在
-CLS 中检索自定义标准输出，还需完成第 7 节记录的独立 CLS 投递配置。
+审计记录优先通过腾讯 SCF Node 运行时的 `console._stdout.write(JSON.stringify(record) + '\n')` 写入日志
+采集流；普通 Node 或兼容运行时不提供该流时，回退 `process.stdout.write()`。换行保证一条审计记录对应一条
+可检索日志。当前 CloudBase 内置日志视图仍只展示平台 `Report` 行；要在 CLS 中检索自定义标准输出，需要
+完成第 7 节记录的独立 CLS 投递配置。
 
 禁止写入：Authorization、member token、家庭/成员 ID、昵称、图片原文或 URL、上传 Base64、
 业务记录正文、数据库/SDK 异常原文及任何密钥。
@@ -156,20 +156,21 @@ https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
 
 M4 首次生产部署后，`data_gateway` 响应中的服务端 `request_id` 正常，但 CloudBase 函数日志页只显示
 平台 `Report` 行，未显示 `data_gateway_request_completed` 审计行。将 `console.info` 固定为
-`console.log` 后问题仍然存在。SCF 官方文档同时支持 `process.stdout.write()`，因此改用该直写标准输出
-通道，而不是依赖 CloudBase 网关运行时的 `console` 分级映射。
+`console.log` 和 `process.stdout.write()` 后问题仍然存在。SCF 官方文档还列出 SCF Node 运行时的
+`console._stdout.write()`；因此改为优先使用该日志采集流，并保留 `process.stdout` 兼容回退。
 
 ### 7.2 已完成的最小代码修复
 
-将审计写入固定为 `process.stdout.write(JSON.stringify(record) + '\n')`，不改变请求处理、认证、数据
-读写、响应字段或日志白名单。生产已部署该修复，函数配置保持 Node.js 18.15、256 MB、15 秒、
-`index.main` 不变；无 token 的 `whoami` 调用返回预期 `401` 和新的服务端 `request_id`。
+将审计写入固定为 SCF `console._stdout.write()`（无该流时回退 `process.stdout.write()`），不改变请求处理、
+认证、数据读写、响应字段或日志白名单。生产已部署前一轮标准输出修复，函数配置保持 Node.js 18.15、
+256 MB、15 秒、`index.main` 不变；无 token 的 `whoami` 调用返回预期 `401` 和新的服务端 `request_id`。
 
 ### 7.3 剩余的 CLS 投递前置条件
 
-生产控制台的内置日志页在修复后的实际调用中仍只显示平台 `Report` 行，未显示用户标准输出。日志设置中
-“投递到 CLS”提示：需要选择 CLS 日志主题、勾选同意，并明确其独立计费；投递仅覆盖启用后的新日志，且
-回迁到云开发日志后无法管理 CLS 投递时间段的日志。
+生产控制台的内置日志页在修复后的实际调用中仍只显示平台 `Report` 行，未显示用户标准输出。已按负责人
+授权开通 CLS，并创建主题 `familygarden-data-gateway-audit`（上海、标准存储、30 天、全文与键值索引），
+绑定至 CloudBase 日志投递；投递仅覆盖启用后的新日志，且回迁到云开发日志后无法管理 CLS 投递时间段的
+日志。
 
 因此，完整验收需要负责人先确认：允许为 `familygarden-d7gy18huh87fd41d2` 绑定指定 CLS 日志主题并接受
 可能的日志费用。启用后，以无 token 的 `whoami` 调用验证：响应返回新的 `gw_` 请求 ID，且 CLS 中可按该
