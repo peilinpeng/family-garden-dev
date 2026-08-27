@@ -153,9 +153,18 @@ function requestAuditRecord({ requestId, action, startedAt, result }) {
   return record;
 }
 
-function writeRequestAudit(record, sink = console) {
-  const write = typeof sink.info === 'function' ? sink.info : sink.log;
-  write.call(sink, JSON.stringify(record));
+function auditOutputSink(runtimeConsole = console, fallback = process.stdout) {
+  // 腾讯 SCF 的 Node 运行时会把 console._stdout 连接到日志采集器；本地 Node 与
+  // 不提供该内部流的兼容运行时则回退到标准输出。
+  if (runtimeConsole && runtimeConsole._stdout && typeof runtimeConsole._stdout.write === 'function') {
+    return runtimeConsole._stdout;
+  }
+  return fallback;
+}
+
+function writeRequestAudit(record, sink = auditOutputSink()) {
+  // 附加换行确保一条审计记录对应一条可检索日志。
+  sink.write(JSON.stringify(record) + '\n');
 }
 
 function bearerToken(event) {
@@ -1128,5 +1137,6 @@ exports.main = async (event) => {
 exports._observability = {
   requestIdFromEvent,
   requestAuditRecord,
+  auditOutputSink,
   writeRequestAudit,
 };

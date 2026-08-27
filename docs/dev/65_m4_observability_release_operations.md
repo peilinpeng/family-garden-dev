@@ -1,10 +1,10 @@
 # 65｜M4 生产可观测性与发布运维闭环
 
-> 日期：2026-08-25
+> 日期：2026-08-25；2026-08-27 完成生产日志输出、CLS 投递与按请求 ID 检索验收
 >
-> 分支：`feature/gate8-observability`
+> 初始分支：`feature/gate8-observability`；修复分支：`feature/m4-log-delivery`
 >
-> 状态：已完成本地实现与公开端点只读验收；尚未部署本轮后端日志代码
+> 状态：M4 已上线；Data Gateway 的匿名结构化日志已完成 CLS 检索验收
 
 ## 1. 目标与边界
 
@@ -40,6 +40,11 @@ CloudBase 集合权限。
 失败时仅额外记录稳定的 `error_class`：`invalid_request`、`unauthorized`、`forbidden`、
 `not_found`、`conflict` 或 `internal_error`。`action` 只接受服务端白名单；未知输入一律记录
 为 `unknown`。请求 ID 不接受客户端 Header，防止把 token 或私人文本伪装为可记录字段。
+
+审计记录优先通过腾讯 SCF Node 运行时的 `console._stdout.write(JSON.stringify(record) + '\n')` 写入日志
+采集流；普通 Node 或兼容运行时不提供该流时，回退 `process.stdout.write()`。换行保证一条审计记录对应一条
+可检索日志。CloudBase 内置日志视图只展示平台 `Report` 行；生产环境已按第 7 节绑定专用 CLS 主题，
+用于按 `request_id` 检索自定义标准输出。
 
 禁止写入：Authorization、member token、家庭/成员 ID、昵称、图片原文或 URL、上传 Base64、
 业务记录正文、数据库/SDK 异常原文及任何密钥。
@@ -135,10 +140,39 @@ https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
 - data_gateway 可观测性与脱敏测试；
 - Presence Relay 可观测性与本地协议回归；
 - 公开 Web/PCK/Presence 健康检查和入口哈希核验；
-- 运维发布、回滚、备份边界文档化。
+- 运维发布、回滚、备份边界文档化；
+- `data_gateway` 与 Presence Relay 已部署到生产；Presence Relay `007` 已承接 100% 流量；
+- 生产控制台已确认 Presence 的无效令牌 smoke 只记录匿名字段。
+- `data_gateway` 已完成 CLS 结构化日志的真实无写入 smoke 与按请求 ID 检索。
 
 待后续独立验收：
 
-- 将本轮后端日志代码部署到生产，并在 CloudBase 控制台按 `request_id` 实际检索一次；
 - 双设备、双账号的真实 UI 联机验收；
 - `dev / test / prod` 分环境与数据备份恢复演练。
+
+## 7. 2026-08-27 Data Gateway 日志可检索性修复
+
+### 7.1 触发原因
+
+M4 首次生产部署后，`data_gateway` 响应中的服务端 `request_id` 正常，但 CloudBase 函数日志页只显示
+平台 `Report` 行，未显示 `data_gateway_request_completed` 审计行。将 `console.info` 固定为
+`console.log` 和 `process.stdout.write()` 后问题仍然存在。SCF 官方文档还列出 SCF Node 运行时的
+`console._stdout.write()`；因此改为优先使用该日志采集流，并保留 `process.stdout` 兼容回退。
+
+### 7.2 已完成的最小代码修复
+
+将审计写入固定为 SCF `console._stdout.write()`（无该流时回退 `process.stdout.write()`），不改变请求处理、
+认证、数据读写、响应字段或日志白名单。生产最终版本于 2026-08-27 15:43:03 部署，函数配置保持
+Node.js 18.15、256 MB、15 秒、`index.main` 不变；无 token 的 `whoami` 调用返回预期 `401` 和新的
+服务端 `request_id`。
+
+### 7.3 已完成的 CLS 投递与真实检索
+
+经负责人授权，已开通 CLS 并创建主题 `familygarden-data-gateway-audit`（上海、标准存储、30 天保留、
+全文与键值索引），归属日志集 `familygarden-observability`；该主题已于 2026-08-27 15:35:38 绑定到
+CloudBase 日志投递。投递仅覆盖启用后的新日志，且 CLS 可能产生独立费用。
+
+最终无 token `whoami` smoke 于 2026-08-27 15:44:02 通过。CLS 中查询到唯一的
+`data_gateway_request_completed` JSON 行，其服务端 `request_id` 与 HTTP 响应一致，字段仅为
+`event`、`request_id`、`action: whoami`、`ok: false`、`code: 401`、`duration_ms` 与
+`error_class: unauthorized`；确认未包含 token、家庭/成员 ID、图片或业务正文。

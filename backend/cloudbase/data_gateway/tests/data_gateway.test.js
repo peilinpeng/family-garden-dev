@@ -947,7 +947,7 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
 });
 
 test('data_gateway 可观测性记录使用白名单字段并返回可关联请求 ID', () => {
-  const { requestIdFromEvent, requestAuditRecord, writeRequestAudit } = gateway._observability;
+  const { requestIdFromEvent, requestAuditRecord, auditOutputSink, writeRequestAudit } = gateway._observability;
   assert.match(requestIdFromEvent({ headers: { 'X-Request-ID': 'token_a_should_not_be_used' } }), /^gw_[a-f0-9]{24}$/);
 
   const record = requestAuditRecord({
@@ -959,9 +959,16 @@ test('data_gateway 可观测性记录使用白名单字段并返回可关联请�
   assert.deepEqual(Object.keys(record).sort(), ['action', 'code', 'duration_ms', 'error_class', 'event', 'ok', 'request_id']);
   assert.equal(record.action, 'unknown');
   assert.equal(record.error_class, 'unauthorized');
+  const scfStream = { write: () => {} };
+  const fallbackStream = { write: () => {} };
+  assert.equal(auditOutputSink({ _stdout: scfStream }, fallbackStream), scfStream);
+  assert.equal(auditOutputSink({}, fallbackStream), fallbackStream);
   const calls = [];
-  writeRequestAudit(record, { info: (line) => calls.push(line) });
+  writeRequestAudit(record, {
+    write: (line) => calls.push(line),
+  });
   assert.equal(calls.length, 1);
+  assert.equal(calls[0].endsWith('\n'), true);
   assert.equal(calls[0].includes('token_a'), false);
   assert.equal(calls[0].includes('Bearer'), false);
 });
