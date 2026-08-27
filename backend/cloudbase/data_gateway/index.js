@@ -153,10 +153,10 @@ function requestAuditRecord({ requestId, action, startedAt, result }) {
   return record;
 }
 
-function writeRequestAudit(record, sink = console) {
-  // CloudBase 函数日志仅稳定采集标准输出；不要使用 info/warn/error 等分级接口，
-  // 以便控制台可按 request_id 检索这条结构化审计记录。
-  sink.log(JSON.stringify(record));
+function writeRequestAudit(record, sink = process.stdout) {
+  // SCF 官方支持直接写标准输出；附加换行确保一条审计记录对应一条可检索日志。
+  // 不使用 console 的分级接口，避免 CloudBase 网关运行时丢失自定义日志行。
+  sink.write(JSON.stringify(record) + '\n');
 }
 
 function bearerToken(event) {

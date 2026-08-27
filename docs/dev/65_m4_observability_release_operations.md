@@ -41,9 +41,9 @@ CloudBase 集合权限。
 `not_found`、`conflict` 或 `internal_error`。`action` 只接受服务端白名单；未知输入一律记录
 为 `unknown`。请求 ID 不接受客户端 Header，防止把 token 或私人文本伪装为可记录字段。
 
-审计记录必须通过 `console.log` 写入标准输出。CloudBase 的函数日志检索稳定采集该通道；不要改用
-`console.info`、`console.warn` 或 `console.error`，否则结构化行可能无法在控制台按 `request_id`
-检索。
+审计记录必须通过 `process.stdout.write(JSON.stringify(record) + '\n')` 直接写入标准输出。SCF 官方将
+该方式列为函数日志采集的支持输出通道；不要改用 `console` 的分级接口，避免 CloudBase 网关运行时丢失
+结构化行。换行保证一条审计记录对应一条可检索日志。
 
 禁止写入：Authorization、member token、家庭/成员 ID、昵称、图片原文或 URL、上传 Base64、
 业务记录正文、数据库/SDK 异常原文及任何密钥。
@@ -154,12 +154,13 @@ https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
 ### 7.1 触发原因
 
 M4 首次生产部署后，`data_gateway` 响应中的服务端 `request_id` 正常，但 CloudBase 函数日志页只显示
-平台 `Report` 行，未显示 `data_gateway_request_completed` 审计行。Presence Relay 的 `console.log`
-审计行可正常显示，说明问题限于 Data Gateway 使用的日志分级通道。
+平台 `Report` 行，未显示 `data_gateway_request_completed` 审计行。将 `console.info` 固定为
+`console.log` 后问题仍然存在。SCF 官方文档同时支持 `process.stdout.write()`，因此改用该直写标准输出
+通道，而不是依赖 CloudBase 网关运行时的 `console` 分级映射。
 
 ### 7.2 最小修复与验收标准
 
-将审计写入固定为 `console.log(JSON.stringify(record))`，不改变请求处理、认证、数据读写、响应字段或
-日志白名单。部署后以无 token 的 `whoami` 调用验证：响应返回新的 `gw_` 请求 ID，且控制台在三天窗口
-内可按该 ID 找到唯一的 `data_gateway_request_completed` JSON 行；该行不得包含 token、家庭/成员 ID、
-图片或业务正文。
+将审计写入固定为 `process.stdout.write(JSON.stringify(record) + '\n')`，不改变请求处理、认证、数据
+读写、响应字段或日志白名单。部署后以无 token 的 `whoami` 调用验证：响应返回新的 `gw_` 请求 ID，且
+控制台在三天窗口内可按该 ID 找到唯一的 `data_gateway_request_completed` JSON 行；该行不得包含 token、
+家庭/成员 ID、图片或业务正文。
