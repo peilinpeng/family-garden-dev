@@ -198,13 +198,15 @@ FG_M1_PHOTO_REAL_SMOKE=1 npm run smoke:m1:photo:real
 执行前需确认 `data_gateway` 的 `AvailableStatus` 为 `Available`；若云端返回
 `InsufficientBalance`，请求会在进入函数代码前失败，应先恢复云函数计费状态再重跑。
 
-依赖门禁使用固定 lockfile，生产审计要求 **critical=0**。CloudBase SDK 3.x 自身仍固定依赖
-带 prototype-pollution 公告的 `@cloudbase/database` 1.x；当前通过入口结构拒绝降低可利用面，
-待腾讯 SDK 4.x 的云函数初始化迁移验证完成后再升级，不在未验证时强行跨 major。
-当前线上 `data_gateway` 是创建时确定的 Node.js 18.15 运行时，腾讯 SCF 不支持既有函数原地
-修改 Runtime。SDK 4.0.3 在该运行时的真实 Storage 上传返回 `AccessDenied`，因此生产锁定
-已通过数据库和私有对象真实烟测的 3.18.3。迁移 SDK 4.x 时应新建 Node.js 20.19 并行函数，
-完成同等烟测后再切换 HTTP 路由，不能直接删除当前可用函数。
+依赖门禁使用固定 lockfile，生产审计要求 **moderate/high/critical 全部为 0**。2026-09-13
+本分支将 `@cloudbase/node-sdk` 锁定到 `4.1.0`，在 Node 20.19.5 下通过 50/50 网关回归，
+`npm audit --omit=dev --audit-level=moderate` 为 0；原 3 high + 2 moderate 已从候选包消失。
+
+但 npm 的稳定 `latest` 仍为 3.18.3，4.1.0 当前只在 `next` 标签。现有生产函数继续保持
+Node.js 18.15 + SDK 3.18.3；候选包必须先部署到新建的 Node.js 20.19 test 函数，完成数据库、
+事务、身份隔离和 Storage 全套真实 smoke 后才能切换生产路由。严禁直接覆盖或删除当前生产
+`data_gateway`。测试环境创建与真实 canary 状态见
+[`docs/dev/66_release_hardening_completion.md`](../dev/66_release_hardening_completion.md)。
 
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。

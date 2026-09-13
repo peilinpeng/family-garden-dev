@@ -90,8 +90,8 @@ const FARM_LIVESTOCK = new Map([
   ['cow_shed', { outputItemId: 'milk', outputQuantity: 1, cooldown: 180 }],
 ]);
 
-// CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
-// 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
+// 即使 SDK 依赖审计已清零，仍在请求进入数据库层前拒绝原型链键、过深或异常庞大的对象，
+// 把输入边界作为独立纵深防御，避免未来传递依赖回退时重新暴露污染或遍历型 DoS。
 function hasUnsafeObjectShape(root) {
   const stack = [{ value: root, depth: 0 }];
   let inspected = 0;

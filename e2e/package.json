@@ -1,0 +1,12 @@
+{
+  "name": "family-garden-browser-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Family Garden Godot Web 关键路径浏览器验收",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

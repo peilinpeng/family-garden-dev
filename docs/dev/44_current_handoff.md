@@ -2,19 +2,19 @@
 
 > 更新日期：2026-09-13
 >
-> 当前工作分支：`feature/dependency-handoff-refresh`
+> 当前工作分支：`feature/release-hardening-complete`
 >
-> 分支基线：`origin/dev@cad0412`
+> 分支基线：PR #37 head `e12bb21`；该 PR 已 squash 合并为 `dev@a88ce3bb`
 >
-> 最新集成分支：`origin/dev@cad0412`
+> 最新集成分支：`dev@a88ce3bb`
 >
-> 状态：本地候选版本健康，CloudBase 公开入口已恢复；AI 依赖修复尚未提交和部署
+> 状态：发布加固候选与生产 Web 已验收；AI `fast-uri@3.1.7` 已部署；云账号余额阻塞 TMS 与 dev/test
 
 ## 1. 当前结论
 
 Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步、照片隐私、Web 导出、CI 和
-生产可观测性。本机 2026-09-13 重新执行统一回归，25/25 个执行单元通过；同日执行公开生产
-只读核验，Web 静态资源、PCK Range、构建哈希和 Presence 健康检查全部通过。
+生产可观测性。本机 2026-09-13 重新执行统一回归，25/25 个执行单元通过；同日发布拆分 Web 包，
+公开生产入口/清单哈希、8 个分片、Presence 健康检查和裸 URL 无痕 E2E 2/2 全部通过。
 
 当前阶段不再把 2026-06 的池塘专项交接当作全项目状态。历史池塘实现可继续参考：
 
@@ -28,17 +28,18 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 | 项目 | 当前状态 | 说明 |
 |---|---|---|
-| 当前分支 | `feature/dependency-handoff-refresh` | 从 `origin/dev@cad0412` 创建，承载本次依赖与交接更新 |
-| 最新集成分支 | `origin/dev@cad0412` | 2026-08-27 完成 M4 CLS 日志验收闭环 |
-| 当前分支与 `origin/dev` | 基线一致 | 当前仅包含本次两个待提交修改 |
+| 当前分支 | `feature/release-hardening-complete` | 从 PR #37 head `e12bb21` 创建，承载发布加固 |
+| 最新集成分支 | `dev@a88ce3bb` | PR #37 已在 2026-09-13 squash 合并 |
+| 当前分支与 `origin/dev` | 当前分支承载本轮发布加固 | 基线内容已进入 dev，本轮修改仍需独立 PR |
 | `main` | `bb681b6` | 明显落后，不作为当前功能或发布基线，也不得回退开发 |
 
-### 2.2 当前本地待处理内容
+### 2.2 当前发布加固内容
 
-- `backend/ai/package-lock.json`：`fast-uri` 已从 `3.1.4` 更新到 `3.1.7`，尚未提交、尚未部署；
-- 本文档：更新全项目交接入口；
-- `docs/dev/59_full_project_handoff.md`、`docs/submission/posters/`、`tmp/` 仍为未跟踪内容，
-  提交前必须逐项确认，禁止直接 `git add -A`。
+- AI Gateway `fast-uri=3.1.7` 已部署，线上回下载 lockfile 已核对；
+- Data Gateway 的 Node 20.19 + SDK 4.1.0 canary、浏览器 E2E、PCK 预算和可部署分片构建已落地；
+- 拆分 Web 包已发布生产，裸公开地址 E2E 2/2；认证页与管理页发布前后哈希一致；
+- 两张宣传海报保留并登记用途；旧交接文档和含个人隐私的 `tmp/` 已移到仓库外；
+- 完整状态、阻塞项和恢复步骤见 [`66_release_hardening_completion.md`](66_release_hardening_completion.md)。
 
 任何接手者开始工作前先执行：
 
@@ -103,14 +104,14 @@ AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元
 
 | 文件 | 当前大小 |
 |---|---:|
-| `index.pck` | 128,211,128 bytes |
-| PCK 门禁 | 130,000,000 bytes |
-| 剩余余量 | 1,788,872 bytes（约 1.79 MB） |
+| `index.pck` | 116,735,284 bytes |
+| PCK 内部门禁 | 117,000,000 bytes |
+| 相对平台 130 MB 余量 | 13,264,716 bytes（10.20%） |
 | `index.wasm` | 39,509,339 bytes |
-| 核心四文件合计 | 168,010,160 bytes |
+| 核心四文件合计 | 156,535,296 bytes |
 
-PCK 当前通过门禁，但已使用 98.62% 的内部预算。新增大资源前必须重新导出验证，不能只根据
-仓库文件大小估算。
+三项未调用音频只从 Web 包排除，源码与原生构建仍保留。新增大资源前必须重新导出验证，不能
+只根据仓库文件大小估算。
 
 ### 4.3 CloudBase 恢复核验
 
@@ -119,15 +120,21 @@ CloudBase 曾返回 `SERVICE_FORBIDDEN / Your server is isolated`。负责人恢
 
 ```bash
 ./tools/verify_production.sh \
-  --index-sha256 369634d984e93f43266241fcea907efd64bc7ff3353bb9b093eb5db8024a1590
+  --index-sha256 f534769a19839e37a623750ee901c4a7b0cb90a2ca91c4356420aacf6736102b \
+  --manifest-sha256 3063bc06b73156036cbf033eef6e97d473c88265beb48c2f30f76f3312b71023
 ```
 
 以下只读检查全部通过：
 
-- `index.html`、`index.js`、`index.wasm` 可访问；
-- `index.pck` 支持 HTTP 206 Range；
-- `index.html` SHA-256 与已知构建一致；
+- `index.html`、`index.js`、`release-manifest.json` 可访问；
+- 6 个 PCK 分片与 2 个 WASM 分片的远端字节数与清单完全一致；
+- `index.html` 和发布清单 SHA-256 与已知构建一致；
 - Presence `/healthz` 返回健康。
+
+裸生产 URL 的全新 Chrome context E2E 2/2 通过（真实 Canvas 渲染/音频解锁，以及分片 503 的
+稳定失败 UI）。CloudBase CDN 当前对入口与分片返回 `max-age=120`；源站切换后等待该窗口，再次
+验证裸 URL 通过。发布未使用 `--prune`，`__auth/device/index.html` 与 `cloud-admin/index.html`
+的发布前后 SHA-256 一致。
 
 该脚本不携带成员 token，不调用 Data Gateway 或真实 AI，也不写业务数据。因此它证明公开 Web
 运行时和 Presence 已恢复，但不替代带身份的 Data Gateway、AI 或双设备 UI 验收。
@@ -140,27 +147,21 @@ CloudBase 曾返回 `SERVICE_FORBIDDEN / Your server is isolated`。负责人恢
 没有删除。当前 `HEAD`、`origin/dev` 和所有 `origin/*` 引用均不包含已移除的
 `tilemap_gardening` 路径。
 
-当前这台工作机仍有三个本地 `backup/*` 分支可达 277 个旧素材路径：
-
-- `backup/history-cleanup/quality-optimization`；
-- `backup/history-cleanup/release-ui-final-polish`；
-- `backup/pr32-before-p1-fixes`。
-
-这些引用没有推到远端。禁止执行 `git push --mirror`、交付整个 `.git`、或制作包含全部 refs 的
-bundle；正常基于干净提交的 GitHub PR、clone 或定向 archive 不受影响。
+三个可达旧素材的本地 `backup/*` 引用已写入仓库外完整 bundle，`git bundle verify` 通过后删除。
+bundle SHA-256 与恢复命令见 `66`。禁止执行 `git push --mirror` 或交付整个 `.git`；正常基于
+干净提交的 GitHub PR、clone 或定向 archive 不受影响。
 
 ### 5.2 生产依赖
 
-- AI Gateway：本地 lockfile 已把 `fast-uri` 更新到 `3.1.7`；AI 单测 35/35、生产依赖审计
-  0 漏洞，但该修改尚未提交和部署；
-- Data Gateway：当前审计仍报告 3 high + 2 moderate，主要来自固定的
-  `@cloudbase/node-sdk@3.18.3` 及传递依赖；
+- AI Gateway：`fast-uri=3.1.7` 已部署；AI 单测 35/35、生产依赖审计 0，线上 lockfile 已回读核对；
+- Data Gateway：Node 20.19 + `@cloudbase/node-sdk=4.1.0` canary 在 Node 20.19.5 下 50/50 通过，
+  原 3 high + 2 moderate 清零；尚未部署生产；
 - Presence Relay：当前生产依赖审计 0 漏洞；
-- CI 目前只以 critical 作为阻断等级，因此不会阻断上述 Data Gateway 告警。
+- CI 已提升为 moderate 及以上阻断，并加入浏览器 E2E。
 
-Data Gateway 不能直接原地升级 SDK 4.x：现有生产函数是 Node.js 18.15，历史真实验证中 SDK 4.x
-还出现过 Storage `AccessDenied`。迁移应建立 Node.js 20.19+ 并行函数，完成数据库、私有图片、
-家庭隔离和事务 smoke 后再切换路由。详细边界见 [`../../backend/cloudbase/README.md`](../../backend/cloudbase/README.md)。
+Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.18.3，4.1.0 只在 `next`；
+迁移必须建立 Node.js 20.19 test 并行函数，完成数据库、私有图片、家庭隔离和事务 smoke 后再
+切换路由。当前因 CloudBase 余额不足无法创建 test 环境。
 
 ### 5.3 明确延期的验收
 
@@ -169,10 +170,9 @@ Data Gateway 不能直接原地升级 SDK 4.x：现有生产函数是 Node.js 18
 
 同时尚未完成：
 
-- 浏览器级关键路径 E2E；
-- `dev / test / prod` 独立环境和备份恢复演练；
+- `dev / test / prod` 独立环境和备份恢复演练（账号余额阻塞）；
 - 真实手机横屏、旋转恢复和照片选择最终复核；
-- CloudBase 本次恢复后的带身份 Data Gateway 与真实 AI 最小 smoke。
+- TMS 恢复后的真实 AI 最小 smoke；当前 Data Gateway 身份/隔离已通过，TMS fail-closed 阻断。
 
 ### 5.4 可维护性
 
@@ -184,12 +184,11 @@ Data Gateway 不能直接原地升级 SDK 4.x：现有生产函数是 Node.js 18
 
 ## 6. 推荐工作顺序
 
-1. 提交 AI Gateway `fast-uri@3.1.7` lockfile 修复，并在部署窗口重新构建和部署 AI Gateway；
-2. 为 Data Gateway 的 SDK 4.x / Node 20 并行迁移建立独立方案，不直接修改当前生产函数；
-3. 在不删除运行时资源的前提下继续降低 PCK，目标余量由实际发布预算决定；
-4. 增加浏览器关键路径 E2E；
-5. 最后在独立分支评估 `scene_manager.gd` 拆分；
-6. 正式发布前完成已延期的双设备 UI、真机和带身份云端验收。
+1. 恢复腾讯云余额与 TMS，创建 dev/test，完成 SDK 4.1.0 canary 与 test-only 恢复演练；
+2. 为本轮加固创建独立 PR，等待 CI 后合并；
+3. 生产环境在 2026-09-30 到期前续费或完成迁移；
+4. 最后在独立分支评估 `scene_manager.gd` 拆分；
+5. 正式发布前完成已延期的双设备 UI 与真机验收。
 
 ## 7. 安全交接规则
 

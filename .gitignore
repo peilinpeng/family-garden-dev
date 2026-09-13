@@ -15,6 +15,9 @@ export_web/
 # AI 工具会话目录
 .claude/
 
+# 仓库根目录临时产物；曾出现含手机号、邮箱和住址的个人文件，必须隔离
+/tmp/
+
 # 密钥与凭证：任何 service role key、腾讯云 SecretId/SecretKey、AI API key 一律不得入库
 .env
 .env.*
@@ -28,6 +31,9 @@ secrets/
 node_modules/
 coverage/
 backend/ai/dist/
+backend/cloudbase/data_gateway/dist/
+e2e/test-results/
+e2e/playwright-report/
 
 # Python cache
 __pycache__/

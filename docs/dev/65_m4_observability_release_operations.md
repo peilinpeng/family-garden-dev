@@ -1,6 +1,7 @@
 # 65｜M4 生产可观测性与发布运维闭环
 
-> 日期：2026-08-25；2026-08-27 完成生产日志输出、CLS 投递与按请求 ID 检索验收
+> 日期：2026-08-25；2026-08-27 完成生产日志输出、CLS 投递与按请求 ID 检索验收；
+> 2026-09-13 更新为分片 Web 发布核验
 >
 > 初始分支：`feature/gate8-observability`；修复分支：`feature/m4-log-delivery`
 >
@@ -66,14 +67,15 @@ Presence 仅记录连接健康事件：认证成功/失败、无效消息、连�
 
 ```bash
 ./tools/verify_production.sh \
-  --index-sha256 369634d984e93f43266241fcea907efd64bc7ff3353bb9b093eb5db8024a1590
+  --index-sha256 f534769a19839e37a623750ee901c4a7b0cb90a2ca91c4356420aacf6736102b \
+  --manifest-sha256 3063bc06b73156036cbf033eef6e97d473c88265beb48c2f30f76f3312b71023
 ```
 
 脚本只检查：
 
-- CloudBase 静态托管的 `index.html`、`index.js`、`index.wasm`；
-- `index.pck` 是否支持 HTTP Range（仅取 1 byte，避免下载完整大包）；
-- 可选的 `index.html` SHA-256；
+- CloudBase 静态托管的 `index.html`、`index.js` 与 `release-manifest.json`；
+- 清单 Schema，以及 PCK/WASM 每个分片的远端精确字节数；
+- 可选的 `index.html` 与发布清单 SHA-256；
 - `presence-relay/healthz` 是否返回 `{"ok":true}`。
 
 不请求 `data_gateway`，不带成员 token，不创建测试家庭，也不修改任何线上数据。Cloud Run 可能在
@@ -101,8 +103,8 @@ https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
 
 1. 若接口或事务变化，先发布 `data_gateway`；保留现有运行时、内存、超时、HTTP 路由和环境变量；
 2. 若实时协议变化，发布 `presence-relay` 新 revision，确认健康检查后再切换流量；
-3. 发布 Web 静态包时使用 CloudBase 静态托管的安全备份/校验能力，保留原有 `__auth/` 与
-   `cloud-admin/` 路径；
+3. 发布 Web 静态包时使用 CloudBase 静态托管的安全备份/校验能力，先资源后入口，且不使用
+   `--prune`，保留原有 `__auth/` 与 `cloud-admin/` 路径；
 4. 运行本文件第 3 节的只读核验；涉及真实业务写入时，再由负责人明确授权执行最小 smoke；
 5. 记录实际版本、时间、验收结果与任何冷启动现象。
 

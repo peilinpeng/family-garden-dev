@@ -12,6 +12,13 @@
 主演示内容以 [`../07_demo_script.md`](../07_demo_script.md) 为准。截图产物放在
 `docs/submission/screenshots/`，源视频和包含隐私的原始照片不进入源码仓库。
 
+## 宣传海报
+
+- `posters/family_garden_gamefeel_poster_v3_english_only.png`：英文提交或国际展示首选；
+- `posters/family_garden_gamefeel_poster_v2.png`：中文副标题版，供中文路演使用。
+
+两版均为 1672×941 的最终导出图。海报只作宣传视觉，不替代真实产品截图或功能验收证据。
+
 ## 交付原则
 
 - 所有对外文案统一使用“AI 记忆整理助手”，不使用“AI 自动创造家庭故事”；
