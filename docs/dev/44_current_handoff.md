@@ -1,170 +1,201 @@
-# 44 当前工程交接
+# 44｜当前工程交接入口
 
-日期: 2026-06-30
-分支: `feature/garden-mvp-loop`
-远端: `origin/feature/garden-mvp-loop`
+> 更新日期：2026-09-13
+>
+> 当前工作分支：`feature/dependency-handoff-refresh`
+>
+> 分支基线：`origin/dev@cad0412`
+>
+> 最新集成分支：`origin/dev@cad0412`
+>
+> 状态：本地候选版本健康，CloudBase 公开入口已恢复；AI 依赖修复尚未提交和部署
 
-## 当前状态
+## 1. 当前结论
 
-本分支最近集中处理了池塘场景:
+Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步、照片隐私、Web 导出、CI 和
+生产可观测性。本机 2026-09-13 重新执行统一回归，25/25 个执行单元通过；同日执行公开生产
+只读核验，Web 静态资源、PCK Range、构建哈希和 Presence 健康检查全部通过。
 
-- 使用实际池塘场景 `res://scenes/pond/pond_area.tscn`。
-- 漂流瓶从静态图改为 6 帧 `AnimatedSprite2D` 循环动画。
-- 三个漂流瓶保持交互逻辑，视觉缩小到原来的 1/2。
-- 入口/返回点已调整到右侧区域。
-- 鸭子已加入池塘场景，素材内部白色填充已修正。
-- 鸭子水/陆判断使用现有水域碰撞多边形。
-- 鸭子行为改为长时间行走/游动，间歇休息，降低固定循环感。
-- 池塘周边、右侧房屋/栅栏、池塘上部已补空气墙。
-- 池塘内鱼、鸭、漂流瓶和拆分物件已统一遮挡排序。
+当前阶段不再把 2026-06 的池塘专项交接当作全项目状态。历史池塘实现可继续参考：
 
-## 最近关键提交
+- [`37_fishpond_asset_integration.md`](37_fishpond_asset_integration.md)；
+- [`../handoff_garden_build_inventory_fishing_2026-07-13.md`](../handoff_garden_build_inventory_fishing_2026-07-13.md)；
+- [`../handoff_garden_ui_fishpond_followup_2026-07-15.md`](../handoff_garden_ui_fishpond_followup_2026-07-15.md)。
 
-- `876d9ba fix(game): unify pond depth sorting`
-  - 统一鱼、鸭、漂流瓶、拆分物件的遮挡层。
-  - 鱼/鸭运行时按全局 Y 写入绝对 `z_index`。
-  - 动态生成的漂流瓶改成绝对 Y 排序。
+## 2. 分支与工作树
 
-- `3f5653e fix(game): tune pond duck and collision walls`
-  - 鸭子缩小。
-  - 水中动画只保留一帧普通游动。
-  - 拉长鸭子移动和休息时长。
-  - 补池塘空气墙和右侧房屋遮挡。
+### 2.1 版本基线
 
-- `7d70818 fix(game): refine pond duck movement`
-  - 修复鸭子透明抠图。
-  - 用水域碰撞多边形判断水/陆。
-  - 改成随机移动/休息状态。
+| 项目 | 当前状态 | 说明 |
+|---|---|---|
+| 当前分支 | `feature/dependency-handoff-refresh` | 从 `origin/dev@cad0412` 创建，承载本次依赖与交接更新 |
+| 最新集成分支 | `origin/dev@cad0412` | 2026-08-27 完成 M4 CLS 日志验收闭环 |
+| 当前分支与 `origin/dev` | 基线一致 | 当前仅包含本次两个待提交修改 |
+| `main` | `bb681b6` | 明显落后，不作为当前功能或发布基线，也不得回退开发 |
 
-- `34c9d37 feat(game): add pond scene animated bottles and duck`
-  - 加入池塘漂流瓶动态帧、鸭子和基础池塘动态物件。
+### 2.2 当前本地待处理内容
 
-## 主要文件
+- `backend/ai/package-lock.json`：`fast-uri` 已从 `3.1.4` 更新到 `3.1.7`，尚未提交、尚未部署；
+- 本文档：更新全项目交接入口；
+- `docs/dev/59_full_project_handoff.md`、`docs/submission/posters/`、`tmp/` 仍为未跟踪内容，
+  提交前必须逐项确认，禁止直接 `git add -A`。
 
-### 场景
+任何接手者开始工作前先执行：
 
-- `game/scenes/pond/pond_area.tscn`
-  - 当前使用中的池塘场景。
-  - 包含背景、水波、鱼、鸭、莲花、青蛙、右侧房屋、钓鱼平台、漂流瓶、空气墙和返回区域。
+```bash
+git status --short --branch
+git log -1 --oneline
+git diff --check
+```
 
-- `game/scenes/Fishpond.tscn`
-  - 旧/备用鱼塘场景文件，当前主流程使用 `pond_area.tscn`。
+## 3. 已完成能力
 
-### 池塘脚本
+### 3.1 产品与玩法
 
-- `game/scripts/pond/fish_path_swim_controller.gd`
-  - 控制鱼沿 Path2D 游动。
-  - 根据运动方向切换游动动画。
-  - 每帧用全局 Y 设置鱼的绝对 `z_index`。
+- 三章主线和主线结束后的开放成长目标；
+- 家庭花园、池塘、共享农场、厨房、旅行地图和语义房间；
+- 记忆卡、记忆花、跨记忆藤蔓、漂流瓶问题和家庭补写；
+- 钓鱼、种植、浇水、施肥、收获、畜牧和共享仓事务；
+- 家庭角色创建、外观、昼夜、关怀模式和 Web 音频解锁；
+- 空存档演示种子和 AI 技术故障 fallback。
 
-- `game/scripts/pond/duck_route_controller.gd`
-  - 控制鸭子沿 Path2D 移动。
-  - 使用 `Collision/WaterCollision/WaterCollisionPolygon` 判断是否在水中。
-  - 在水中播放 `water_swim`，陆地播放 `land_walk`，休息时暂停在随机休息帧。
-  - 每帧用全局 Y 设置鸭子的绝对 `z_index`。
+### 3.2 AI、云端与隐私
 
-- `game/scripts/managers/node_factory.gd`
-  - 负责运行时生成记忆节点/漂流瓶。
-  - 动态漂流瓶使用 `assets/pond/bottle/bottle_float_sprite_frames.tres`。
-  - 动态节点已设置 `z_as_relative = false`，用落点 Y 排序。
+- AI Gateway 五项路由、JSON Schema 校验、错误分类、缓存、取消和受控 fallback；
+- 用户确认内容二次审核，图片通过私有上传 ID 与临时签名 URL 使用；
+- Data Gateway 负责身份、家庭隔离、CRUD、照片、共享仓和农场权威事务；
+- Presence Relay 负责同家庭在线、移动和 `world_changed` 通知；
+- 服务端请求 ID、脱敏结构化日志和 CLS 按请求 ID 检索。
 
-### 素材
+### 3.3 M0—M4 质量阶段
 
-- `game/assets/pond/bottle/`
-  - Godot 使用中的漂流瓶 6 帧动画。
-  - `bottle_float_01.png` 到 `bottle_float_06.png`。
-  - `bottle_float_sprite_frames.tres` 动画名为 `float_loop`。
+| 阶段 | 状态 | 验收记录 |
+|---|---|---|
+| M0 本地质量基线 | 已完成 | [`60_m0_quality_baseline.md`](60_m0_quality_baseline.md) |
+| M1 照片隐私 | 已完成并部署验收 | [`61_m1_photo_privacy_acceptance.md`](61_m1_photo_privacy_acceptance.md) |
+| M2 Web 包瘦身 | 已完成 | [`62_m2_web_export_optimization.md`](62_m2_web_export_optimization.md) |
+| M3 CI 质量门禁 | 已完成 | [`63_m3_ci_quality_gate.md`](63_m3_ci_quality_gate.md) |
+| P1 审查阻断修复 | 已完成并部署验收 | [`64_p1_review_blockers_resolution.md`](64_p1_review_blockers_resolution.md) |
+| M4 可观测性与运维 | 已完成并部署验收 | [`65_m4_observability_release_operations.md`](65_m4_observability_release_operations.md) |
 
-- `game/assets/pond/duck/`
-  - Godot 使用中的鸭子素材。
-  - 陆地走路帧: `duck_land_walk_01.png` 等。
-  - 水中帧: `duck_water_01.png` 等。
-  - 当前 `water_swim` 只使用 `duck_water_01.png`。
-  - `duck_sprite_frames.tres` 包含 `land_walk`、`water_swim`、`land_idle`。
+## 4. 2026-09-13 验证状态
 
-- `game/assets/pond/fish/fish_05/`
-  - 当前池塘中使用的鱼动画资源。
+### 4.1 本地全量回归
 
-- `game/assets/fishpond/`
-  - 鱼塘素材整理目录，包含背景、漂流瓶原始图层名版本、鱼、青蛙、水等素材和 `.import`。
-  - 注意: 这个目录更像归档/中转素材，当前主场景多数引用 `assets/pond/...`。
+执行：
 
-- `game/assets/pond/unsorted/`
-  - 尚未完全归类的池塘素材。
+```bash
+./tools/test_all.sh
+```
 
-## 遮挡规则
+结果：25/25 通过，0 失败，总耗时 28 秒。其中包括 21 个 Godot 场景测试，以及 AI Gateway、
+AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元。
 
-池塘场景现在按以下原则处理遮挡:
+### 4.2 Web Release
 
-1. 背景和水波保持固定负层级。
-2. 鱼、鸭、玩家、动态漂流瓶按全局 Y 排序。
-3. 拆分物件按视觉落地点设置绝对 `z_index`，并设置 `z_as_relative = false`。
-4. 右侧房屋使用固定较高层级，保证角色在房屋后方时被遮住。
-5. 场景瓶 `Props/MessageBottle` 保持交互节点不变，仅设置绝对排序。
+执行：
 
-如果之后新增池塘物件，建议:
+```bash
+./tools/check_web_export.sh
+```
 
-- 可移动物体: 脚底/水面锚点 = `global_position.y`。
-- 静态物体: 手动把 `z_index` 设成视觉落地点 Y，并设置 `z_as_relative = false`。
-- 不要再给父节点设置一整个负层级来压低子物件，否则会破坏鱼/鸭/瓶之间的互相遮挡。
+结果：导出、动态资源、生产引用边界和导出包启动检查通过。
 
-## 碰撞规则
+| 文件 | 当前大小 |
+|---|---:|
+| `index.pck` | 128,211,128 bytes |
+| PCK 门禁 | 130,000,000 bytes |
+| 剩余余量 | 1,788,872 bytes（约 1.79 MB） |
+| `index.wasm` | 39,509,339 bytes |
+| 核心四文件合计 | 168,010,160 bytes |
 
-池塘场景当前碰撞包括:
+PCK 当前通过门禁，但已使用 98.62% 的内部预算。新增大资源前必须重新导出验证，不能只根据
+仓库文件大小估算。
 
-- `Collision/WaterCollision/WaterCollisionPolygon`
-  - 给鸭子判断水域/陆地使用。
-  - 不建议随意删除或改名。
+### 4.3 CloudBase 恢复核验
 
-- `Collision/PondAirWalls`
-  - 画面四周边界。
-  - 池塘上部水岸/树线。
-  - 右侧栅栏内部。
-  - 右侧房屋下沿和侧边。
+CloudBase 曾返回 `SERVICE_FORBIDDEN / Your server is isolated`。负责人恢复服务后，于
+2026-09-13 重新执行：
 
-- `Props/FishingPlatform/StaticBody2D`
-  - 钓鱼平台碰撞。
+```bash
+./tools/verify_production.sh \
+  --index-sha256 369634d984e93f43266241fcea907efd64bc7ff3353bb9b093eb5db8024a1590
+```
 
-- `Decorations/PondHutRight/StaticBody2D`
-  - 右侧房屋碰撞。
+以下只读检查全部通过：
 
-## 交互逻辑
+- `index.html`、`index.js`、`index.wasm` 可访问；
+- `index.pck` 支持 HTTP 206 Range；
+- `index.html` SHA-256 与已知构建一致；
+- Presence `/healthz` 返回健康。
 
-- 场景漂流瓶节点: `Props/MessageBottle`
-  - 仍是 `Area2D`。
-  - `metadata/interact_action = "pond_message_bottle"`。
-  - `metadata/prompt = "Check the drifting bottle"`。
-  - 点击逻辑由 `scripts/managers/scene_manager.gd` 注册。
+该脚本不携带成员 token，不调用 Data Gateway 或真实 AI，也不写业务数据。因此它证明公开 Web
+运行时和 Presence 已恢复，但不替代带身份的 Data Gateway、AI 或双设备 UI 验收。
 
-- 运行时漂流瓶:
-  - 由 `NodeFactory.make_memory_node()` 创建。
-  - 仍通过 `ClickArea` 触发原有回调。
+## 5. 当前风险与边界
 
-- 钓鱼点:
-  - `Props/FishingSpot`，保留原 metadata 和碰撞。
+### 5.1 包装与许可卫生
 
-## 当前待验证
+旧的 192 MB `Family_Garden/` 快照和 176 MB 源码 ZIP 已从仓库根目录移到仓库外本地归档，
+没有删除。当前 `HEAD`、`origin/dev` 和所有 `origin/*` 引用均不包含已移除的
+`tilemap_gardening` 路径。
 
-本机命令行未找到 `godot`、`godot4`、`godot_console`，所以这些改动尚未通过命令行启动 Godot 验证。建议下一位接手者打开 Godot 编辑器检查:
+当前这台工作机仍有三个本地 `backup/*` 分支可达 277 个旧素材路径：
 
-1. 池塘场景能正常打开，无资源缺失报错。
-2. 鸭子在水里只显示普通游动帧，陆地走路/休息节奏自然。
-3. 玩家无法穿过池塘上部、右侧房屋/栅栏和四周边界。
-4. 玩家、鱼、鸭、漂流瓶、莲花、钓鱼平台、房屋之间遮挡合理。
-5. 三个漂流瓶都能点击并触发原交互。
-6. 从主花园进入池塘、从池塘返回花园的传送逻辑正常。
+- `backup/history-cleanup/quality-optimization`；
+- `backup/history-cleanup/release-ui-final-polish`；
+- `backup/pr32-before-p1-fixes`。
 
-## 已知注意事项
+这些引用没有推到远端。禁止执行 `git push --mirror`、交付整个 `.git`、或制作包含全部 refs 的
+bundle；正常基于干净提交的 GitHub PR、clone 或定向 archive 不受影响。
 
-- `project.godot` 曾被旧版本编辑器从 `"4.7"` 误写为 `"4.6"`；项目已统一锁定 **Godot 4.7.x**，不得降级保存工程文件。
-- `assets/characters/girl.png` 当前有较大本地改动，也按“现有内容”一并提交。
-- `game/assets/fishpond/` 和 `game/assets/pond/` 中存在重复/中转素材，后续可以再做一次资产目录清理。
-- `game/scripts/managers/node_factory.gd` 中历史中文注释存在乱码，但本次未重写该文件结构，仅补排序属性。
+### 5.2 生产依赖
 
-## 建议下一步
+- AI Gateway：本地 lockfile 已把 `fast-uri` 更新到 `3.1.7`；AI 单测 35/35、生产依赖审计
+  0 漏洞，但该修改尚未提交和部署；
+- Data Gateway：当前审计仍报告 3 high + 2 moderate，主要来自固定的
+  `@cloudbase/node-sdk@3.18.3` 及传递依赖；
+- Presence Relay：当前生产依赖审计 0 漏洞；
+- CI 目前只以 critical 作为阻断等级，因此不会阻断上述 Data Gateway 告警。
 
-1. 用 Godot 编辑器打开项目，先跑 `res://scenes/Main.tscn`。
-2. 进入池塘场景，检查碰撞和遮挡。
-3. 如果遮挡有个别物件不顺眼，优先调整该物件的视觉落地点 `z_index`，不要改父节点整体层级。
-4. 使用 Godot 4.7.x 打开并保存工程，确认 `project.godot` 的 `config/features` 保持 `"4.7"`。
-5. 清理或归档 `assets/fishpond/` 中与 `assets/pond/` 重复的素材。
+Data Gateway 不能直接原地升级 SDK 4.x：现有生产函数是 Node.js 18.15，历史真实验证中 SDK 4.x
+还出现过 Storage `AccessDenied`。迁移应建立 Node.js 20.19+ 并行函数，完成数据库、私有图片、
+家庭隔离和事务 smoke 后再切换路由。详细边界见 [`../../backend/cloudbase/README.md`](../../backend/cloudbase/README.md)。
+
+### 5.3 明确延期的验收
+
+负责人已决定把“双设备、双账号真实 UI 联机验收”推迟，先处理其他工程风险。当前不得把它
+标记为已完成；正式公开交付前仍需恢复为必验项。
+
+同时尚未完成：
+
+- 浏览器级关键路径 E2E；
+- `dev / test / prod` 独立环境和备份恢复演练；
+- 真实手机横屏、旋转恢复和照片选择最终复核；
+- CloudBase 本次恢复后的带身份 Data Gateway 与真实 AI 最小 smoke。
+
+### 5.4 可维护性
+
+- `game/scripts/managers/scene_manager.gd` 当前为 7,225 行，占 `game/scripts` GDScript 约 26.44%；
+- `project.godot` 注册 24 个 autoload；
+- 当前 25/25 回归通过，尚无证据表明初始化顺序正在造成线上故障；
+- 拆分 `scene_manager.gd` 属于长期维护任务，必须使用独立分支和 PR，不与依赖、发布或玩法修改
+  混在一起，也不得以“重构”为由删除现有功能。
+
+## 6. 推荐工作顺序
+
+1. 提交 AI Gateway `fast-uri@3.1.7` lockfile 修复，并在部署窗口重新构建和部署 AI Gateway；
+2. 为 Data Gateway 的 SDK 4.x / Node 20 并行迁移建立独立方案，不直接修改当前生产函数；
+3. 在不删除运行时资源的前提下继续降低 PCK，目标余量由实际发布预算决定；
+4. 增加浏览器关键路径 E2E；
+5. 最后在独立分支评估 `scene_manager.gd` 拆分；
+6. 正式发布前完成已延期的双设备 UI、真机和带身份云端验收。
+
+## 7. 安全交接规则
+
+- TokenHub API Key、腾讯云 SecretId/SecretKey、Supabase service role key、`member_token` 不得写入
+  仓库、文档、截图、Issue 或日志；
+- 业务数据写入继续经过 Data Gateway，Presence 只承载瞬时状态和刷新通知；
+- 普通回归不得调用真实云端或收费接口；真实 smoke 必须使用隔离家庭并由负责人明确授权；
+- 开始修改前阅读 [`32_claude_collaboration_rules.md`](32_claude_collaboration_rules.md) 和
+  [`37_role_boundaries_and_grey_zones.md`](37_role_boundaries_and_grey_zones.md)。
