@@ -97,7 +97,8 @@ async function run() {
       `AI smoke 失败: ${response.error?.code || 'unknown'}（request_id=${response.meta?.request_id || 'n/a'}）`,
     );
   }
-  assert.equal(response.meta?.source, 'model', '真实 AI smoke 不接受 fallback 冒充模型成功');
+  assert.equal(response.meta?.source, 'ai', '真实 AI smoke 不接受 fallback 冒充模型成功');
+  assert.equal(response.meta?.model, 'hy3', '真实 AI smoke 必须使用生产 hy3 模型');
   process.stdout.write(`PASS AI Gateway 真实模型 + 内容安全 + Schema（request_id=${response.meta?.request_id || 'n/a'}）\n`);
   process.stdout.write('NOTE smoke 使用随机隔离家庭；Data Gateway 当前没有 members 管理删除 API，会留下一条无业务数据的成员记录。\n');
 }

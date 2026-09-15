@@ -198,8 +198,8 @@ FG_M1_PHOTO_REAL_SMOKE=1 npm run smoke:m1:photo:real
 执行前需确认 `data_gateway` 的 `AvailableStatus` 为 `Available`；若云端返回
 `InsufficientBalance`，请求会在进入函数代码前失败，应先恢复云函数计费状态再重跑。
 
-依赖门禁使用固定 lockfile，生产审计要求 **moderate/high/critical 全部为 0**。2026-09-13
-本分支将 `@cloudbase/node-sdk` 锁定到 `4.1.0`，在 Node 20.19.5 下通过 50/50 网关回归，
+依赖门禁使用固定 lockfile，生产审计要求 **moderate/high/critical 全部为 0**。2026-09-15
+本分支将 `@cloudbase/node-sdk` 锁定到 `4.1.0`，在 Node 20.19.5 下通过 51/51 网关回归，
 `npm audit --omit=dev --audit-level=moderate` 为 0；原 3 high + 2 moderate 已从候选包消失。
 
 但 npm 的稳定 `latest` 仍为 3.18.3，4.1.0 当前只在 `next` 标签。现有生产函数继续保持
@@ -208,11 +208,12 @@ Node.js 18.15 + SDK 3.18.3；候选包必须先部署到新建的 Node.js 20.19 
 `data_gateway`。测试环境创建与真实 canary 状态见
 [`docs/dev/66_release_hardening_completion.md`](../dev/66_release_hardening_completion.md)。
 
-2026-09-15 已把候选函数部署到 `family-garden-test` 并确认 Node.js 20.19 配置可用，但该环境
-创建时选择了 PostgreSQL 模式，环境详情没有文档型数据库实例，无法创建 `members` 集合。
-直接调用候选函数执行合成 `join_family` 时也按预期 fail-closed 返回 500，且没有写入成员数据。
-这不属于 SDK 4.1.0 回归失败；必须另建传统 NoSQL 模式环境后再执行本节四组真实 smoke，禁止
-为了通过验收而改用生产数据库。
+2026-09-15 已在独立传统 NoSQL 环境 `family-nosql-test-d1daoldc62a58f`
+（alias `family-nosql-test`）部署候选函数，并完成 Gate 5 数据/隔离、Gate 6 农场事务、
+Gate 6 成员列表和 M1 私有图片 Storage 四组真实 smoke。SDK 4.x 事务中读取不存在文档
+会抛 `DOCUMENT_NOT_FOUND`，网关现已将它安全视为首次写入的空状态，并有专项回归覆盖。
+旧 PostgreSQL 环境已更名为 `family-garden-dev`，仅用于不依赖 NoSQL 的开发活动；
+不得用它替代生产兼容性 canary。生产路由仍未切换，需完成观察与人工批准。
 
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。

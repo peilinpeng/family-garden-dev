@@ -8,7 +8,7 @@
 >
 > 最新集成分支：`dev@a88ce3bb`
 >
-> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 函数已落 test，但 test 为 PG 模式；TMS 仍阻塞
+> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 四组真实 smoke 全绿；生产 `hy3` + TMS 真实 smoke 全绿
 
 ## 1. 当前结论
 
@@ -37,8 +37,12 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 - AI Gateway `fast-uri=3.1.7` 已部署，线上回下载 lockfile 已核对；
 - Data Gateway 的 Node 20.19 + SDK 4.1.0 canary、浏览器 E2E、PCK 预算和可部署分片构建已落地；
-- canary 函数已部署到隔离 test 并为 Available，但该环境是 PostgreSQL 模式、没有文档型数据库，
-  不能执行现有网关的真实数据 smoke；
+- canary 函数已部署到独立 `family-nosql-test`，Node 20.19 + SDK 4.1.0 的 Gate 5、
+  Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke 全部通过；
+- 生产 AI 已从停服的 `hy3-preview` 迁移到 `hy3`，TokenHub Key 只授权文字/视觉两个目标模型，
+  TMS 使用最小权限 CAM 子用户，四项生产真实 smoke 全绿；
+- dev/test/prod 现为三个独立 CloudBase 环境；逻辑备份/异名恢复演练已通过，
+  个人版不支持的时间点回档仍保留为明确边界；
 - 拆分 Web 包已发布生产，裸公开地址 E2E 2/2；认证页与管理页发布前后哈希一致；
 - 两张宣传海报保留并登记用途；旧交接文档和含个人隐私的 `tmp/` 已移到仓库外；
 - 完整状态、阻塞项和恢复步骤见 [`66_release_hardening_completion.md`](66_release_hardening_completion.md)。
@@ -81,17 +85,17 @@ git diff --check
 | P1 审查阻断修复 | 已完成并部署验收 | [`64_p1_review_blockers_resolution.md`](64_p1_review_blockers_resolution.md) |
 | M4 可观测性与运维 | 已完成并部署验收 | [`65_m4_observability_release_operations.md`](65_m4_observability_release_operations.md) |
 
-## 4. 2026-09-13 验证状态
+## 4. 最新验证状态
 
 ### 4.1 本地全量回归
 
-执行：
+2026-09-15 再次执行：
 
 ```bash
 ./tools/test_all.sh
 ```
 
-结果：25/25 通过，0 失败，总耗时 28 秒。其中包括 21 个 Godot 场景测试，以及 AI Gateway、
+结果：25/25 通过，0 失败，总耗时 36 秒。其中包括 21 个 Godot 场景测试，以及 AI Gateway、
 AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元。
 
 ### 4.2 Web Release
@@ -155,18 +159,17 @@ bundle SHA-256 与恢复命令见 `66`。禁止执行 `git push --mirror` 或交
 
 ### 5.2 生产依赖
 
-- AI Gateway：`fast-uri=3.1.7` 已部署；AI 单测 35/35、生产依赖审计 0，线上 lockfile 已回读核对；
-- Data Gateway：Node 20.19 + `@cloudbase/node-sdk=4.1.0` canary 在 Node 20.19.5 下 50/50 通过，
-  原 3 high + 2 moderate 清零；尚未部署生产；
+- AI Gateway：`fast-uri=3.1.7` 已部署；AI 单测 35/35、生产依赖审计 0；`hy3` + TMS
+  生产真实 smoke 已通过，函数超时为 60 秒；
+- Data Gateway：Node 20.19 + `@cloudbase/node-sdk=4.1.0` canary 在 Node 20.19.5 下 51/51 通过，
+  原 3 high + 2 moderate 清零；四组 test 真实 smoke 已通过，尚未切换生产路由；
 - Presence Relay：当前生产依赖审计 0 漏洞；
 - CI 已提升为 moderate 及以上阻断，并加入浏览器 E2E。
 
 Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.18.3，4.1.0 只在 `next`；
-迁移必须建立 Node.js 20.19 test 并行函数，完成数据库、私有图片、家庭隔离和事务 smoke 后再
-切换路由。2026-09-15 已在 `family-garden-test` 部署符合配置的函数，但该环境是 PostgreSQL
-模式且 `Databases=[]`；创建文档集合失败。直接调用函数执行合成 `join_family` 也 fail-closed
-返回 500，明确报告缺少文档数据库，且未写入成员数据。重新创建传统模式环境仍被计费 API 以
-余额不足拒绝。
+因此生产切换仍必须独立批准。2026-09-15 已在 `family-nosql-test-d1daoldc62a58f`
+完成数据库、私有图片、家庭隔离和事务全套 smoke，并修复 SDK 4.x 首次事务读取不存在文档时
+抛错的行为差异。旧 PG 环境已更名 `family-garden-dev`，仅作隔离开发环境。
 
 ### 5.3 明确延期的验收
 
@@ -175,9 +178,10 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 同时尚未完成：
 
-- `dev / test / prod` 独立环境和备份恢复演练（账号余额阻塞）；
 - 真实手机横屏、旋转恢复和照片选择最终复核；
-- TMS 恢复后的真实 AI 最小 smoke；当前 Data Gateway 身份/隔离已通过，TMS fail-closed 阻断。
+- 个人版套餐不支持的时间点回档；当前已完成逻辑备份/异名恢复，实测丢失 0 条、
+  RTO 41 秒，但因未定时导出，持续 RPO 尚未建立；
+- Node 20 + SDK 4.1 canary 生产路由切换，需要观察结果与单独人工批准。
 
 ### 5.4 可维护性
 
@@ -189,11 +193,12 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 ## 6. 推荐工作顺序
 
-1. 在当前 CLI 账号补足可购买个人版的现金余额，创建传统 NoSQL dev/test，完成 canary 与恢复演练；
-2. 审查并合并已通过 CI 的本轮发布加固 PR #38；
+1. 审查 PR #38 的最终差异和 CI，通过后由维护者决定是否合并；
+2. 完成 canary 观察后，单独批准 Node 20 + SDK 4.1 生产路由切换；
 3. 生产环境在 2026-09-30 到期前续费或完成迁移；
-4. 最后在独立分支评估 `scene_manager.gd` 拆分；
-5. 正式发布前完成已延期的双设备 UI 与真机验收。
+4. 正式发布前完成已延期的双设备 UI 与真机验收；
+5. 如业务需要时间点回档，升级 test 套餐后再做 PITR 演练；长期再用独立分支评估
+   `scene_manager.gd` 拆分。
 
 ## 7. 安全交接规则
 

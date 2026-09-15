@@ -14,13 +14,13 @@
 |---:|---|---|---|
 | 1 | 合并 PR #37 | 已完成 | 两条 CI 通过；按精确 head `e12bb21` squash 合并到 `dev`，合并提交 `a88ce3bb` |
 | 2 | AI Gateway `fast-uri@3.1.7` | 已部署 | 35/35 单测、audit 0；线上回下载 lockfile 确认 `fast-uri=3.1.7`、`ajv=8.20.0` |
-| 3 | 带身份 Data Gateway + 真实 AI smoke | 部分通过 | 随机隔离家庭的 `join_family`、Bearer `whoami`、家庭隔离通过；2026-09-15 复测 TMS 仍返回 `AI_UPSTREAM_ERROR`，模型调用未发生 |
-| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | 函数已落云，数据验收阻塞 | test 函数配置与 SDK 候选已验证；但该环境为 PostgreSQL 模式、没有文档型数据库实例，无法执行真实数据 smoke |
+| 3 | 带身份 Data Gateway + 真实 AI smoke | 已完成 | `join_family`、Bearer `whoami`、家庭隔离、腾讯 TMS、TokenHub `hy3` 与 Schema 全部真实通过；`meta.source=ai` |
+| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | canary 验收完成 | 独立 NoSQL test 完成 Gate 5、Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke；生产切换仍需观察与人工批准 |
 | 5 | PCK 预算 | 已完成 | 128,211,128 → 116,735,284 bytes；平台 130 MB 门槛下余量 13,264,716 bytes（10.20%） |
 | 6 | 仓库卫生 | 已完成 | 三个问题 refs 已做完整 bundle 并校验后删除；旧交接与含隐私 `tmp/` 已移到仓库外；海报用途已登记 |
 | 7 | 浏览器关键路径 E2E | 已完成 | Playwright 2/2：干净上下文真实渲染与音频解锁、缺片可见失败 |
-| 8 | dev/test/prod 独立环境 | 部分完成，模式/计费阻塞 | prod 正常；`family-garden-test` 已隔离但为 PostgreSQL 模式；传统模式 dev 创建仍返回余额不足 |
-| 9 | 数据备份恢复演练 | 被 #8 阻塞 | 已固化 test-only 规程；当前 test 没有文档型数据库实例，禁止在 prod 代跑 |
+| 8 | dev/test/prod 独立环境 | 已完成角色隔离 | `family-garden-dev`（PG/体验版）、`family-nosql-test`（NoSQL/个人版）与 prod 为三个独立环境；dev 不可代替 NoSQL test |
+| 9 | 数据备份恢复演练 | 逻辑恢复已完成，PITR 受套餐限制 | test 单条合成数据导出 1/1、异名恢复后字段一致、实测丢失 0 条、RTO 41 秒；未定时导出，故持续 RPO 未建立 |
 | 10 | 无痕公开 Demo、同步/缓存/权限 | 已完成 | 裸生产 URL 清单/入口哈希与 8 个分片校验通过；全新 Chrome context 2/2；`__auth/`、`cloud-admin/` 发布前后哈希一致 |
 
 ## 2. AI Gateway 发布证据
@@ -43,27 +43,31 @@ npm ls fast-uri
   cloud-functions/pre-fast-uri-3.1.7/ai_gateway/
 ```
 
-CloudBase 部署明确固定原配置：Event 函数、Node.js 18.15、`index.main`、15 秒、256 MB。
+CloudBase 部署明确固定原配置：Event 函数、Node.js 18.15、`index.main`、256 MB。
 部署成功后再次下载线上代码，`package-lock.json` 确认为 3.1.7。无令牌调用返回稳定
-`UNAUTHORIZED`，证明函数可启动且依赖安装完整。
+`UNAUTHORIZED`，证明函数可启动且依赖安装完整。2026-09-15 将平台函数超时从 15 秒提高到
+60 秒，使其高于 `AI_TIMEOUT_MS=20000` 并覆盖身份及两段内容安全开销。
 
-真实 smoke 使用随机家庭，依次验证 Data Gateway 身份、TMS 和 TokenHub。当前结果停在 TMS：
+真实 smoke 使用随机家庭，依次验证 Data Gateway 身份、TMS 和 TokenHub。2026-09-15
+已启用 TMS/IMS，并为专用 CAM 子用户只授予 `TextModeration` 与 `ImageModeration`。
+`hy3-preview` 停服后，生产改用已开通免费额度的 `hy3`，TokenHub Key 限定为
+`hy3` 与 `hy-vision-2.0-instruct`。最终结果：
 
 ```text
 PASS Data Gateway 匿名加入返回隔离身份
 PASS Data Gateway Bearer 身份与家庭隔离
-FAIL 内容安全 smoke 失败: AI_UPSTREAM_ERROR
+PASS AI Gateway 腾讯文本内容安全
+PASS AI Gateway 真实模型 + 内容安全 + Schema
 ```
 
-生产采用 fail-closed，TMS 不可用时不得绕过安全审核或用 fallback 冒充模型成功。账号同时明确
-返回 CloudBase 余额不足，因此先恢复余额与内容安全服务，再运行：
+生产继续采用 fail-closed，审核不可用时不得绕过或用 fallback 冒充模型成功。复跑命令：
 
 ```bash
 cd backend/ai
 FG_AI_REAL_SMOKE=1 npm run smoke:real
 ```
 
-通过标准：四行 `PASS`，最终 `meta.source=model`；脚本会留下一个没有业务数据的 smoke 成员记录，
+通过标准：四行 `PASS`，最终 `meta.source=ai` 且 `meta.model=hy3`；脚本会留下一个没有业务数据的 smoke 成员记录，
 不会打印 member token。
 
 ## 3. Data Gateway Node 20 / SDK 4.1 canary
@@ -77,7 +81,7 @@ FG_AI_REAL_SMOKE=1 npm run smoke:real
 
 新建 test 路由
   → data_gateway / Node 20.19 / SDK 4.1.0（先验收）
-  → 50 项单测
+  → 51 项单测
   → Gate5 数据/隔离 smoke
   → Gate6 农场事务 + 成员 smoke
   → M1 私有图片 Storage smoke
@@ -89,19 +93,18 @@ FG_AI_REAL_SMOKE=1 npm run smoke:real
 
 - `package.json` 明确 `node >=20.19.0`；
 - 依赖锁定 `@cloudbase/node-sdk=4.1.0`；
-- Node 20.19.5 下 50/50 通过；
+- Node 20.19.5 下 51/51 通过；
 - `npm audit --omit=dev --audit-level=moderate` 为 0；
 - `npm run build:deploy` 只生成 `index.js`、`package.json`、`package-lock.json`，不包含 `.git`、
   `node_modules`、测试、旧 ZIP 或环境文件。
 
-2026-09-15 已将候选包部署到隔离环境 `family-garden-test`
-（`familygarden-d7gy1-d7ckd9ce59bad`），并回读确认：Event、Node.js 20.19、`index.main`、
-15 秒、256 MB、云端安装依赖，`AvailableStatus=Available`。但环境详情同时显示
-`PostgreSQL=pgdb-29ikrtbz`、`Databases=[]`；创建 `members` 返回
-`InvalidParameter: Env not found for collection`。随后直接调用该函数执行合成 `join_family`，
-函数同样 fail-closed 返回 500，并明确指出环境只有 `pgdb-29ikrtbz`、没有文档数据库实例；
-没有成员或其他业务数据写入。环境模式创建后不可切换，因此该函数不能作为现有 NoSQL Data
-Gateway 的真实数据 canary，也不得据此切换生产。
+2026-09-15 新建独立传统 NoSQL 环境 `family-nosql-test`
+（`family-nosql-test-d1daoldc62a58f`），创建 17 个 `ADMINONLY` 业务集合，并将候选包部署为
+Event / Node.js 20.19 / `index.main` / 256 MB 函数。首次共享仓事务暴露 SDK 4.x 在文档
+不存在时抛 `DOCUMENT_NOT_FOUND` 的行为差异；代码现只在可选文档读取路径将该错误映射为
+空文档，其他数据库错误继续 fail-closed。修复后本地 51/51，且 Gate 5、Gate 6 农场事务、
+Gate 6 成员列表与 M1 私有图片 Storage 四组真实 smoke 全部通过。合成业务数据和临时
+HTTP 路由均已清理。生产仍保留 Node 18.15 + SDK 3.18.3，等待观察与人工批准。
 
 切换的硬性回滚条件：任一 Storage `AccessDenied`、事务结果不一致、跨家庭可见、图片临时 URL
 异常或错误率高于旧函数。触发时只切回旧 HTTP 路由，不删除 canary，不回退整个 `main`。
@@ -167,11 +170,11 @@ git fetch '/Users/xiongweiluo/Family Garden Local Archive/2026-09-13/backup-hist
 
 | 环境 | CloudBase alias | 数据 | 对外流量 | 当前状态 |
 |---|---|---|---|---|
-| dev | `family-garden-dev` | 只允许合成数据 | 无 | 2026-09-15 重试仍因账户余额不足未创建 |
-| test | `family-garden-test` | 固定验收数据 | 无 | 已创建并部署函数；但属于 PostgreSQL 模式，不兼容当前 NoSQL 网关 |
+| dev | `family-garden-dev` | 只允许合成数据 | 无 | 独立体验环境，PostgreSQL 模式；旧 alias `family-garden-test` 已更名，不作 NoSQL canary |
+| test | `family-nosql-test` | 固定验收数据 | 无 | 独立个人版，传统 NoSQL；Data Gateway 四组真实 smoke 已通过 |
 | prod | `familygarden-d7gy18huh87fd41d2` | 真实数据 | 100% | Normal；2026-09-30 到期 |
 
-充值后创建命令（上海、1 个月、不自动续费）：
+如需再创建同类环境，命令如下（上海、1 个月、不自动续费）：
 
 ```bash
 tcb env create --alias family-garden-dev --package baas_personal \
@@ -180,7 +183,7 @@ tcb env create --alias family-garden-nosql-test --package baas_personal \
   --region ap-shanghai --duration 1 --yes --json
 ```
 
-恢复演练只能在 test：
+时间点回档规程只能在 test：
 
 1. 写入唯一标识的 `restore_drill` 测试文档，记录 UTC 时间与文档 ID；
 2. `tcb db nosql backup time -e <test-env> --json` 取得可恢复时间；
@@ -197,8 +200,21 @@ tcb db nosql backup restore -e <test-env> --time '<UTC time>' \
 7. 记录 RPO（恢复时间点与故障时间差）和 RTO（发起到校验完成）；
 8. 演练记录获批后清理两个测试集合。
 
-任何命令若目标 env 等于生产 ID，立即停止。当前虽有 test 环境，但没有文档型数据库实例，
-因此没有执行步骤 1—8，也没有触碰生产数据。
+任何命令若目标 env 等于生产 ID，立即停止。2026-09-15 在
+`family-nosql-test-d1daoldc62a58f` 写入唯一合成记录后，可恢复时间窗口已覆盖该记录，
+但 `backup collection` 对所有集合返回空列表。原因是当前个人版套餐不支持数据库回档，
+因此不得把 PITR 标记为通过。
+
+为验证现有套餐可执行的灾备链路，同日完成 test-only 逻辑备份/异名恢复：
+
+- `db nosql dump restore_drill` 导出成功 1/1，失败 0，备份 SHA-256 为
+  `128ecf88a19d9554bf38e514bd7d1086677334d180bc859505a73f0eb36afb7f`；
+- 恢复到 `restore_drill_recovered`，原/新集合的 `_id`、标记、写入时间和计数字段完全一致；
+- 本次数据差异为 0 条，单次导出用时 14.4 秒，从发起恢复到校验完成的 RTO 为 41 秒；
+- 当前没有定时逻辑备份，因此这次“丢失 0 条”不构成持续 RPO 承诺；要建立 RPO，需另行确定
+  定时导出频率和仓库外加密保留策略，或升级套餐并完成 PITR 验收；
+- 验收后删除 `restore_drill` 和 `restore_drill_recovered`，`DescribeTable` 均确认 `ResourceNotFound`；
+- 备份文件只在仓库外临时目录中短暂保留，不含真实业务数据，交付前清理。
 
 ## 8. 最终发布门禁
 
@@ -212,7 +228,7 @@ tcb db nosql backup restore -e <test-env> --time '<UTC time>' \
   `__auth/` 与 `cloud-admin/`；
 - 使用新 `index.html` 和 `release-manifest.json` SHA-256 跑 `verify_production.sh`；
 - 以 `E2E_BASE_URL=<production>` 在全新 context 重跑 Playwright；
-- Data/AI smoke 的 TMS 阻塞必须被如实记录；双设备双账号验收继续保持延期状态。
+- Data/AI 四项真实 smoke 必须持续全绿；双设备双账号验收继续保持延期状态。
 
 2026-09-13 已完成该门禁。发布时网络多次出现 TLS 断连、`ECONNRESET` 与 COS DNS 失败，因此先
 逐个上传并校验 8 个分片，再发布非入口资源和清单，最后单独安全切换 `index.html`；未使用
@@ -237,9 +253,8 @@ CloudBase 源站对象更新后，裸 URL 曾在 120 秒窗口内短暂返回旧
 
 ## 9. 尚需外部动作
 
-1. 确认 CLI 登录账号的腾讯云现金余额可购买个人版，创建传统 NoSQL 模式 dev 与新的 NoSQL test；
-   当前 PostgreSQL test 不能转换模式；
-2. 恢复 TMS 服务后重跑真实 AI smoke；
-3. 本轮发布加固 PR #38 已创建且 CI 通过，等待仓库维护者审查合并；
+1. 本轮发布加固 PR #38 继续审查；CI 通过后由仓库维护者决定是否合并；
+2. Node 20 + SDK 4.1 canary 观察完成后，单独批准生产路由切换；
+3. 如需时间点回档，先升级 test 套餐，再按本文异名恢复规程验收；
 4. 双设备双账号真实 UI 联机验收按负责人决定延期，未标记完成；
 5. prod 个人版 2026-09-30 到期，必须在到期前续费或完成迁移。
