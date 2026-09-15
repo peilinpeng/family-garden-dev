@@ -43,12 +43,14 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22.22.2
+          # 与 CloudBase Nodejs20.19 运行时保持一致，避免只在更新版 Node 上通过。
+          node-version: 20.19.5
           cache: npm
           cache-dependency-path: |
             backend/ai/package-lock.json
             backend/cloudbase/data_gateway/package-lock.json
             backend/cloudbase/presence_relay/package-lock.json
+            e2e/package-lock.json
 
       - name: 安装 Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -95,7 +97,7 @@ jobs:
         timeout-minutes: 10
         run: ./tools/test_all.sh --bootstrap
 
-      - name: 审计生产依赖关键漏洞
+      - name: 审计生产依赖中高风险漏洞
         run: |
           set -euo pipefail
           for workspace in \
@@ -104,11 +106,24 @@ jobs:
             backend/cloudbase/presence_relay
           do
             printf 'npm audit: %s\n' "$workspace"
-            npm --prefix "$workspace" audit --omit=dev --audit-level=critical
+            npm --prefix "$workspace" audit --omit=dev --audit-level=moderate
           done
 
       - name: 审计 Web Release
         run: ./tools/check_web_export.sh
+
+      - name: 安装浏览器 E2E 依赖
+        run: |
+          npm --prefix e2e ci
+          npm --prefix e2e exec playwright install --with-deps chromium
+
+      - name: 构建可部署 Web Release
+        run: ./tools/build_web_release.sh "$RUNNER_TEMP/family-garden-web"
+
+      - name: 浏览器关键路径 E2E
+        env:
+          E2E_WEB_DIR: ${{ runner.temp }}/family-garden-web
+        run: npm --prefix e2e test
 
       - name: 上传失败日志
         if: failure()
@@ -118,5 +133,7 @@ jobs:
           path: |
             /tmp/family-garden-tests.*/*.log
             /tmp/family-garden-web-export.*/*.log
+            e2e/test-results/
+            e2e/playwright-report/
           if-no-files-found: ignore
           retention-days: 7

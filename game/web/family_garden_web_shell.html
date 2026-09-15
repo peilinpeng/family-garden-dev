@@ -208,6 +208,34 @@ for (const fileName of ['index.pck', 'index.wasm']) {
 }
 
 const nativeFetch = window.fetch.bind(window);
+
+async function validateSplitFiles() {
+	const checks = [];
+	for (const splitFile of Object.values(splitFiles)) {
+		for (let index = 0; index < splitFile.parts.length; index += 1) {
+			const part = splitFile.parts[index];
+			const expectedBytes = Math.min(
+				EDGEONE_CHUNK_BYTES,
+				splitFile.size - index * EDGEONE_CHUNK_BYTES,
+			);
+			checks.push((async () => {
+				const response = await nativeFetch(new URL(part, document.baseURI), {
+					method: 'HEAD',
+					cache: 'no-store',
+				});
+				if (!response.ok) {
+					throw new Error(`Failed to load ${part}: HTTP ${response.status}`);
+				}
+				const actualBytes = Number(response.headers.get('Content-Length'));
+				if (actualBytes !== expectedBytes) {
+					throw new Error(`Invalid size for ${part}: expected ${expectedBytes}, got ${actualBytes || 'unknown'}`);
+				}
+			})());
+		}
+	}
+	await Promise.all(checks);
+}
+
 window.fetch = function (input, init) {
 	const sourceRequest = input instanceof Request ? input : new Request(input, init);
 	const fileName = new URL(sourceRequest.url, document.baseURI).pathname.split('/').pop();
@@ -247,7 +275,7 @@ window.fetch = function (input, init) {
 
 const engine = new Engine(GODOT_CONFIG);
 
-(function () {
+(async function () {
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
 	const statusNotice = document.getElementById('status-notice');
@@ -327,6 +355,12 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 
 	setStatusMode('progress');
+	try {
+		await validateSplitFiles();
+	} catch (error) {
+		displayFailureNotice(error);
+		return;
+	}
 	engine.startGame({
 		onProgress(current, total) {
 			if (current > 0 && total > 0) {

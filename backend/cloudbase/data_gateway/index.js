@@ -90,8 +90,8 @@ const FARM_LIVESTOCK = new Map([
   ['cow_shed', { outputItemId: 'milk', outputQuantity: 1, cooldown: 180 }],
 ]);
 
-// CloudBase database 依赖当前仍包含旧版 lodash.set/unset。请求进入 SDK 前拒绝原型链键、
-// 过深或异常庞大的对象，避免客户端输入触发 prototype pollution 或遍历型 DoS。
+// 即使 SDK 依赖审计已清零，仍在请求进入数据库层前拒绝原型链键、过深或异常庞大的对象，
+// 把输入边界作为独立纵深防御，避免未来传递依赖回退时重新暴露污染或遍历型 DoS。
 function hasUnsafeObjectShape(root) {
   const stack = [{ value: root, depth: 0 }];
   let inspected = 0;
@@ -507,6 +507,23 @@ function documentRow(result) {
   return data && typeof data === 'object' ? data : null;
 }
 
+function isMissingDocumentError(err) {
+  const text = String((err && `${err.code || ''} ${err.message || ''}`) || err || '').toLowerCase();
+  return text.includes('document not found')
+    || text.includes('document_not_found')
+    || text.includes('document_not_exist');
+}
+
+async function optionalTransactionDocument(ref) {
+  try {
+    return documentRow(await ref.get());
+  } catch (err) {
+    // SDK 4.x 的事务读取在文档不存在时会抛错；首次写入应把它视为空文档。
+    if (isMissingDocumentError(err)) return null;
+    throw err;
+  }
+}
+
 function transactionValue(result) {
   return result && typeof result.result === 'object' ? result.result : result;
 }
@@ -627,7 +644,7 @@ async function mutateStorehouse(body, familyId, memberId) {
   const id = `storehouse:${familyId}`;
   const wrapped = await db.runTransaction(async (transaction) => {
     const ref = transaction.collection('inventories').doc(id);
-    const existing = inventoryDocument('storehouse', familyId, memberId, documentRow(await ref.get()));
+    const existing = inventoryDocument('storehouse', familyId, memberId, await optionalTransactionDocument(ref));
     const duplicate = recentOperation(existing, operationId);
     if (duplicate) {
       return { ok: true, duplicate: true, id, version: existing.version, stacks: existing.stacks };
@@ -695,8 +712,8 @@ async function performFarmAction(body, identity) {
     const backpackId = `backpack:${memberId}`;
     const storehouseRef = transaction.collection('inventories').doc(storehouseId);
     const backpackRef = transaction.collection('inventories').doc(backpackId);
-    let storehouse = inventoryDocument('storehouse', familyId, memberId, documentRow(await storehouseRef.get()));
-    let backpack = inventoryDocument('backpack', familyId, memberId, documentRow(await backpackRef.get()));
+    let storehouse = inventoryDocument('storehouse', familyId, memberId, await optionalTransactionDocument(storehouseRef));
+    let backpack = inventoryDocument('backpack', familyId, memberId, await optionalTransactionDocument(backpackRef));
     const duplicate = recentOperation(storehouse, operationId) || recentOperation(backpack, operationId);
     if (duplicate) {
       return Object.assign({
@@ -767,7 +784,7 @@ async function performFarmAction(body, identity) {
       if (!definition) return { ok: false, code: 400, error: 'bad livestock source' };
       const livestockId = `farm_livestock:${familyId}:${sourceId}`;
       const livestockRef = transaction.collection('farm_livestock').doc(livestockId);
-      const existing = documentRow(await livestockRef.get());
+      const existing = await optionalTransactionDocument(livestockRef);
       const now = Math.floor(Date.now() / 1000);
       const lastCollectedAt = Number(existing && existing.last_collected_at_unix || 0);
       if (lastCollectedAt > 0 && now - lastCollectedAt < definition.cooldown) {
@@ -796,7 +813,7 @@ async function performFarmAction(body, identity) {
     }
     const plotId = `farm_plot:${familyId}:${plotIndex}`;
     const plotRef = transaction.collection('farm_plots').doc(plotId);
-    const existing = documentRow(await plotRef.get());
+    const existing = await optionalTransactionDocument(plotRef);
     if (existing && String(existing.last_operation_id || '') === operationId) {
       return { ok: true, duplicate: true, farm_action: actionType, plot: farmPlotResponse(existing), storehouse, backpack };
     }

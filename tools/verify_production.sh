@@ -9,6 +9,7 @@ set -euo pipefail
 WEB_BASE_URL="${FG_WEB_BASE_URL:-https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com}"
 PRESENCE_HEALTH_URL="${FG_PRESENCE_HEALTH_URL:-https://familygarden-d7gy18huh87fd41d2-1449262000.ap-shanghai.app.tcloudbase.com/presence-relay/healthz}"
 EXPECTED_INDEX_SHA256="${FG_EXPECTED_INDEX_SHA256:-}"
+EXPECTED_MANIFEST_SHA256="${FG_EXPECTED_MANIFEST_SHA256:-}"
 
 usage() {
   cat <<'EOF'
@@ -20,9 +21,11 @@ usage() {
   --web-url URL             覆盖 Web 根地址
   --presence-health-url URL 覆盖 Presence /healthz 地址
   --index-sha256 SHA256     额外校验下载的 index.html 哈希
+  --manifest-sha256 SHA256  额外校验 release-manifest.json 哈希
   -h, --help                显示帮助
 
-等价环境变量：FG_WEB_BASE_URL、FG_PRESENCE_HEALTH_URL、FG_EXPECTED_INDEX_SHA256。
+等价环境变量：FG_WEB_BASE_URL、FG_PRESENCE_HEALTH_URL、FG_EXPECTED_INDEX_SHA256、
+FG_EXPECTED_MANIFEST_SHA256。
 EOF
 }
 
@@ -34,6 +37,8 @@ while [ "$#" -gt 0 ]; do
       PRESENCE_HEALTH_URL="${2:?--presence-health-url 需要 URL}"; shift 2 ;;
     --index-sha256)
       EXPECTED_INDEX_SHA256="${2:?--index-sha256 需要 SHA-256}"; shift 2 ;;
+    --manifest-sha256)
+      EXPECTED_MANIFEST_SHA256="${2:?--manifest-sha256 需要 SHA-256}"; shift 2 ;;
     -h|--help)
       usage; exit 0 ;;
     *)
@@ -47,12 +52,21 @@ if ! command -v curl >/dev/null 2>&1; then
   printf '需要 curl。\n' >&2
   exit 2
 fi
-if [ -n "$EXPECTED_INDEX_SHA256" ] && ! command -v shasum >/dev/null 2>&1; then
-  printf '校验 index.html 哈希需要 shasum。\n' >&2
+if ! command -v node >/dev/null 2>&1; then
+  printf '核验发布清单需要 Node.js。\n' >&2
+  exit 2
+fi
+if { [ -n "$EXPECTED_INDEX_SHA256" ] || [ -n "$EXPECTED_MANIFEST_SHA256" ]; } \
+  && ! command -v shasum >/dev/null 2>&1; then
+  printf '校验发布哈希需要 shasum。\n' >&2
   exit 2
 fi
 if [ -n "$EXPECTED_INDEX_SHA256" ] && ! [[ "$EXPECTED_INDEX_SHA256" =~ ^[A-Fa-f0-9]{64}$ ]]; then
   printf 'index.html SHA-256 必须为 64 位十六进制字符串。\n' >&2
+  exit 2
+fi
+if [ -n "$EXPECTED_MANIFEST_SHA256" ] && ! [[ "$EXPECTED_MANIFEST_SHA256" =~ ^[A-Fa-f0-9]{64}$ ]]; then
+  printf 'release-manifest.json SHA-256 必须为 64 位十六进制字符串。\n' >&2
   exit 2
 fi
 
@@ -73,17 +87,47 @@ fetch_file() {
 
 fetch_file 'index.html' "$TMP_DIR/index.html"
 fetch_file 'index.js' "$TMP_DIR/index.js"
-fetch_file 'index.wasm' "$TMP_DIR/index.wasm"
+fetch_file 'release-manifest.json' "$TMP_DIR/release-manifest.json"
 
-# 只请求 PCK 的首字节，既确认 Range 读取能力，又避免把大体积发布包下载到验收机器。
-PCK_STATUS="$(curl --silent --show-error --location --range 0-0 --max-filesize 4096 \
-  --connect-timeout 10 --max-time 30 -o "$TMP_DIR/index.pck.prefix" \
-  -w '%{http_code}' "${WEB_BASE_URL}/index.pck")"
-if [ "$PCK_STATUS" != '206' ]; then
-  printf 'PCK Range 核验失败：期望 HTTP 206，实际 %s。\n' "$PCK_STATUS" >&2
-  exit 1
-fi
-printf 'PASS Web 资源：index.pck（HTTP 206 Range）\n'
+node - "$TMP_DIR/release-manifest.json" "$TMP_DIR/parts.tsv" <<'NODE'
+const fs = require('node:fs');
+const manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (manifest.schema_version !== 1 || manifest.chunk_bytes !== 20 * 1024 * 1024) {
+  throw new Error('发布清单版本或分片大小不受支持');
+}
+const rows = [];
+for (const fileName of ['index.pck', 'index.wasm']) {
+  const file = manifest.files?.[fileName];
+  if (!Number.isSafeInteger(file?.bytes) || file.bytes <= 0 || !Array.isArray(file.parts) || file.parts.length === 0) {
+    throw new Error(`发布清单缺少 ${fileName}`);
+  }
+  const sum = file.parts.reduce((total, part) => {
+    if (!/^chunks\/index\.(pck|wasm)\.part[0-9]{2}$/.test(part.path)
+      || !Number.isSafeInteger(part.bytes) || part.bytes <= 0
+      || !/^[a-f0-9]{64}$/.test(part.sha256)) {
+      throw new Error(`非法分片记录: ${JSON.stringify(part)}`);
+    }
+    rows.push(`${part.path}\t${part.bytes}`);
+    return total + part.bytes;
+  }, 0);
+  if (sum !== file.bytes) throw new Error(`${fileName} 分片总量与清单不一致`);
+}
+fs.writeFileSync(process.argv[3], `${rows.join('\n')}\n`);
+NODE
+
+while IFS=$'\t' read -r part_path expected_bytes; do
+  headers_file="$TMP_DIR/$(printf '%s' "$part_path" | tr '/' '_').headers"
+  curl --fail --silent --show-error --location --head \
+    --connect-timeout 10 --max-time 30 \
+    -H 'Cache-Control: no-cache' \
+    "${WEB_BASE_URL}/${part_path}" -o "$headers_file"
+  actual_bytes="$(awk 'tolower($1) == "content-length:" {gsub("\\r", "", $2); value=$2} END{print value}' "$headers_file")"
+  if [ "$actual_bytes" != "$expected_bytes" ]; then
+    printf '分片大小不匹配：%s，期望 %s，实际 %s。\n' "$part_path" "$expected_bytes" "${actual_bytes:-未知}" >&2
+    exit 1
+  fi
+  printf 'PASS Web 分片：%s（%s bytes）\n' "$part_path" "$actual_bytes"
+done < "$TMP_DIR/parts.tsv"
 
 if [ -n "$EXPECTED_INDEX_SHA256" ]; then
   ACTUAL_INDEX_SHA256="$(shasum -a 256 "$TMP_DIR/index.html" | awk '{print $1}')"
@@ -94,6 +138,18 @@ if [ -n "$EXPECTED_INDEX_SHA256" ]; then
     exit 1
   fi
   printf 'PASS index.html SHA-256\n'
+fi
+
+if [ -n "$EXPECTED_MANIFEST_SHA256" ]; then
+  ACTUAL_MANIFEST_SHA256="$(shasum -a 256 "$TMP_DIR/release-manifest.json" | awk '{print $1}')"
+  ACTUAL_MANIFEST_SHA256="$(printf '%s' "$ACTUAL_MANIFEST_SHA256" | tr '[:upper:]' '[:lower:]')"
+  EXPECTED_MANIFEST_SHA256="$(printf '%s' "$EXPECTED_MANIFEST_SHA256" | tr '[:upper:]' '[:lower:]')"
+  if [ "$ACTUAL_MANIFEST_SHA256" != "$EXPECTED_MANIFEST_SHA256" ]; then
+    printf 'release-manifest.json SHA-256 不匹配：期望 %s，实际 %s。\n' \
+      "$EXPECTED_MANIFEST_SHA256" "$ACTUAL_MANIFEST_SHA256" >&2
+    exit 1
+  fi
+  printf 'PASS release-manifest.json SHA-256\n'
 fi
 
 HEALTH_BODY=''

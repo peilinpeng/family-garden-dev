@@ -6,7 +6,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MAX_PCK_BYTES="${WEB_EXPORT_MAX_PCK_BYTES:-130000000}"
+# 内部门禁保留至少约 10% 的平台余量，避免一次正常素材更新就撞上 130 MB 硬上限。
+MAX_PCK_BYTES="${WEB_EXPORT_MAX_PCK_BYTES:-117000000}"
 KEEP_EXPORT="${KEEP_WEB_EXPORT:-0}"
 AUDIT_PASSED=0
 
@@ -16,7 +17,7 @@ usage() {
     "" \
     "可选环境变量:" \
     "  GODOT_BIN                 Godot 4.7 可执行文件路径" \
-    "  WEB_EXPORT_MAX_PCK_BYTES  PCK 体积上限，默认 130000000" \
+    "  WEB_EXPORT_MAX_PCK_BYTES  PCK 内部门禁，默认 117000000（平台硬上限 130000000）" \
     "  KEEP_WEB_EXPORT           设为 1 时保留成功导出产物"
 }
 
@@ -160,6 +161,9 @@ EXCLUDED_PATHS=(
   "res://assets/fishpond/"
   "res://assets/tilemap/"
   "res://assets/kitchen_ai/"
+  "res://music/ikoliks_aj-acoustic-spring-mothers-day-music-320427.mp3"
+  "res://soundeffect/森林河流.mp3"
+  "res://soundeffect/water-bubbles-2.mp3"
 )
 
 PRODUCTION_REFERENCE_FILES=("$ROOT_DIR/game/project.godot")

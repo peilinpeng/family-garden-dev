@@ -45,7 +45,7 @@ function createMemoryDatabase() {
     throw err;
   }
 
-  function collection(name) {
+  function collection(name, { throwOnMissingDocument = false } = {}) {
     return {
       where(query) {
         return {
@@ -73,6 +73,11 @@ function createMemoryDatabase() {
           async get() {
             assertCollectionExists(name);
             const row = rows(name).get(String(id));
+            if (!row && throwOnMissingDocument) {
+              const err = new Error('Document not found');
+              err.code = 'DOCUMENT_NOT_FOUND';
+              throw err;
+            }
             return { data: row ? [structuredClone(row)] : [] };
           },
           async set(value) {
@@ -105,7 +110,9 @@ function createMemoryDatabase() {
       transactionTail = new Promise((resolve) => { release = resolve; });
       await previous;
       try {
-        const result = await updateFunction({ collection });
+        const result = await updateFunction({
+          collection: (name) => collection(name, { throwOnMissingDocument: true }),
+        });
         return { result, errMsg: 'runTransaction:ok' };
       } finally {
         release();
@@ -581,6 +588,16 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     const result = await invoke({ action: 'upsert', table: 'inventories', row: { kind: 'storehouse', family_id: 'family_b', stacks: [] } }, 'token_a');
     assert.equal(result.code, 409);
     assert.equal(db.get('inventories', 'storehouse:family_a'), undefined);
+  });
+
+  await scenario('共享仓首次事务写入兼容 SDK 4 缺失文档异常', async () => {
+    const result = await invoke({
+      action: 'mutate_storehouse', operation_id: 'bootstrap:inventory:1', consumes: [],
+      grants: [{ id: 'seed_corrato', quantity: 1, max_stack: 99 }],
+    }, 'token_a');
+    assert.equal(result.ok, true);
+    assert.equal(result.version, 1);
+    assert.deepEqual(result.stacks, [{ id: 'seed_corrato', count: 1 }]);
   });
 
   await scenario('共享仓事务原子扣发、幂等并返回权威版本', async () => {

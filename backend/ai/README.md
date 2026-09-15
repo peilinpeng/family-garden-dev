@@ -76,7 +76,7 @@ Node 测试使用注入的 fake provider、身份服务和审核客户端，不�
 | `CONTENT_SAFETY_SECRET_ID` | 仅供 TMS/IMS 使用的腾讯云子用户凭据 |
 | `CONTENT_SAFETY_SECRET_KEY` | 仅供 TMS/IMS 使用的腾讯云子用户凭据 |
 | `CONTENT_SAFETY_REGION` | 默认 `ap-shanghai` |
-| `HUNYUAN_TEXT_MODEL` | 当前选用 `hy3-preview` |
+| `HUNYUAN_TEXT_MODEL` | 当前选用 `hy3` |
 | `HUNYUAN_VISION_MODEL` | 当前选用 `hy-vision-2.0-instruct` |
 
 可选：`TMS_BIZ_TYPE`、`IMS_BIZ_TYPE`。使用自定义内容安全策略时填写控制台策略编号；否则调用账号默认策略。
@@ -98,7 +98,8 @@ JSON Schema 后可设置 `AI_VISION_JSON_SCHEMA=true`，默认关闭以避免未
 4. 平台使用 dist 中的 lockfile 安装生产依赖；
 5. 配置第 3 节环境变量，不把密钥放进代码包；
 6. 为函数绑定 HTTP 访问服务；
-7. 平台层设置请求体上限、并发上限、调用频率和超时；
+7. 平台层设置请求体上限、并发上限、调用频率和超时；函数超时必须大于 `AI_TIMEOUT_MS`
+   并预留身份校验和输入/输出内容安全的耗时，当前生产值为 60 秒；
 8. 用测试家庭 member_token 对五个路由做一次真实联调；
 9. 确认日志中没有 Authorization、用户原文、签名 URL 查询参数或上游原始响应。
 
@@ -130,7 +131,7 @@ POST /api/ai/generate-memory-card
 
 - `https://tokenhub.tencentmaas.com/v1/chat/completions`；
 - `Authorization: Bearer <TOKENHUB_API_KEY>`；
-- `hy3-preview`：三个文字接口，并携带由 Gate 1 response Schema 派生的数据 Schema；
+- `hy3`：四个文字生成接口，并携带由 Gate 1 response Schema 派生的数据 Schema；
 - `hy-vision-2.0-instruct`：单张房间图片理解，system 与多模态 user 分离，结果继续经过 Gate 1 Schema 二次校验；
 - 非流式请求，文字最大输出默认 16384 tokens，视觉默认 4096 tokens。
 
@@ -142,6 +143,16 @@ POST /api/ai/generate-memory-card
 TokenHub Key 与腾讯云子用户 SecretId/SecretKey 不得混用。图片请求包含一个 `text` 和一个
 `image_url` content。TMS 文本按官方要求使用 UTF-8 Base64；IMS 使用 HTTPS `FileUrl`。
 变量名不使用 CloudBase 保留的 `TENCENTCLOUD_`、`SCF_` 或 `QCLOUD_` 前缀。
+
+2026-09-15 生产验收状态：`hy3-preview` 下线后已切换为 `hy3`，TokenHub Key 限定为
+`hy3` 与 `hy-vision-2.0-instruct` 两个模型；TMS 使用只含 `TextModeration` / `ImageModeration`
+权限的专用 CAM 子用户。真实 smoke 已验证身份隔离、TMS、`hy3`、输出 Schema 和
+`meta.source=ai`；验收不允许 fallback 冒充真实模型。
+
+同日完成 TokenHub Key 与内容安全 CAM SecretId/SecretKey 的生产轮换：均采用“新凭据切换函数、
+真实 smoke 通过、再撤销旧凭据”的顺序。TokenHub 仍只绑定上述两个模型，专用 CAM 子用户最终
+只保留一组 Active 访问密钥；轮换过程和验收记录不保存任何密钥值。TokenHub 新 Key 切换后可能
+存在短暂权限传播窗口，必须等待直接探针返回 `meta.source=ai`，再以四项真实 smoke 全绿作为完成标准。
 
 审核建议为 `Review` 或 `Block` 时统一返回 `CONTENT_UNSAFE`，不会把用户内容送给模型，也不会用 mock 掩盖。审核服务自身不可用时采用 fail-closed：返回上游错误，不绕过审核。
 AI 草稿经用户编辑后、漂流瓶回答写入前还会调用 `moderate-user-content` 二次审核。
