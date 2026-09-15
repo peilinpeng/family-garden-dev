@@ -149,6 +149,11 @@ TokenHub Key 与腾讯云子用户 SecretId/SecretKey 不得混用。图片请�
 权限的专用 CAM 子用户。真实 smoke 已验证身份隔离、TMS、`hy3`、输出 Schema 和
 `meta.source=ai`；验收不允许 fallback 冒充真实模型。
 
+同日完成 TokenHub Key 与内容安全 CAM SecretId/SecretKey 的生产轮换：均采用“新凭据切换函数、
+真实 smoke 通过、再撤销旧凭据”的顺序。TokenHub 仍只绑定上述两个模型，专用 CAM 子用户最终
+只保留一组 Active 访问密钥；轮换过程和验收记录不保存任何密钥值。TokenHub 新 Key 切换后可能
+存在短暂权限传播窗口，必须等待直接探针返回 `meta.source=ai`，再以四项真实 smoke 全绿作为完成标准。
+
 审核建议为 `Review` 或 `Block` 时统一返回 `CONTENT_UNSAFE`，不会把用户内容送给模型，也不会用 mock 掩盖。审核服务自身不可用时采用 fail-closed：返回上游错误，不绕过审核。
 AI 草稿经用户编辑后、漂流瓶回答写入前还会调用 `moderate-user-content` 二次审核。
 

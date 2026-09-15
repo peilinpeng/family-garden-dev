@@ -14,7 +14,7 @@
 |---:|---|---|---|
 | 1 | 合并 PR #37 | 已完成 | 两条 CI 通过；按精确 head `e12bb21` squash 合并到 `dev`，合并提交 `a88ce3bb` |
 | 2 | AI Gateway `fast-uri@3.1.7` | 已部署 | 35/35 单测、audit 0；线上回下载 lockfile 确认 `fast-uri=3.1.7`、`ajv=8.20.0` |
-| 3 | 带身份 Data Gateway + 真实 AI smoke | 已完成 | `join_family`、Bearer `whoami`、家庭隔离、腾讯 TMS、TokenHub `hy3` 与 Schema 全部真实通过；`meta.source=ai` |
+| 3 | 带身份 Data Gateway + 真实 AI smoke | 已完成 | `join_family`、Bearer `whoami`、家庭隔离、腾讯 TMS、TokenHub `hy3` 与 Schema 全部真实通过；两组生产凭据轮换并撤销旧钥匙后 `meta.source=ai` |
 | 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | canary 验收完成 | 独立 NoSQL test 完成 Gate 5、Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke；生产切换仍需观察与人工批准 |
 | 5 | PCK 预算 | 已完成 | 128,211,128 → 116,735,284 bytes；平台 130 MB 门槛下余量 13,264,716 bytes（10.20%） |
 | 6 | 仓库卫生 | 已完成 | 三个问题 refs 已做完整 bundle 并校验后删除；旧交接与含隐私 `tmp/` 已移到仓库外；海报用途已登记 |
@@ -69,6 +69,13 @@ FG_AI_REAL_SMOKE=1 npm run smoke:real
 
 通过标准：四行 `PASS`，最终 `meta.source=ai` 且 `meta.model=hy3`；脚本会留下一个没有业务数据的 smoke 成员记录，
 不会打印 member token。
+
+2026-09-15 同时完成两组生产凭据轮换。内容安全专用 CAM 子用户先创建第二组访问密钥并切换
+`ai_gateway`，真实 smoke 通过后删除旧密钥，最终只保留一组 Active 凭据。TokenHub 先创建仅绑定
+`hy3` 与 `hy-vision-2.0-instruct` 的新 Key，切换函数并通过四项 smoke 后删除旧 Key；删除后的
+首次模型请求处于短暂权限传播窗口而返回可识别的 fallback，等待后直接探针恢复
+`meta.source=ai`，最终再次执行四项 smoke 全绿。轮换脚本位于仓库外临时目录，输出只包含状态、
+数量和模型名，没有记录 SecretId、SecretKey、API Key 或 member token。
 
 ## 3. Data Gateway Node 20 / SDK 4.1 canary
 

@@ -8,7 +8,7 @@
 >
 > 最新集成分支：`dev@a88ce3bb`
 >
-> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 四组真实 smoke 全绿；生产 `hy3` + TMS 真实 smoke 全绿
+> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 四组真实 smoke 全绿；生产 `hy3` + TMS 真实 smoke 全绿；两组生产凭据已轮换
 
 ## 1. 当前结论
 
@@ -40,7 +40,8 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 - canary 函数已部署到独立 `family-nosql-test`，Node 20.19 + SDK 4.1.0 的 Gate 5、
   Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke 全部通过；
 - 生产 AI 已从停服的 `hy3-preview` 迁移到 `hy3`，TokenHub Key 只授权文字/视觉两个目标模型，
-  TMS 使用最小权限 CAM 子用户，四项生产真实 smoke 全绿；
+  TMS 使用最小权限 CAM 子用户；TokenHub 与内容安全两组生产凭据已轮换并撤销旧凭据，
+  撤销后四项生产真实 smoke 全绿；
 - dev/test/prod 现为三个独立 CloudBase 环境；逻辑备份/异名恢复演练已通过，
   个人版不支持的时间点回档仍保留为明确边界；
 - 拆分 Web 包已发布生产，裸公开地址 E2E 2/2；认证页与管理页发布前后哈希一致；
@@ -160,7 +161,8 @@ bundle SHA-256 与恢复命令见 `66`。禁止执行 `git push --mirror` 或交
 ### 5.2 生产依赖
 
 - AI Gateway：`fast-uri=3.1.7` 已部署；AI 单测 35/35、生产依赖审计 0；`hy3` + TMS
-  生产真实 smoke 已通过，函数超时为 60 秒；
+  生产真实 smoke 已通过，函数超时为 60 秒；TokenHub 与内容安全凭据均已按“先切换、
+  验证、再撤销旧凭据”完成轮换，最终各只保留当前有效凭据；
 - Data Gateway：Node 20.19 + `@cloudbase/node-sdk=4.1.0` canary 在 Node 20.19.5 下 51/51 通过，
   原 3 high + 2 moderate 清零；四组 test 真实 smoke 已通过，尚未切换生产路由；
 - Presence Relay：当前生产依赖审计 0 漏洞；
@@ -204,6 +206,8 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 - TokenHub API Key、腾讯云 SecretId/SecretKey、Supabase service role key、`member_token` 不得写入
   仓库、文档、截图、Issue 或日志；
+- 2026-09-15 两组生产凭据已完成轮换；以后若任何密钥疑似进入终端输出或共享记录，继续按
+  “新建、切换、真实 smoke、撤销旧钥匙”的顺序处理，不得只删除日志而保留原钥匙；
 - 业务数据写入继续经过 Data Gateway，Presence 只承载瞬时状态和刷新通知；
 - 普通回归不得调用真实云端或收费接口；真实 smoke 必须使用隔离家庭并由负责人明确授权；
 - 开始修改前阅读 [`32_claude_collaboration_rules.md`](32_claude_collaboration_rules.md) 和
