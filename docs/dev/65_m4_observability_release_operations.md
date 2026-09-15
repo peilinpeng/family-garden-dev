@@ -1,7 +1,7 @@
 # 65｜M4 生产可观测性与发布运维闭环
 
 > 日期：2026-08-25；2026-08-27 完成生产日志输出、CLS 投递与按请求 ID 检索验收；
-> 2026-09-13 更新为分片 Web 发布核验
+> 2026-09-13 更新为分片 Web 发布核验；2026-09-15 补充 CLS 恢复与 Node 20 生产影子验证
 >
 > 初始分支：`feature/gate8-observability`；修复分支：`feature/m4-log-delivery`
 >
@@ -178,3 +178,20 @@ CloudBase 日志投递。投递仅覆盖启用后的新日志，且 CLS 可能�
 `data_gateway_request_completed` JSON 行，其服务端 `request_id` 与 HTTP 响应一致，字段仅为
 `event`、`request_id`、`action: whoami`、`ok: false`、`code: 401`、`duration_ms` 与
 `error_class: unauthorized`；确认未包含 token、家庭/成员 ID、图片或业务正文。
+
+### 7.4 2026-09-15 CLS 恢复与兼容边界
+
+生产环境原绑定的 `familygarden-observability` 日志集与
+`familygarden-data-gateway-audit` 主题已不再存在于上海地域；环境元数据仍引用旧 ID，导致新建
+云函数失败。未发现可证明删除原因的审计证据，因此不得推断责任方或删除时间。
+
+经负责人已确认的生产升级授权，重新创建并绑定专用 `family-garden-prod-scf` 日志集和同名主题：
+上海、1 分区、关闭自动分裂、标准存储、7 天保留、全文索引。`data_gateway` 与新建
+`data_gateway_v4` 均已绑定新主题；CLS 官方 `SearchLog` 直查返回 100 条最新日志，首轮四组真实
+smoke 后未命中未捕获异常、运行时崩溃或超时标记，未输出日志正文或凭据。
+
+当前 CloudBase `DescribeEnvs` 的 `CustomLogServices` 已指向新主题，但兼容字段 `LogServices` 仍引用
+已删除的旧主题；CloudBase CLI 3.8.1 的 `fn log` 因读取兼容字段而返回
+`ResourceNotFound.TopicNotExist`。这属于管理工具兼容性问题，不代表投递失败；在平台字段同步前，
+生产观察必须通过 `CustomLogServices` 取得主题并直接调用 CLS `SearchLog`，不得用 `fn log` 的失败
+结论替代实际日志检索结果。
