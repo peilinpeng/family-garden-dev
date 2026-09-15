@@ -208,6 +208,12 @@ Node.js 18.15 + SDK 3.18.3；候选包必须先部署到新建的 Node.js 20.19 
 `data_gateway`。测试环境创建与真实 canary 状态见
 [`docs/dev/66_release_hardening_completion.md`](../dev/66_release_hardening_completion.md)。
 
+2026-09-15 已把候选函数部署到 `family-garden-test` 并确认 Node.js 20.19 配置可用，但该环境
+创建时选择了 PostgreSQL 模式，环境详情没有文档型数据库实例，无法创建 `members` 集合。
+直接调用候选函数执行合成 `join_family` 时也按预期 fail-closed 返回 500，且没有写入成员数据。
+这不属于 SDK 4.1.0 回归失败；必须另建传统 NoSQL 模式环境后再执行本节四组真实 smoke，禁止
+为了通过验收而改用生产数据库。
+
 ### 仍建议的进一步加固(非阻塞)
 - **并发裁决**(共享仓"抢最后一个")→ 网关事务,见 `docs/43` A 面。
 - **限流/防爆破**:令牌用足够长的随机串;可加平台层限流。

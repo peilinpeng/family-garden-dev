@@ -1,6 +1,6 @@
 # 44｜当前工程交接入口
 
-> 更新日期：2026-09-13
+> 更新日期：2026-09-15
 >
 > 当前工作分支：`feature/release-hardening-complete`
 >
@@ -8,7 +8,7 @@
 >
 > 最新集成分支：`dev@a88ce3bb`
 >
-> 状态：发布加固候选与生产 Web 已验收；AI `fast-uri@3.1.7` 已部署；云账号余额阻塞 TMS 与 dev/test
+> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 函数已落 test，但 test 为 PG 模式；TMS 仍阻塞
 
 ## 1. 当前结论
 
@@ -37,6 +37,8 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 - AI Gateway `fast-uri=3.1.7` 已部署，线上回下载 lockfile 已核对；
 - Data Gateway 的 Node 20.19 + SDK 4.1.0 canary、浏览器 E2E、PCK 预算和可部署分片构建已落地；
+- canary 函数已部署到隔离 test 并为 Available，但该环境是 PostgreSQL 模式、没有文档型数据库，
+  不能执行现有网关的真实数据 smoke；
 - 拆分 Web 包已发布生产，裸公开地址 E2E 2/2；认证页与管理页发布前后哈希一致；
 - 两张宣传海报保留并登记用途；旧交接文档和含个人隐私的 `tmp/` 已移到仓库外；
 - 完整状态、阻塞项和恢复步骤见 [`66_release_hardening_completion.md`](66_release_hardening_completion.md)。
@@ -161,7 +163,10 @@ bundle SHA-256 与恢复命令见 `66`。禁止执行 `git push --mirror` 或交
 
 Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.18.3，4.1.0 只在 `next`；
 迁移必须建立 Node.js 20.19 test 并行函数，完成数据库、私有图片、家庭隔离和事务 smoke 后再
-切换路由。当前因 CloudBase 余额不足无法创建 test 环境。
+切换路由。2026-09-15 已在 `family-garden-test` 部署符合配置的函数，但该环境是 PostgreSQL
+模式且 `Databases=[]`；创建文档集合失败。直接调用函数执行合成 `join_family` 也 fail-closed
+返回 500，明确报告缺少文档数据库，且未写入成员数据。重新创建传统模式环境仍被计费 API 以
+余额不足拒绝。
 
 ### 5.3 明确延期的验收
 
@@ -184,7 +189,7 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 ## 6. 推荐工作顺序
 
-1. 恢复腾讯云余额与 TMS，创建 dev/test，完成 SDK 4.1.0 canary 与 test-only 恢复演练；
+1. 在当前 CLI 账号补足可购买个人版的现金余额，创建传统 NoSQL dev/test，完成 canary 与恢复演练；
 2. 审查并合并已通过 CI 的本轮发布加固 PR #38；
 3. 生产环境在 2026-09-30 到期前续费或完成迁移；
 4. 最后在独立分支评估 `scene_manager.gd` 拆分；

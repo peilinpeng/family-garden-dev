@@ -1,6 +1,6 @@
 # 66｜发布加固、环境隔离与恢复演练
 
-> 日期：2026-09-13
+> 日期：2026-09-13；2026-09-15 补充 test 环境落云核验
 >
 > 工作分支：`feature/release-hardening-complete`
 >
@@ -14,13 +14,13 @@
 |---:|---|---|---|
 | 1 | 合并 PR #37 | 已完成 | 两条 CI 通过；按精确 head `e12bb21` squash 合并到 `dev`，合并提交 `a88ce3bb` |
 | 2 | AI Gateway `fast-uri@3.1.7` | 已部署 | 35/35 单测、audit 0；线上回下载 lockfile 确认 `fast-uri=3.1.7`、`ajv=8.20.0` |
-| 3 | 带身份 Data Gateway + 真实 AI smoke | 部分通过 | 随机隔离家庭的 `join_family`、Bearer `whoami`、家庭隔离通过；TMS 返回 `AI_UPSTREAM_ERROR`，模型调用未发生 |
-| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | 候选完成，落云阻塞 | SDK 4.1.0 + Node 20.19.5 的 50/50 回归通过，3 high + 2 moderate 清零；因余额不足无法创建 test 环境 |
+| 3 | 带身份 Data Gateway + 真实 AI smoke | 部分通过 | 随机隔离家庭的 `join_family`、Bearer `whoami`、家庭隔离通过；2026-09-15 复测 TMS 仍返回 `AI_UPSTREAM_ERROR`，模型调用未发生 |
+| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | 函数已落云，数据验收阻塞 | test 函数配置与 SDK 候选已验证；但该环境为 PostgreSQL 模式、没有文档型数据库实例，无法执行真实数据 smoke |
 | 5 | PCK 预算 | 已完成 | 128,211,128 → 116,735,284 bytes；平台 130 MB 门槛下余量 13,264,716 bytes（10.20%） |
 | 6 | 仓库卫生 | 已完成 | 三个问题 refs 已做完整 bundle 并校验后删除；旧交接与含隐私 `tmp/` 已移到仓库外；海报用途已登记 |
 | 7 | 浏览器关键路径 E2E | 已完成 | Playwright 2/2：干净上下文真实渲染与音频解锁、缺片可见失败 |
-| 8 | dev/test/prod 独立环境 | 账号阻塞 | prod 正常；创建 dev 时 CloudBase 返回余额不足，未产生 dev/test 环境 |
-| 9 | 数据备份恢复演练 | 被 #8 阻塞 | 已固化 test-only 规程；没有可用 test 环境时禁止在 prod 代跑 |
+| 8 | dev/test/prod 独立环境 | 部分完成，模式/计费阻塞 | prod 正常；`family-garden-test` 已隔离但为 PostgreSQL 模式；传统模式 dev 创建仍返回余额不足 |
+| 9 | 数据备份恢复演练 | 被 #8 阻塞 | 已固化 test-only 规程；当前 test 没有文档型数据库实例，禁止在 prod 代跑 |
 | 10 | 无痕公开 Demo、同步/缓存/权限 | 已完成 | 裸生产 URL 清单/入口哈希与 8 个分片校验通过；全新 Chrome context 2/2；`__auth/`、`cloud-admin/` 发布前后哈希一致 |
 
 ## 2. AI Gateway 发布证据
@@ -94,6 +94,15 @@ FG_AI_REAL_SMOKE=1 npm run smoke:real
 - `npm run build:deploy` 只生成 `index.js`、`package.json`、`package-lock.json`，不包含 `.git`、
   `node_modules`、测试、旧 ZIP 或环境文件。
 
+2026-09-15 已将候选包部署到隔离环境 `family-garden-test`
+（`familygarden-d7gy1-d7ckd9ce59bad`），并回读确认：Event、Node.js 20.19、`index.main`、
+15 秒、256 MB、云端安装依赖，`AvailableStatus=Available`。但环境详情同时显示
+`PostgreSQL=pgdb-29ikrtbz`、`Databases=[]`；创建 `members` 返回
+`InvalidParameter: Env not found for collection`。随后直接调用该函数执行合成 `join_family`，
+函数同样 fail-closed 返回 500，并明确指出环境只有 `pgdb-29ikrtbz`、没有文档数据库实例；
+没有成员或其他业务数据写入。环境模式创建后不可切换，因此该函数不能作为现有 NoSQL Data
+Gateway 的真实数据 canary，也不得据此切换生产。
+
 切换的硬性回滚条件：任一 Storage `AccessDenied`、事务结果不一致、跨家庭可见、图片临时 URL
 异常或错误率高于旧函数。触发时只切回旧 HTTP 路由，不删除 canary，不回退整个 `main`。
 
@@ -158,8 +167,8 @@ git fetch '/Users/xiongweiluo/Family Garden Local Archive/2026-09-13/backup-hist
 
 | 环境 | CloudBase alias | 数据 | 对外流量 | 当前状态 |
 |---|---|---|---|---|
-| dev | `family-garden-dev` | 只允许合成数据 | 无 | 因余额不足未创建 |
-| test | `family-garden-test` | 固定验收数据 | 无 | 因余额不足未创建 |
+| dev | `family-garden-dev` | 只允许合成数据 | 无 | 2026-09-15 重试仍因账户余额不足未创建 |
+| test | `family-garden-test` | 固定验收数据 | 无 | 已创建并部署函数；但属于 PostgreSQL 模式，不兼容当前 NoSQL 网关 |
 | prod | `familygarden-d7gy18huh87fd41d2` | 真实数据 | 100% | Normal；2026-09-30 到期 |
 
 充值后创建命令（上海、1 个月、不自动续费）：
@@ -167,7 +176,7 @@ git fetch '/Users/xiongweiluo/Family Garden Local Archive/2026-09-13/backup-hist
 ```bash
 tcb env create --alias family-garden-dev --package baas_personal \
   --region ap-shanghai --duration 1 --yes --json
-tcb env create --alias family-garden-test --package baas_personal \
+tcb env create --alias family-garden-nosql-test --package baas_personal \
   --region ap-shanghai --duration 1 --yes --json
 ```
 
@@ -188,8 +197,8 @@ tcb db nosql backup restore -e <test-env> --time '<UTC time>' \
 7. 记录 RPO（恢复时间点与故障时间差）和 RTO（发起到校验完成）；
 8. 演练记录获批后清理两个测试集合。
 
-任何命令若目标 env 等于生产 ID，立即停止。当前没有 test 环境，因此没有执行步骤 1—8，也没有
-触碰生产数据。
+任何命令若目标 env 等于生产 ID，立即停止。当前虽有 test 环境，但没有文档型数据库实例，
+因此没有执行步骤 1—8，也没有触碰生产数据。
 
 ## 8. 最终发布门禁
 
@@ -228,7 +237,9 @@ CloudBase 源站对象更新后，裸 URL 曾在 120 秒窗口内短暂返回旧
 
 ## 9. 尚需外部动作
 
-1. 腾讯云账号充值或恢复可用余额，然后创建 dev/test、恢复 TMS，再执行 canary 和恢复演练；
-2. 本轮发布加固 PR #38 已创建且 CI 通过，等待仓库维护者审查合并；
-3. 双设备双账号真实 UI 联机验收按负责人决定延期，未标记完成；
-4. prod 个人版 2026-09-30 到期，必须在到期前续费或完成迁移。
+1. 确认 CLI 登录账号的腾讯云现金余额可购买个人版，创建传统 NoSQL 模式 dev 与新的 NoSQL test；
+   当前 PostgreSQL test 不能转换模式；
+2. 恢复 TMS 服务后重跑真实 AI smoke；
+3. 本轮发布加固 PR #38 已创建且 CI 通过，等待仓库维护者审查合并；
+4. 双设备双账号真实 UI 联机验收按负责人决定延期，未标记完成；
+5. prod 个人版 2026-09-30 到期，必须在到期前续费或完成迁移。
