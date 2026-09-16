@@ -1,14 +1,14 @@
 # 44｜当前工程交接入口
 
-> 更新日期：2026-09-15
+> 更新日期：2026-09-16
 >
-> 当前工作分支：`feature/release-hardening-complete`
+> 当前工作分支：`codex/data-gateway-v4-prod`
 >
-> 分支基线：PR #37 head `e12bb21`；该 PR 已 squash 合并为 `dev@a88ce3bb`
+> 分支基线：PR #38 已合并为 `dev@f23eff4`
 >
-> 最新集成分支：`dev@a88ce3bb`
+> 最新集成分支：`dev@f23eff4`
 >
-> 状态：发布加固候选与生产 Web 已验收；NoSQL canary 四组真实 smoke 全绿；生产 `hy3` + TMS 真实 smoke 全绿；两组生产凭据已轮换
+> 状态：发布加固与生产 Web 已验收；Data Gateway 已完成 24 小时观察并切换到 Node 20 + SDK 4.1，切换前后四组真实 smoke 全绿
 
 ## 1. 当前结论
 
@@ -28,9 +28,9 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 | 项目 | 当前状态 | 说明 |
 |---|---|---|
-| 当前分支 | `feature/release-hardening-complete` | 从 PR #37 head `e12bb21` 创建，承载发布加固 |
-| 最新集成分支 | `dev@a88ce3bb` | PR #37 已在 2026-09-13 squash 合并 |
-| 当前分支与 `origin/dev` | 当前分支承载本轮发布加固 | 基线内容已进入 dev，本轮修改仍需独立 PR |
+| 当前分支 | `codex/data-gateway-v4-prod` | 从 PR #38 合并后的最新 `origin/dev` 创建，承载生产 canary 与切换记录 |
+| 最新集成分支 | `dev@f23eff4` | PR #38 已在 2026-09-15 合并 |
+| 当前分支与 `origin/dev` | 当前分支记录生产迁移证据 | 生产切换已完成，本轮修改仍需独立 PR |
 | `main` | `bb681b6` | 明显落后，不作为当前功能或发布基线，也不得回退开发 |
 
 ### 2.2 当前发布加固内容
@@ -39,6 +39,8 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 - Data Gateway 的 Node 20.19 + SDK 4.1.0 canary、浏览器 E2E、PCK 预算和可部署分片构建已落地；
 - canary 函数已部署到独立 `family-nosql-test`，Node 20.19 + SDK 4.1.0 的 Gate 5、
   Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke 全部通过；
+- 生产 `/data_gateway` 已原子切换到 Node 20.19 + SDK 4.1.0 的 `data_gateway_v4`，切换前后
+  四组真实 smoke 全绿；临时 canary 路由已删除，Node 18 的 `data_gateway` 继续保留为回滚函数；
 - 生产 AI 已从停服的 `hy3-preview` 迁移到 `hy3`，TokenHub Key 只授权文字/视觉两个目标模型，
   TMS 使用最小权限 CAM 子用户；TokenHub 与内容安全两组生产凭据已轮换并撤销旧凭据，
   撤销后四项生产真实 smoke 全绿；
@@ -164,14 +166,17 @@ bundle SHA-256 与恢复命令见 `66`。禁止执行 `git push --mirror` 或交
   生产真实 smoke 已通过，函数超时为 60 秒；TokenHub 与内容安全凭据均已按“先切换、
   验证、再撤销旧凭据”完成轮换，最终各只保留当前有效凭据；
 - Data Gateway：Node 20.19 + `@cloudbase/node-sdk=4.1.0` canary 在 Node 20.19.5 下 51/51 通过，
-  原 3 high + 2 moderate 清零；四组 test 真实 smoke 已通过，尚未切换生产路由；
+  原 3 high + 2 moderate 清零；24.06 小时观察扫描 642 条日志无硬错误标记，切换前 canary 与
+  切换后正式入口四组真实 smoke 均通过；
 - Presence Relay：当前生产依赖审计 0 漏洞；
 - CI 已提升为 moderate 及以上阻断，并加入浏览器 E2E。
 
-Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.18.3，4.1.0 只在 `next`；
-因此生产切换仍必须独立批准。2026-09-15 已在 `family-nosql-test-d1daoldc62a58f`
+Data Gateway 没有直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.18.3，4.1.0 只在 `next`，
+因此先执行独立 test、生产影子和 24 小时观察。2026-09-15 已在
+`family-nosql-test-d1daoldc62a58f`
 完成数据库、私有图片、家庭隔离和事务全套 smoke，并修复 SDK 4.x 首次事务读取不存在文档时
-抛错的行为差异。旧 PG 环境已更名 `family-garden-dev`，仅作隔离开发环境。
+抛错的行为差异。2026-09-16 20:24:04（中国标准时间）将正式路由增量切到
+`data_gateway_v4`，切换后复跑全套 smoke 通过。旧 PG 环境已更名 `family-garden-dev`，仅作隔离开发环境。
 
 ### 5.3 明确延期的验收
 
@@ -183,7 +188,6 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 - 真实手机横屏、旋转恢复和照片选择最终复核；
 - 个人版套餐不支持的时间点回档；当前已完成逻辑备份/异名恢复，实测丢失 0 条、
   RTO 41 秒，但因未定时导出，持续 RPO 尚未建立；
-- Node 20 + SDK 4.1 canary 生产路由切换，需要观察结果与单独人工批准。
 
 ### 5.4 可维护性
 
@@ -195,11 +199,9 @@ Data Gateway 不能直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 ## 6. 推荐工作顺序
 
-1. 审查 PR #38 的最终差异和 CI，通过后由维护者决定是否合并；
-2. 完成 canary 观察后，单独批准 Node 20 + SDK 4.1 生产路由切换；
-3. 生产环境在 2026-09-30 到期前续费或完成迁移；
-4. 正式发布前完成已延期的双设备 UI 与真机验收；
-5. 如业务需要时间点回档，升级 test 套餐后再做 PITR 演练；长期再用独立分支评估
+1. 生产环境在 2026-09-30 到期前续费或完成迁移；
+2. 正式发布前完成已延期的双设备 UI 与真机验收；
+3. 如业务需要时间点回档，升级 test 套餐后再做 PITR 演练；长期再用独立分支评估
    `scene_manager.gd` 拆分。
 
 ## 7. 安全交接规则

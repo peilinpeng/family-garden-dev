@@ -1,10 +1,10 @@
 # 66｜发布加固、环境隔离与恢复演练
 
-> 日期：2026-09-13；2026-09-15 补充 test 环境落云核验
+> 日期：2026-09-13；2026-09-15 补充 test 落云及生产影子核验；2026-09-16 完成生产切换
 >
-> 工作分支：`feature/release-hardening-complete`
+> 工作分支：`codex/data-gateway-v4-prod`
 >
-> 基线：PR #37 head `e12bb21`
+> 基线：PR #38 合并后的 `dev@f23eff4`
 >
 > 原则：不删除功能、不把密钥写入仓库、不在生产做恢复演练、不把失败的真实验收写成通过
 
@@ -15,7 +15,7 @@
 | 1 | 合并 PR #37 | 已完成 | 两条 CI 通过；按精确 head `e12bb21` squash 合并到 `dev`，合并提交 `a88ce3bb` |
 | 2 | AI Gateway `fast-uri@3.1.7` | 已部署 | 35/35 单测、audit 0；线上回下载 lockfile 确认 `fast-uri=3.1.7`、`ajv=8.20.0` |
 | 3 | 带身份 Data Gateway + 真实 AI smoke | 已完成 | `join_family`、Bearer `whoami`、家庭隔离、腾讯 TMS、TokenHub `hy3` 与 Schema 全部真实通过；两组生产凭据轮换并撤销旧钥匙后 `meta.source=ai` |
-| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | canary 验收完成 | 独立 NoSQL test 完成 Gate 5、Gate 6 农场事务/成员和 M1 Storage 四组真实 smoke；生产切换仍需观察与人工批准 |
+| 4 | Node 20 + CloudBase SDK 4.x 并行迁移 | 已完成 | 独立 NoSQL test、生产影子和 24 小时观察通过；正式路由已切到 `data_gateway_v4`，切换后四组真实 smoke 全绿，旧函数保留回滚 |
 | 5 | PCK 预算 | 已完成 | 128,211,128 → 116,735,284 bytes；平台 130 MB 门槛下余量 13,264,716 bytes（10.20%） |
 | 6 | 仓库卫生 | 已完成 | 三个问题 refs 已做完整 bundle 并校验后删除；旧交接与含隐私 `tmp/` 已移到仓库外；海报用途已登记 |
 | 7 | 浏览器关键路径 E2E | 已完成 | Playwright 2/2：干净上下文真实渲染与音频解锁、缺片可见失败 |
@@ -113,8 +113,34 @@ Event / Node.js 20.19 / `index.main` / 256 MB 函数。首次共享仓事务暴�
 Gate 6 成员列表与 M1 私有图片 Storage 四组真实 smoke 全部通过。合成业务数据和临时
 HTTP 路由均已清理。生产仍保留 Node 18.15 + SDK 3.18.3，等待观察与人工批准。
 
+2026-09-15 生产预部署时发现环境的旧 CLS 日志集/主题已不存在，陈旧绑定会令所有新函数创建
+失败。已按最小配置重建 `family-garden-prod-scf` 日志集与主题（上海、1 分区、7 天标准存储、
+全文索引）并通过 CloudBase `BindCls` 绑定。随后新增 `data_gateway_v4` 生产影子函数：Event、
+Node.js 20.19、`index.main`、256 MB、15 秒、依赖安装开启；独立
+`/data_gateway_v4_canary` 路径首轮四组真实 smoke 全绿，CLS 官方直查 100 条最新日志且未命中
+未捕获异常、运行时崩溃或超时标记。正式 `/data_gateway` 仍指向旧 `data_gateway`，旧函数未删除。
+
+CloudBase 环境的 `CustomLogServices` 已更新，但旧兼容字段 `LogServices` 尚未同步，导致 CLI 3.8.1
+的 `fn log` 仍查询已删除主题。观察期统一以 `CustomLogServices` 对应主题的 CLS `SearchLog` 直查
+为准。test 函数最后修改时间为 2026-09-15 20:18:24（中国标准时间），因此正式切换不得早于
+2026-09-16 20:18:24；负责人已授权到点复核通过后执行原子路由切换。
+
+2026-09-16 到达门槛后实际观察时长为 24.06 小时。test 与生产影子函数均保持 `Active`，CLS
+分页扫描 642 条观察期日志（7 页），未命中未捕获异常、运行时崩溃、超时、Storage
+`AccessDenied`、事务不一致或跨家庭可见标记。切换前 `/data_gateway_v4_canary` 四组真实 smoke
+再次全绿。
+
+20:24:04（中国标准时间）通过 `ModifyHTTPServiceRoute` 增量将正式 `/data_gateway` 的上游从
+`data_gateway` 改为 `data_gateway_v4`；其他路由未变化，域名状态为 `SUCCESS`。切换后正式入口
+四组真实 smoke 全绿，随后对 1,961 条 CLS 日志（20 页）复核，硬错误标记仍为 0。临时 canary
+路由已删除并确认不可查询；Node 18 的旧 `data_gateway` 函数未删除，继续作为快速回滚点。
+
+切换完成后的本地复核：Data Gateway 单测 51/51、生产依赖审计 0 漏洞、部署包仍只有 3 个文件；
+仓库统一回归 25/25、0 失败。
+
 切换的硬性回滚条件：任一 Storage `AccessDenied`、事务结果不一致、跨家庭可见、图片临时 URL
-异常或错误率高于旧函数。触发时只切回旧 HTTP 路由，不删除 canary，不回退整个 `main`。
+异常或错误率高于旧函数。触发时只把正式 HTTP 路由切回 `data_gateway`，不删除
+`data_gateway_v4`，不回退整个 `main`。
 
 ## 4. PCK 预算与发布包
 
@@ -260,8 +286,6 @@ CloudBase 源站对象更新后，裸 URL 曾在 120 秒窗口内短暂返回旧
 
 ## 9. 尚需外部动作
 
-1. 本轮发布加固 PR #38 继续审查；CI 通过后由仓库维护者决定是否合并；
-2. Node 20 + SDK 4.1 canary 观察完成后，单独批准生产路由切换；
-3. 如需时间点回档，先升级 test 套餐，再按本文异名恢复规程验收；
-4. 双设备双账号真实 UI 联机验收按负责人决定延期，未标记完成；
-5. prod 个人版 2026-09-30 到期，必须在到期前续费或完成迁移。
+1. 如需时间点回档，先升级 test 套餐，再按本文异名恢复规程验收；
+2. 双设备双账号真实 UI 联机验收按负责人决定延期，未标记完成；
+3. prod 个人版 2026-09-30 到期，必须在到期前续费或完成迁移。
