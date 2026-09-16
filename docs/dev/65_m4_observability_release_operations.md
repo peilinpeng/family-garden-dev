@@ -1,7 +1,8 @@
 # 65｜M4 生产可观测性与发布运维闭环
 
 > 日期：2026-08-25；2026-08-27 完成生产日志输出、CLS 投递与按请求 ID 检索验收；
-> 2026-09-13 更新为分片 Web 发布核验；2026-09-15 补充 CLS 恢复与 Node 20 生产影子验证
+> 2026-09-13 更新为分片 Web 发布核验；2026-09-15 补充 CLS 恢复与 Node 20 生产影子验证；
+> 2026-09-16 完成生产路由切换
 >
 > 初始分支：`feature/gate8-observability`；修复分支：`feature/m4-log-delivery`
 >
@@ -195,3 +196,20 @@ smoke 后未命中未捕获异常、运行时崩溃或超时标记，未输出�
 `ResourceNotFound.TopicNotExist`。这属于管理工具兼容性问题，不代表投递失败；在平台字段同步前，
 生产观察必须通过 `CustomLogServices` 取得主题并直接调用 CLS `SearchLog`，不得用 `fn log` 的失败
 结论替代实际日志检索结果。
+
+### 7.5 2026-09-16 Node 20 正式切换
+
+test canary 自最后一次修改起观察 24.06 小时后，生产影子与 test 函数均保持 `Active`、
+Node.js 20.19，正式路由仍为旧函数。通过 `CustomLogServices` 对应主题分页扫描观察期内 642 条
+日志（7 页），未命中未捕获异常、运行时崩溃、超时、Storage `AccessDenied`、事务不一致或
+跨家庭可见标记。
+
+切换前对 `/data_gateway_v4_canary` 重跑 Gate 5、Gate 6 农场事务、Gate 6 成员列表与 M1 私有
+图片四组真实 smoke，全部通过。随后使用 CloudBase `ModifyHTTPServiceRoute` 仅增量修改
+`/data_gateway` 的上游函数，从 `data_gateway` 切到 `data_gateway_v4`；域名状态为 `SUCCESS`，
+`/ai_gateway` 与 `/presence-relay` 未变化。切换时间为 2026-09-16 20:24:04（中国标准时间）。
+
+正式入口再次执行同样四组真实 smoke 全绿，主要业务数据与图片均按脚本清理；随后扩大 CLS
+复核到 1,961 条日志（20 页），硬错误标记仍为 0。临时 `/data_gateway_v4_canary` 路由已删除并
+通过空查询及 `DescribeHTTPServiceRoute` 双重确认；旧 Node 18 `data_gateway` 函数保留，不接收
+正式流量，作为快速回滚点。
