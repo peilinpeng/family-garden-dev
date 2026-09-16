@@ -191,18 +191,21 @@ Data Gateway 没有直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 ### 5.4 可维护性
 
-- `game/scripts/managers/scene_manager.gd` 当前为 7,225 行，占 `game/scripts` GDScript 约 26.44%；
+- `game/scripts/managers/scene_manager.gd` 已在独立维护分支完成兼容门面拆分：原文件为 7,225 行、
+  294 个函数，现门面为 1,645 行，负责生命周期、云同步、自动保存和兼容转发；业务实现进入
+  `game/scripts/scene_runtime/` 的九个职责模块；
 - `project.godot` 注册 24 个 autoload；
-- 当前 25/25 回归通过，尚无证据表明初始化顺序正在造成线上故障；
-- 拆分 `scene_manager.gd` 属于长期维护任务，必须使用独立分支和 PR，不与依赖、发布或玩法修改
-  混在一起，也不得以“重构”为由删除现有功能。
+- 内部模块是 `SceneManager` 子节点，没有增加 autoload；外部公开字段、常量和方法入口保持兼容；
+- 新增结构门禁后本地统一回归 26/26 通过，Web Release 导出、生产引用边界和启动检查通过；
+- 拆分专项验收见 [`67_scene_manager_modularization_acceptance.md`](67_scene_manager_modularization_acceptance.md)；
+- 本次只做结构迁移，不与依赖、发布或玩法修改混合，也没有删除现有功能。
 
 ## 6. 推荐工作顺序
 
 1. 生产环境在 2026-09-30 到期前续费或完成迁移；
 2. 正式发布前完成已延期的双设备 UI 与真机验收；
-3. 如业务需要时间点回档，升级 test 套餐后再做 PITR 演练；长期再用独立分支评估
-   `scene_manager.gd` 拆分。
+3. 如业务需要时间点回档，升级 test 套餐后再做 PITR 演练；`scene_manager.gd` 拆分完成后，
+   新场景和新业务必须进入对应模块，避免门面再次膨胀。
 
 ## 7. 安全交接规则
 
