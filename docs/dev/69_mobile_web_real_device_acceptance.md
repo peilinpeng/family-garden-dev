@@ -1,8 +1,8 @@
 # 69｜手机 Web 真机验收
 
 > 日期：2026-09-17  
-> 分支：`codex/mobile-web-real-device-qa`  
-> 状态：自动化与视觉复核通过；真实 iOS / Android 设备操作待补证据
+> 代码分支：PR #42 已合并为 `dev@f35a1f0`
+> 状态：自动化、生产 HTTPS 部署与浏览器验收通过；真实 iOS / Android 设备操作待补证据
 
 ## 1. 验收边界
 
@@ -49,22 +49,38 @@
 桌面受控视口只能证明布局、旋转事件和浏览器文件 API 链路，不能代替 iOS Safari 或 Android
 Chrome 的系统相册授权与真实设备方向传感器。因此真机项在取得设备证据前继续保持“待复核”。
 
-## 4. 生产只读检查
+## 4. 生产部署与只读检查
 
-`./tools/verify_production.sh` 于 2026-09-17 的结果：
+部署前 `./tools/verify_production.sh` 于 2026-09-17 的结果：
 
 - `index.html`、`index.js`、发布清单和现网 8 个分片可访问，大小与清单一致；
 - Presence `/healthz` 两次各等待 30 秒均超时。
 
-现网仍是上次发布的 8 分片版本；本轮 6 分片构建与旋转提示修复尚未发布。Presence 超时不阻断
-单设备布局和文件选择点检，但必须作为独立生产运行风险保留，不能写成健康。
+随后使用 CloudBase CLI 3.8.2 完成安全增量部署：
+
+- 目标环境：`familygarden-d7gy18huh87fd41d2`；
+- 使用 `--safe --verify --entry index.html`，未使用 `--prune`；
+- 非入口资源先上传，`index.html` 最后切换；14/14 文件成功，失败 0，远端校验通过；
+- 自动备份：`.cloudbase-backup/1789647000372/`；
+- `index.html` SHA-256：`4b9242ba87e91d054f8a10320ba58b6fe4a6fb7852decb77f08365ca8119da4d`；
+- `release-manifest.json` SHA-256：`004ad9b4829e5bb252d733ab00c4743d032780a37a5a1f11f52a9ac4cf0c147d`；
+- 4 个 PCK 分片与 2 个 WASM 分片的远端字节数全部匹配；
+- Presence 首次等待 30 秒未响应，冷启动后二次检查通过；
+- 生产 HTTPS 的全新 Chrome context E2E 4/4 通过；
+- `__auth/device/index.html` 与 `cloud-admin/index.html` 发布前后哈希完全一致。
+
+公开验收地址：
+
+```text
+https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/
+```
 
 同日尝试让 iPhone Safari 直接打开电脑局域网地址 `http://172.20.10.11:4173`。页面与启动卡
 可以到达，但 Godot 4.7 的 Web 引擎能力检查明确要求 Secure Context；Safari 将非 localhost 的
 局域网 HTTP 判为不安全环境，入口因此显示“暂时无法进入”。这证明网络连通正常，但该方式
 不能作为真机运行环境，也没有产生横竖屏或系统相册的有效验收结论。临时局域网服务已停止。
 
-后续真机点检必须使用 CloudBase HTTPS 上的本轮构建，或使用具备受信任证书的 HTTPS 预览；
+真机点检必须使用上述 CloudBase HTTPS 本轮构建，或使用具备受信任证书的 HTTPS 预览；
 不能通过关闭安全检查或引导用户忽略证书警告来绕过。
 
 ## 5. 真机最终点检（约 2 分钟）

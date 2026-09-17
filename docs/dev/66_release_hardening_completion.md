@@ -288,6 +288,13 @@ CloudBase 源站对象更新后，裸 URL 曾在 120 秒窗口内短暂返回旧
 /Users/xiongweiluo/Family Garden Local Archive/2026-09-13/hosting/pre-web-hardening/
 ```
 
+2026-09-17 追加发布移动 Web 修复和 PCK 瘦身结果：生产安全增量部署 14/14 文件成功，远端
+校验通过，自动备份为 `.cloudbase-backup/1789647000372/`，未使用 `--prune`。新包为 4 个
+PCK 分片（71,251,472 bytes）和 2 个 WASM 分片（39,509,339 bytes）；入口与清单 SHA-256
+分别为 `4b9242ba87e91d054f8a10320ba58b6fe4a6fb7852decb77f08365ca8119da4d` 和
+`004ad9b4829e5bb252d733ab00c4743d032780a37a5a1f11f52a9ac4cf0c147d`。生产只读核验、
+Presence 冷启动后二次健康检查和 HTTPS 浏览器 E2E 4/4 通过；认证页与管理页哈希保持不变。
+
 ## 9. 尚需外部动作
 
 1. 如需时间点回档，先升级 test 套餐，再按本文异名恢复规程验收；
