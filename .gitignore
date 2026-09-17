@@ -12,6 +12,9 @@ game/assets/characters/FREE Mana Seed Character Base Demo 2.0/
 export_web/
 *.zip
 
+# 比赛录屏原片、成片与质检中间产物（体积大，不进入源码仓库）
+/artifacts/
+
 # AI 工具会话目录
 .claude/
 

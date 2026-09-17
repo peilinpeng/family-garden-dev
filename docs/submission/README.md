@@ -7,7 +7,8 @@
 3. [`03_screenshot_spec.md`](03_screenshot_spec.md)：拍摄、命名和筛选核心截图；
 4. [`04_demo_assets_and_recovery.md`](04_demo_assets_and_recovery.md)：准备账号、图片、文字和故障兜底；
 5. [`05_team_and_tech.md`](05_team_and_tech.md)：复制到比赛材料的团队分工与技术说明；
-6. [`06_final_qa_report.md`](06_final_qa_report.md)：提交前查看最终验收结果和剩余人工项。
+6. [`06_final_qa_report.md`](06_final_qa_report.md)：提交前查看最终验收结果和剩余人工项；
+7. [`07_video_production_guide.md`](07_video_production_guide.md)：生成 4 分 30 秒审片版、字幕与质检证据。
 
 主演示内容以 [`../07_demo_script.md`](../07_demo_script.md) 为准。截图产物放在
 `docs/submission/screenshots/`，源视频和包含隐私的原始照片不进入源码仓库。
