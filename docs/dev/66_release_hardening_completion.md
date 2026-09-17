@@ -154,6 +154,10 @@ Web Release 只排除三项经全仓引用扫描确认未调用的音频：
 fishpond）和所有已调用 SFX 均保留。`check_web_export.sh` 默认门禁降到 117,000,000 bytes；
 实测 PCK 为 116,735,284 bytes。
 
+2026-09-17 后续又排除了当前 UI 已隐藏且运行时固定不读取的非棕发色图集；素材仍保留，
+并由外观与 Web 导出门禁保护恢复条件。最新 PCK 为 71,251,232 bytes，详见
+[`68_web_pck_headroom_acceptance.md`](68_web_pck_headroom_acceptance.md)。
+
 `tools/build_web_release.sh <空目录>` 生成可部署版本，PCK/WASM 按 20 MiB 拆分，并写
 `release-manifest.json`，记录完整文件及每个分片的大小与 SHA-256。构建拒绝覆盖非空目录，
 最终不存在大于 25 MiB 的托管文件。

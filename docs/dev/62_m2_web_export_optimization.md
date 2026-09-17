@@ -128,3 +128,15 @@ M2 完成后，优先进入 M3 CI 质量门禁：把 `tools/test_all.sh` 和 Web
 导出包挂载启动、动态资源与排除边界检查全部通过。可部署包改由
 `tools/build_web_release.sh` 生成，PCK/WASM 分为 20 MiB 分片并写逐片 SHA-256 清单；浏览器
 启动前会验证所有分片存在且大小正确。
+
+## 9. 2026-09-17 隐藏发色资源后续优化
+
+当前角色编辑 UI 已隐藏发色入口，`AppearanceManager` 保留历史存档中的 `hair_color`，但渲染
+始终使用自然棕完整图集。基于这一运行时约束，Web Release 进一步排除
+`assets/characters/hair_colors/*`，80 张源码素材仍完整保留在仓库和原生工程中。
+
+本轮实测 PCK 从 116,784,868 bytes 降至 71,251,232 bytes，减少 45,533,636 bytes；相对
+130,000,000 bytes 平台门槛的余量提升到 58,748,768 bytes（45.19%）。角色外观回归新增
+“所有历史发色值只能解析到 Web 保留图集”的门禁，Web 审计同时确认服装、父母和家庭角色图集
+仍在包内；正式分片构建成功，Chromium 关键路径 E2E 2/2 通过。完整证据见
+[`68_web_pck_headroom_acceptance.md`](68_web_pck_headroom_acceptance.md)。

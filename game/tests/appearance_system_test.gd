@@ -63,6 +63,7 @@ func _run() -> void:
 	_assert(player_b.sprite.texture == masculine_texture, "切换身体与发型后玩家应立即使用对应图集")
 	_assert(player_b.sprite.material == null, "男体成品发色图集也不应挂载调色材质")
 	_assert(_all_visible_variants_are_valid(), "20 种可见角色组合都应使用自然棕完整图集和 15 帧动作")
+	_assert(_all_hidden_hair_colors_use_exported_textures(), "历史发色存档不得加载 Web 已排除的隐藏发色图集")
 	var remote_player: Node2D = load("res://scenes/RemotePlayer.tscn").instantiate()
 	add_child(remote_player)
 	remote_player.configure_presence("remote-custom", "boy", "路易", masculine)
@@ -186,6 +187,20 @@ func _all_visible_variants_are_valid() -> bool:
 				return false
 			texture_paths[texture.resource_path] = true
 	return texture_paths.size() == 20
+
+func _all_hidden_hair_colors_use_exported_textures() -> bool:
+	for role_key in ["girl", "boy"]:
+		for hair_style_value in AppearanceManager.available_hair_styles(role_key).keys():
+			for outfit_value in AppearanceManager.outfits().keys():
+				for hair_color_value in AppearanceManager.hair_colors().keys():
+					var appearance := AppearanceManager.default_for_role(role_key)
+					appearance["hair_style"] = String(hair_style_value)
+					appearance["outfit"] = String(outfit_value)
+					appearance["hair_color"] = String(hair_color_value)
+					var texture := AppearanceManager.texture(appearance, role_key)
+					if texture == null or texture.resource_path.contains("/hair_colors/"):
+						return false
+	return true
 
 func _all_frames_have_visible_pixels(texture: Texture2D, rects: Array) -> bool:
 	var source := texture.get_image()

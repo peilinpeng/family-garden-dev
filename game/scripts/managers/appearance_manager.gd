@@ -4,6 +4,8 @@ extends Node
 ## 所有场景只读取 MemoryManager.character_appearance，运行时不再使用遮罩或 Shader 换色。
 
 const CATALOG_PATH := "res://assets/manifest/appearances.json"
+## Web Release 不打包隐藏的发色图集；恢复发色入口时必须同步恢复导出资源与 Web 验收。
+const RENDERED_HAIR_COLOR_ID := "brown"
 const ROLE_BODY_TYPES := {
 	"player": "feminine",
 	"partner": "masculine",
@@ -147,7 +149,7 @@ func _resolved_definition(appearance: Dictionary, fallback_role: String) -> Dict
 	var hair_sheets: Dictionary = result.get("hair_sheets", {})
 	# 发色功能暂时不对玩家展示：存档仍保留 hair_color 原值，但渲染统一读取
 	# 自然棕成品图。未来恢复时只需重新启用这里的 clean.hair_color。
-	var color_id := "brown"
+	var color_id := RENDERED_HAIR_COLOR_ID
 	if hair_sheets.has(color_id):
 		result["sheet"] = String(hair_sheets[color_id])
 	var canonical := CharacterDB.resolve(fallback_role) if CharacterDB != null else fallback_role
