@@ -98,7 +98,7 @@ git diff --check
 ./tools/test_all.sh
 ```
 
-结果：25/25 通过，0 失败，总耗时 36 秒。其中包括 21 个 Godot 场景测试，以及 AI Gateway、
+结果：26/26 通过，0 失败。其中包括 22 个 Godot 场景测试，以及 AI Gateway、
 AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元。
 
 ### 4.2 Web Release
@@ -109,18 +109,21 @@ AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元
 ./tools/check_web_export.sh
 ```
 
-结果：导出、动态资源、生产引用边界和导出包启动检查通过。
+结果：导出、动态资源、生产引用边界和导出包启动检查通过；可部署分片构建成功，Chromium
+关键路径 E2E 2/2 通过。
 
 | 文件 | 当前大小 |
 |---|---:|
-| `index.pck` | 116,735,284 bytes |
+| `index.pck` | 71,251,232 bytes |
 | PCK 内部门禁 | 117,000,000 bytes |
-| 相对平台 130 MB 余量 | 13,264,716 bytes（10.20%） |
+| 相对平台 130 MB 余量 | 58,748,768 bytes（45.19%） |
 | `index.wasm` | 39,509,339 bytes |
-| 核心四文件合计 | 156,535,296 bytes |
+| 核心四文件合计 | 111,051,243 bytes |
 
-三项未调用音频只从 Web 包排除，源码与原生构建仍保留。新增大资源前必须重新导出验证，不能
-只根据仓库文件大小估算。
+三项未调用音频和当前 UI 已隐藏、运行时固定不读取的 80 张非棕发色图集只从 Web 包排除，
+源码与原生构建仍保留。详细验收见
+[`68_web_pck_headroom_acceptance.md`](68_web_pck_headroom_acceptance.md)。新增大资源前必须重新
+导出验证，不能只根据仓库文件大小估算。
 
 ### 4.3 CloudBase 恢复核验
 

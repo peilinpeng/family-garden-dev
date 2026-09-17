@@ -128,6 +128,10 @@ REQUIRED_PATHS=(
   "res://assets/manifest/recipes.json"
   "res://assets/manifest/room_object_catalog.json"
   "res://assets/memory_links/memory_link_config.json"
+  "res://assets/characters/outfits/girl_braid_hat_forest.png"
+  "res://assets/characters/outfits/boy_tousled_ocean.png"
+  "res://assets/characters/parents/father_original.png"
+  "res://assets/characters/family_roles/grandfather_walk.png"
 )
 
 for required_path in "${REQUIRED_PATHS[@]}"; do
@@ -161,6 +165,7 @@ EXCLUDED_PATHS=(
   "res://assets/fishpond/"
   "res://assets/tilemap/"
   "res://assets/kitchen_ai/"
+  "res://assets/characters/hair_colors/"
   "res://music/ikoliks_aj-acoustic-spring-mothers-day-music-320427.mp3"
   "res://soundeffect/森林河流.mp3"
   "res://soundeffect/water-bubbles-2.mp3"
