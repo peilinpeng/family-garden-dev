@@ -108,6 +108,12 @@ var ui_root:
 	set(value):
 		_host.ui_root = value
 
+var orientation_layer:
+	get:
+		return _host.orientation_layer
+	set(value):
+		_host.orientation_layer = value
+
 var info_label:
 	get:
 		return _host.info_label
