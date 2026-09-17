@@ -2,7 +2,7 @@
 
 > 验收分支：`feature/release-ui-final-polish`
 > 验收日期：2026-07-11
-> 当前状态：候选版本通过；2026-09-17 已补齐移动浏览器 E2E 与首次竖屏层级修复，保留真机与录制动作。
+> 当前状态：候选版本通过；2026-09-17 移动修复已部署生产并完成 HTTPS E2E 4/4，保留真机与录制动作。
 
 ## 1. 发布阻断标准
 
@@ -80,6 +80,10 @@ PCK/WASM 分片通过只读核验；裸公开 URL 的全新 Chrome context E2E 2
 26/26 通过。测试发现并修复首次开场剧情压住竖屏旋转提示的问题。真实设备的系统相册授权和
 方向传感器仍必须在 iOS Safari 或 Android Chrome 上补证据，详见
 [`../dev/69_mobile_web_real_device_acceptance.md`](../dev/69_mobile_web_real_device_acceptance.md)。
+
+同日生产发布补充：本轮 4 个 PCK + 2 个 WASM 分片通过 CloudBase 安全增量部署，14/14 文件
+上传与远端校验成功，入口最后切换，未清理认证页或管理页；发布后入口/清单哈希、全部分片、
+Presence 健康检查和生产 HTTPS E2E 4/4 均通过。
 
 ## 7. 本轮发布修复
 

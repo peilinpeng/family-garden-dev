@@ -2,19 +2,19 @@
 
 > 更新日期：2026-09-17
 >
-> 当前工作分支：`codex/mobile-web-real-device-qa`
+> 当前记录分支：`codex/mobile-web-prod-release-record`
 >
-> 分支基线：PR #41 已合并为 `dev@1044bb7`
+> 功能基线：PR #42 已合并为 `dev@f35a1f0`
 >
-> 最新集成分支：`dev@1044bb7`
+> 最新功能基线：`dev@f35a1f0`
 >
-> 状态：移动浏览器 E2E 4/4 与全量回归 26/26 通过；首次竖屏层级已修复，真实手机点检待补
+> 状态：最新 6 分片 Web 包已发布生产且 HTTPS E2E 4/4 通过；真实手机点检待补
 
 ## 1. 当前结论
 
 Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步、照片隐私、Web 导出、CI 和
-生产可观测性。本机 2026-09-13 重新执行统一回归，25/25 个执行单元通过；同日发布拆分 Web 包，
-公开生产入口/清单哈希、8 个分片、Presence 健康检查和裸 URL 无痕 E2E 2/2 全部通过。
+生产可观测性。2026-09-17 全量回归 26/26 通过；最新 6 分片 Web 包已发布生产，公开入口/清单
+哈希、Presence 健康检查和裸 URL E2E 4/4 全部通过。
 
 当前阶段不再把 2026-06 的池塘专项交接当作全项目状态。历史池塘实现可继续参考：
 
@@ -28,9 +28,9 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 | 项目 | 当前状态 | 说明 |
 |---|---|---|
-| 当前分支 | `codex/data-gateway-v4-prod` | 从 PR #38 合并后的最新 `origin/dev` 创建，承载生产 canary 与切换记录 |
-| 最新集成分支 | `dev@f23eff4` | PR #38 已在 2026-09-15 合并 |
-| 当前分支与 `origin/dev` | 当前分支记录生产迁移证据 | 生产切换已完成，本轮修改仍需独立 PR |
+| 当前记录分支 | `codex/mobile-web-prod-release-record` | 从 PR #42 合并后的 `dev@f35a1f0` 创建，仅记录生产发布证据 |
+| 最新功能基线 | `dev@f35a1f0` | PR #42 已在 2026-09-17 合并 |
+| 当前分支与 `origin/dev` | 仅文档差异 | 运行代码与已发布构建均来自 `f35a1f0` |
 | `main` | `bb681b6` | 明显落后，不作为当前功能或发布基线，也不得回退开发 |
 
 ### 2.2 当前发布加固内容
@@ -46,7 +46,7 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
   撤销后四项生产真实 smoke 全绿；
 - dev/test/prod 现为三个独立 CloudBase 环境；逻辑备份/异名恢复演练已通过，
   个人版不支持的时间点回档仍保留为明确边界；
-- 拆分 Web 包已发布生产，裸公开地址 E2E 2/2；认证页与管理页发布前后哈希一致；
+- 最新 6 分片 Web 包已发布生产，裸公开地址 E2E 4/4；认证页与管理页发布前后哈希一致；
 - 两张宣传海报保留并登记用途；旧交接文档和含个人隐私的 `tmp/` 已移到仓库外；
 - 完整状态、阻塞项和恢复步骤见 [`66_release_hardening_completion.md`](66_release_hardening_completion.md)。
 
@@ -92,7 +92,7 @@ git diff --check
 
 ### 4.1 本地全量回归
 
-2026-09-15 再次执行：
+2026-09-17 再次执行：
 
 ```bash
 ./tools/test_all.sh
@@ -109,8 +109,8 @@ AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元
 ./tools/check_web_export.sh
 ```
 
-结果：导出、动态资源、生产引用边界和导出包启动检查通过；可部署分片构建成功，Chromium
-关键路径 E2E 2/2 通过。
+结果：导出、动态资源、生产引用边界和导出包启动检查通过；可部署分片构建成功，本地与生产
+HTTPS 的 Chromium E2E 均为 4/4 通过。
 
 | 文件 | 当前大小 |
 |---|---:|
@@ -130,6 +130,12 @@ AI JSON Schema、Data Gateway 和 Presence Relay 四个后端/契约执行单元
 2026-09-17 新增竖屏→横屏恢复及浏览器照片输入 E2E，总计 4/4 通过；同时修复全新用户首次
 开场剧情覆盖竖屏提示的问题。桌面受控视口和照片字节回调已通过，但真实 iOS / Android 的
 方向传感器和系统相册仍待点检，见 [`69_mobile_web_real_device_acceptance.md`](69_mobile_web_real_device_acceptance.md)。
+
+同日将 `dev@f35a1f0` 的 6 分片构建安全增量发布到 CloudBase HTTPS：14/14 文件上传和远端
+校验通过，自动备份为 `.cloudbase-backup/1789647000372/`，未使用 `--prune`。新入口和发布
+清单 SHA-256 分别为 `4b9242ba…9da4d` 与 `004ad9b4…147d`；4 个 PCK、2 个 WASM 分片尺寸
+完全匹配。Presence 冷启动后二次健康检查通过，生产裸 URL E2E 4/4 通过。认证页与管理页
+发布前后哈希不变。
 
 CloudBase 曾返回 `SERVICE_FORBIDDEN / Your server is isolated`。负责人恢复服务后，于
 2026-09-13 重新执行：
