@@ -546,8 +546,10 @@ func _open_memory_link_panel(link: Dictionary) -> void:
 
 func _add_memory_link_summary_card(parent: Control, pos: Vector2, card_size: Vector2, heading: String, card: Dictionary) -> void:
 	var box = Panel.new()
+	box.name = "MemoryLinkSummaryCard" + heading.right(1)
 	box.position = pos
 	box.size = card_size
+	box.clip_contents = true
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_host._apply_small_card_style(box)
 	parent.add_child(box)
@@ -561,22 +563,34 @@ func _add_memory_link_summary_card(parent: Control, pos: Vector2, card_size: Vec
 	box.add_child(label)
 
 	var title = Label.new()
+	title.name = "MemoryLinkSummaryTitle"
 	title.text = String(card.get("title", "记忆"))
 	title.position = Vector2(16, 38)
 	title.size = Vector2(card_size.x - 32, 28)
+	title.max_lines_visible = 1
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.add_theme_font_size_override("font_size", 17)
 	title.add_theme_color_override("font_color", Color(0.23, 0.18, 0.13, 1.0))
 	box.add_child(title)
 
 	var desc = Label.new()
-	desc.text = String(card.get("description", ""))
-	desc.position = Vector2(16, 76)
-	desc.size = Vector2(card_size.x - 32, 72)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.name = "MemoryLinkSummaryDescription"
+	desc.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	desc.max_lines_visible = 3
+	desc.clip_text = true
 	desc.add_theme_font_size_override("font_size", 13)
 	desc.add_theme_color_override("font_color", Color(0.32, 0.27, 0.21, 0.92))
+	desc.text = _memory_link_summary_description(String(card.get("description", "")))
+	desc.position = Vector2(16, 76)
+	desc.size = Vector2(card_size.x - 32, card_size.y - 84)
 	box.add_child(desc)
+
+func _memory_link_summary_description(value: String) -> String:
+	var normalized := value.replace("\n", " ").strip_edges()
+	const MAX_SUMMARY_CHARACTERS := 42
+	if normalized.length() <= MAX_SUMMARY_CHARACTERS:
+		return normalized
+	return normalized.left(MAX_SUMMARY_CHARACTERS - 1).strip_edges() + "…"
 
 func _open_memory_from_link(memory_id: String) -> void:
 	var mem = _find_rendered_memory_by_memory_id(memory_id)

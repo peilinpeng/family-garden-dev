@@ -121,6 +121,7 @@ func _run() -> void:
 	_test_null_ai_outcome_guard()
 	await _test_kitchen_dish_visual_texture()
 	await _test_memory_draft_and_idempotency()
+	await _test_memory_link_summary_layout()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
 	await _test_delete_memory_cascades_links()
@@ -308,6 +309,53 @@ func _test_memory_draft_and_idempotency() -> void:
 	persistence.fail_confirm = false
 	_assert(await AIWorkflowManager.flush_ai_sync_outbox(), "网络恢复后 outbox 应可补偿")
 	_assert(MemoryManager.ai_sync_outbox.is_empty(), "补偿成功后 outbox 应清空")
+
+func _test_memory_link_summary_layout() -> void:
+	var links := MemoryManager.get_memory_links("garden")
+	_assert(not links.is_empty(), "记忆藤蔓布局测试需要已有连线")
+	if links.is_empty():
+		return
+	var link: Dictionary = links[0]
+	var endpoints := MemoryManager.get_memory_link_endpoints(link)
+	_assert(bool(endpoints.get("ok", false)), "记忆藤蔓布局测试需要有效的两端记忆")
+	if not bool(endpoints.get("ok", false)):
+		return
+	var long_description := "这是一段没有空格并且足够长的中文家庭旅行记忆用来验证摘要字段能够在卡片内部强制换行并在超过三行时安全省略而不会覆盖中间藤蔓或另一张记忆卡片。"
+	for endpoint_key in ["memory_a", "memory_b"]:
+		var memory: Dictionary = endpoints.get(endpoint_key, {})
+		var card: Dictionary = memory.get("ai_card", {})
+		card["description"] = long_description
+		memory["ai_card"] = card
+
+	var previous_ui_layer: CanvasLayer = SceneManager.ui_layer
+	var link_ui_layer := CanvasLayer.new()
+	add_child(link_ui_layer)
+	SceneManager.ui_layer = link_ui_layer
+	SceneManager._open_memory_link_panel(link)
+	var overlay := SceneManager.active_modal
+	var cards := overlay.find_children("MemoryLinkSummaryCard*", "", true, false)
+	var descriptions := overlay.find_children("MemoryLinkSummaryDescription", "Label", true, false)
+	_assert(cards.size() == 2 and descriptions.size() == 2, "记忆藤蔓必须渲染两张可检测的摘要卡")
+	for card_node in cards:
+		var summary_card := card_node as Panel
+		_assert(summary_card != null and summary_card.clip_contents, "摘要卡必须裁剪越界子内容")
+	for description_node in descriptions:
+		var description := description_node as Label
+		_assert(description != null and description.autowrap_mode == TextServer.AUTOWRAP_ARBITRARY, "中文摘要必须支持任意字符换行")
+		_assert(description != null and description.max_lines_visible == 3 and description.clip_text, "摘要必须限制为三行并裁剪超长内容")
+		if description != null:
+			_assert(description.text.ends_with("…") and description.text.length() == 42, "超长摘要必须明确显示省略标记")
+			_assert(description.position.x + description.size.x <= description.get_parent().size.x, "摘要字段不得横向越出卡片")
+			_assert(description.position.y + description.size.y <= description.get_parent().size.y, "摘要字段不得纵向越出卡片")
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		await get_tree().process_frame
+		var link_image := get_viewport().get_texture().get_image()
+		if link_image != null:
+			link_image.save_png("/tmp/family_garden_memory_link_layout.png")
+	SceneManager._close_active_panel()
+	await get_tree().process_frame
+	SceneManager.ui_layer = previous_ui_layer
+	link_ui_layer.queue_free()
 
 func _test_bottle_recovery_and_answer_idempotency() -> void:
 	var bottles: Array = await AIWorkflowManager.ensure_bottles(2)
