@@ -2,13 +2,13 @@
 
 > 更新日期：2026-09-17
 >
-> 当前记录分支：`codex/mobile-web-prod-release-record`
+> 当前记录分支：`codex/close-mobile-device-acceptance`
 >
-> 功能基线：PR #42 已合并为 `dev@f35a1f0`
+> 功能基线：PR #43 已合并为 `dev@053c818`
 >
-> 最新功能基线：`dev@f35a1f0`
+> 最新集成分支：`dev@053c818`
 >
-> 状态：最新 6 分片 Web 包已发布生产且 HTTPS E2E 4/4 通过；真实手机点检待补
+> 状态：最新 6 分片 Web 包、HTTPS E2E 4/4 与 iPhone 16 真机验收全部通过
 
 ## 1. 当前结论
 
@@ -28,9 +28,9 @@ Family Garden 已完成比赛候选版本的主要产品闭环、家庭云同步
 
 | 项目 | 当前状态 | 说明 |
 |---|---|---|
-| 当前记录分支 | `codex/mobile-web-prod-release-record` | 从 PR #42 合并后的 `dev@f35a1f0` 创建，仅记录生产发布证据 |
-| 最新功能基线 | `dev@f35a1f0` | PR #42 已在 2026-09-17 合并 |
-| 当前分支与 `origin/dev` | 仅文档差异 | 运行代码与已发布构建均来自 `f35a1f0` |
+| 当前记录分支 | `codex/close-mobile-device-acceptance` | 从 PR #43 合并后的 `dev@053c818` 创建，仅关闭真机待办 |
+| 最新集成分支 | `dev@053c818` | PR #43 已在 2026-09-17 合并 |
+| 当前分支与 `origin/dev` | 仅文档差异 | 运行代码与已发布构建仍来自 `f35a1f0` |
 | `main` | `bb681b6` | 明显落后，不作为当前功能或发布基线，也不得回退开发 |
 
 ### 2.2 当前发布加固内容
@@ -128,8 +128,12 @@ HTTPS 的 Chromium E2E 均为 4/4 通过。
 ### 4.3 移动 Web 与 CloudBase 核验
 
 2026-09-17 新增竖屏→横屏恢复及浏览器照片输入 E2E，总计 4/4 通过；同时修复全新用户首次
-开场剧情覆盖竖屏提示的问题。桌面受控视口和照片字节回调已通过，但真实 iOS / Android 的
-方向传感器和系统相册仍待点检，见 [`69_mobile_web_real_device_acceptance.md`](69_mobile_web_real_device_acceptance.md)。
+开场剧情覆盖竖屏提示的问题。桌面受控视口和照片字节回调先行通过，完整验收记录见
+[`69_mobile_web_real_device_acceptance.md`](69_mobile_web_real_device_acceptance.md)。
+
+2026-09-17 随后在 iPhone 16 Safari 上完成生产 HTTPS 真机点检：竖屏提示、横屏恢复、再次旋转
+状态保持、照片选择取消和文件名/大小回显全部通过。iOS 与 Safari 具体版本未记录。单设备手机
+Web 验收现已关闭；双设备、双账号真实 UI 联机验收仍保持延期。
 
 同日将 `dev@f35a1f0` 的 6 分片构建安全增量发布到 CloudBase HTTPS：14/14 文件上传和远端
 校验通过，自动备份为 `.cloudbase-backup/1789647000372/`，未使用 `--prune`。新入口和发布
@@ -198,7 +202,6 @@ Data Gateway 没有直接原地升级 SDK 4.x：npm 的稳定 `latest` 仍为 3.
 
 同时尚未完成：
 
-- 真实手机横屏、旋转恢复和系统相册选择最终复核；自动化与视觉复核已通过；
 - 个人版套餐不支持的时间点回档；当前已完成逻辑备份/异名恢复，实测丢失 0 条、
   RTO 41 秒，但因未定时导出，持续 RPO 尚未建立；
 
