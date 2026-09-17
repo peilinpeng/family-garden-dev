@@ -55,14 +55,19 @@ func _navigation_dock_style() -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 2)
 	return style
 
-func _build_orientation_overlay(root: Control) -> void:
+func _build_orientation_overlay(_root: Control) -> void:
+	orientation_layer = CanvasLayer.new()
+	orientation_layer.name = "OrientationLayer"
+	# 必须高于首次启动剧情与常驻 HUD；Control.z_index 无法跨 CanvasLayer 生效。
+	orientation_layer.layer = 100
+	ui_layer.get_parent().add_child(orientation_layer)
+
 	orientation_overlay = Control.new()
 	orientation_overlay.name = "PortraitOrientationOverlay"
 	orientation_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	orientation_overlay.size = GAME_SIZE
 	orientation_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	orientation_overlay.z_index = 4090
-	root.add_child(orientation_overlay)
+	orientation_layer.add_child(orientation_overlay)
 
 	var background = ColorRect.new()
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -127,7 +132,7 @@ func _update_viewport_layout() -> void:
 	if ui_root != null and is_instance_valid(ui_root):
 		ui_root.position = frame_margin
 	if orientation_overlay != null and is_instance_valid(orientation_overlay):
-		orientation_overlay.position = -frame_margin
+		orientation_overlay.position = Vector2.ZERO
 		orientation_overlay.size = viewport_size
 	_update_orientation_overlay()
 

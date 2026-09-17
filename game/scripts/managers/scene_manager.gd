@@ -216,6 +216,7 @@ var world_chat_input: LineEdit = null
 var world_chat_feed_panel: Panel = null
 var world_chat_feed: Label = null
 var day_night_clock_ui: Control = null
+var orientation_layer: CanvasLayer = null
 var world_chat_fade_tween: Tween = null
 var _chat_panel_list: VBoxContainer = null   ## 打开的完整聊天面板的消息容器(发送后实时刷新)
 var _chat_panel_scroll: ScrollContainer = null
