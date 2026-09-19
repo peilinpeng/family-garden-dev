@@ -11,7 +11,7 @@ func _init() -> void:
 func _build_content() -> void:
 	# 家庭共享库存摘要
 	var inv_title := Label.new()
-	inv_title.text = "🏠 家庭共享库存摘要"
+	inv_title.text = "家庭共享库存摘要"
 	inv_title.add_theme_font_size_override("font_size", 15)
 	inv_title.add_theme_color_override("font_color", Color(0.30, 0.24, 0.17, 1.0))
 	content_root.add_child(inv_title)
@@ -29,7 +29,7 @@ func _build_content() -> void:
 
 	# 订单板
 	var order_title := Label.new()
-	order_title.text = "📋 订单板"
+	order_title.text = "订单板"
 	order_title.add_theme_font_size_override("font_size", 15)
 	order_title.add_theme_color_override("font_color", Color(0.30, 0.24, 0.17, 1.0))
 	content_root.add_child(order_title)
@@ -48,7 +48,7 @@ func _build_content() -> void:
 
 	# 家人留言入口(复用世界聊天)
 	var msg_btn := Button.new()
-	msg_btn.text = "💬 家人留言"
+	msg_btn.text = "家人留言"
 	msg_btn.custom_minimum_size = Vector2(0, 40)
 	HUDPanel._style_soft_button(msg_btn)
 	msg_btn.pressed.connect(func() -> void:
@@ -120,7 +120,7 @@ func _order_row(order: Dictionary) -> Control:
 		btn.pressed.connect(func() -> void:
 			var reward: int = await KitchenManager.submit_order(oid)
 			if reward >= 0:
-				SceneManager._show_toast("订单完成！获得金币×%d 💰" % reward)
+				SceneManager._show_toast("订单完成！获得金币×%d" % reward)
 				_reopen())
 	else:
 		btn.text = "材料不足"

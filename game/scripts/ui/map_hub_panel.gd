@@ -17,14 +17,14 @@ func _build_content() -> void:
 	content_root.add_child(hint)
 
 	var world_btn := Button.new()
-	world_btn.text = "🏡  世界导航\n花园 · 农场 · 小屋 · 鱼塘"
+	world_btn.text = "世界导航\n花园 · 农场 · 小屋 · 鱼塘"
 	world_btn.custom_minimum_size = Vector2(0, 64)
 	HUDPanel._style_soft_button(world_btn)
 	world_btn.pressed.connect(func() -> void: world_map_requested.emit())
 	content_root.add_child(world_btn)
 
 	var travel_btn := Button.new()
-	travel_btn.text = "🗺  旅行足迹\n地点 · 照片 · 明信片"
+	travel_btn.text = "旅行足迹\n地点 · 照片 · 明信片"
 	travel_btn.custom_minimum_size = Vector2(0, 64)
 	HUDPanel._style_soft_button(travel_btn)
 	travel_btn.pressed.connect(func() -> void: travel_map_requested.emit())

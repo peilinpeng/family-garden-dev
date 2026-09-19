@@ -80,8 +80,8 @@ func _build_content() -> void:
 	var main_tabs := HBoxContainer.new()
 	main_tabs.add_theme_constant_override("separation", 0)
 	content_root.add_child(main_tabs)
-	_main_buttons.append(_make_main_tab(main_tabs, "🎒 我的背包", "backpack"))
-	_main_buttons.append(_make_main_tab(main_tabs, "🏠 家庭共享仓库", "storehouse"))
+	_main_buttons.append(_make_main_tab(main_tabs, "我的背包", "backpack"))
+	_main_buttons.append(_make_main_tab(main_tabs, "家庭共享仓库", "storehouse"))
 
 	var tab_line := ColorRect.new()
 	tab_line.color = Color(0.36, 0.12, 0.10, 0.95)
@@ -283,7 +283,7 @@ func _build_quantity_selector() -> Control:
 	row.add_theme_constant_override("separation", 6)
 
 	_qty_minus = Button.new()
-	_qty_minus.text = "−"
+	_qty_minus.text = "-"
 	_qty_minus.custom_minimum_size = Vector2(44, 38)
 	_style_stepper_button(_qty_minus)
 	_qty_minus.pressed.connect(func() -> void: _set_selected_qty(_selected_qty - 1))
@@ -379,7 +379,7 @@ func _rebuild() -> void:
 
 	_capacity_label.text = "%s容量 %d / %d" % [_store_display_name(), _store_used_slots(), _store_capacity()]
 	_sort_button.disabled = _store_used_slots() <= 1
-	_coin_label.text = "💰  %d" % _total_coins()
+	_coin_label.text = "金币  %d" % _total_coins()
 	_clamp_selected_qty()
 	_refresh_detail(db)
 

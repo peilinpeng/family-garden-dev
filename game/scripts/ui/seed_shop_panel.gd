@@ -243,7 +243,7 @@ func _build_quantity_selector() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 
-	_qty_minus = _make_stepper("−", Vector2(44, 38), func() -> void: _set_selected_qty(_selected_qty - 1))
+	_qty_minus = _make_stepper("-", Vector2(44, 38), func() -> void: _set_selected_qty(_selected_qty - 1))
 	row.add_child(_qty_minus)
 
 	_qty_label = Label.new()

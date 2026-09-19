@@ -213,7 +213,8 @@ func _build_presence_hud() -> void:
 	presence_hud.layer = 20
 	add_child(presence_hud)
 	var panel := PanelContainer.new()
-	panel.position = Vector2(1064, 18)
+	panel.name = "FarmPresencePanel"
+	panel.position = Vector2(1064, 92)
 	panel.custom_minimum_size = Vector2(176, 34)
 	presence_hud.add_child(panel)
 	var style := StyleBoxFlat.new()

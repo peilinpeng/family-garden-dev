@@ -11,16 +11,16 @@ func _init() -> void:
 	card_size = Vector2(480, 470)
 
 func _build_content() -> void:
-	content_root.add_child(_slider_row("🎵 音乐音量", SettingsManager.music_volume,
+	content_root.add_child(_slider_row("音乐音量", SettingsManager.music_volume,
 		func(v: float) -> void: SettingsManager.set_music_volume(v)))
-	content_root.add_child(_slider_row("🔊 音效音量", SettingsManager.sfx_volume,
+	content_root.add_child(_slider_row("音效音量", SettingsManager.sfx_volume,
 		func(v: float) -> void: SettingsManager.set_sfx_volume(v)))
 
 	# 全屏(Web 端由浏览器控制,隐藏)
 	if not OS.has_feature("web"):
 		var fs_row := HBoxContainer.new()
 		fs_row.add_theme_constant_override("separation", 12)
-		var fs_label := _row_label("🖥️ 全屏模式")
+		var fs_label := _row_label("全屏模式")
 		fs_row.add_child(fs_label)
 		var fs_toggle := CheckButton.new()
 		fs_toggle.button_pressed = SettingsManager.fullscreen
@@ -32,7 +32,7 @@ func _build_content() -> void:
 	# 昼夜滤镜开关(关掉只取消整屏染色,不影响时间/时钟)
 	var dn_row := HBoxContainer.new()
 	dn_row.add_theme_constant_override("separation", 12)
-	dn_row.add_child(_row_label("🌗 昼夜滤镜"))
+	dn_row.add_child(_row_label("昼夜滤镜"))
 	var dn_toggle := CheckButton.new()
 	dn_toggle.button_pressed = SettingsManager.day_night_filter
 	dn_toggle.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -43,7 +43,7 @@ func _build_content() -> void:
 	# 关怀模式:只放大 Control UI 的文字与交互尺寸，不改变游戏画面与可视范围。
 	var scale_row := HBoxContainer.new()
 	scale_row.add_theme_constant_override("separation", 12)
-	scale_row.add_child(_row_label("👓 关怀模式"))
+	scale_row.add_child(_row_label("关怀模式"))
 	var care_toggle := CheckButton.new()
 	care_toggle.name = "CareModeToggle"
 	care_toggle.text = ""
@@ -59,7 +59,7 @@ func _build_content() -> void:
 	if OS.is_debug_build():
 		var replay_row := HBoxContainer.new()
 		replay_row.add_theme_constant_override("separation", 12)
-		replay_row.add_child(_row_label("🎬 开场剧情"))
+		replay_row.add_child(_row_label("开场剧情"))
 		var replay_btn := Button.new()
 		replay_btn.text = "重播开场(开发)"
 		replay_btn.custom_minimum_size = Vector2(150, 34)
@@ -72,7 +72,7 @@ func _build_content() -> void:
 
 	var reset_row := HBoxContainer.new()
 	reset_row.add_theme_constant_override("separation", 12)
-	reset_row.add_child(_row_label("🧹 存档管理"))
+	reset_row.add_child(_row_label("存档管理"))
 	var reset_btn := Button.new()
 	reset_btn.text = "删档 / 恢复初始状态"
 	reset_btn.custom_minimum_size = Vector2(190, 34)

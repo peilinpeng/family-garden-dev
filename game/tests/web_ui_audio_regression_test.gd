@@ -15,13 +15,39 @@ func _run() -> void:
 	_assert(status_panel != null, "农场状态面板应继续存在")
 	if status_panel != null:
 		_assert(status_panel.position.y >= 96.0, "农场状态面板不应再与左上玩家卡重叠")
+	var presence_panel := farm.get_node_or_null("PresenceHUD/FarmPresencePanel") as Control
+	_assert(presence_panel != null, "农场在线状态面板应继续存在")
+	if presence_panel != null:
+		_assert(presence_panel.position.y >= 92.0, "农场在线状态不应与右上昼夜时钟重叠")
+
+	var hud := GameHUD.new()
+	add_child(hud)
+	await get_tree().process_frame
+	hud.set_context("garden")
+	var labels := hud._dock.get_node_or_null("ActionLabels") as Label
+	_assert(labels != null, "HUD 底栏应包含行动标签")
+	if labels != null:
+		_assert(labels.position.y >= hud._map_btn.position.y + hud._map_btn.button_size.y,
+			"HUD 底栏文字不应与图标按钮重叠")
+	_assert(hud._dock.position.y + hud._dock.size.y <= 720.0, "HUD 底栏应完整保留在 720p 画布内")
+	hud.set_scene_modal_open(true)
+	_assert(not hud._hud_root.visible and not hud.panel_root.visible and not hud.tooltip.visible,
+		"场景级弹窗打开时应隐藏常驻 HUD 与提示")
+	hud.set_scene_modal_open(false)
+	_assert(hud._hud_root.visible and hud.panel_root.visible and hud.tooltip.visible,
+		"场景级弹窗关闭后应恢复常驻 HUD")
+	hud.set_context("map")
+	_assert(not hud.profile_card.visible, "旅行地图不应用玩家卡遮住返回按钮")
+	hud.set_context("garden")
+	_assert(hud.profile_card.visible, "回到花园后应恢复玩家卡")
+	hud.queue_free()
 
 	var card := PlayerProfileCard.new()
 	add_child(card)
 	await get_tree().process_frame
-	var labels := card.find_children("*", "Label", true, false)
-	_assert(labels.size() >= 2, "玩家卡应包含昵称与统计文字")
-	for label_node in labels:
+	var card_labels := card.find_children("*", "Label", true, false)
+	_assert(card_labels.size() >= 2, "玩家卡应包含昵称与统计文字")
+	for label_node in card_labels:
 		var label := label_node as Label
 		if label != null and label.position.x == 74.0:
 			_assert(label.clip_text, "玩家卡文字必须限制在卡片范围内")

@@ -456,7 +456,7 @@ func _selected_row(iid: String) -> Control:
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(name)
 	var minus := Button.new()
-	minus.text = "−"
+	minus.text = "-"
 	minus.custom_minimum_size = Vector2(28, 28)
 	minus.disabled = _cooking
 	HUDPanel._style_soft_button(minus)

@@ -11,6 +11,8 @@ func _run() -> void:
 	await get_tree().process_frame
 	opening._enter_box()
 	await get_tree().process_frame
+	var skip_button := opening._root.get_node_or_null("SkipButton") as Button
+	_assert(skip_button != null and skip_button.text == "跳过", "开场跳过按钮不应依赖字体缺失的符号")
 	_assert(opening._box_rect.position == OpeningNarrativeLayer.BOX_CLOSED_POSITION, "关闭木箱应保持原始位置")
 	var continue_hint := opening._root.get_node_or_null("ContinueHint") as Label
 	_assert(continue_hint != null and not continue_hint.visible, "木箱幕应隐藏会与创建按钮重叠的全局点击提示")
@@ -25,6 +27,7 @@ func _run() -> void:
 			_assert(absf(holder.position.y - OpeningNarrativeLayer.BOX_ITEM_SLOT_Y) < 1.0, "物品 %s 应使用下移后的落点" % str(item["id"]))
 	var create_button := opening._stage.get_node_or_null("CreateGardenButton") as Button
 	_assert(create_button != null and create_button.position.y >= 620.0, "创建按钮应保持在箱子下方的底部操作区")
+	_assert(create_button != null and create_button.text == "创建家庭花园", "创建按钮不应显示缺字 Emoji")
 
 	if OS.has_environment("FG_CAPTURE_SCREENSHOTS"):
 		await RenderingServer.frame_post_draw

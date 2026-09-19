@@ -13,7 +13,7 @@ func _show_gate4_scene_guide(scene_id: String) -> void:
 	var panel = Panel.new()
 	panel.name = "Gate4SceneGuide"
 	gate4_guide_card = panel
-	panel.position = Vector2(1022, 116) if scene_id == "room" else (Vector2(16, 132) if scene_id == "garden" else Vector2(20, 20))
+	panel.position = Vector2(1022, 116) if scene_id == "room" else (Vector2(16, 132) if scene_id == "garden" else Vector2(20, 96))
 	panel.size = Vector2(226, 76) if scene_id == "room" else (Vector2(244, 184) if scene_id == "garden" and garden_guide_expanded else (Vector2(244, 44) if scene_id == "garden" else Vector2(248, 92)))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_guide_card_style(panel, scene_id)
