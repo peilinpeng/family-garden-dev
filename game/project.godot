@@ -54,7 +54,7 @@ window/stretch/aspect="expand"
 [gui]
 
 theme/custom="res://assets/ui/family_garden_theme.tres"
-theme/custom_font="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf"
+theme/custom_font="res://assets/fonts/fusion-pixel-12px-proportional-zh_hans.ttf"
 
 [rendering]
 

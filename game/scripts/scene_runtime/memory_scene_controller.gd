@@ -929,8 +929,10 @@ func _open_memory_archive(archive_key: String, items: Array) -> void:
 	member_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
 	filter_bar.add_child(member_label)
 	var member_select = OptionButton.new()
+	member_select.name = "ArchiveMemberFilter"
 	member_select.position = Vector2(12, 27)
 	member_select.size = Vector2(210, 34)
+	member_select.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	member_select.add_item("全部家人")
 	member_select.set_item_metadata(0, "")
 	_host._apply_button_style(member_select, false)
@@ -955,8 +957,10 @@ func _open_memory_archive(archive_key: String, items: Array) -> void:
 	state_label.add_theme_color_override("font_color", Color(0.36, 0.29, 0.21, 0.88))
 	filter_bar.add_child(state_label)
 	var state_select = OptionButton.new()
+	state_select.name = "ArchiveStateFilter"
 	state_select.position = Vector2(242, 27)
 	state_select.size = Vector2(190, 34)
+	state_select.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	for state_item in [["全部状态", ""], ["等待回应", "new"], ["已经开花", "grown"]]:
 		state_select.add_item(String(state_item[0]))
 		state_select.set_item_metadata(state_select.item_count - 1, String(state_item[1]))
@@ -1296,14 +1300,19 @@ func _open_memory_card(mem: Dictionary) -> void:
 	active_modal = overlay
 
 	var panel = Panel.new()
+	panel.name = "MemoryCardPanel"
 	panel.position = Vector2(360, 120)
 	panel.size = Vector2(560, 484)
+	panel.clip_contents = true
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_host._apply_panel_style(panel)
 	overlay.add_child(panel)
 	_host._add_panel_close_button(panel)
 
 	var title = Label.new()
+	title.name = "MemoryCardTitle"
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.text = String(card.get("title", "记忆"))
 	title.position = Vector2(34, 24)
 	title.size = Vector2(490, 34)
@@ -1312,28 +1321,41 @@ func _open_memory_card(mem: Dictionary) -> void:
 	panel.add_child(title)
 
 	var desc = Label.new()
-	desc.text = String(card.get("description", ""))
+	desc.name = "MemoryCardDescription"
+	desc.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	desc.max_lines_visible = 3
+	desc.clip_text = true
+	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	desc.text = String(card.get("description", "")).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
 	desc.position = Vector2(34, 68)
 	desc.size = Vector2(492, 70)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.add_theme_font_size_override("font_size", 15)
 	desc.add_theme_color_override("font_color", Color(0.30, 0.26, 0.21, 1.0))
 	panel.add_child(desc)
 
 	# AI 推测保持浅灰与问号，明确区别于家人确认的事实（可见的诚实）。
 	var guess = Label.new()
+	guess.name = "MemoryCardGuess"
+	guess.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	guess.max_lines_visible = 2
+	guess.clip_text = true
+	guess.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	guess.text = "AI 推测：" + String(card.get("guess", "")) + "  ？（待家人确认）"
 	guess.position = Vector2(34, 144)
-	guess.size = Vector2(492, 24)
+	guess.size = Vector2(492, 34)
 	guess.add_theme_font_size_override("font_size", 13)
 	guess.add_theme_color_override("font_color", Color(0.60, 0.57, 0.52, 1.0))
 	panel.add_child(guess)
 
 	var q = Label.new()
+	q.name = "MemoryCardQuestion"
+	q.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	q.max_lines_visible = 3
+	q.clip_text = true
+	q.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	q.text = String(card.get("question", ""))
 	q.position = Vector2(34, 182)
 	q.size = Vector2(492, 50)
-	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	q.add_theme_font_size_override("font_size", 16)
 	q.add_theme_color_override("font_color", Color(0.20, 0.30, 0.24, 1.0))
 	panel.add_child(q)
@@ -1362,10 +1384,14 @@ func _open_memory_card(mem: Dictionary) -> void:
 		ans_title.add_theme_color_override("font_color", Color(0.35, 0.45, 0.35, 1.0))
 		panel.add_child(ans_title)
 		var ans = Label.new()
+		ans.name = "MemoryCardAnswer"
+		ans.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		ans.max_lines_visible = 4
+		ans.clip_text = true
+		ans.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		ans.text = String(mem.get("answer", ""))
 		ans.position = Vector2(34, 270)
 		ans.size = Vector2(492, 88)
-		ans.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ans.add_theme_font_size_override("font_size", 16)
 		ans.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13, 1.0))
 		panel.add_child(ans)
