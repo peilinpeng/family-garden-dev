@@ -10,13 +10,13 @@ Family Garden 是一款面向家庭成员的 AI 像素生活游戏。玩家可�
 
 ## 在线体验
 
-**Web 版本：<https://family-garden-dev-s0rb3h9j.edgeone.cool/>**
+**Web 版本：<https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/>**
 
 - 推荐使用最新版 Chrome、Edge 或 Firefox；
 - 进入页面后需要点击“进入家庭花园”，浏览器才会开放游戏音频；
 - 核心单机玩法可直接体验；
 - 真实 AI、成员身份、云同步和多人在线依赖腾讯云 CloudBase 服务与可用额度；
-- EdgeOne 部署后的临时 `eo_token` 参数不属于项目域名，分享或提交作品时使用上面的固定域名。
+- 分享、演示或提交作品时使用上面的固定 HTTPS 域名，不要附带临时查询参数。
 
 ## 我们想解决什么
 
@@ -96,7 +96,7 @@ Godot 4.7 Web / Desktop
            └── Presence Relay ── WebSocket 在线状态
 
 Web 静态版本
-  └── Tencent EdgeOne Makers / EdgeOne CDN
+  └── Tencent CloudBase 静态托管 / CDN
 ```
 
 ## 本地运行
