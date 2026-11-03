@@ -34,6 +34,10 @@ const SNAPSHOT_TABLES := [
 var _cfg: Dictionary = {}
 
 var _cache: Dictionary = {}   ## table -> Array[Dictionary]
+var _snapshot_ready := false
+
+func has_snapshot() -> bool:
+	return _snapshot_ready
 
 # ── 配置(静态) ───────────────────────────────────────
 static func load_config() -> Dictionary:
@@ -212,12 +216,13 @@ func load_table(table: String, _query: String = "") -> Array:
 ## 就立刻设置。这样任何代码只要看到 GameIdentity.is_ready()==true,就能保证背包/共享仓等
 ## 数据也已经是云端最新状态——不存在“身份先就绪、数据还在路上”的窗口期。
 ## (曾复现的真实竞态:若身份先就绪,玩家这时的操作可能被随后才落地的旧快照悄悄覆盖。)
-func bootstrap() -> void:
+func bootstrap() -> bool:
 	var who: Dictionary = await _request({"action": "whoami"})
 	if not bool(who.get("ok", false)):
 		push_warning("[CloudBase] whoami 失败,member_token 可能无效")
-		return
-	await refresh()
+		return false
+	if not await refresh():
+		return false
 	var mem := get_node_or_null("/root/MemoryManager")
 	if mem != null and mem.has_method("pull_remote"):
 		mem.pull_remote()
@@ -231,14 +236,35 @@ func bootstrap() -> void:
 			str(who.get("family_id", "")),
 			str(who.get("role", "")),
 			str(who.get("display_name", "")))
+	return true
 
-func refresh() -> void:
+func refresh() -> bool:
 	var res: Dictionary = await _request({"action": "snapshot", "tables": SNAPSHOT_TABLES})
-	var tables: Variant = res.get("tables", {})
-	if tables is Dictionary:
-		for t in tables:
-			if tables[t] is Array:
-					_cache[t] = tables[t]
+	if res.get("ok") != true:
+		return false
+	var tables: Variant = res.get("tables")
+	if not tables is Dictionary:
+		return false
+	var statuses: Variant = res.get("table_status", {})
+	if not statuses is Dictionary:
+		return false
+	# 先验证整份快照，再一次替换；拒绝缺表、错误类型及矛盾状态。
+	for table in SNAPSHOT_TABLES:
+		if not tables.get(table) is Array:
+			return false
+		if res.has("table_status"):
+			var status: Variant = statuses.get(table)
+			if not status is Dictionary or status.get("ok") != true:
+				return false
+		for row in tables[table]:
+			if not row is Dictionary:
+				return false
+	var next_cache := {}
+	for table in SNAPSHOT_TABLES:
+		next_cache[table] = tables[table].duplicate(true)
+	_cache = next_cache
+	_snapshot_ready = true
+	return true
 
 func cleanup_orphan_images() -> int:
 	var result: Dictionary = await _request({"action": "cleanup_orphan_images"})

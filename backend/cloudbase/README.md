@@ -97,7 +97,7 @@ db.collection('members').add({
 | `join_family` | `{family_id, role, display_name}` | `{ok, member_token, member_id}` | **不需要**(这一步就是发令牌) |
 | `whoami` | 无 | `{ok, member_id, family_id, role, display_name}` | 需要 |
 | `list_family_members` | 无 | `{ok, family_id, members:[{member_id, family_id, role, display_name}]}` | 需要 |
-| `snapshot` | `{tables:[...]}` | `{ok, tables:{table:rows}}`(inventories 只含**本人**背包 + 共享仓) | 需要 |
+| `snapshot` | `{tables:[...]}` | `{ok, tables:{table:rows}, table_status:{table:{ok}}}`(inventories 只含**本人**背包 + 共享仓) | 需要 |
 | `query` | `{table}` | `{ok, rows}` | 需要 |
 | `upsert` | `{table, row}` | `{ok, id}` | 需要 |
 | `delete` | `{table, id}` | `{ok}` | 需要 |
@@ -106,6 +106,17 @@ db.collection('members').add({
 | `delete_image` | `{upload_id}` | `{ok}` | 需要，且仅上传者可删 |
 | `delete_place_bundle` | `{place_id}` | `{ok, postcard_ids, event_ids, deleted_upload_ids}` | 需要；仅限同家庭地点 |
 | `cleanup_orphan_images` | `{}` | `{ok, deleted}` | 需要；只清理本人超过 24 小时且未被业务记录引用的上传 |
+
+快照失败保护（O2-01 第一批）：任何请求表读取失败，返回 `ok:false, code:503,
+error:"snapshot unavailable"`，逐表 `table_status` 的失败项为
+`{ok:false,error:"TABLE_READ_FAILED"}`，并且**完全省略 `tables`**，防止旧客户端应用部分数据。
+成功空表仍返回 `[]`；未知数据库错误不再转为空表。客户端先校验全部必需表、行类型与
+逐表状态，再整体替换缓存；首次同步失败不会宣告身份就绪，也不会覆盖已有本地记忆。
+兼容旧网关的完整成功响应，但真正的错误识别依赖同时发布服务端修复。
+当前普通表仍有 1000 条上限，完整分页与并发一致性属于 O2-02，尚未完成；本改动
+不解决旧快照覆盖并发本地写入的问题。自动验收：`./tools/test_all.sh` 中的
+`cloud_snapshot_recovery_test` 及 Data Gateway 查询失败测试。部署后需在隔离环境
+注入单表故障，确认本地原记录不变，再恢复读取并确认空表可以正常同步。
 
 `uploads` 是网关内部元数据集合，不在通用表白名单中。客户端只持久化 `upload_id`；
 `image_url` 是短期签名地址，只用于预览和本次 AI 调用，重启后通过 `resolve_image` 刷新。

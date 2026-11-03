@@ -559,6 +559,38 @@ test('data_gateway 身份、家庭隔离与 CRUD 回归', async (t) => {
     assert.equal(Object.hasOwn(result.tables, 'members'), false);
   });
 
+  await scenario('快照单表读取失败不返回可覆盖客户端的部分数据', async () => {
+    db.seed('memories', 'a1', { family_id: 'family_a', title: '保留记忆' });
+    db.failNextQuery('memories');
+    const result = await invoke({ action: 'snapshot', tables: ['memories', 'answers'] }, 'token_a');
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 503);
+    assert.equal(Object.hasOwn(result, 'tables'), false);
+    assert.deepEqual(result.table_status.memories, { ok: false, error: 'TABLE_READ_FAILED' });
+    assert.deepEqual(result.table_status.answers, { ok: true });
+    assert.equal(db.get('memories', 'a1').title, '保留记忆');
+    const recovered = await invoke({ action: 'snapshot', tables: ['memories', 'answers'] }, 'token_a');
+    assert.equal(recovered.ok, true);
+    assert.equal(recovered.tables.memories.length, 1);
+    assert.deepEqual(recovered.tables.answers, []);
+  });
+
+  await scenario('库存读取失败不能成为成功空快照', async () => {
+    db.failNextQuery('inventories');
+    const result = await invoke({ action: 'snapshot', tables: ['inventories'] }, 'token_a');
+    assert.equal(result.ok, false);
+    assert.equal(Object.hasOwn(result, 'tables'), false);
+    assert.equal(result.table_status.inventories.ok, false);
+  });
+
+  await scenario('独立 query 的数据库错误不是成功空结果', async () => {
+    db.failNextQuery('memories');
+    const result = await invoke({ action: 'query', table: 'memories' }, 'token_a');
+    assert.equal(result.ok, false);
+    assert.equal(Object.hasOwn(result, 'rows'), false);
+    assert.equal(JSON.stringify(result).includes('simulated query failure'), false);
+  });
+
   await scenario('通用查询按家庭隔离', async () => {
     db.seed('memories', 'a1', { family_id: 'family_a', title: 'A' });
     db.seed('memories', 'b1', { family_id: 'family_b', title: 'B' });
