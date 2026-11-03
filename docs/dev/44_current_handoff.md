@@ -1,5 +1,7 @@
 # 44｜当前工程交接入口
 
+> **2026-11-03 当前入口更新**：项目全部由 xiongweiluo 负责，已启动 [70 优化计划](70_project_optimization_iteration_plan.md)。最新任务、基线 PR、CI 与云环境阻塞以 [71 执行台账](71_optimization_execution_status.md) 为准。下文保留 2026-09-17 的历史验收；当前公开 Presence 返回 `INVALID_ENV`，不得据历史记录宣称生产正常。
+
 > 更新日期：2026-09-17
 >
 > 当前记录分支：`codex/close-mobile-device-acceptance`

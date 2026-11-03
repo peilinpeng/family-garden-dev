@@ -2,6 +2,11 @@
 
 本文件夹用于支持 Family Garden 参赛版本的策划、场景、美术、AI、后端和三人协作开发。
 
+## 当前优化迭代
+
+- [70 全项目优化迭代计划](dev/70_project_optimization_iteration_plan.md)：O0—O8 路线与验收标准。
+- [71 优化执行台账](dev/71_optimization_execution_status.md)：单人负责制、任务进度、阻塞与实际证据。
+
 ## 推荐阅读顺序
 
 ### 比赛验收与提交
