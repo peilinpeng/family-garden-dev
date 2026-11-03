@@ -85,7 +85,8 @@ func _ready() -> void:
 	_root.add_child(_stage)
 
 	var skip := Button.new()
-	skip.text = "跳过 ›"
+	skip.name = "SkipButton"
+	skip.text = "跳过"
 	skip.position = Vector2(1180, 18)
 	skip.size = Vector2(84, 34)
 	skip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -146,7 +147,7 @@ func _enter_chat() -> void:
 	_stage.add_child(panel)
 
 	var title := Label.new()
-	title.text = "🏠 家庭消息"
+	title.text = "家庭消息"
 	title.position = Vector2(22, 16)
 	title.size = Vector2(300, 26)
 	title.add_theme_font_size_override("font_size", 16)
@@ -432,7 +433,7 @@ func _pop_items() -> void:
 	t.tween_callback(func() -> void:
 		var create_btn := Button.new()
 		create_btn.name = "CreateGardenButton"
-		create_btn.text = "🔑 创建家庭花园"
+		create_btn.text = "创建家庭花园"
 		create_btn.position = Vector2(520, 640)
 		create_btn.size = Vector2(240, 46)
 		create_btn.mouse_filter = Control.MOUSE_FILTER_STOP

@@ -8,7 +8,7 @@ class_name MemoryCardPopup
 var card_data: Dictionary = {}
 
 func _init() -> void:
-	panel_title = "✨ 解锁记忆卡"
+	panel_title = "解锁记忆卡"
 	card_size = Vector2(380, 340)
 
 func _build_content() -> void:
@@ -24,7 +24,8 @@ func _build_content() -> void:
 	content_root.add_child(face)
 
 	var emoji := Label.new()
-	emoji.text = str(card_data.get("emoji", "✨"))
+	# 当前项目字体不包含彩色 Emoji，固定用可靠的文字标识避免 Web 端显示缺字方块。
+	emoji.text = "记忆"
 	emoji.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	emoji.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	emoji.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

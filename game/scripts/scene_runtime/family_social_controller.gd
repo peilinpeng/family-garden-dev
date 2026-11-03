@@ -266,17 +266,8 @@ func _offer_family_tree_welcome_gift() -> void:
 	MemoryManager.family_tree_planting_hint_seen = true
 	MemoryManager.save_game()
 	_host._show_toast("家庭树幼苗等待种植 · 点击底部“建造”→“家庭树”")
-	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("open_family_tree"):
-		game_hud.open_family_tree()
-		return
-	_show_cozy_panel(
-		"送给你的家庭树幼苗",
-		"欢迎来到家庭花园。\n\n这株幼苗会记录家人之间真实的互动，并逐渐长成一棵属于你们的家庭树。你可以先为它选择一个喜欢的位置。",
-		[
-			{"text": "现在种下", "action": "plant_family_tree"},
-			{"text": "稍后再种", "action": "close"}
-		]
-	)
+	# 首次入园时新手高亮会同时启动，不再自动打开家庭树面板，避免双层引导互相遮挡。
+	# 礼物、提示和“建造 / 角色资料”中的家庭树入口仍全部保留。
 
 func _begin_family_tree_placement() -> void:
 	_host._close_active_panel()

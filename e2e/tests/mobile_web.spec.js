@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../fixtures/cloud_unavailable');
 
 const entryPath = process.env.E2E_ENTRY_PATH || '/';
 const fixturePath = path.resolve(__dirname, '../../game/icon.png');

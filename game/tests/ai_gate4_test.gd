@@ -1,6 +1,7 @@
 extends Node
 
 const ROOM_SCENE_GENERATOR := preload("res://scripts/managers/room_scene_generator.gd")
+const REQUIRED_UI_GLYPHS := "势即奖姿嵌徽执拖擎施旅旋既梁滚热然瞬穆窗筑簇紧紫纵聚蔽藤警辨辫避酱酸鉴雾餐骤"
 
 class FakePersistence:
 	extends Node
@@ -117,11 +118,13 @@ func _run() -> void:
 
 	_test_image_preparation()
 	_test_memory_visual_assets()
+	_test_ui_font_coverage()
 	_test_family_portrait_miniature()
 	_test_null_ai_outcome_guard()
 	await _test_kitchen_dish_visual_texture()
 	await _test_memory_draft_and_idempotency()
 	await _test_memory_link_summary_layout()
+	await _test_memory_card_and_archive_layout()
 	await _test_bottle_recovery_and_answer_idempotency()
 	await _test_room_preview_commit_and_editing()
 	await _test_delete_memory_cascades_links()
@@ -232,6 +235,15 @@ func _test_memory_visual_assets() -> void:
 	_assert(archive_slot_count == 3, "花园长期可见记忆景观必须固定为三个")
 	bud.queue_free()
 	bloom.queue_free()
+
+func _test_ui_font_coverage() -> void:
+	var ui_theme := load("res://assets/ui/family_garden_theme.tres") as Theme
+	_assert(ui_theme != null and ui_theme.default_font != null, "项目主题必须配置随包中文字体")
+	if ui_theme == null or ui_theme.default_font == null:
+		return
+	for index in REQUIRED_UI_GLYPHS.length():
+		var codepoint := REQUIRED_UI_GLYPHS.unicode_at(index)
+		_assert(ui_theme.default_font.has_char(codepoint), "随包字体缺少 UI 汉字：%s" % char(codepoint))
 
 func _test_family_portrait_miniature() -> void:
 	var previous := MemoryManager.family_portrait.duplicate(true)
@@ -356,6 +368,62 @@ func _test_memory_link_summary_layout() -> void:
 	await get_tree().process_frame
 	SceneManager.ui_layer = previous_ui_layer
 	link_ui_layer.queue_free()
+
+func _test_memory_card_and_archive_layout() -> void:
+	var long_text := "这是一段没有空格而且包含旅行藤蔓旋转窗口等文字的家庭影像说明用于验证连续中文能够在卡片内部强制换行不会越过弹窗边界也不会盖住后面的提问和输入区域。"
+	var item := {
+		"id": "layout-memory",
+		"memory_id": "layout-memory",
+		"owner_id": "player",
+		"created_at": "2026-09-19T12:00:00Z",
+		"state": "new",
+		"card": {
+			"title": "与家人共同制作海报的温馨时刻",
+			"description": "在 Family\nGarden 的场景中，" + long_text,
+			"guess": "一家三口在家庭花园里共同制作海报并留下纪念",
+			"question": long_text,
+		},
+	}
+	var previous_ui_layer: CanvasLayer = SceneManager.ui_layer
+	var layout_ui_layer := CanvasLayer.new()
+	add_child(layout_ui_layer)
+	SceneManager.ui_layer = layout_ui_layer
+	SceneManager._open_memory_card(item)
+	var overlay := SceneManager.active_modal
+	var panel := overlay.find_child("MemoryCardPanel", true, false) as Panel
+	var description := overlay.find_child("MemoryCardDescription", true, false) as Label
+	var question := overlay.find_child("MemoryCardQuestion", true, false) as Label
+	_assert(panel != null and panel.clip_contents, "记忆详情弹窗必须裁剪越界子内容")
+	_assert(description != null and description.autowrap_mode == TextServer.AUTOWRAP_ARBITRARY, "家庭影像说明必须支持连续中文强制换行")
+	_assert(description != null and description.max_lines_visible == 3 and description.clip_text, "家庭影像说明必须限制行数并裁剪超长内容")
+	_assert(description != null and not description.text.contains("\n") and not description.text.contains("\r"), "家庭影像说明必须清理破坏布局的硬换行")
+	_assert(question != null and question.autowrap_mode == TextServer.AUTOWRAP_ARBITRARY and question.clip_text, "记忆提问不得横向溢出")
+	if panel != null and description != null:
+		_assert(description.position.x + description.size.x <= panel.size.x,
+			"家庭影像说明不得横向越出弹窗（右边界 %.1f，弹窗宽度 %.1f）" % [description.position.x + description.size.x, panel.size.x])
+		_assert(description.position.y + description.size.y <= panel.size.y, "家庭影像说明不得纵向越出弹窗")
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		await get_tree().process_frame
+		var card_image := get_viewport().get_texture().get_image()
+		if card_image != null:
+			card_image.save_png("/tmp/family_garden_memory_card_layout.png")
+	SceneManager._close_active_panel()
+	await get_tree().process_frame
+	SceneManager._open_memory_archive("postcards", [item])
+	overlay = SceneManager.active_modal
+	var member_filter := overlay.find_child("ArchiveMemberFilter", true, false) as OptionButton
+	var state_filter := overlay.find_child("ArchiveStateFilter", true, false) as OptionButton
+	_assert(member_filter != null and member_filter.alignment == HORIZONTAL_ALIGNMENT_CENTER, "全部家人筛选文字必须居中")
+	_assert(state_filter != null and state_filter.alignment == HORIZONTAL_ALIGNMENT_CENTER, "全部状态筛选文字必须居中")
+	if OS.get_environment("FG_CAPTURE_SCREENSHOTS") == "1":
+		await get_tree().process_frame
+		var archive_image := get_viewport().get_texture().get_image()
+		if archive_image != null:
+			archive_image.save_png("/tmp/family_garden_postcards_layout.png")
+	SceneManager._close_active_panel()
+	await get_tree().process_frame
+	SceneManager.ui_layer = previous_ui_layer
+	layout_ui_layer.queue_free()
 
 func _test_bottle_recovery_and_answer_idempotency() -> void:
 	var bottles: Array = await AIWorkflowManager.ensure_bottles(2)

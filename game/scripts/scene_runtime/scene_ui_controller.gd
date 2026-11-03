@@ -93,7 +93,7 @@ func _build_orientation_overlay(_root: Control) -> void:
 	content.add_child(brand)
 
 	var rotate_icon = Label.new()
-	rotate_icon.text = "↻"
+	rotate_icon.text = "旋转"
 	rotate_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rotate_icon.add_theme_font_size_override("font_size", 72)
 	rotate_icon.add_theme_color_override("font_color", Color(0.96, 0.87, 0.62, 1.0))
@@ -465,6 +465,11 @@ func _character_texture_path(role_key: String, fallback_path: String) -> String:
 	return configured_path if ResourceLoader.exists(configured_path) else fallback_path
 
 func _create_modal_overlay() -> Control:
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("set_scene_modal_open"):
+		game_hud.set_scene_modal_open(true)
+	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
+		day_night_clock_ui.visible = false
+	set_player_input_locked(true)
 	var overlay = Control.new()
 	overlay.name = "CozyModalOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -750,6 +755,11 @@ func _close_active_panel() -> void:
 	if active_modal != null and is_instance_valid(active_modal):
 		active_modal.queue_free()
 	active_modal = null
+	if game_hud != null and is_instance_valid(game_hud) and game_hud.has_method("set_scene_modal_open"):
+		game_hud.set_scene_modal_open(false)
+	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
+		day_night_clock_ui.visible = mode != "" and mode != "role_select" and mode != "map"
+	set_player_input_locked(false)
 	_chat_panel_list = null   ## 聊天面板随 overlay 一起释放,清引用避免悬空
 	_chat_panel_scroll = null
 	if OS.has_feature("web"):
@@ -782,7 +792,7 @@ func _set_hud_context(scene_id: String) -> void:
 	if game_hud != null and is_instance_valid(game_hud):
 		game_hud.set_context(scene_id)
 	if day_night_clock_ui != null and is_instance_valid(day_night_clock_ui):
-		day_night_clock_ui.visible = scene_id != "" and scene_id != "role_select"
+		day_night_clock_ui.visible = scene_id != "" and scene_id != "role_select" and scene_id != "map"
 
 ## 打开 HUD 主面板时锁玩家移动(避免面板开着还能 WASD 走位/触发场景交互),关闭时解锁。
 ## 复用 player.gd 已有的 set_movement_locked(渐隐切场景也用它)。

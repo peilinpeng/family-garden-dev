@@ -30,7 +30,7 @@ func _build_content() -> void:
 
 	# 可选料理
 	var dish_title := Label.new()
-	dish_title.text = "🍽️ 共享仓里的料理（点一下摆到空槽）"
+	dish_title.text = "共享仓里的料理（点一下摆到空槽）"
 	dish_title.add_theme_font_size_override("font_size", 14)
 	dish_title.add_theme_color_override("font_color", Color(0.30, 0.24, 0.17, 1.0))
 	content_root.add_child(dish_title)
@@ -46,7 +46,7 @@ func _build_content() -> void:
 
 	# 完成晚餐
 	var done := Button.new()
-	done.text = "🎉 完成晚餐"
+	done.text = "完成晚餐"
 	done.custom_minimum_size = Vector2(0, 44)
 	HUDPanel._style_soft_button(done)
 	done.pressed.connect(_on_complete)
@@ -207,5 +207,5 @@ func _on_complete() -> void:
 		SceneManager._show_toast("先摆上至少一道料理吧~")
 		return
 	if await KitchenManager.complete_meal(dishes):
-		SceneManager._show_toast("家庭晚餐已准备好 🍽️")
+		SceneManager._show_toast("家庭晚餐已准备好")
 		close_requested.emit()

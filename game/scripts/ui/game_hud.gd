@@ -24,6 +24,8 @@ var _current_kind := ""
 var _active_source: HUDIconButton
 var _tutorial_overlay: TutorialHighlightOverlay
 var _tutorial_stage := ""
+var _context_visible := false
+var _scene_modal_open := false
 
 func _ready() -> void:
 	layer = 30
@@ -69,8 +71,8 @@ func _build() -> void:
 func _build_action_dock() -> void:
 	_dock = Panel.new()
 	_dock.name = "GardenActionDock"
-	_dock.position = Vector2(354, 652)
-	_dock.size = Vector2(572, 54)
+	_dock.position = Vector2(354, 646)
+	_dock.size = Vector2(572, 60)
 	_dock.mouse_filter = Control.MOUSE_FILTER_STOP
 	var dock_style := StyleBoxFlat.new()
 	dock_style.bg_color = Color(1.0, 0.96, 0.84, 0.88)
@@ -101,39 +103,39 @@ func _build_action_dock() -> void:
 	_dock.add_child(_memory_btn)
 
 	_map_btn = _make_icon(_tex("icon_map"), "地图 / Maps", "maps", HUDIconButton.Side.TOP, _on_map_pressed)
-	_map_btn.position = Vector2(188, 7)
-	_map_btn.button_size = Vector2(40, 40)
+	_map_btn.position = Vector2(188, 4)
+	_map_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_map_btn)
 
 	_backpack_btn = _make_icon(_sheet_icon(8, 1), "背包 / Backpack (I)", "backpack", HUDIconButton.Side.TOP, _on_backpack_pressed)
-	_backpack_btn.position = Vector2(244, 7)
-	_backpack_btn.button_size = Vector2(40, 40)
+	_backpack_btn.position = Vector2(244, 4)
+	_backpack_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_backpack_btn)
 
 	_chat_btn = _make_icon(_tex("icon_letter"), "家人聊天 / Family Chat", "chat", HUDIconButton.Side.TOP, _on_chat_pressed)
-	_chat_btn.position = Vector2(300, 7)
-	_chat_btn.button_size = Vector2(40, 40)
+	_chat_btn.position = Vector2(300, 4)
+	_chat_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_chat_btn)
 
 	_quests_btn = _make_icon(_tex("icon_sign"), "任务 / Chapter 1", "quests", HUDIconButton.Side.TOP, _on_quests_pressed)
-	_quests_btn.position = Vector2(356, 7)
-	_quests_btn.button_size = Vector2(40, 40)
+	_quests_btn.position = Vector2(356, 4)
+	_quests_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_quests_btn)
 
 	_build_btn = _make_icon(_tex("icon_build"), "花园建造 / Build (B)", "build", HUDIconButton.Side.TOP, _on_build_pressed)
-	_build_btn.position = Vector2(412, 7)
-	_build_btn.button_size = Vector2(40, 40)
+	_build_btn.position = Vector2(412, 4)
+	_build_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_build_btn)
 
 	_settings_btn = _make_icon(_tex("icon_settings"), "游戏设置 / Settings", "settings", HUDIconButton.Side.TOP, _on_settings_pressed)
-	_settings_btn.position = Vector2(468, 7)
-	_settings_btn.button_size = Vector2(40, 40)
+	_settings_btn.position = Vector2(468, 4)
+	_settings_btn.button_size = Vector2(38, 38)
 	_dock.add_child(_settings_btn)
 
 	var labels := Label.new()
 	labels.name = "ActionLabels"
 	labels.text = "地图       背包       聊天       任务       建造       设置"
-	labels.position = Vector2(178, 36)
+	labels.position = Vector2(178, 43)
 	labels.size = Vector2(340, 14)
 	labels.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -335,12 +337,8 @@ func refresh_profile() -> void:
 ## 所有可游玩场景共用同一套 HUD；只在角色选择/启动前隐藏。
 func set_context(scene_id: String) -> void:
 	var show_global_hud := scene_id != "" and scene_id != "role_select"
-	if _hud_root != null:
-		_hud_root.visible = show_global_hud
-	if panel_root != null:
-		panel_root.visible = show_global_hud
-	if tooltip != null:
-		tooltip.visible = show_global_hud
+	_context_visible = show_global_hud
+	_refresh_global_visibility()
 	if _memory_btn != null:
 		_memory_btn.visible = show_global_hud
 	if _dock != null:
@@ -358,10 +356,31 @@ func set_context(scene_id: String) -> void:
 		if action_labels != null:
 			action_labels.visible = show_global_hud
 			action_labels.text = "地图       背包       聊天       任务       建造       设置" if scene_id == "garden" else "地图       背包       聊天       任务                    设置"
-	if profile_card != null and show_global_hud:
-		profile_card.refresh()
+	if profile_card != null:
+		# 旅行地图自带左上返回与右上新增按钮，角色卡会直接盖住它们。
+		profile_card.visible = show_global_hud and scene_id != "map"
+		if profile_card.visible:
+			profile_card.refresh()
 	if not show_global_hud:
 		close_current()
+
+## 场景级弹窗与常驻 HUD 互斥，避免角色卡、底栏或悬停提示压住弹窗内容。
+func set_scene_modal_open(open: bool) -> void:
+	_scene_modal_open = open
+	if open:
+		close_current()
+		if tooltip != null:
+			tooltip.hide_tip()
+	_refresh_global_visibility()
+
+func _refresh_global_visibility() -> void:
+	var visible_now := _context_visible and not _scene_modal_open
+	if _hud_root != null:
+		_hud_root.visible = visible_now
+	if panel_root != null:
+		panel_root.visible = visible_now
+	if tooltip != null:
+		tooltip.visible = visible_now
 
 func _tex(asset_key: String) -> Texture2D:
 	var path := str(SceneManager.ASSETS.get(asset_key, ""))
