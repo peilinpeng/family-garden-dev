@@ -6,12 +6,14 @@
 
 ## 当前执行位置
 
-O0 执行中，尚未宣称阶段完成。当前从已验证的 `59cbccb` 创建 `feature/o0-optimization-baseline`，为演示分支建立了 [草稿 PR #46](https://github.com/peilinpeng/family-garden-dev/pull/46)。未直接修改 dev 或 main。
+O0 执行中，尚未宣称阶段完成。演示分支已评审，经 [PR #46](https://github.com/peilinpeng/family-garden-dev/pull/46) 合入 dev（`aa9c69d`）。main 未改动，未部署生产。
 
 - 代码评审：4 个未集成提交主要为 HUD／弹窗遮挡、中文字体、面板长文本和演示文档修复。长文本仍需在 O6 补完整阅读体验，不能把裁剪显示当作全文阅读完成。
 - 本地证据：2026-11-03 全量回归 26/26、Web 导出与启动审计通过；PCK 73,627,924 bytes。
 - 历史 CI：`59cbccb` 的运行 35458545464 失败于 npm 审计接口 HTTP 400（Invalid package tree）；本地游戏测试成功不能替代该门禁。
-- 新 PR 已触发 CI，待确认当前 head 的完整门禁，不能使用早期其他提交的成功结果直接合并。
+- 最新依赖审计发现并修复 fast-uri、axios、follow-redirects、qs 风险；三个服务生产依赖审计均为 0。仅更新锁文件及 axios override，CloudBase SDK 未更换。
+- 浏览器 CI 曾因旧环境 INVALID_ENV 触发 CORS 失败。资源与桥接测试现使用受控业务失败响应，未过滤 console/pageerror；真实云 smoke 仍独立阻塞，详见 `e2e/README.md`。
+- #46 最终 head `f027a00` 的运行 41557852004、41557859358 均完整通过，随后合入 dev。本地浏览器 E2E 4/4 通过。
 - CloudBase CLI 3.8.3 已找到，但只读 `env list --json` 返回需要登录。公开 Presence 返回 404 / INVALID_ENV；环境、存储和账单的真实状态未核实。
 - 用户已收到登录／现环境 ID 的问题；继续本地独立工作，不索取或记录密钥。
 
@@ -25,23 +27,23 @@ O0 执行中，尚未宣称阶段完成。当前从已验证的 `59cbccb` 创建
 
 | 任务 | 状态 | 负责人 |
 |---|---|---|
-| O0-01 | 待集成验收 | xiongweiluo |
+| O0-01 | 已完成：PR #46 有效 CI 后合入 dev | xiongweiluo |
 | O0-02 | 阻塞：CLI 登录 | xiongweiluo |
 | O0-03 | 方案已确认 | xiongweiluo |
 | O0-04 | 执行中 | xiongweiluo |
-| O1-01 | 待开始 | xiongweiluo |
+| O1-01 | 草案完成，恢复语义与真实 owner 盘点待闭环，见 72 | xiongweiluo |
 | O1-02 | 待开始 | xiongweiluo |
 | O1-03 | 待开始 | xiongweiluo |
 | O1-04 | 待开始 | xiongweiluo |
 | O1-05 | 待开始 | xiongweiluo |
-| O2-01 | 待开始 | xiongweiluo |
+| O2-01 | 失败保护本地验证通过；分页契约及真实 smoke 未完成 | xiongweiluo |
 | O2-02 | 待开始 | xiongweiluo |
 | O2-03 | 待开始 | xiongweiluo |
 | O2-04 | 待开始 | xiongweiluo |
 | O2-05 | 待开始 | xiongweiluo |
 | O2-06 | 待开始 | xiongweiluo |
 | O2-07 | 待开始 | xiongweiluo |
-| O3-01 | 待开始 | xiongweiluo |
+| O3-01 | 不可重试错误单点修复已验证；总时间预算仍待实现 | xiongweiluo |
 | O3-02 | 待开始 | xiongweiluo |
 | O3-03 | 待开始 | xiongweiluo |
 | O3-04 | 待开始 | xiongweiluo |
@@ -73,11 +75,21 @@ O0 执行中，尚未宣称阶段完成。当前从已验证的 `59cbccb` 创建
 
 | 范围 | 提交或证据 | 状态 |
 |---|---|---|
-| 当前代码基线 | 59cbccb | 本地回归与导出已验证 |
-| dev | fab4a8e | 尚未集成演示分支 4 个提交 |
+| 当前集成基线 | aa9c69d | #46 已通过门禁并合入 |
+| dev | aa9c69d | 演示修复、依赖审计修复、受控浏览器测试已集成 |
 | main | bb681b6 | 历史版本，未改动 |
 | 公开生产 | 现环境待核实 | 不用历史部署记录推断今日可用 |
-| 集成 PR | #46 | 草稿，等待有效 CI |
+| 集成 PR | #46 | 已合并；未部署 |
+
+## 首批独立修复证据
+
+| 内容 | 本地提交与证据 | 仍未覆盖 |
+|---|---|---|
+| 失败快照保护 | `95d84b0`：Data Gateway 54/54；全量 27/27；Web 导出通过，PCK 73,628,724 bytes | 1000 条上限、并发快照一致性、云端故障注入；提交尚待后续 PR 集成 |
+| 不可重试错误 | `4913c94`：AI Node 37/37；400 只调用一次，503 保持有界重试 | 总请求时限、取消、跨实例配额；提交尚待后续 PR 集成 |
+| 家庭身份设计 | [72 设计草案](72_family_identity_and_migration_design.md) | 未实现或迁移；需要响应丢失恢复验证、旧 owner 盘点和备份恢复 |
+
+以上测试均使用本地／合成数据。未执行真实云端 smoke、真机完整流程或家庭试用，不计作完成。
 
 ## 环境恢复选择
 
@@ -104,5 +116,5 @@ O0 执行中，尚未宣称阶段完成。当前从已验证的 `59cbccb` 创建
 ## 阻塞解除条件
 
 - CloudBase：本机登录完成并能只读列出正确地域环境；随后核实生产、隔离测试环境及备份状态。
-- 基线集成：#46 当前 head 的质量门禁完整通过；若审计服务再次报错，查明原因而非跳过安全审计。
+- 基线集成：已解除；后续 PR 同样要求当前 head 完整门禁，不继承其他提交的通过结论。
 - 真实设备与家庭试用：到对应阶段提供设备和自愿参与者；不能自动标记人工验收完成。

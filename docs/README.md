@@ -1,11 +1,12 @@
 # Family Garden 项目文档包
 
-本文件夹用于支持 Family Garden 参赛版本的策划、场景、美术、AI、后端和三人协作开发。
+本文件夹用于支持 Family Garden 的策划、场景、美术、AI、后端和开发验收。当前全部工作由 xiongweiluo 负责；历史三人分工仅供追溯。
 
 ## 当前优化迭代
 
 - [70 全项目优化迭代计划](dev/70_project_optimization_iteration_plan.md)：O0—O8 路线与验收标准。
 - [71 优化执行台账](dev/71_optimization_execution_status.md)：单人负责制、任务进度、阻塞与实际证据。
+- [72 家庭身份与迁移设计](dev/72_family_identity_and_migration_design.md)：权限矩阵、邀请契约、恢复与迁移顺序（草案，未上线）。
 
 ## 推荐阅读顺序
 
