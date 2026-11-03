@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../fixtures/cloud_unavailable');
 
 const webDir = path.resolve(process.env.E2E_WEB_DIR);
 const manifest = JSON.parse(fs.readFileSync(path.join(webDir, 'release-manifest.json'), 'utf8'));
@@ -8,7 +8,7 @@ const entryPath = process.env.E2E_ENTRY_PATH || '/';
 const expectedIndexCacheControl = process.env.E2E_EXPECT_INDEX_CACHE_CONTROL || 'no-cache';
 const expectedChunkCacheControl = process.env.E2E_EXPECT_CHUNK_CACHE_CONTROL || 'immutable';
 
-test('干净浏览器可完成加载、音频解锁与真实 Canvas 渲染', async ({ page }) => {
+test('云接口不可用时干净浏览器仍可完成加载、音频解锁与真实 Canvas 渲染', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
