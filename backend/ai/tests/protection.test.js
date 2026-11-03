@@ -6,6 +6,7 @@ const test = require("node:test");
 const { CircuitBreaker, Semaphore, retry } = require("../services/protection");
 const { AppError } = require("../errors");
 const { redact } = require("../logger");
+const { errorFromStatus } = require("../providers/tokenhub");
 
 test("有限重试只重试可恢复的上游错误", async () => {
   let calls = 0;
@@ -21,6 +22,30 @@ test("有限重试只重试可恢复的上游错误", async () => {
     () => retry(async () => { throw new AppError("CONTENT_UNSAFE", "unsafe"); }, 2, { sleep: async () => {} }),
     (error) => error.code === "CONTENT_UNSAFE",
   );
+});
+
+test("上游不可重试的请求错误只调用一次且不等待退避", async () => {
+  const upstreamError = errorFromStatus(400, { error: { code: "bad_request" } });
+  let calls = 0;
+  let waits = 0;
+  await assert.rejects(() => retry(async () => {
+    calls += 1;
+    throw upstreamError;
+  }, 3, { sleep: async () => { waits += 1; } }), (error) => error === upstreamError);
+  assert.equal(calls, 1);
+  assert.equal(waits, 0);
+});
+
+test("可重试的上游故障达到预算后保留原错误", async () => {
+  const upstreamError = errorFromStatus(503, {});
+  let calls = 0;
+  const waits = [];
+  await assert.rejects(() => retry(async () => {
+    calls += 1;
+    throw upstreamError;
+  }, 2, { sleep: async (ms) => { waits.push(ms); } }), (error) => error === upstreamError);
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [100, 200]);
 });
 
 test("熔断器达到阈值后快速失败并可恢复", async () => {

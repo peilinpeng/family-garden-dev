@@ -119,7 +119,7 @@ async function retry(task, maxRetries, options = {}) {
     try {
       return await task(attempt);
     } catch (error) {
-      if (attempt >= maxRetries || !["AI_TIMEOUT", "AI_UPSTREAM_ERROR"].includes(error?.code)) throw error;
+      if (error?.retryable === false || attempt >= maxRetries || !["AI_TIMEOUT", "AI_UPSTREAM_ERROR"].includes(error?.code)) throw error;
       attempt += 1;
       await sleep(Math.min(100 * (2 ** (attempt - 1)), 1000));
     }
