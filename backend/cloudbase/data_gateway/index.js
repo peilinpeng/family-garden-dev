@@ -415,20 +415,22 @@ async function listFamilyMembers(familyId) {
   }));
 }
 
-// 单个集合查询失败(如集合还没手动创建)不应拖垮整批 snapshot——降级返回空数组,
-// 让其它已就绪的集合仍能正常同步。
+// 读取错误不能伪装成成功空表，否则客户端会覆盖并保存空数据。
 async function queryGeneric(table, familyId) {
   try {
     const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
     return res.data || [];
   } catch (err) {
     try {
-      if (await ensureCollectionAfterMissingError(table, err)) return [];
+      if (await ensureCollectionAfterMissingError(table, err)) {
+        const res = await db.collection(table).where({ family_id: familyId }).limit(1000).get();
+        return res.data || [];
+      }
     } catch (createErr) {
-      console.warn('[data_gateway] auto-create failed for table=' + table + ': ' + (createErr && createErr.message || createErr));
+      console.warn('[data_gateway] query recovery failed for table=' + table);
     }
-    console.warn('[data_gateway] query failed for table=' + table + ': ' + (err && err.message || err));
-    return [];
+    console.warn('[data_gateway] query failed for table=' + table);
+    throw new Error('table read unavailable');
   }
 }
 
@@ -472,7 +474,7 @@ async function addGenericDocument(table, row) {
 }
 
 // inventories 专属:只能看到「本家庭共享仓」+「自己的背包」,看不到别人的背包。
-// 集合还没建好时降级返回空,不抛出。
+// 库存读取失败也必须保留客户端最后可信状态。
 async function queryInventories(familyId, memberId) {
   try {
     const shared = await db.collection('inventories')
@@ -481,8 +483,8 @@ async function queryInventories(familyId, memberId) {
       .where({ family_id: familyId, kind: 'backpack', owner_member_id: memberId }).limit(10).get();
     return [...(shared.data || []), ...(own.data || [])];
   } catch (err) {
-    console.warn('[data_gateway] query failed for table=inventories: ' + (err && err.message || err));
-    return [];
+    console.warn('[data_gateway] query failed for table=inventories');
+    throw new Error('table read unavailable');
   }
 }
 
@@ -1034,11 +1036,21 @@ async function handleRequest(event) {
     if (action === 'snapshot') {
       const tables = Array.isArray(body.tables) ? body.tables : [];
       const out = {};
-      for (const t of tables) {
+      const tableStatus = {};
+      for (const t of new Set(tables)) {
         if (!TABLES.has(t)) continue;
-        out[t] = t === 'inventories' ? await queryInventories(familyId, memberId) : await queryGeneric(t, familyId);
+        try {
+          out[t] = t === 'inventories' ? await queryInventories(familyId, memberId) : await queryGeneric(t, familyId);
+          tableStatus[t] = { ok: true };
+        } catch (_) {
+          tableStatus[t] = { ok: false, error: 'TABLE_READ_FAILED' };
+        }
       }
-      return { ok: true, tables: out };
+      if (Object.values(tableStatus).some((status) => !status.ok)) {
+        // 不返回半份 tables，旧客户端也不会把失败表或部分结果覆盖到缓存。
+        return { ok: false, code: 503, error: 'snapshot unavailable', table_status: tableStatus };
+      }
+      return { ok: true, tables: out, table_status: tableStatus };
     }
 
     if (action === 'query') {

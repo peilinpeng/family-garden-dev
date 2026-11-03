@@ -59,9 +59,9 @@ func _ready() -> void:
 		set_persistence_backend(backend)
 		await get_tree().process_frame   # 等其它 autoload(MemoryManager 等)就绪
 		if backend.has_identity():
-			await backend.bootstrap()
-			await _flush_ai_outbox()
-			await _cleanup_ai_images()
+			if await backend.bootstrap():
+				await _flush_ai_outbox()
+				await _cleanup_ai_images()
 
 func set_persistence_backend(backend: Object) -> void:
 	_persist_backend = backend
@@ -73,6 +73,8 @@ func ensure_cloud_identity(role: String, display_name: String, family_code: Stri
 	if _persist_backend == null or not _persist_backend.has_method("has_identity"):
 		return false
 	if _persist_backend.has_identity():
+		if _persist_backend.has_method("has_snapshot") and not _persist_backend.has_snapshot():
+			return await _persist_backend.bootstrap()
 		return true
 	var fam_id: String = _persist_backend.family_id() if _persist_backend.family_id() != "" \
 		else str(CloudBaseBackend.load_config().get("family_id", ""))
@@ -83,7 +85,8 @@ func ensure_cloud_identity(role: String, display_name: String, family_code: Stri
 		return false
 	var joined: bool = await _persist_backend.join_family(fam_id, role, display_name)
 	if joined:
-		await _persist_backend.bootstrap()
+		if not await _persist_backend.bootstrap():
+			return false
 		await _flush_ai_outbox()
 		await _cleanup_ai_images()
 		return true
@@ -107,8 +110,9 @@ func _flush_ai_outbox() -> void:
 	if workflow != null and workflow.has_method("flush_ai_sync_outbox"):
 		await workflow.flush_ai_sync_outbox()
 		if had_pending and memory_manager.ai_sync_outbox.is_empty() and _persist_backend != null and _persist_backend.has_method("refresh"):
-			await _persist_backend.refresh()
-			memory_manager.pull_remote()
+			var refreshed: Variant = await _persist_backend.refresh()
+			if refreshed != false:
+				memory_manager.pull_remote()
 		if workflow.has_method("retry_pending_links"):
 			await workflow.retry_pending_links(2)
 
@@ -206,7 +210,9 @@ func perform_farm_action_confirmed(action: String, payload: Dictionary, operatio
 	return {"ok": false, "local_only": true, "error": "cloud backend unavailable"}
 
 func has_cloud_records() -> bool:
-	return _use_cloudbase_records()
+	return _use_cloudbase_records() and (
+		not _persist_backend.has_method("has_snapshot") or _persist_backend.has_snapshot()
+	)
 
 func upload_ai_image(bytes: PackedByteArray, content_type: String) -> Dictionary:
 	if _persist_backend == null or not _persist_backend.has_method("upload_image"):
@@ -308,7 +314,9 @@ func _run_world_refresh() -> void:
 		var event := _latest_world_event.duplicate(true)
 		await get_tree().create_timer(WORLD_REFRESH_DEBOUNCE).timeout
 		if _persist_backend != null and _persist_backend.has_method("refresh"):
-			await _persist_backend.refresh()
+			var refreshed: Variant = await _persist_backend.refresh()
+			if refreshed == false:
+				continue
 		var mem := get_node_or_null("/root/MemoryManager")
 		if mem != null and mem.has_method("pull_remote"):
 			mem.pull_remote()
