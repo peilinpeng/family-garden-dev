@@ -99,7 +99,7 @@ O0 执行中，尚未宣称阶段完成。演示基线经 [PR #46](https://githu
 | 范围 | 文件清单 | 影响 |
 |---|---|---|
 | 单人规则与导航（#47） | `AGENTS.md`、`docs/README.md`、`docs/dev/37_role_boundaries_and_grey_zones.md`、`docs/dev/44_current_handoff.md` | 当前负责人、历史状态提示及文档入口 |
-| 计划与证据（#47） | `docs/dev/70_project_optimization_iteration_plan.md`、`docs/dev/71_optimization_execution_status.md`、`docs/dev/72_family_identity_and_migration_design.md` | 43 项路线、进度与未上线的身份迁移设计 |
+| 计划与证据（#47） | `docs/dev/70_project_optimization_iteration_plan.md`、`docs/dev/71_optimization_execution_status.md`、`docs/dev/72_family_identity_and_migration_design.md`、`backend/cloudbase/README.md` 中身份风险说明 | 43 项路线、进度与未上线的身份迁移设计；更正历史准入说明 |
 | 依赖修复（#46） | `backend/ai/package-lock.json`、`backend/cloudbase/data_gateway/package.json`、`backend/cloudbase/data_gateway/package-lock.json` | 服务端传递依赖与 axios override；需部署才影响生产 |
 | 浏览器门禁（#46） | `e2e/README.md`、`e2e/fixtures/cloud_unavailable.js`、`e2e/tests/mobile_web.spec.js`、`e2e/tests/web_release.spec.js` | 本地／CI 资源与桥接测试；不改生产配置 |
 | 快照服务端（#48） | `backend/cloudbase/README.md`、`backend/cloudbase/data_gateway/index.js`、`backend/cloudbase/data_gateway/tests/data_gateway.test.js` | 查询失败协议与回归覆盖 |
