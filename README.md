@@ -1,118 +1,119 @@
-# Family Garden · 家庭花园
+# Family Garden
 
-> 让家庭记忆长成一座可以共同生活、探索与回应的花园。
+> Let family memories grow into a garden where you can spend time together, explore, and connect.
 
-![Family Garden 标题画面](docs/submission/screenshots/00_title_art.png)
+![Family Garden title artwork](docs/submission/screenshots/00_title_art.png)
 
-Family Garden 是一款面向家庭成员的 AI 像素生活游戏。玩家可以记录照片与故事，
-在花园、共享农场、鱼塘和厨房中共同生活；AI 负责整理已有内容、生成温和的问题与料理，
-但不会替家人编造关系或经历。
+Family Garden is an AI-powered pixel-art life simulation game for families. Players can save photos and stories
+and spend time together in a garden, shared farm, fishpond, and kitchen. AI helps organize the content they provide
+and generate gentle conversation prompts and recipes, without inventing family relationships or experiences.
 
-## 在线体验
+## Play Online
 
-**Web 版本：<https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/>**
+**Web version: <https://familygarden-d7gy18huh87fd41d2-1449262000.tcloudbaseapp.com/>**
 
-- 推荐使用最新版 Chrome、Edge 或 Firefox；
-- 进入页面后需要点击“进入家庭花园”，浏览器才会开放游戏音频；
-- 核心单机玩法可直接体验；
-- 真实 AI、成员身份、云同步和多人在线依赖腾讯云 CloudBase 服务与可用额度；
-- 分享、演示或提交作品时使用上面的固定 HTTPS 域名，不要附带临时查询参数。
+- Use the latest version of Chrome, Edge, or Firefox for the best experience.
+- Click the entry button on the launch page (meaning “Enter Family Garden”) to enable game audio in your browser.
+- Core single-player gameplay is available to try right away.
+- Live AI, member identity, cloud sync, and online multiplayer require Tencent CloudBase services and available quota.
+- Use the permanent HTTPS address above when sharing, demonstrating, or submitting the project, without temporary query parameters.
 
-## 我们想解决什么
+## Why We Are Building This
 
-很多家庭并不是联系不上，而是不知道怎样自然地开始交流。照片散落在相册和聊天记录里，
-长辈的故事、共同旅行与普通日常也很难被持续补充。
+For many families, the challenge is finding a natural way to start a conversation. Photos are scattered across
+albums and chat histories, while stories from older relatives, shared trips, and everyday moments rarely get
+recorded and expanded over time.
 
-Family Garden 不要求用户进行严肃的“家庭访谈”，而是把交流放进轻量玩法：
+Family Garden brings these conversations into light, playful activities, without asking anyone to conduct a formal “family interview”:
 
 ```text
-记录一段记忆
-  → AI 整理成可编辑的记忆卡片
-  → 家人补充回答与共同细节
-  → 花园长出记忆花和跨记忆藤蔓
-  → 在农场、鱼塘、厨房与房间中继续产生新的互动
+Record a memory
+  → AI organizes it into an editable memory card
+  → Family members add answers and shared details
+  → Memory flowers and vines linking memories grow in the garden
+  → New interactions unfold on the farm, by the fishpond, in the kitchen, and in rooms
 ```
 
-AI 在这里是“记忆整理助手”，不是故事作者。它只处理玩家主动提供的内容，不推断家庭关系，
-不评价感情，也不把模型生成内容冒充成真实家庭事实。
+AI serves as a memory-organizing assistant, not a storyteller. It only processes content that players choose
+to provide. It does not infer family relationships, judge feelings, or present generated content as real family facts.
 
-## 当前可玩内容
+## What You Can Play Today
 
-| 模块 | 当前体验 |
+| Feature | Current experience |
 |---|---|
-| 三章主线 | 从重新打开花园，到共享农场，再到厨房与家庭餐桌 |
-| 家庭花园 | 记录记忆、查看照片卡片、记忆花景观、DIY 花园布置 |
-| 共享农场 | 选种、种植、浇水、成长、收获、畜牧围栏门互动 |
-| 鱼塘 | 钓鱼、漂流瓶问题、记忆回答与水边探索 |
-| 新厨房 | 可行走厨房场景、共享食材、互动烹饪、料理上桌 |
-| 家庭地图 | 在花园、农场、鱼塘、厨房与房间之间旅行 |
-| 角色系统 | 角色外观、昵称、家庭身份、在线成员显示 |
-| 无障碍体验 | 关怀模式放大文字和 UI，不缩小游戏可见范围 |
-| Web 版本 | 1280×720 逻辑画布、响应式显示、音频解锁启动页 |
+| Three-chapter story | Reopen the garden, discover the shared farm, then gather in the kitchen and around the family table |
+| Family garden | Record memories, view photo cards, grow a landscape of memory flowers, and decorate your garden |
+| Shared farm | Choose seeds, plant, water, grow, harvest, and interact with livestock pen gates |
+| Fishpond | Go fishing, discover message-in-a-bottle questions, share memories through answers, and explore the waterside |
+| New kitchen | Walk around the kitchen, share ingredients, cook interactively, and serve dishes |
+| Family map | Travel between the garden, farm, fishpond, kitchen, and rooms |
+| Characters | Customize appearances and nicknames, manage family identities, and see who is online |
+| Accessibility | Care Mode enlarges text and UI without reducing the visible game area |
+| Web version | A 1280×720 logical canvas, responsive display, and a launch page that enables audio |
 
-![家庭花园场景](docs/submission/screenshots/01_garden_hero_v2.png)
+![Family Garden scene](docs/submission/screenshots/01_garden_hero_v2.png)
 
-## AI 与云端能力
+## AI and Cloud Features
 
-### AI 工作流
+### AI Workflows
 
-- 图片或文字生成可编辑的记忆卡片；
-- 基于已有记忆提出开放、低压力的家庭问题；
-- 根据家庭共享仓中的食材生成料理；
-- 分析房间照片中的可见物件与区域；
-- 在两段已确认记忆之间提出可能的关联问题；
-- 所有 AI 输出先经过 JSON Schema 校验，再进入游戏状态。
+- Generate editable memory cards from photos or text.
+- Suggest open-ended, low-pressure family questions based on existing memories.
+- Generate recipes using ingredients in the family's shared storage.
+- Identify visible objects and areas in room photos.
+- Suggest questions about possible connections between two confirmed memories.
+- Validate all AI output against JSON Schema before it enters the game state.
 
-### 安全边界
+### Safety Boundaries
 
-- AI 不输出世界坐标；
-- 房间分析只返回 `object_type + zone`；
-- Godot 通过白名单目录生成场景，模型不能直接控制节点；
-- 鉴权、非法输入和内容安全错误不会被 mock 伪装成真实成功；
-- 网络或模型技术故障可以进入显式 fallback，并记录结果来源；
-- 腾讯云密钥、AI API Key、service role key 和成员令牌不得提交到仓库。
+- AI never outputs world coordinates.
+- Room analysis returns only `object_type + zone`.
+- Godot builds scenes from an allowlisted catalog; the model cannot control nodes directly.
+- Authentication, invalid-input, and content-safety errors are never disguised as successful live responses by mocks.
+- Network or model failures may use an explicit fallback, with the result's source recorded.
+- Never commit Tencent Cloud credentials, AI API keys, service role keys, or member tokens to the repository.
 
-### 云端身份
+### Cloud Identity
 
-每台设备首次加入家庭时会通过 `data_gateway` 获取独立的 `member_token`。令牌只保存在该设备的
-`user://cloud_identity.json` 中，用于解析 `family_id` 和 `member_id`。真实 AI 请求、家庭同步和
-在线状态都依赖这一身份链路。
+When a device first joins a family, it receives its own `member_token` through `data_gateway`. The token is stored
+only in that device's `user://cloud_identity.json` and is used to resolve `family_id` and `member_id`. Live AI requests,
+family sync, and online presence all depend on this identity flow.
 
-## 技术架构
+## Technical Architecture
 
 ```text
 Godot 4.7 Web / Desktop
-  ├─ SceneManager          场景、旅行与主流程
-  ├─ MemoryManager         记忆与本地存档
-  ├─ InventoryManager      背包、共享仓与料理材料
-  ├─ AIClient              状态、校验、缓存、取消与 fallback
-  ├─ AIWorkflowManager     AI 草稿、确认、落库与补偿
-  ├─ CloudService          身份、家庭数据与同步
-  └─ PresenceChannel       在线成员与场景事件
+  ├─ SceneManager          Scenes, travel, and the main game flow
+  ├─ MemoryManager         Memories and local saves
+  ├─ InventoryManager      Inventory, shared storage, and cooking ingredients
+  ├─ AIClient              State, validation, caching, cancellation, and fallback
+  ├─ AIWorkflowManager     AI drafts, confirmation, persistence, and compensation
+  ├─ CloudService          Identity, family data, and sync
+  └─ PresenceChannel       Online members and scene events
            │
-           ├── CloudBase AI Gateway ── 内容安全 ── 腾讯混元 / TokenHub
-           ├── CloudBase Data Gateway ── 家庭隔离数据与成员身份
-           ├── CloudBase Storage ── 家庭照片与临时上传
-           └── Presence Relay ── WebSocket 在线状态
+           ├── CloudBase AI Gateway ── Content safety ── Tencent Hunyuan / TokenHub
+           ├── CloudBase Data Gateway ── Data isolated by family and member identity
+           ├── CloudBase Storage ── Family photos and temporary uploads
+           └── Presence Relay ── WebSocket presence
 
-Web 静态版本
-  └── Tencent CloudBase 静态托管 / CDN
+Static Web Build
+  └── Tencent CloudBase Static Hosting / CDN
 ```
 
-## 本地运行
+## Run Locally
 
-### 环境
+### Requirements
 
 - Godot `4.7.stable`
-- Compatibility 渲染器
-- 推荐桌面分辨率不低于 1280×720
+- Compatibility renderer
+- Recommended desktop resolution: at least 1280×720
 
-### 启动
+### Getting Started
 
-1. 克隆仓库；
-2. 使用 Godot 导入 `game/project.godot`；
-3. 运行主场景；
-4. 使用 WASD 或方向键移动，按 `E` 与场景物件互动。
+1. Clone the repository.
+2. Import `game/project.godot` in Godot.
+3. Run the main scene.
+4. Move with WASD or the arrow keys, and press `E` to interact with objects.
 
 ```bash
 git clone https://github.com/peilinpeng/family-garden-dev.git
@@ -120,55 +121,58 @@ cd family-garden-dev
 open game/project.godot
 ```
 
-公开的项目级 endpoint 位于 `game/config/`。个人成员令牌保存在 `user://`，不会进入源码仓库。
-如果 CloudBase 未启用或额度不可用，核心本地玩法仍可运行，但真实 AI、身份和云端协作不可用。
+Public project endpoints are configured in `game/config/`. Personal member tokens are stored in `user://` and are
+never included in the source repository. If CloudBase is disabled or its quota is unavailable, core local gameplay
+still works, but live AI, member identity, and cloud collaboration are unavailable.
 
-## 本地测试
+## Local Tests
 
-首次运行时安装三个 Node 工作区依赖，并在仓库根目录创建已忽略的 `.venv`：
+On the first run, install dependencies for the three Node workspaces and create an ignored `.venv` at the repository root:
 
 ```bash
 ./tools/test_all.sh --bootstrap
 ```
 
-日常全量回归使用同一个入口：
+Use the same entry point for routine full regression testing:
 
 ```bash
 ./tools/test_all.sh
 ```
 
-脚本会运行全部 Godot 测试场景、AI Gateway Node 测试、Gate 1 Python
-JSON Schema 契约测试、Data Gateway 测试和 Presence Relay 测试。它只使用本地
-mock，不调用真实 AI、CloudBase、Presence 线上服务或收费接口。
+The script runs all Godot test scenes, AI Gateway Node tests, Gate 1 Python JSON Schema contract tests,
+Data Gateway tests, and Presence Relay tests. It uses only local mocks and never calls live AI, CloudBase,
+online Presence services, or paid APIs.
 
-项目要求 Godot 4.7 和 Node.js 20.19+。macOS 会自动发现
-`/Applications/Godot.app/Contents/MacOS/Godot`；其他环境可通过 `GODOT_BIN`
-指定可执行文件。失败日志会保留在脚本输出的临时目录，设置
-`KEEP_TEST_LOGS=1` 可同时保留成功日志。
+The project requires Godot 4.7 and Node.js 20.19+. On macOS, the script automatically detects
+`/Applications/Godot.app/Contents/MacOS/Godot`; on other systems, set `GODOT_BIN` to the executable path.
+Failure logs are kept in the temporary directory printed by the script. Set `KEEP_TEST_LOGS=1` to retain
+successful test logs as well.
 
-真实云端冒烟测试会调用外部服务并可能产生费用，因此不包含在普通本地回归中。
-M0 测试范围与基线结果见
-[`docs/dev/60_m0_quality_baseline.md`](docs/dev/60_m0_quality_baseline.md)。
+Live cloud smoke tests call external services and may incur charges, so they are excluded from routine local regression tests.
+For the M0 test scope and baseline results, see
+[`docs/dev/60_m0_quality_baseline.md`](docs/dev/60_m0_quality_baseline.md).
 
-## 持续集成
+## Continuous Integration
 
-GitHub Actions 会在 `main`、`dev`、`feature/**` 推送，以及面向 `main` 或 `dev` 的 PR 上运行
-“M3 质量门禁”。门禁固定 Godot、Node.js 和 Python 版本，执行全量本地回归、生产依赖
-critical 漏洞审计与 Web Release 审计；不会调用真实 AI、CloudBase、Presence 或收费接口。
+GitHub Actions runs the “M3 Quality Gate” on pushes to `main`, `dev`, and `feature/**`, and on pull requests targeting
+`main` or `dev`. The gate pins Godot, Node.js, and Python versions and runs the full local regression suite,
+a critical-vulnerability audit of production dependencies, and a Web Release audit. It does not call live AI,
+CloudBase, Presence services, or paid APIs.
 
-CI 失败时会保留 7 天测试与导出日志。具体触发规则、安全边界和维护方式见
-[`docs/dev/63_m3_ci_quality_gate.md`](docs/dev/63_m3_ci_quality_gate.md)。
+When CI fails, test and export logs are retained for seven days. For trigger rules, safety boundaries, and maintenance, see
+[`docs/dev/63_m3_ci_quality_gate.md`](docs/dev/63_m3_ci_quality_gate.md).
 
-## Web 导出
+## Web Export
 
-提交 Web 发布变更前，先运行独立导出审计：
+Before submitting changes to a Web release, run the standalone export audit:
 
 ```bash
 ./tools/check_web_export.sh
 ```
 
-该脚本会执行 Release 导出，校验 PCK 体积上限、动态加载资源、生产排除边界和导出包启动。
-它不访问任何线上服务；需要本机已安装 Godot 4.7 Web 导出模板。
+The script performs a Release export and checks the PCK size limit, dynamically loaded resources, production exclusions,
+and startup of the exported build. It does not access online services and requires the Godot 4.7 Web export templates
+to be installed locally.
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot \
@@ -176,64 +180,64 @@ CI 失败时会保留 7 天测试与导出日志。具体触发规则、安全�
   --export-release Web ../export_web/index.html
 ```
 
-项目使用 `game/web/family_garden_web_shell.html` 作为自定义 Web Shell，负责：
+The project uses `game/web/family_garden_web_shell.html` as its custom Web shell to:
 
-- 用户点击后解除浏览器音频自动播放限制；
-- 保持 1280×720 游戏画布的正确比例；
-- 为 EdgeOne 的单文件限制重组分片 PCK/WASM。
+- Enable browser audio playback after a user click.
+- Preserve the correct aspect ratio of the 1280×720 game canvas.
+- Reassemble split PCK/WASM files to accommodate EdgeOne's per-file size limit.
 
-`export_web/`、`.edgeone/` 与 `.tef_dist/` 都是构建产物，不进入源码仓库。
+`export_web/`, `.edgeone/`, and `.tef_dist/` are build artifacts and are excluded from the source repository.
 
-M2 的资源取舍、体积对比和验收记录见
-[`docs/dev/62_m2_web_export_optimization.md`](docs/dev/62_m2_web_export_optimization.md)。
+For M2 asset tradeoffs, size comparisons, and acceptance records, see
+[`docs/dev/62_m2_web_export_optimization.md`](docs/dev/62_m2_web_export_optimization.md).
 
-本地预览可使用：
+To preview locally:
 
 ```bash
 npx vite export_web --host 127.0.0.1 --port 4173
 ```
 
-## 仓库结构
+## Repository Structure
 
 ```text
 game/
-  assets/        游戏美术、字体、音频与 TileSet
-  config/        可提交的公开 endpoint 配置
-  scenes/        Godot 场景
-  scripts/       游戏系统、管理器和 UI
-  tests/         Godot 回归测试
-  web/           自定义 Web Shell
+  assets/        Game art, fonts, audio, and TileSets
+  config/        Public endpoint configuration safe to commit
+  scenes/        Godot scenes
+  scripts/       Game systems, managers, and UI
+  tests/         Godot regression tests
+  web/           Custom Web shell
 
 backend/
-  ai/            AI Gateway、契约、内容安全与供应商适配
-  cloudbase/     数据网关、在线中继与云端脚本
-  mocks/         AI 功能的本地 mock
+  ai/            AI Gateway, contracts, content safety, and provider adapters
+  cloudbase/     Data gateway, presence relay, and cloud scripts
+  mocks/         Local mocks for AI features
 
 docs/
-  dev/           协作、交接和验收记录
-  submission/    比赛介绍、演示材料与截图
+  dev/           Collaboration, handoff, and acceptance records
+  submission/    Competition overview, demo materials, and screenshots
 ```
 
-## 项目状态与边界
+## Project Status and Limitations
 
-- 当前主开发分支仍采用 `feature/* → dev → main` 的协作模型；
-- 新厨房 `KitchenNew.tscn` 已取代旧厨房场景；
-- 语义房间生成仍保留独立的房间 TileSet，不依赖旧厨房场景；
-- Web 图片选择需要浏览器文件权限；
-- `user://` 数据受浏览器 IndexedDB、隐私模式与站点存储权限影响；
-- CloudBase 云函数不可用时，Web 版无法取得成员身份或调用真实 AI；
-- Web 音频需要玩家在启动页进行一次真实点击。
+- Development follows the `feature/* → dev → main` collaboration model.
+- The new kitchen, `KitchenNew.tscn`, has replaced the previous kitchen scene.
+- Semantic room generation retains its own room TileSet and does not depend on the previous kitchen scene.
+- Selecting photos on the Web requires browser file permissions.
+- `user://` data is affected by browser IndexedDB support, private browsing, and site storage permissions.
+- When CloudBase functions are unavailable, the Web version cannot obtain member identities or call live AI.
+- Web audio requires a real user click on the launch page.
 
-## 文档与协作
+## Documentation and Collaboration
 
-- 产品与演示：[`docs/README.md`](docs/README.md)
-- 比赛提交材料：[`docs/submission/README.md`](docs/submission/README.md)
-- AI 接口契约：[`docs/04_ai_interfaces.md`](docs/04_ai_interfaces.md)
-- 后端数据模型：[`docs/05_backend_data_model.md`](docs/05_backend_data_model.md)
-- 坐标与美术规范：[`docs/09_godot_coordinate_art_spec.md`](docs/09_godot_coordinate_art_spec.md)
-- 贡献规范：[`CONTRIBUTING.md`](CONTRIBUTING.md)
-- AI 协作规则：[`AGENTS.md`](AGENTS.md)
+- Product and demo: [`docs/README.md`](docs/README.md)
+- Competition submission materials: [`docs/submission/README.md`](docs/submission/README.md)
+- AI interface contracts: [`docs/04_ai_interfaces.md`](docs/04_ai_interfaces.md)
+- Backend data model: [`docs/05_backend_data_model.md`](docs/05_backend_data_model.md)
+- Coordinate and art specifications: [`docs/09_godot_coordinate_art_spec.md`](docs/09_godot_coordinate_art_spec.md)
+- Contribution guidelines: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- AI collaboration rules: [`AGENTS.md`](AGENTS.md)
 
 ---
 
-Family Garden 希望把“家庭沟通”从一次需要鼓起勇气的谈话，变成一座可以慢慢照料的花园。
+Family Garden hopes to turn family conversations from something that takes courage to begin into a garden you can nurture over time.
